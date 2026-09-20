@@ -1,0 +1,170 @@
+<NuvoDocs::Page
+  @id="list"
+  @title="List and Description list"
+  @subtitle="Ordered, unordered and term/description lists from data or markup."
+  @components="Nuvo::List, Nuvo::DescList"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Both components render from an
+      <code class="nu-code">@items</code>
+      array or from a block of hand-written items. The data form is quickest
+      for plain text; the block form is for items that hold badges, links or
+      other components. For rows with actions use ListItem instead.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Ordered or unordered; plain, inline, bordered and compact styles.</li>
+      <li class="nu-list__item">Items as strings or label/icon objects.</li>
+      <li class="nu-list__item">Description list in stacked or horizontal layout.</li>
+      <li class="nu-list__item">Block form for custom item markup.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="List: data" @id="list-data">
+    <NuvoDocs::Example
+      @title="Strings"
+      @note="An array of strings becomes a bulleted list. The quickest way to show a few facts."
+      @layout="stack"
+      @code={{this.code.strings}}
+    >
+      <Nuvo::List @items={{this.unitList}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Objects with icons"
+      @note="Objects with label and icon put a glyph before each item, usually with plain so the icon replaces the bullet."
+      @layout="stack"
+      @code={{this.code.icons}}
+    >
+      <Nuvo::List @items={{this.iconList}} @plain={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block items"
+      @note="Write the li elements yourself, with the nu-list__item class, when items need badges or links."
+      @layout="stack"
+      @code={{this.code.block}}
+    >
+      <Nuvo::List @plain={{true}}>
+        <li class="nu-list__item"><Nuvo::Badge @variant="success" @text="Paid" /> March rent</li>
+        <li class="nu-list__item"><Nuvo::Badge @variant="warning" @text="Due" /> April rent</li>
+      </Nuvo::List>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="List: styles" @id="list-styles">
+    <NuvoDocs::Example
+      @title="Ordered"
+      @note="Numbered steps, rendered as an ol so the order is announced."
+      @layout="stack"
+      @code={{this.code.ordered}}
+    >
+      <Nuvo::List @items={{this.unitList}} @ordered={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Plain"
+      @note="No markers, for lists that are already visually grouped or carry their own icons."
+      @layout="stack"
+      @code={{this.code.plain}}
+    >
+      <Nuvo::List @items={{this.unitList}} @plain={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Inline"
+      @note="Items flow on one line, for short attribute lists in a header or a card."
+      @layout="block"
+      @code={{this.code.inline}}
+    >
+      <Nuvo::List @items={{this.unitList}} @inline={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Bordered"
+      @note="A divider between items, for lists of records rather than prose bullets."
+      @layout="stack"
+      @code={{this.code.bordered}}
+    >
+      <Nuvo::List @items={{this.unitList}} @plain={{true}} @bordered={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter spacing for sidebars and dense summaries."
+      @layout="stack"
+      @code={{this.code.compact}}
+    >
+      <Nuvo::List @items={{this.unitList}} @compact={{true}} />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">List arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.listArgRows}} />
+    <h3 class="nuvo-subtitle">List blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.listBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Description list" @id="desc-list">
+    <NuvoDocs::Example
+      @title="Stacked"
+      @note="Term above description, for detail panels read top to bottom."
+      @layout="stack"
+      @code={{this.code.desc}}
+    >
+      <Nuvo::DescList @items={{this.leaseDescItems}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Horizontal"
+      @note="Term beside description in two columns, for wider summaries."
+      @layout="stack"
+      @code={{this.code.descHorizontal}}
+    >
+      <Nuvo::DescList @items={{this.leaseDescItems}} @horizontal={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter group spacing for sidebars."
+      @layout="stack"
+      @code={{this.code.descCompact}}
+    >
+      <Nuvo::DescList @items={{this.leaseDescItems}} @compact={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block groups"
+      @note="Write the groups yourself when a description holds a badge or a link."
+      @layout="stack"
+      @code={{this.code.descBlock}}
+    >
+      <Nuvo::DescList @horizontal={{true}}>
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">Status</dt>
+          <dd class="nu-desc-list__description"><Nuvo::Badge @variant="success" @text="Active" /></dd>
+        </div>
+      </Nuvo::DescList>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Description list arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.descArgRows}} />
+    <h3 class="nuvo-subtitle">Description list blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.descBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Real ul, ol and dl elements, so list semantics and item counts are announced.</li>
+      <li class="nu-list__item">Item icons are aria-hidden; the label carries the meaning.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Markers, icon spacing and the horizontal description layout use inline paddings and margins, so they mirror with the reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

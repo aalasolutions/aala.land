@@ -1,0 +1,241 @@
+<NuvoDocs::Page
+  @id="button"
+  @title="Button"
+  @subtitle="Triggers an action, submits a form, or links to a route."
+  @components="Nuvo::Button, Nuvo::BtnGroup"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      One component renders a native button, an anchor or a LinkTo depending
+      on the arguments, and all three share the same inner layout so they
+      cannot drift apart. Loading folds into the icon slot and implies
+      disabled. Pick the variant by what the action means, the size by the
+      density of its surroundings.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Eight variants, four sizes, outline and block forms.</li>
+      <li class="nu-list__item">Icon at the start or end; Phosphor names or literal glyphs.</li>
+      <li class="nu-list__item">Square and circle icon-only shapes that drop the label.</li>
+      <li class="nu-list__item">Loading state swaps the icon for a spinner and disables the control.</li>
+      <li class="nu-list__item">Route and href modes render a LinkTo or an anchor with the same classes.</li>
+      <li class="nu-list__item">BtnGroup joins buttons, attached or spaced.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Variants" @id="variants">
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Button @variant={{example.variant}} @text={{example.title}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Outline"
+      @note="Transparent fill with the variant's border and text colour. Use it for the second action beside a filled button of the same colour, or for a set of equal-weight choices."
+      @code={{this.code.outline}}
+    >
+      <Nuvo::Button @variant="primary" @outline={{true}} @text="Outline" />
+      <Nuvo::Button @variant="danger" @outline={{true}} @text="Outline" />
+      <Nuvo::Button @variant="success" @outline={{true}} @text="Outline" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    {{#each this.sizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Button @variant="primary" @size={{example.size}} @text={{example.title}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Shapes" @id="shapes">
+    <NuvoDocs::Example
+      @title="Square"
+      @note="Icon-only, same height as a text button, square corners. For toolbar and table-row actions that line up with text buttons. The label is dropped, so aria-label carries the name."
+      @code={{this.code.square}}
+    >
+      <Nuvo::Button @variant="primary" @shape="square" @icon="plus" aria-label="Add" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Circle"
+      @note="Icon-only, fully round. For floating or standalone controls such as close, dismiss and avatar actions."
+      @code={{this.code.circle}}
+    >
+      <Nuvo::Button @variant="secondary" @shape="circle" @icon="x" aria-label="Close" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Icons" @id="icons">
+    <NuvoDocs::Example
+      @title="Icon before the label"
+      @note="A lowercase kebab-case name is a Phosphor icon. Lead with an icon when the glyph is recognised faster than the word: add, search, filter."
+      @code={{this.code.iconStart}}
+    >
+      <Nuvo::Button @variant="primary" @icon="plus" @text="Add unit" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icon after the label"
+      @note="iconPosition end suits forward motion: next, continue, open in new tab. Directional icons mirror under RTL automatically."
+      @code={{this.code.iconEnd}}
+    >
+      <Nuvo::Button @variant="secondary" @icon="arrow-right" @iconPosition="end" @text="Next" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Literal glyph"
+      @note="Anything that is not a kebab-case name renders as text in the icon slot. Use it for a character that has no icon, or in a fixture that must not load the font."
+      @code={{this.code.glyph}}
+    >
+      <Nuvo::Button @variant="secondary" @icon="+" @text="Literal glyph" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Custom loading icon"
+      @note="loadingIcon replaces the default spinner-gap while loading. Keep the default unless the brand asks for a specific spinner."
+      @code={{this.code.loadingIcon}}
+    >
+      <Nuvo::Button @variant="secondary" @loading={{true}} @loadingIcon="circle-notch" @text="Custom spinner" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="States" @id="states">
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="Sets the real disabled attribute and drops onClick. Use it when the action is impossible right now; explain why nearby, because a disabled button receives no tooltip on its own."
+      @code={{this.code.disabled}}
+    >
+      <Nuvo::Button @variant="primary" @disabled={{true}} @text="Disabled" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Loading"
+      @note="The icon slot becomes a spinner and the button disables itself, so a double submit is impossible. Swap the label to the in-progress verb while it runs."
+      @code={{this.code.loading}}
+    >
+      <Nuvo::Button
+        @variant="primary"
+        @loading={{this.loadingDemo}}
+        @text={{if this.loadingDemo "Saving" "Click to load"}}
+        @onClick={{this.toggleLoading}}
+        data-test-nuvo-loading-demo
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Active"
+      @note="Pressed appearance without changing the variant. For toggles and the selected member of an attached group; set aria-pressed alongside it."
+      @code={{this.code.active}}
+    >
+      <Nuvo::Button @variant="secondary" @active={{true}} @text="Active" aria-pressed="true" />
+      <Nuvo::Button @variant="secondary" @text="Inactive" aria-pressed="false" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block"
+      @note="Full width of its container, for mobile forms and stacked dialog footers. The argument is @block; this demo applies the resulting is-block class because the project lint reserves the name."
+      @layout="stack"
+      @code={{this.code.block}}
+    >
+      <Nuvo::Button @variant="secondary" @text="Full width" class="is-block" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Modes" @id="modes">
+    <NuvoDocs::Example
+      @title="Submit"
+      @note="type submit inside a form triggers the form's submit handler on click and on Enter in any field. Every other button defaults to type button so it never submits by accident."
+      @code={{this.code.submit}}
+    >
+      <Nuvo::Button @type="submit" @variant="primary" @text="Save" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Route"
+      @note="route renders a LinkTo with the button classes, so navigation stays a real link: hover shows the URL, middle-click opens a tab. model, models and query pass through."
+      @code={{this.code.route}}
+    >
+      <Nuvo::Button @route="nuvo.index" @variant="link" @text="Overview" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Href"
+      @note="href renders an anchor for external or in-page links that are outside the router."
+      @code={{this.code.href}}
+    >
+      <Nuvo::Button @href="#examples" @variant="secondary" @text="Anchor to this section" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Button group" @id="group">
+    <NuvoDocs::Example
+      @title="Spaced"
+      @note="A row of related buttons with a consistent gap. Use it for independent actions that belong together, such as export and print."
+      @code={{this.code.groupSpaced}}
+    >
+      <Nuvo::BtnGroup>
+        <Nuvo::Button @variant="secondary" @text="Left" />
+        <Nuvo::Button @variant="secondary" @text="Middle" />
+        <Nuvo::Button @variant="secondary" @text="Right" />
+      </Nuvo::BtnGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Attached"
+      @note="Shared borders make one segmented bar. Use it for mutually exclusive choices and mark the current one with active; for a value-setting control prefer Segmented."
+      @code={{this.code.groupAttached}}
+    >
+      <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::Button @variant="secondary" @text="Day" />
+        <Nuvo::Button @variant="secondary" @active={{true}} @text="Week" />
+        <Nuvo::Button @variant="secondary" @text="Month" />
+      </Nuvo::BtnGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Attached icon pair"
+      @note="Two square icon buttons joined into a stepper. The caret icons mirror under RTL so previous always points backwards in reading order."
+      @code={{this.code.groupIcons}}
+    >
+      <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::Button @variant="secondary" @shape="square" @icon="caret-left" aria-label="Previous" />
+        <Nuvo::Button @variant="secondary" @shape="square" @icon="caret-right" aria-label="Next" />
+      </Nuvo::BtnGroup>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <h3 class="nuvo-subtitle">Nuvo::Button</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+    <h3 class="nuvo-subtitle">Nuvo::BtnGroup</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Button mode renders a native button with an explicit type; disabled and loading set the real disabled attribute.</li>
+      <li class="nu-list__item">Icons are aria-hidden. Square and circle shapes drop the label, so pass aria-label for the accessible name.</li>
+      <li class="nu-list__item">A tooltip on a disabled button never fires because disabled buttons receive no pointer events; wrap the button in a span carrying data-tooltip.</li>
+      <li class="nu-list__item">Keyboard focus shows the kit focus ring; it is never removed without a replacement.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Icon spacing uses inline margins, so start and end positions mirror with the reading direction.</li>
+      <li class="nu-list__item">Phosphor icons named left or right (caret-left, arrow-right) are mirrored automatically under dir="rtl".</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

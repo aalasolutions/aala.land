@@ -1,0 +1,344 @@
+<NuvoDocs::Page
+  @id="input"
+  @title="Input, Textarea, Select"
+  @subtitle="Native text controls with the kit's sizes, states and addons."
+  @components="Nuvo::Input, Nuvo::Textarea, Nuvo::Select, Nuvo::InputGroup"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      All three wrap the native element and stay controlled: the value comes
+      in through
+      <code class="nu-code">@value</code>
+      and goes out through
+      <code class="nu-code">@onInput</code>
+      or
+      <code class="nu-code">@onChange</code>
+      as a plain value, not a DOM event. Attributes spread onto the native
+      element, so id, name and aria attributes pass straight through. Wrap
+      any of them in Nuvo::Field for a label, hint and error.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Two extra sizes, invalid and valid states, disabled and readonly.</li>
+      <li class="nu-list__item">Prefix and suffix glyphs; a clear button that is always reachable by keyboard.</li>
+      <li class="nu-list__item">Numeric, phone, email and URL inputs stay left-to-right inside an RTL page.</li>
+      <li class="nu-list__item">Textarea with row count and resize control.</li>
+      <li class="nu-list__item">Select accepts strings or value/label objects and renders a disabled placeholder option.</li>
+      <li class="nu-list__item">InputGroup adds prepend and append addons around any control.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input: value and events" @id="input-value">
+    <NuvoDocs::Example
+      @title="Controlled value"
+      @note="onInput fires on every keystroke with the string first. Store it and pass it back as value; the input never keeps its own state."
+      @layout="stack"
+      @code={{this.code.controlled}}
+    >
+      <Nuvo::Input @value={{this.inputValue}} @placeholder="Property name" @onInput={{this.updateInput}} />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-input-echo>Value: {{this.inputValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Change event"
+      @note="onChange fires on blur or Enter, once per committed value. Use it for lookups and validation that should not run per keystroke."
+      @layout="stack"
+      @code={{this.code.change}}
+    >
+      <Nuvo::Input @placeholder="Type, then blur or press Enter" @onChange={{this.countChange}} />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-input-changes>Changes: {{this.changeCount}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Clearable"
+      @note="A labelled clear button appears whenever there is a value, never hover-gated, so keyboard and touch users can reach it. It calls onInput with an empty string and onClear."
+      @layout="stack"
+      @code={{this.code.clearable}}
+    >
+      <Nuvo::Input @value={{this.clearableValue}} @clearable={{true}} @onInput={{this.updateClearable}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input: icons" @id="input-icons">
+    <NuvoDocs::Example
+      @title="Prefix icon"
+      @note="A glyph inside the field at the start, for search and lookup fields."
+      @layout="stack"
+      @code={{this.code.prefix}}
+    >
+      <Nuvo::Input @prefixIcon="⌕" @placeholder="Search units" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Suffix"
+      @note="A glyph or unit at the end. It gives way to the clear button while the field is clearable and non-empty."
+      @layout="stack"
+      @code={{this.code.suffix}}
+    >
+      <Nuvo::Input @suffixIcon="AED" @placeholder="Monthly rent" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input: sizes" @id="input-sizes">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="Toolbars, table filters and the search box inside a dropdown menu."
+      @layout="stack"
+      @code={{this.code.sm}}
+    >
+      <Nuvo::Input @size="sm" @placeholder="Small" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="Hero forms and sign-in screens where the field is the focus."
+      @layout="stack"
+      @code={{this.code.lg}}
+    >
+      <Nuvo::Input @size="lg" @placeholder="Large" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Auto width"
+      @note="Sizes to its content instead of filling the row, for inline edits of short values."
+      @code={{this.code.auto}}
+    >
+      <Nuvo::Input @auto={{true}} @placeholder="Auto width" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input: states" @id="input-states">
+    <NuvoDocs::Example
+      @title="Invalid"
+      @note="Red border plus aria-invalid. Pair it with the error text on Nuvo::Field so the reason is visible and announced."
+      @layout="stack"
+      @code={{this.code.invalid}}
+    >
+      <Nuvo::Input @invalid={{true}} @value="-100" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Valid"
+      @note="Green border for a value the server has confirmed, such as an available slug. Ignored while invalid is set."
+      @layout="stack"
+      @code={{this.code.valid}}
+    >
+      <Nuvo::Input @valid={{true}} @value="Looks right" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="The value cannot change and is not submitted with the form; the clear button is hidden."
+      @layout="stack"
+      @code={{this.code.disabled}}
+    >
+      <Nuvo::Input @disabled={{true}} @value="Disabled" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Read only"
+      @note="The value cannot change but stays focusable and copyable, for generated ids and references."
+      @layout="stack"
+      @code={{this.code.readonly}}
+    >
+      <Nuvo::Input @readonly={{true}} @value="Read only" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Max length"
+      @note="Native maxlength stops typing at the limit; show the limit in the hint."
+      @layout="stack"
+      @code={{this.code.maxlength}}
+    >
+      <Nuvo::Input @maxlength={{6}} @placeholder="Max 6 characters" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input: left-to-right types" @id="input-ltr">
+    <p class="nuvo-note">Switch the page to RTL: these four keep dir=ltr because their content is data, not prose.</p>
+    {{#each this.ltrExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Nuvo::Input @type={{example.type}} @placeholder={{example.type}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <h3 class="nuvo-subtitle">Input arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.inputArgRows}} />
+    <h3 class="nuvo-subtitle">Input callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.inputCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Textarea" @id="textarea">
+    <NuvoDocs::Example
+      @title="Controlled, four rows"
+      @note="Same contract as Input. rows sets the visible height; three is the default."
+      @layout="stack"
+      @code={{this.code.textareaBasic}}
+    >
+      <Nuvo::Textarea
+        @value={{this.textareaValue}}
+        @rows={{4}}
+        @placeholder="Unit notes"
+        @onInput={{this.updateTextarea}}
+      />
+    </NuvoDocs::Example>
+
+    {{#each this.resizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Nuvo::Textarea @resize={{example.resize}} @rows={{2}} @placeholder={{example.resize}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Invalid"
+      @note="Red border plus aria-invalid, as on Input."
+      @layout="stack"
+      @code={{this.code.textareaInvalid}}
+    >
+      <Nuvo::Textarea @invalid={{true}} @value="Too long for this field" @rows={{2}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="Not editable and not submitted."
+      @layout="stack"
+      @code={{this.code.textareaDisabled}}
+    >
+      <Nuvo::Textarea @disabled={{true}} @value="Disabled" @rows={{2}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Read only"
+      @note="Selectable and copyable, not editable."
+      @layout="stack"
+      @code={{this.code.textareaReadonly}}
+    >
+      <Nuvo::Textarea @readonly={{true}} @value="Read only" @rows={{2}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Max length"
+      @note="Native maxlength for notes with a storage limit."
+      @layout="stack"
+      @code={{this.code.textareaMaxlength}}
+    >
+      <Nuvo::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Textarea arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.textareaArgRows}} />
+    <h3 class="nuvo-subtitle">Textarea callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.textareaCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Select" @id="select">
+    <NuvoDocs::Example
+      @title="Object options"
+      @note="Objects with value and label, the selected one matched by value. The native select is right for short, static lists; for search or groups use Dropdown."
+      @layout="stack"
+      @code={{this.code.selectBasic}}
+    >
+      <Nuvo::Select @value={{this.selectValue}} @options={{this.regionOptions}} @onChange={{this.updateSelect}} />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-select-echo>Value: {{this.selectValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="String options with placeholder"
+      @note="Plain strings serve as both value and label. The placeholder renders as a disabled first option, selected until something matches."
+      @layout="stack"
+      @code={{this.code.selectStrings}}
+    >
+      <Nuvo::Select @options={{this.propertyTypeOptions}} @placeholder="Choose a property type" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Small"
+      @note="Matches sm inputs in toolbars and filter rows."
+      @layout="stack"
+      @code={{this.code.selectSm}}
+    >
+      <Nuvo::Select @size="sm" @options={{this.propertyTypeOptions}} @placeholder="Small" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="Matches lg inputs in hero forms."
+      @layout="stack"
+      @code={{this.code.selectLg}}
+    >
+      <Nuvo::Select @size="lg" @options={{this.propertyTypeOptions}} @placeholder="Large" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="Not changeable and not submitted."
+      @layout="stack"
+      @code={{this.code.selectDisabled}}
+    >
+      <Nuvo::Select @disabled={{true}} @options={{this.propertyTypeOptions}} @placeholder="Disabled" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Select arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.selectArgRows}} />
+    <h3 class="nuvo-subtitle">Select callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.selectCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Input group" @id="input-group">
+    <NuvoDocs::Example
+      @title="Prepend"
+      @note="Fixed text before the control, for a protocol or a country code the user does not type."
+      @layout="stack"
+      @code={{this.code.prepend}}
+    >
+      <Nuvo::InputGroup @prepend="https://">
+        <Nuvo::Input @placeholder="your-domain.com" />
+      </Nuvo::InputGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Append"
+      @note="A unit after the control, so the value stays a plain number."
+      @layout="stack"
+      @code={{this.code.append}}
+    >
+      <Nuvo::InputGroup @append="AED / month">
+        <Nuvo::Input @placeholder="0" />
+      </Nuvo::InputGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Both"
+      @note="Currency before, decimals after; the input between stays controlled as usual."
+      @layout="stack"
+      @code={{this.code.both}}
+    >
+      <Nuvo::InputGroup @prepend="AED" @append=".00">
+        <Nuvo::Input @value={{this.groupInputValue}} @onInput={{this.updateGroupInput}} />
+      </Nuvo::InputGroup>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Input group arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+    <h3 class="nuvo-subtitle">Input group blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.groupBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Invalid state sets aria-invalid="true" on the native element in addition to the is-invalid class.</li>
+      <li class="nu-list__item">The clear button is a labelled native button ("Clear input") and is never hover-gated, so keyboard and touch users can reach it.</li>
+      <li class="nu-list__item">Prefix and suffix glyphs are aria-hidden. Wrap the control in Nuvo::Field for a linked label, hint and error.</li>
+      <li class="nu-list__item">Addon text in an input group is visible text; include units in the label if the addon carries meaning.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Inputs of type tel, number, email and url set dir="ltr" so digits and addresses read correctly inside an RTL page.</li>
+      <li class="nu-list__item">Prefix, suffix, clear button and group addons use inline insets and paddings, so they swap sides with the reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

@@ -1,0 +1,250 @@
+<NuvoDocs::Page
+  @id="field"
+  @title="Field and form layout"
+  @subtitle="Label, hint, error and tooltip around any control; action rows and filter rows."
+  @components="Nuvo::Field, Nuvo::FormActions"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Field wires a label to whatever control it wraps. A native input,
+      textarea or select gets a
+      <code class="nu-code">for</code>/<code class="nu-code">id</code>
+      pair; a combobox, listbox or button gets
+      <code class="nu-code">aria-labelledby</code>. The optional tooltip
+      button renders outside the label element on purpose, because anything
+      inside a label joins the control's accessible name. Every form control
+      on a page belongs inside a Field.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Label, required marker, hint and error; the error replaces the hint.</li>
+      <li class="nu-list__item">Automatic label association for native and ARIA controls.</li>
+      <li class="nu-list__item">Horizontal and flush layouts.</li>
+      <li class="nu-list__item">Label tooltip with a placement override.</li>
+      <li class="nu-list__item">FormActions aligns a button row; nu-filter-row lays out a responsive filter bar.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Field: label and text" @id="field-text">
+    <NuvoDocs::Example
+      @title="Label"
+      @note="The minimum: a label linked to the control by for and id. The default for every form field."
+      @layout="stack"
+      @code={{this.code.label}}
+    >
+      <Nuvo::Field @label="Property name">
+        <Nuvo::Input @placeholder="Marina Tower" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Required"
+      @note="Adds the asterisk; it is decorative, so also set required on the control for the browser and assistive technology."
+      @layout="stack"
+      @code={{this.code.required}}
+    >
+      <Nuvo::Field @label="Property name" @required={{true}}>
+        <Nuvo::Input @placeholder="Marina Tower" required />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Hint"
+      @note="Helper text under the control for format or consequence, shown while there is no error."
+      @layout="stack"
+      @code={{this.code.hint}}
+    >
+      <Nuvo::Field @label="Property name" @hint="Shown to tenants on the portal">
+        <Nuvo::Input @placeholder="Marina Tower" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Error"
+      @note="Replaces the hint with the validation message. Pair it with invalid on the control so the border and aria-invalid match."
+      @layout="stack"
+      @code={{this.code.error}}
+    >
+      <Nuvo::Field @label="Monthly rent" @hint="Whole dirhams" @error="Rent must be greater than 0">
+        <Nuvo::Input @invalid={{true}} @value="-100" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Field: layout" @id="field-layout">
+    <NuvoDocs::Example
+      @title="Horizontal"
+      @note="Label beside the control, for settings panels and short forms where vertical space matters."
+      @layout="stack"
+      @code={{this.code.horizontal}}
+    >
+      <Nuvo::Field @label="Region" @horizontal={{true}}>
+        <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Flush"
+      @note="Drops the outer margin for a field that sits inside a table cell, a toolbar or another component with its own spacing."
+      @layout="stack"
+      @code={{this.code.flush}}
+    >
+      <Nuvo::Field @label="Region" @horizontal={{true}} @flush={{true}}>
+        <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Field: tooltip" @id="field-tooltip">
+    <NuvoDocs::Example
+      @title="Label tooltip"
+      @note="A question-mark button beside the label carries the text on hover and focus. For definitions too long for a hint; the button stays outside the label so it does not become part of the control's name."
+      @layout="stack"
+      @code={{this.code.tooltip}}
+    >
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
+        <Nuvo::Input @placeholder="TR-2026-00001" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Tooltip position"
+      @note="tooltipPosition overrides the default top; end keeps a long hint from covering the field above."
+      @layout="stack"
+      @code={{this.code.tooltipPosition}}
+    >
+      <Nuvo::Field @label="Deposit" @tooltip="Held until the lease ends." @tooltipPosition="end">
+        <Nuvo::Input @placeholder="5%" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Field: non-native controls" @id="field-aria">
+    <NuvoDocs::Example
+      @title="Combobox"
+      @note="A Dropdown has no native input to label, so the field sets aria-labelledby on the combobox or trigger button, skipping the tooltip button."
+      @layout="stack"
+      @code={{this.code.combobox}}
+    >
+      <Nuvo::Field @label="Status">
+        <Nuvo::Dropdown @align="start" @options={{this.filterStatusOptions}} @placeholder="All" />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Toggle"
+      @note="A toggle's native input receives the label id, so the field label names it and the horizontal layout reads as a settings row."
+      @layout="stack"
+      @code={{this.code.toggle}}
+    >
+      <Nuvo::Field @label="Notify tenants" @horizontal={{true}}>
+        <Nuvo::Toggle @checked={{this.notify}} @onChange={{this.setNotify}} />
+      </Nuvo::Field>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Field arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.fieldArgRows}} />
+    <h3 class="nuvo-subtitle">Field blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.fieldBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Filter row" @id="filter-row">
+    <NuvoDocs::Example
+      @title="Responsive filter bar"
+      @note="An auto-fitting grid whose column count follows the viewport. The unlabelled control uses nu-field__label-spacer to share the baseline. Use it above every list."
+      @layout="block"
+      @code={{this.code.filterRow}}
+    >
+      <div class="nu-filter-row">
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            @align="start"
+            @value={{this.filterStatus}}
+            @onSelect={{this.setFilterStatus}}
+            @options={{this.filterStatusOptions}}
+            @placeholder="All"
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Search">
+          <Nuvo::Input
+            @value={{this.filterSearch}}
+            @onInput={{this.setFilterSearch}}
+            @placeholder="Name or ID"
+          />
+        </Nuvo::Field>
+        <div class="nu-field">
+          <span class="nu-field__label-spacer" aria-hidden="true"></span>
+          <Nuvo::Button
+            @variant="secondary"
+            @text="Clear"
+            @onClick={{this.clearFilters}}
+            data-test-nuvo-clear-filters
+          />
+        </div>
+      </div>
+    </NuvoDocs::Example>
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Form actions" @id="form-actions">
+    <NuvoDocs::Example
+      @title="Start aligned"
+      @note="The default: buttons at the inline start, primary first. For forms that read top to bottom on the page."
+      @layout="block"
+      @code={{this.code.actionsStart}}
+    >
+      <Nuvo::FormActions>
+        <Nuvo::Button @variant="primary" @text="Save" />
+        <Nuvo::Button @variant="secondary" @text="Cancel" />
+      </Nuvo::FormActions>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="End aligned"
+      @note="Buttons at the inline end with the primary last, the dialog and drawer convention."
+      @layout="block"
+      @code={{this.code.actionsEnd}}
+    >
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button @variant="secondary" @text="Cancel" />
+        <Nuvo::Button @variant="primary" @text="Save" />
+      </Nuvo::FormActions>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Between"
+      @note="A destructive action at one edge and the primary at the other, so they cannot be hit by mistake."
+      @layout="block"
+      @code={{this.code.actionsBetween}}
+    >
+      <Nuvo::FormActions @align="between">
+        <Nuvo::Button @variant="ghost" @text="Delete" />
+        <Nuvo::Button @variant="primary" @text="Save changes" />
+      </Nuvo::FormActions>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Form actions arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.actionsArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The label receives a stable id and a for attribute pointing at the control; an existing id on the control is respected.</li>
+      <li class="nu-list__item">The required asterisk is aria-hidden. Set the required attribute on the control so assistive technology announces it.</li>
+      <li class="nu-list__item">The tooltip button is labelled "More information about {label}" and is skipped when the dialog focus trap picks a first control.</li>
+      <li class="nu-list__item">Hint and error are plain text under the control. Pair @error with @invalid on the control for the aria-invalid state.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Horizontal fields place the label on the inline-start side, so it moves to the right under dir="rtl".</li>
+      <li class="nu-list__item">The filter row grid and FormActions alignment are logical: end alignment sits on the left in RTL.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

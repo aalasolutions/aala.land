@@ -1,0 +1,138 @@
+<NuvoDocs::Page
+  @id="empty-state"
+  @title="Empty state"
+  @subtitle="Placeholder for a list or region with nothing to show yet."
+  @components="Nuvo::EmptyState"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      An empty state explains why a region is empty and what to do next. It
+      renders an icon, title, description and an actions slot, centred in
+      its container. Show it in place of the list, never beside it, and give
+      it the primary next step whenever one exists.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Icon from an argument or a block.</li>
+      <li class="nu-list__item">Small and large sizes; bordered and fill layouts.</li>
+      <li class="nu-list__item">Actions slot for the next step.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Content" @id="content">
+    <NuvoDocs::Example
+      @title="Icon, title, description"
+      @note="The base form for a first-run screen: what is missing and why."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Nuvo::EmptyState
+        @icon="🏢"
+        @title="No properties yet"
+        @description="Add your first property to start tracking units, tenants, and leases."
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="With an action"
+      @note="The actions slot holds the next step, so an empty list becomes the place where the first record is created."
+      @layout="block"
+      @code={{this.code.actions}}
+    >
+      <Nuvo::EmptyState
+        @icon="🏢"
+        @title="No properties yet"
+        @description="Add your first property to start tracking units, tenants, and leases."
+      >
+        <:actions>
+          <Nuvo::Button @variant="primary" @size="sm" @text="Add Property" />
+        </:actions>
+      </Nuvo::EmptyState>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icon block"
+      @note="A block in the icon slot for a Phosphor icon instead of a glyph."
+      @layout="block"
+      @code={{this.code.iconBlock}}
+    >
+      <Nuvo::EmptyState @title="Nothing to review" @description="Documents you upload will appear here.">
+        <:icon><Ui::Ph @icon="tray" /></:icon>
+      </Nuvo::EmptyState>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="A short message for a filtered list with no matches, where the surrounding controls stay visible."
+      @layout="block"
+      @code={{this.code.sm}}
+    >
+      <Nuvo::EmptyState @icon="🔍" @size="sm" @title="No results" @description="No units match this filter." />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="A full-height invitation for a section that has never had content."
+      @layout="block"
+      @code={{this.code.lg}}
+    >
+      <Nuvo::EmptyState
+        @icon="📄"
+        @size="lg"
+        @title="No lease documents"
+        @description="Upload a signed lease PDF to attach it to this unit."
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Layouts" @id="layouts">
+    <NuvoDocs::Example
+      @title="Bordered"
+      @note="A dashed border marks the region the content will occupy, for drop zones and card bodies."
+      @layout="block"
+      @code={{this.code.bordered}}
+    >
+      <Nuvo::EmptyState @icon="🔍" @title="No results" @description="No units match this filter." @bordered={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Fill"
+      @note="Stretches to the parent's height and centres its content, for a panel or a tab body that would otherwise collapse."
+      @layout="block"
+      @code={{this.code.fill}}
+    >
+      <div class="nuvo-scroll-box">
+        <Nuvo::EmptyState
+          @title="Fills its container"
+          @description="m-fill stretches to the parent's height."
+          @fill={{true}}
+        />
+      </div>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The icon slot is aria-hidden; title and description are plain paragraphs and carry the message.</li>
+      <li class="nu-list__item">Put the primary next step in the actions slot so it is reachable in reading order.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Content is centred, so nothing changes with direction. Icons named left or right in the icon block mirror automatically.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

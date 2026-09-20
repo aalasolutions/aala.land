@@ -1,0 +1,135 @@
+<NuvoDocs::Page
+  @id="accordion"
+  @title="Accordion"
+  @subtitle="Stacked disclosure panels, single or multiple open."
+  @components="Nuvo::Accordion"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The accordion owns its expanded state. Pass the items, optionally the
+      ids to start open, and either let each item render its
+      <code class="nu-code">content</code>
+      string or supply a block that receives the item. Use it for optional
+      detail the user opens on demand; use Tabs when one panel must always
+      be visible.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Single-open by default; multiple with one flag.</li>
+      <li class="nu-list__item">Initial expansion by id or list of ids.</li>
+      <li class="nu-list__item">Disabled items stay closed and skip the toggle.</li>
+      <li class="nu-list__item">Bordered, flush and compact styles.</li>
+      <li class="nu-list__item">Animated panel height with reduced-motion respected.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Behaviour" @id="behaviour">
+    <NuvoDocs::Example
+      @title="Single open"
+      @note="Opening one panel closes the others, so the list stays short. The last item is disabled and cannot open."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Multiple open"
+      @note="Panels open independently, for reference content the user compares side by side."
+      @layout="block"
+      @code={{this.code.multiple}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} @multiple={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Default expanded, one id"
+      @note="Start with the most relevant panel open so the page is not a wall of closed headings."
+      @layout="block"
+      @code={{this.code.defaultExpanded}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} @defaultExpanded="lease-terms" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Default expanded, several ids"
+      @note="An array of ids opens several panels at first render; it only makes sense with multiple."
+      @layout="block"
+      @code={{this.code.defaultExpandedMany}}
+    >
+      <Nuvo::Accordion
+        @items={{this.accordionItems}}
+        @multiple={{true}}
+        @defaultExpanded={{array "unit-details" "cheque-schedule"}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Styles" @id="styles">
+    <NuvoDocs::Example
+      @title="Bordered"
+      @note="A border around the whole accordion when it stands alone on the page background."
+      @layout="block"
+      @code={{this.code.bordered}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} @bordered={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Flush"
+      @note="No outer border or radius, for an accordion inside a card that already has both."
+      @layout="block"
+      @code={{this.code.flush}}
+    >
+      <Nuvo::Card @title="Inside a card">
+        <Nuvo::Accordion @items={{this.accordionItems}} @flush={{true}} />
+      </Nuvo::Card>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter trigger and panel padding for sidebars and filter groups."
+      @layout="block"
+      @code={{this.code.compact}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} @compact={{true}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Content" @id="content">
+    <NuvoDocs::Example
+      @title="Block content"
+      @note="The block receives each item and replaces its content string, for panels that hold components rather than text."
+      @layout="block"
+      @code={{this.code.block}}
+    >
+      <Nuvo::Accordion @items={{this.accordionItems}} as |entry|>
+        <Nuvo::Text @size="sm" @text={{entry.content}} />
+        <Nuvo::Tag @size="sm" @variant="info" @text={{entry.id}} />
+      </Nuvo::Accordion>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Each trigger is a native button with aria-expanded; disabled items carry the disabled attribute.</li>
+      <li class="nu-list__item">The chevron is aria-hidden. Panels stay in the DOM while collapsed, so content is only visually hidden.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The chevron glyph is not bidi-mirrored, so the stylesheet flips it with scaleX(-1) under dir="rtl"; the expanded rotation is adjusted to match.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

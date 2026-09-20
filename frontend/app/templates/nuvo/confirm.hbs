@@ -1,0 +1,216 @@
+<NuvoDocs::Page
+  @id="confirm"
+  @title="Confirm dialog"
+  @subtitle="Yes/no preset over Nuvo::Modal, as a component or through the dialogs service."
+  @components="Nuvo::ConfirmModal, Nuvo::DialogHost"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Use this instead of the browser's native confirm(), which cannot be
+      styled and blocks the main thread. The component owns the footer
+      buttons, so pass text and variant as arguments rather than building a
+      footer. For one-off questions from application code, the
+      <code class="nu-code">dialogs</code>
+      service opens the same dialog through the host and resolves a
+      boolean. Reach for the component when the dialog needs extra body
+      content; reach for the service when a controller just needs an answer.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Confirm and cancel labels, confirm variant, optional subtitle and extra body.</li>
+      <li class="nu-list__item">Pending state with spinner text; every dismiss path is blocked mid-request.</li>
+      <li class="nu-list__item">Alert form with a single button.</li>
+      <li class="nu-list__item">Promise-based service API; an async onConfirm keeps the dialog busy and a rejection keeps it open.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Component: variants" @id="variants">
+    <NuvoDocs::Example
+      @title="Default"
+      @note="A primary confirm for an ordinary yes/no such as publishing. The cancel label defaults to a friendly phrase."
+      @code={{this.code.basic}}
+    >
+      <Nuvo::Button @text="Default" @onClick={{fn this.setOpen "confirmOpen" true}} data-test-open-confirm />
+      <Nuvo::ConfirmModal
+        @open={{this.confirmOpen}}
+        @title="Publish listing?"
+        @message="Unit 1204 will become visible on all connected portals."
+        @confirmText="Publish"
+        @onClose={{fn this.setOpen "confirmOpen" false}}
+        @onConfirm={{fn this.setOpen "confirmOpen" false}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Danger with custom cancel"
+      @note="confirmVariant danger for destructive actions; cancelText names the safe way out so the two buttons cannot be confused."
+      @code={{this.code.danger}}
+    >
+      <Nuvo::Button
+        @text="Danger"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "confirmDangerOpen" true}}
+        data-test-open-confirm-danger
+      />
+      <Nuvo::ConfirmModal
+        @open={{this.confirmDangerOpen}}
+        @title="Delete vendor"
+        @message="Delete Gulf Maintenance LLC? This cannot be undone."
+        @confirmText="Delete"
+        @cancelText="Keep vendor"
+        @confirmVariant="danger"
+        @onClose={{fn this.setOpen "confirmDangerOpen" false}}
+        @onConfirm={{fn this.setOpen "confirmDangerOpen" false}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Subtitle and size"
+      @note="subtitle names the record under the title; size widens the dialog when the message needs room."
+      @code={{this.code.subtitle}}
+    >
+      <Nuvo::Button
+        @text="Subtitle, md"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "subtitleOpen" true}}
+        data-test-nuvo-open-confirm-subtitle
+      />
+      <Nuvo::ConfirmModal
+        @open={{this.subtitleOpen}}
+        @title="Renew lease?"
+        @subtitle="Unit 1204, Marina Tower"
+        @message="A new 12-month term starts on 1 Jan 2027."
+        @confirmText="Renew"
+        @size="md"
+        @onClose={{fn this.setOpen "subtitleOpen" false}}
+        @onConfirm={{fn this.setOpen "subtitleOpen" false}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Extra body"
+      @note="The default block renders after the message, for a required reason or a checkbox the user must tick before confirming."
+      @code={{this.code.body}}
+    >
+      <Nuvo::Button
+        @text="With body"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "bodyOpen" true}}
+        data-test-nuvo-open-confirm-body
+      />
+      <Nuvo::ConfirmModal
+        @open={{this.bodyOpen}}
+        @title="Delete contact"
+        @message="This cannot be undone."
+        @confirmText="Delete"
+        @confirmVariant="danger"
+        @onClose={{fn this.setOpen "bodyOpen" false}}
+        @onConfirm={{fn this.setOpen "bodyOpen" false}}
+      >
+        <Nuvo::Field @label="Reason" @required={{true}}>
+          <Nuvo::Textarea @rows={{2}} @value={{this.deleteReason}} @onInput={{this.setReason}} />
+        </Nuvo::Field>
+      </Nuvo::ConfirmModal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Alert (no cancel)"
+      @note="showCancel false leaves one button, for a message the user only needs to acknowledge."
+      @code={{this.code.alert}}
+    >
+      <Nuvo::Button
+        @text="Alert"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "alertOpen" true}}
+        data-test-nuvo-open-confirm-alert
+      />
+      <Nuvo::ConfirmModal
+        @open={{this.alertOpen}}
+        @title="Export ready"
+        @message="The CSV has been sent to your email."
+        @confirmText="OK"
+        @showCancel={{false}}
+        @onClose={{fn this.setOpen "alertOpen" false}}
+        @onConfirm={{fn this.setOpen "alertOpen" false}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Component: pending state" @id="pending">
+    <NuvoDocs::Example
+      @title="Async confirm"
+      @note="While isConfirming is true the confirm button shows confirmingText with a spinner and both buttons are disabled. Your close handler must also ignore calls for the same duration."
+      @code={{this.code.busy}}
+    >
+      <Nuvo::Button
+        @text="Async confirm"
+        @variant="secondary"
+        @onClick={{this.openConfirmBusy}}
+        data-test-open-confirm-busy
+      />
+      <Nuvo::ConfirmModal
+        @open={{this.confirmBusyOpen}}
+        @title="Re-pair WhatsApp"
+        @message="Your current session will be cleared and you will need to scan a new QR code to reconnect."
+        @confirmText="Re-pair"
+        @cancelText="Cancel"
+        @confirmVariant="danger"
+        @isConfirming={{this.isConfirmingDemo}}
+        @confirmingText="Clearing session..."
+        @onClose={{this.closeConfirmBusy}}
+        @onConfirm={{this.runConfirmBusy}}
+      />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+    <h3 class="nuvo-subtitle">Callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+    <h3 class="nuvo-subtitle">Blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Service" @id="service">
+    <NuvoDocs::Example
+      @title="Confirm"
+      @note="dialogs.confirm resolves true or false; Nuvo::DialogHost renders it. One dialog at a time: a second call while one is open rejects."
+      @code={{this.code.service}}
+    >
+      <Nuvo::Button @text="Confirm" @variant="secondary" @onClick={{this.askService}} data-test-nuvo-service-confirm />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-service-result>Result: {{this.serviceResult}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Async onConfirm"
+      @note="An onConfirm that returns a promise keeps the dialog busy until it settles; a rejection keeps it open so the user can retry or cancel."
+      @code={{this.code.serviceAsync}}
+    >
+      <Nuvo::Button @text="Async confirm" @variant="secondary" @onClick={{this.askServiceAsync}} data-test-nuvo-service-async />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Alert"
+      @note="dialogs.alert is confirm with an OK button and no cancel."
+      @code={{this.code.serviceAlert}}
+    >
+      <Nuvo::Button @text="Alert" @variant="secondary" @onClick={{this.alertService}} data-test-nuvo-service-alert />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Table @kind="api" @rows={{this.serviceRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Inherits the modal's dialog semantics, focus trap and scroll lock; the first focused control is the cancel button when shown.</li>
+      <li class="nu-list__item">While confirming, the confirm button is disabled through the loading state and the close paths are switched off, so the dialog cannot vanish under a pending request.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Footer buttons sit at the inline end, so cancel and confirm mirror with the reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

@@ -1,0 +1,200 @@
+<NuvoDocs::Page
+  @id="panel"
+  @title="Panel and Toolbar"
+  @subtitle="Bordered content region and a horizontal control bar."
+  @components="Nuvo::Panel, Nuvo::Toolbar"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Panel has the same slot shape as Card with a plainer surface, for
+      filters, settings groups and page sections. Toolbar is a flex row;
+      its groups, items, search wrapper and spacer are bare elements with
+      kit classes. Put a toolbar above a list and a panel around a form.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Panel header from a title or a block; body and footer slots.</li>
+      <li class="nu-list__item">Compact, raised and interactive styles.</li>
+      <li class="nu-list__item">Toolbar with sticky and bordered options and a spacer to push items to the end.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Panel: header and slots" @id="panel-slots">
+    <NuvoDocs::Example
+      @title="Title"
+      @note="A title renders the header; the default block is the body. The usual form container."
+      @code={{this.code.title}}
+    >
+      <Nuvo::Panel @title="Property Filters">
+        <p class="nu-text m-sm m-muted">Default padded panel with a title.</p>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="No header"
+      @note="Without a title there is no header at all, just the padded surface, for a block of related controls."
+      @code={{this.code.plain}}
+    >
+      <Nuvo::Panel>
+        <p class="nu-text m-sm m-muted">No title, no header: just the surface.</p>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Header block"
+      @note="Custom header markup when the title needs a count or a control beside it."
+      @code={{this.code.headerBlock}}
+    >
+      <Nuvo::Panel>
+        <:header>
+          <Nuvo::Title @tag="h3" @size="sm" @text="Custom header" />
+          <Nuvo::Badge @variant="info" @text="3" />
+        </:header>
+        <:body>Body content.</:body>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Body and footer blocks"
+      @note="Named slots give a form its action row at the bottom of the panel."
+      @layout="block"
+      @code={{this.code.slots}}
+    >
+      <Nuvo::Panel @title="Unit Maintenance">
+        <:body>
+          <p class="nu-text m-sm m-muted">Named-block body/footer, same shape as card.</p>
+        </:body>
+        <:footer>
+          <Nuvo::Button @variant="secondary" @size="sm" @text="Cancel" />
+          <Nuvo::Button @variant="primary" @size="sm" @text="Save" />
+        </:footer>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Panel: styles" @id="panel-styles">
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter padding for panels inside a drawer or a narrow column."
+      @code={{this.code.compact}}
+    >
+      <Nuvo::Panel @title="Compact" @compact={{true}}>
+        <p class="nu-text m-sm m-muted">Tighter padding.</p>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Raised"
+      @note="Elevated shadow for a panel that should stand off the page background."
+      @code={{this.code.raised}}
+    >
+      <Nuvo::Panel @title="Raised" @raised={{true}}>
+        <p class="nu-text m-sm m-muted">Elevated shadow.</p>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Interactive"
+      @note="Hover and focus affordance for a panel that acts as one big link or button."
+      @code={{this.code.interactive}}
+    >
+      <Nuvo::Panel @title="Interactive" @interactive={{true}}>
+        <p class="nu-text m-sm m-muted">Hover and focus affordance.</p>
+      </Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Panel arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.panelArgRows}} />
+    <h3 class="nuvo-subtitle">Panel blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.panelBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Toolbar" @id="toolbar">
+    <NuvoDocs::Example
+      @title="Default"
+      @note="A flex row of controls. Group related buttons, then a spacer pushes the primary action to the end."
+      @layout="block"
+      @code={{this.code.toolbar}}
+    >
+      <Nuvo::Toolbar>
+        <div class="nu-toolbar__group">
+          <Nuvo::Button @variant="secondary" @size="sm" @text="All Units" />
+          <Nuvo::Button @variant="ghost" @size="sm" @text="Occupied" />
+        </div>
+        <span class="nu-toolbar__spacer"></span>
+        <Nuvo::Button @variant="primary" @size="sm" @text="Add Unit" />
+      </Nuvo::Toolbar>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Bordered"
+      @note="A bottom border separates the bar from the list beneath it; use it directly above a table."
+      @layout="block"
+      @code={{this.code.toolbarBordered}}
+    >
+      <Nuvo::Toolbar @bordered={{true}}>
+        <div class="nu-toolbar__group">
+          <Nuvo::Button @variant="secondary" @size="sm" @text="All Units" />
+          <Nuvo::Button @variant="ghost" @size="sm" @text="Occupied" />
+          <Nuvo::Button @variant="ghost" @size="sm" @text="Vacant" />
+        </div>
+        <span class="nu-toolbar__spacer"></span>
+        <div class="nu-toolbar__item">
+          <Nuvo::Badge @variant="info" @text="184 units" />
+        </div>
+        <Nuvo::Button @variant="primary" @size="sm" @text="Add Unit" />
+      </Nuvo::Toolbar>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Search slot"
+      @note="nu-toolbar__search gives a search input its width inside the bar."
+      @layout="block"
+      @code={{this.code.toolbarSearch}}
+    >
+      <Nuvo::Toolbar @bordered={{true}}>
+        <div class="nu-toolbar__search">
+          <Nuvo::Input @size="sm" @prefixIcon="⌕" @placeholder="Search units" />
+        </div>
+        <span class="nu-toolbar__spacer"></span>
+        <Nuvo::Button @variant="secondary" @size="sm" @icon="funnel" @text="Filters" />
+      </Nuvo::Toolbar>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Sticky"
+      @note="Scroll the box: the toolbar stays pinned to the top of its scroll container so the actions stay reachable on a long list."
+      @layout="block"
+      @code={{this.code.toolbarSticky}}
+    >
+      <div class="nuvo-scroll-box" data-test-nuvo-sticky-toolbar>
+        <Nuvo::Toolbar @sticky={{true}} @bordered={{true}}>
+          <Nuvo::Button @variant="secondary" @size="sm" @text="Sticky toolbar" />
+        </Nuvo::Toolbar>
+        {{#each this.filler as |line|}}
+          <Nuvo::Text @size="sm" @muted={{true}} @text={{line}} class="ps-4" />
+        {{/each}}
+      </div>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Toolbar arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.toolbarArgRows}} />
+    <h3 class="nuvo-subtitle">Toolbar raw classes</h3>
+    <NuvoDocs::Table @kind="classes" @rows={{this.toolbarClassRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The panel title is an h3; keep a heading above a run of panels.</li>
+      <li class="nu-list__item">Toolbar is a plain div. Add role="toolbar" and an aria-label through ...attributes when it holds a set of related controls.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The toolbar spacer pushes items to the inline end, so trailing actions sit on the left under dir="rtl".</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

@@ -1,0 +1,123 @@
+<NuvoDocs::Page
+  @id="avatar"
+  @title="Avatar"
+  @subtitle="Image, initials or icon representing a person, with an optional status dot."
+  @components="Nuvo::Avatar, Nuvo::AvatarGroup"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The avatar picks its content by precedence: image, then initials, then
+      icon, so one invocation can be given all three and degrade on its own.
+      AvatarGroup overlaps a run of avatars into one stack for assignees and
+      participants.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Image, initials and icon sources with a fixed precedence.</li>
+      <li class="nu-list__item">Five sizes; circle or square.</li>
+      <li class="nu-list__item">Status dot in any of the six colours.</li>
+      <li class="nu-list__item">Stacked groups, regular or compact.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sources" @id="sources">
+    <NuvoDocs::Example
+      @title="Image"
+      @note="A photo wins over every other source. Always pass alt; an empty alt is right only when the name is already visible beside it."
+      @code={{this.code.image}}
+    >
+      <Nuvo::Avatar @src="https://i.pravatar.cc/100?img=12" @alt="User avatar" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Initials"
+      @note="Two letters on the variant surface when there is no photo. The usual default for people records."
+      @code={{this.code.initials}}
+    >
+      <Nuvo::Avatar @initials="AM" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icon"
+      @note="A glyph when neither photo nor initials exist: an anonymous user, a system actor, a placeholder before data loads."
+      @code={{this.code.icon}}
+    >
+      <Nuvo::Avatar @icon="👤" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Shape" @id="shape">
+    <NuvoDocs::Example
+      @title="Square"
+      @note="Rounded square instead of a circle. Use it for organisations and properties so they read differently from people."
+      @code={{this.code.square}}
+    >
+      <Nuvo::Avatar @initials="SQ" @square={{true}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    {{#each this.sizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Avatar @initials={{example.title}} @size={{example.size}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Status" @id="status">
+    {{#each this.statusExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Avatar @initials="AM" @status={{example.status}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Groups" @id="groups">
+    <NuvoDocs::Example
+      @title="Stacked"
+      @note="Overlaps avatars into one row for assignees or participants. Order them by relevance; the first stays fully visible."
+      @code={{this.code.group}}
+    >
+      <Nuvo::AvatarGroup>
+        <Nuvo::Avatar @initials="AM" />
+        <Nuvo::Avatar @initials="SQ" />
+        <Nuvo::Avatar @initials="ON" />
+        <Nuvo::Avatar @src="https://i.pravatar.cc/100?img=12" @alt="User avatar" />
+      </Nuvo::AvatarGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter overlap for table cells and small sizes, where the regular spacing would take too much width."
+      @code={{this.code.groupCompact}}
+    >
+      <Nuvo::AvatarGroup @compact={{true}}>
+        <Nuvo::Avatar @initials="AM" @size="sm" />
+        <Nuvo::Avatar @initials="SQ" @size="sm" />
+        <Nuvo::Avatar @initials="ON" @size="sm" />
+      </Nuvo::AvatarGroup>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <h3 class="nuvo-subtitle">Nuvo::Avatar</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+    <h3 class="nuvo-subtitle">Nuvo::AvatarGroup</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Always pass @alt with @src. Initials render as visible text; the icon fallback is aria-hidden.</li>
+      <li class="nu-list__item">The status dot is decorative. State the presence in text or a tooltip on the surrounding control.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The status dot and the group overlap use logical insets and margins, so the stack mirrors with the reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

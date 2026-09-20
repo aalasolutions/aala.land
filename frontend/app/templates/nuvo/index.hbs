@@ -1,0 +1,104 @@
+<NuvoDocs::Page
+  @id="index"
+  @title="NuvoUI Ember kit"
+  @subtitle="Glimmer components over the NuvoUI SCSS component layer."
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The kit is one vocabulary in three packages: core tokens and
+      utilities, an SCSS component layer, and the Ember components that
+      drive it. Every component whitelists its variants, falls back to the
+      default on a typo, spreads
+      <code class="nu-code">...attributes</code>
+      last on its root, and carries
+      <code class="nu-code">data-test-nu-*</code>
+      hooks on the root and on every interactive child.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Fifty-odd Glimmer components over one SCSS vocabulary, each documented with every variant live.</li>
+      <li class="nu-list__item">One theme variable reskins the whole kit; per-component tokens retheme one instance.</li>
+      <li class="nu-list__item">Right-to-left at both layers, verified with the Dir switch on every page.</li>
+      <li class="nu-list__item">Four hosts and their services handle everything that floats.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Packages" @id="packages">
+    <NuvoDocs::Table @kind="api" @rows={{this.packages}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Install" @id="install">
+    <NuvoDocs::Example
+      @title="Styles"
+      @note="Core first, then the kit. The kit entry forwards the token engine and loads every component sheet, utilities last."
+      @layout="block"
+      @code={{this.code.styles}}
+    >
+      <Nuvo::Text
+        @size="sm"
+        @muted={{true}}
+        @text="Both sheets compile into one stylesheet; no runtime CSS is injected."
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Mount the hosts"
+      @note="Four hosts render once in the application template, after the routed content and in this order. Tooltips, the anchored layer and dialogs share one z-index level and rely on paint order."
+      @layout="block"
+      @code={{this.code.hosts}}
+    >
+      <ul class="nu-list">
+        <li class="nu-list__item">Modals and drawers render inline where they are used, so the layer paints above them.</li>
+        <li class="nu-list__item">LayerHost before TooltipHost, so a tooltip on a menu item paints above the menu.</li>
+        <li class="nu-list__item">Toasts sit one z-index level higher, above everything.</li>
+      </ul>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Theming" @id="theming">
+    <NuvoDocs::Example
+      @note="Modifiers reassign CSS variables; the base rule is the only consumer. Change --primary and every m-primary surface follows. Retheme one instance by overriding its own --nu-{block}--{Property} token from outside."
+      @layout="block"
+      @code={{this.code.theme}}
+    >
+      <Nuvo::Text
+        @size="sm"
+        @muted={{true}}
+        @text="The Theme switch in the topbar sets --primary on the html element. Try it: every primary button, badge, toggle and focus ring on this site follows."
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Right-to-left" @id="rtl">
+    <NuvoDocs::Example
+      @note="The kit runs under a dir attribute on the html element with no per-use changes. The SCSS layer is RTL on its own (logical properties, mirrored keyframes); the components add reading-direction arrow keys, LTR pinning for numeric inputs and mirrored directional icons."
+      @layout="block"
+      @code={{this.code.rtl}}
+    >
+      <Nuvo::Text
+        @size="sm"
+        @muted={{true}}
+        @text="The Dir switch in the topbar flips the whole site. Each component page lists its direction-specific behaviour under RTL."
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Pages" @id="pages">
+    {{#each this.layout.navSections as |group|}}
+      <h3 class="nuvo-subtitle">{{group.label}}</h3>
+      <nav class="nuvo-toc" aria-label={{group.label}}>
+        {{#each group.items as |entry|}}
+          <LinkTo
+            @route={{entry.route}}
+            class="nuvo-toc__link"
+            data-test-nuvo-toc={{entry.route}}
+          >
+            {{entry.label}}
+          </LinkTo>
+        {{/each}}
+      </nav>
+    {{/each}}
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

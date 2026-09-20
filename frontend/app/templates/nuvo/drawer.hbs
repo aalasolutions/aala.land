@@ -1,0 +1,216 @@
+<NuvoDocs::Page
+  @id="drawer"
+  @title="Drawer"
+  @subtitle="Edge panel that slides in over a backdrop, with an animated leave."
+  @components="Nuvo::Drawer"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The drawer shares the modal's dialog mechanics (focus trap, scroll
+      lock, Escape ownership) and adds an enter and leave transition driven
+      as run-loop tasks, so tests can await it. It stays mounted while
+      sliding out and reports
+      <code class="nu-code">@onClosed</code>
+      afterwards. A dropdown inside the drawer opens on the layer host, so
+      the drawer's transform cannot clip it. Use it for edit forms beside a
+      list, where the user wants to keep the list in sight.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Four logical edges and three sizes.</li>
+      <li class="nu-list__item">Enter and leave transitions with a closed callback after the animation.</li>
+      <li class="nu-list__item">Backdrop click and Escape, each switchable; Escape inside a menu or popover stays there.</li>
+      <li class="nu-list__item">Header, body and footer slots, or a custom header block.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Placements" @id="placements">
+    <p class="nuvo-note">One drawer instance serves these examples; each button opens it from a different edge. The body holds a dropdown: open it and press Escape, the menu closes and the drawer stays.</p>
+    <NuvoDocs::Example
+      @title="placement end"
+      @note="Slides from the inline end; the default for edit forms and detail panels beside a list."
+      @code={{this.code.placementEnd}}
+    >
+      <Nuvo::Button @text="Open end drawer" @onClick={{fn this.openDrawer "end" "md"}} data-test-open-drawer-end />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="placement start"
+      @note="Slides from the inline start, mirroring a navigation sidebar."
+      @code={{this.code.placementStart}}
+    >
+      <Nuvo::Button
+        @text="Open start drawer"
+        @variant="secondary"
+        @onClick={{fn this.openDrawer "start" "md"}}
+        data-test-open-drawer-start
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="placement top"
+      @note="Drops from the top, for notifications and quick filters."
+      @code={{this.code.placementTop}}
+    >
+      <Nuvo::Button
+        @text="Open top drawer"
+        @variant="secondary"
+        @onClick={{fn this.openDrawer "top" "md"}}
+        data-test-open-drawer-top
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="placement bottom"
+      @note="Rises from the bottom, the sheet pattern on phones."
+      @code={{this.code.placementBottom}}
+    >
+      <Nuvo::Button
+        @text="Open bottom drawer"
+        @variant="secondary"
+        @onClick={{fn this.openDrawer "bottom" "md"}}
+        data-test-open-drawer-bottom
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    {{#each this.sizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Button
+          @text="Open {{example.size}} drawer"
+          @variant="secondary"
+          @onClick={{fn this.openDrawer "end" example.size}}
+          data-test-nuvo-drawer-size={{example.size}}
+        />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <span class="nu-text m-sm m-muted" data-test-nuvo-drawer-closed>Closed {{this.closedCount}} times (counted after the leave transition).</span>
+
+    <Nuvo::Drawer
+      @open={{this.drawerOpen}}
+      @title="Unit filters"
+      @placement={{this.drawerPlacement}}
+      @size={{this.drawerSize}}
+      @onClose={{this.closeDrawer}}
+      @onClosed={{this.afterClosed}}
+    >
+      <:body>
+        <Nuvo::Text @text="Filter units by region, status, and rent range." />
+        <Nuvo::Field @label="Area">
+          <Nuvo::Dropdown
+            @options={{this.areaOptions}}
+            @value={{this.drawerArea}}
+            @onSelect={{this.pickArea}}
+            @align="start"
+            @placeholder="Any area"
+          />
+        </Nuvo::Field>
+      </:body>
+      <:footer>
+        <Nuvo::Button @text="Close" @variant="secondary" @onClick={{this.closeDrawer}} />
+      </:footer>
+    </Nuvo::Drawer>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Slots" @id="slots">
+    <NuvoDocs::Example
+      @title="Body, footer and onClosed"
+      @note="The body holds the form, the footer its actions, and onClosed fires after the slide out so state can reset without flashing. This is the snippet behind the drawer above."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Nuvo::Text
+        @size="sm"
+        @muted={{true}}
+        @text="Open any drawer above, pick an area, close it: the pick resets after the leave transition and the counter increments."
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Header block"
+      @note="Replaces the title header; put the yielded id on your heading so the dialog keeps its accessible name."
+      @code={{this.code.header}}
+    >
+      <Nuvo::Button
+        @text="Open custom header"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "headerOpen" true}}
+        data-test-nuvo-open-drawer-header
+      />
+      <Nuvo::Drawer @open={{this.headerOpen}} @placement="end" @size="sm" @onClose={{fn this.setOpen "headerOpen" false}}>
+        <:header as |titleId|>
+          <h2 id={{titleId}} class="nu-drawer__title">Custom header</h2>
+          <Nuvo::Badge @variant="info" @text="3 filters" />
+        </:header>
+        <:body><Nuvo::Text @text="The heading above carries the yielded id." /></:body>
+        <:footer><Nuvo::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "headerOpen" false}} /></:footer>
+      </Nuvo::Drawer>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dismissal" @id="dismissal">
+    <NuvoDocs::Example
+      @title="Backdrop click ignored"
+      @note="closeOnBackdrop false protects a long form from a stray click on the page behind it."
+      @code={{this.code.noBackdrop}}
+    >
+      <Nuvo::Button
+        @text="Open, backdrop locked"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "lockedOpen" true}}
+        data-test-nuvo-open-drawer-locked
+      />
+      <Nuvo::Drawer @open={{this.lockedOpen}} @title="Backdrop click ignored" @placement="end" @size="sm" @closeOnBackdrop={{false}} @onClose={{fn this.setOpen "lockedOpen" false}}>
+        <:body><Nuvo::Text @text="Click outside: nothing happens. Escape or the X still close it." /></:body>
+        <:footer><Nuvo::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "lockedOpen" false}} /></:footer>
+      </Nuvo::Drawer>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Escape ignored"
+      @note="closeOnEsc false for a drawer that owns an in-progress save; pair it with a disabled close while busy."
+      @code={{this.code.noEsc}}
+    >
+      <Nuvo::Button
+        @text="Open, Escape locked"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "noEscOpen" true}}
+        data-test-nuvo-open-drawer-no-esc
+      />
+      <Nuvo::Drawer @open={{this.noEscOpen}} @title="Escape ignored" @placement="end" @size="sm" @closeOnEsc={{false}} @onClose={{fn this.setOpen "noEscOpen" false}}>
+        <:body><Nuvo::Text @text="Press Escape: nothing happens. The X and the backdrop still close it." /></:body>
+        <:footer><Nuvo::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "noEscOpen" false}} /></:footer>
+      </Nuvo::Drawer>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">role="dialog" with aria-modal="true", labelled by the title; the same focus trap, first-control focus and focus restore as the modal.</li>
+      <li class="nu-list__item">Escape closes the drawer only when it is the topmost dialog, so a confirm modal opened from inside it takes precedence.</li>
+      <li class="nu-list__item">The transition runs as run-loop tasks and is skipped under prefers-reduced-motion.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">start and end are logical edges; the slide transform uses a direction sign token that flips under dir="rtl", so the panel always enters from its own edge.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

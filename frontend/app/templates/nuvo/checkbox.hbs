@@ -1,0 +1,245 @@
+<NuvoDocs::Page
+  @id="checkbox"
+  @title="Checkbox, Radio, Toggle"
+  @subtitle="Boolean and single-choice controls built on native inputs."
+  @components="Nuvo::Checkbox, Nuvo::Radio, Nuvo::Toggle"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Each control is a label element wrapping a native input, so clicking
+      the text toggles the control and screen readers read the label
+      without extra wiring. Use a checkbox for a choice that is saved with
+      the form, a toggle for a setting that applies at once, and radios for
+      one pick out of a few. Radios are individual components; the caller
+      owns the group value and derives each
+      <code class="nu-code">@checked</code>
+      from it.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Native inputs inside labels; disabled sets the real attribute.</li>
+      <li class="nu-list__item">Checkbox indeterminate state synced to the DOM property.</li>
+      <li class="nu-list__item">Radio reports its own value only when it becomes checked.</li>
+      <li class="nu-list__item">Toggle in six colours, two extra sizes, with in-track text or a trailing label.</li>
+      <li class="nu-list__item">nu-check-group lays out a run of controls.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Checkbox" @id="checkbox-examples">
+    <NuvoDocs::Example
+      @title="Controlled"
+      @note="onChange reports the new boolean; store it and pass it back as checked. The label text is the click target."
+      @code={{this.code.checkbox}}
+    >
+      <Nuvo::Checkbox @checked={{this.checkboxValue}} @label="Include archived units" @onChange={{this.updateCheckbox}} />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-checkbox-echo>Checked: {{this.checkboxValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Indeterminate"
+      @note="The mixed state of a parent whose children are partly selected, such as a select-all header. It is a DOM property, synced on insert and on change."
+      @code={{this.code.indeterminate}}
+    >
+      <Nuvo::Checkbox @indeterminate={{true}} @label="Some selected" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled, checked"
+      @note="A choice that is on and cannot be changed here, such as a permission inherited from a role."
+      @code={{this.code.disabledChecked}}
+    >
+      <Nuvo::Checkbox @checked={{true}} @disabled={{true}} @label="Disabled checked" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled, unchecked"
+      @note="A choice that is off and not available on the current plan."
+      @code={{this.code.disabledUnchecked}}
+    >
+      <Nuvo::Checkbox @disabled={{true}} @label="Disabled unchecked" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Without a visible label"
+      @note="In a table cell the row is the label; pass aria-label through the attributes so the control still has a name."
+      @code={{this.code.unlabelled}}
+    >
+      <Nuvo::Checkbox @checked={{true}} aria-label="Select row" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Group layout"
+      @note="nu-check-group spaces a run of controls and wraps them on narrow screens. Use it for any set of checkboxes or radios."
+      @layout="block"
+      @code={{this.code.group}}
+    >
+      <div class="nu-check-group">
+        <Nuvo::Checkbox @label="Parking" />
+        <Nuvo::Checkbox @label="Pool" />
+        <Nuvo::Checkbox @label="Gym" />
+      </div>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Checkbox arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.checkboxArgRows}} />
+    <h3 class="nuvo-subtitle">Checkbox callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.checkboxCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Radio" @id="radio">
+    <NuvoDocs::Example
+      @title="Group with a shared name"
+      @note="Each radio derives checked from the group value and reports its own value when chosen. The shared name makes arrow keys move between them natively."
+      @layout="block"
+      @code={{this.code.radio}}
+    >
+      <div class="nu-check-group">
+        <Nuvo::Radio
+          @name="property-type"
+          @value="apartment"
+          @checked={{eq this.radioValue "apartment"}}
+          @label="Apartment"
+          @onChange={{this.updateRadio}}
+        />
+        <Nuvo::Radio
+          @name="property-type"
+          @value="villa"
+          @checked={{eq this.radioValue "villa"}}
+          @label="Villa"
+          @onChange={{this.updateRadio}}
+        />
+        <Nuvo::Radio
+          @name="property-type"
+          @value="townhouse"
+          @checked={{eq this.radioValue "townhouse"}}
+          @label="Townhouse"
+          @onChange={{this.updateRadio}}
+        />
+      </div>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-radio-value>Selected: {{this.radioValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="An option that exists but is not available, kept visible so the user knows it is there."
+      @code={{this.code.radioDisabled}}
+    >
+      <Nuvo::Radio @name="property-type-disabled" @disabled={{true}} @label="Disabled" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block label"
+      @note="A block replaces the label text, for a title with a muted description beside it."
+      @code={{this.code.radioBlock}}
+    >
+      <Nuvo::Radio @name="plan" @value="growth" @checked={{true}}>
+        <strong>Growth</strong> <span class="nu-text m-xs m-muted">multi-region</span>
+      </Nuvo::Radio>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Radio arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.radioArgRows}} />
+    <h3 class="nuvo-subtitle">Radio callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.radioCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Toggle" @id="toggle">
+    <NuvoDocs::Example
+      @title="Controlled"
+      @note="A switch for a setting that applies as soon as it flips. onChange reports the new boolean."
+      @code={{this.code.toggle}}
+    >
+      <Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} aria-label="Demo toggle" />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-toggle-echo>On: {{this.toggleValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Small"
+      @note="For table rows and dense settings lists."
+      @code={{this.code.toggleSm}}
+    >
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} aria-label="Small toggle" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="For a single prominent setting at the top of a panel."
+      @code={{this.code.toggleLg}}
+    >
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} aria-label="Large toggle" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="Shows the current state without allowing a change, for settings locked by plan or role."
+      @code={{this.code.toggleDisabled}}
+    >
+      <Nuvo::Toggle @disabled={{true}} @checked={{true}} aria-label="Disabled toggle" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="In-track text"
+      @note="Two short words inside the track make the state explicit without a label; keep them to three letters."
+      @code={{this.code.toggleText}}
+    >
+      <Nuvo::Toggle
+        @checked={{this.toggleWithTextValue}}
+        @activeText="ON"
+        @inactiveText="OFF"
+        @onChange={{this.updateToggleWithText}}
+        aria-label="Text toggle"
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Trailing label"
+      @note="A block renders the label beside the track inside the label element, so it is the accessible name and the click target."
+      @code={{this.code.toggleLabel}}
+    >
+      <Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>
+        Auto-assign leads
+      </Nuvo::Toggle>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Toggle variants" @id="toggle-variants">
+    {{#each this.toggleVariantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Toggle
+          @variant={{example.variant}}
+          @checked={{get this.variantToggles example.variant}}
+          @onChange={{fn this.updateVariantToggle example.variant}}
+          aria-label="{{example.title}} toggle"
+        />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <h3 class="nuvo-subtitle">Toggle arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.toggleArgRows}} />
+    <h3 class="nuvo-subtitle">Toggle callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.toggleCallbackRows}} />
+    <h3 class="nuvo-subtitle">Toggle blocks</h3>
+    <NuvoDocs::Table @kind="blocks" @rows={{this.toggleBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Raw classes" @id="classes">
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The input sits inside its label, so the label text is the accessible name and the click target.</li>
+      <li class="nu-list__item">A toggle without in-track text or a block has no name; pass aria-label through ...attributes or wrap it in Nuvo::Field.</li>
+      <li class="nu-list__item">Radios in one set share @name so arrow keys move between them natively.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Label spacing uses inline gaps, so the control sits on the leading side in both directions.</li>
+      <li class="nu-list__item">The toggle knob travels with a direction-aware translate, so "on" moves toward the trailing edge under dir="rtl".</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

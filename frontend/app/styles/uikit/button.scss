@@ -127,6 +127,24 @@
     --nu-btn--hover--BorderColor: transparent;
   }
 
+  @include m(warning) {
+    --nu-btn--Color: var(--text-inverted);
+    --nu-btn--BackgroundColor: var(--warning);
+    --nu-btn--hover--Color: var(--text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--warning-600);
+    --nu-btn--hover--BorderColor: transparent;
+    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(warning, 35%)};
+  }
+
+  @include m(info) {
+    --nu-btn--Color: var(--text-inverted);
+    --nu-btn--BackgroundColor: var(--info);
+    --nu-btn--hover--Color: var(--text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--info-600);
+    --nu-btn--hover--BorderColor: transparent;
+    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(info, 35%)};
+  }
+
   @include m(ghost) {
     --nu-btn--Color: var(--text-muted);
     --nu-btn--BackgroundColor: transparent;

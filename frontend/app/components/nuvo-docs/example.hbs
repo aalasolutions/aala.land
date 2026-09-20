@@ -1,0 +1,22 @@
+<div class="nuvo-example" data-test-nuvo-example ...attributes>
+  {{#if @title}}
+    <h3 class="nuvo-subtitle">{{@title}}</h3>
+  {{/if}}
+
+  {{#if @note}}
+    <p class="nuvo-note">{{@note}}</p>
+  {{/if}}
+
+  <div class={{this.previewClasses}} data-test-nuvo-example-preview>
+    {{yield}}
+  </div>
+
+  {{#if @code}}
+    <div class="nu-code-block nuvo-example__code">
+      <pre
+        class="nu-code-block__content"
+        data-test-nuvo-example-code
+      >{{@code}}</pre>
+    </div>
+  {{/if}}
+</div>

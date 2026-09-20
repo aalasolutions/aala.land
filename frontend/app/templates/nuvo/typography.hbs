@@ -1,0 +1,178 @@
+<NuvoDocs::Page
+  @id="typography"
+  @title="Typography"
+  @subtitle="Headings and body text on the kit's type scale."
+  @components="Nuvo::Title, Nuvo::Text"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Title separates the heading level from the visual size, so the
+      document outline stays correct while the design picks the step. Text
+      is a paragraph or span with size, weight, colour, truncation and line
+      clamp. The scale comes from NuvoUI core, so kit and utility sizes
+      agree.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Heading tag independent of size; seven title sizes, five text sizes.</li>
+      <li class="nu-list__item">Four weights; six colour variants plus muted and subtle.</li>
+      <li class="nu-list__item">Single-line truncation and two- or three-line clamp.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Title: tag and size" @id="title-sizes">
+    <NuvoDocs::Example
+      @title="Tag independent of size"
+      @note="The tag comes from the outline, the size from the design: an h1 and an h4 can share a size without lying to assistive technology."
+      @layout="block"
+      @code={{this.code.tag}}
+    >
+      <Nuvo::Title @tag="h1" @size="lg" @text="An h1 at the lg size" />
+      <Nuvo::Title @tag="h4" @size="lg" @text="An h4 at the same size" />
+    </NuvoDocs::Example>
+
+    {{#each this.titleSizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Title @tag="h3" @size={{example.size}} @text="Title {{example.size}}" />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Title: weight, truncation, block" @id="title-styles">
+    <NuvoDocs::Example
+      @title="Weight"
+      @note="Weights apply to titles as to text; semibold is the usual step down from a bold page title."
+      @layout="block"
+      @code={{this.code.titleWeight}}
+    >
+      <Nuvo::Title @size="xl" @weight="semibold" @text="Marina Tower" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Truncate"
+      @note="One line with an ellipsis, for record names in fixed-width headers. The full text stays in the DOM."
+      @layout="block"
+      @code={{this.code.titleTruncate}}
+    >
+      <Nuvo::Title
+        @size="md"
+        @tag="h4"
+        @truncate={{true}}
+        @text="A very long unit description that should truncate with an ellipsis when the container is narrow"
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block content"
+      @note="A block replaces text, for an icon before the heading."
+      @layout="block"
+      @code={{this.code.titleBlock}}
+    >
+      <Nuvo::Title @size="sm" @tag="h5"><Ui::Ph @icon="buildings" /> Block content</Nuvo::Title>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Title arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.titleArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Text: sizes" @id="text-sizes">
+    {{#each this.textSizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Text @size={{example.size}} @text="Text {{example.size}}" />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Inline span"
+      @note="tag span renders inline, for a value inside a sentence or a cell."
+      @code={{this.code.textTag}}
+    >
+      <span>Renewal in <Nuvo::Text @tag="span" @size="xs" @text="42 days" /> from today.</span>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Text: weights" @id="text-weights">
+    {{#each this.weightExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Text @weight={{example.weight}} @text="{{example.title}} text" />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Text: colours" @id="text-colours">
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Text @variant={{example.variant}} @text="{{example.title}} text" />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Muted"
+      @note="Secondary copy that should not compete with the main text: timestamps, hints."
+      @layout="block"
+      @code={{this.code.muted}}
+    >
+      <Nuvo::Text @muted={{true}} @text="Last synced 4 minutes ago." />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Subtle"
+      @note="Lighter still, for placeholders and optional notes."
+      @layout="block"
+      @code={{this.code.subtle}}
+    >
+      <Nuvo::Text @subtle={{true}} @text="Optional note." />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Text: truncation and clamp" @id="text-clamp">
+    <NuvoDocs::Example
+      @title="Truncate"
+      @note="One line with an ellipsis, for descriptions in table cells."
+      @layout="stack"
+      @code={{this.code.truncate}}
+    >
+      <Nuvo::Text @truncate={{true}} @text={{this.longText}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Clamp to two lines"
+      @note="Two lines then an ellipsis, for card previews."
+      @layout="stack"
+      @code={{this.code.clamp2}}
+    >
+      <Nuvo::Text @clamp="2" @text={{this.longText}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Clamp to three lines"
+      @note="Three lines for list descriptions that deserve a little more room."
+      @layout="stack"
+      @code={{this.code.clamp3}}
+    >
+      <Nuvo::Text @clamp="3" @text={{this.longText}} />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Text arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.textArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Choose @tag by outline position, never by appearance; one h1 per page.</li>
+      <li class="nu-list__item">Truncated and clamped text is cut visually only; the full string stays in the DOM and is read in full.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Alignment is inherited from the page direction; the ellipsis of truncated text appears at the inline end.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>
