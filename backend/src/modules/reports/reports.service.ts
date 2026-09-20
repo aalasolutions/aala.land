@@ -20,6 +20,7 @@ import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
+import { Role } from '../../shared/enums/roles.enum';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import {
   effectiveRegionCodes,
@@ -78,6 +79,23 @@ export interface PipelineFunnel {
   count: number;
 }
 
+export interface AgentLeadLoad {
+  agentId: string;
+  agentName: string;
+  openTotal: number;
+  stages: PipelineFunnel[];
+  won: number;
+  lost: number;
+}
+
+export interface LeadOwnership {
+  agents: AgentLeadLoad[];
+  pipeline: PipelineFunnel[];
+  won: number;
+  lost: number;
+  unassignedOpen: number;
+}
+
 export interface StageBottleneck {
   stage: string;
   avgDays: number;
@@ -115,6 +133,16 @@ const PIPELINE_STAGE_ORDER = [
   LeadStatus.WON,
   LeadStatus.LOST,
 ];
+
+const OPEN_LEAD_STAGES = [
+  LeadStatus.NEW,
+  LeadStatus.CONTACTED,
+  LeadStatus.VIEWING,
+  LeadStatus.NEGOTIATING,
+];
+
+/** Closed leads age out of lead ownership so the panel reads as current throughput. */
+const OWNERSHIP_CLOSED_WINDOW_DAYS = 30;
 
 @Injectable()
 export class ReportsService {
@@ -663,6 +691,170 @@ export class ReportsService {
       stage,
       count: countMap.get(stage) ?? 0,
     }));
+  }
+
+  async getLeadOwnership(
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<LeadOwnership> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no leads, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return {
+        agents: [],
+        pipeline: OPEN_LEAD_STAGES.map((stage) => ({ stage, count: 0 })),
+        won: 0,
+        lost: 0,
+        unassignedOpen: 0,
+      };
+    }
+
+    const closedSince = subtractDaysFromInstant(
+      new Date(),
+      OWNERSHIP_CLOSED_WINDOW_DAYS,
+    );
+
+    // Staff are filtered by their own assignments, matching the agent search.
+    const agentListed = regionCodes
+      ? `(u.role = :agentRole AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(u.region_codes) rc WHERE rc = ANY(:regionArray)))`
+      : 'u.role = :agentRole';
+
+    // Scope sits in the JOIN, not the WHERE, so an agent holding nothing still returns a row.
+    const joinOn = [
+      'l.assignedTo = u.id',
+      'l.companyId = :companyId',
+      '(l.status IN (:...openStages) OR l.stageEnteredAt >= :closedSince)',
+    ];
+    if (regionCodes) joinOn.push('l.regionCode IN (:...regionCodes)');
+
+    const agentQb = this.userRepository
+      .createQueryBuilder('u')
+      .leftJoin(Lead, 'l', joinOn.join(' AND '))
+      .select('u.id', 'agentId')
+      .addSelect('u.name', 'agentName')
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageNew THEN 1 ELSE 0 END)::int',
+        'newCount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageContacted THEN 1 ELSE 0 END)::int',
+        'contactedCount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageViewing THEN 1 ELSE 0 END)::int',
+        'viewingCount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageNegotiating THEN 1 ELSE 0 END)::int',
+        'negotiatingCount',
+      )
+      // The join already bounds these to the closed window.
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageWon THEN 1 ELSE 0 END)::int',
+        'wonCount',
+      )
+      .addSelect(
+        'SUM(CASE WHEN l.status = :stageLost THEN 1 ELSE 0 END)::int',
+        'lostCount',
+      )
+      .where('u.companyId = :companyId')
+      .andWhere('u.isActive = true')
+      .groupBy('u.id')
+      .addGroupBy('u.name')
+      .addGroupBy('u.role')
+      // In-region agents always list; anyone else appears only while holding a counted lead,
+      // which keeps the rows summing to the assigned total no matter where they are assigned.
+      .having(`${agentListed} OR COUNT(l.id) > 0`)
+      .setParameters({
+        companyId,
+        closedSince,
+        openStages: OPEN_LEAD_STAGES,
+        stageNew: LeadStatus.NEW,
+        stageContacted: LeadStatus.CONTACTED,
+        stageViewing: LeadStatus.VIEWING,
+        stageNegotiating: LeadStatus.NEGOTIATING,
+        stageWon: LeadStatus.WON,
+        stageLost: LeadStatus.LOST,
+        agentRole: Role.AGENT,
+      });
+
+    if (regionCodes) {
+      agentQb.setParameter('regionCodes', regionCodes);
+      agentQb.setParameter('regionArray', regionCodes);
+    }
+
+    // One census covers the company pipeline, the closed window and the unassigned tally.
+    const censusQb = this.leadRepository
+      .createQueryBuilder('l')
+      .select('l.status', 'stage')
+      .addSelect('COUNT(*)::int', 'count')
+      .addSelect(
+        'SUM(CASE WHEN l.assignedTo IS NULL THEN 1 ELSE 0 END)::int',
+        'unassigned',
+      )
+      .where('l.companyId = :companyId', { companyId })
+      .andWhere(
+        '(l.status IN (:...openStages) OR l.stageEnteredAt >= :closedSince)',
+        { openStages: OPEN_LEAD_STAGES, closedSince },
+      )
+      .groupBy('l.status');
+
+    if (regionCodes)
+      censusQb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
+
+    const [rows, census] = await Promise.all([
+      agentQb.getRawMany(),
+      censusQb.getRawMany(),
+    ]);
+
+    const agents = rows
+      .map((row) => {
+        const stages: PipelineFunnel[] = [
+          { stage: LeadStatus.NEW, count: Number(row.newCount) },
+          { stage: LeadStatus.CONTACTED, count: Number(row.contactedCount) },
+          { stage: LeadStatus.VIEWING, count: Number(row.viewingCount) },
+          {
+            stage: LeadStatus.NEGOTIATING,
+            count: Number(row.negotiatingCount),
+          },
+        ];
+
+        return {
+          agentId: row.agentId as string,
+          agentName: row.agentName as string,
+          openTotal: stages.reduce((sum, s) => sum + s.count, 0),
+          stages,
+          won: Number(row.wonCount),
+          lost: Number(row.lostCount),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.openTotal - a.openTotal ||
+          (a.agentName ?? '').localeCompare(b.agentName ?? ''),
+      );
+
+    const censusByStage = new Map<string, { count: number; unassigned: number }>(
+      census.map((row) => [
+        row.stage as string,
+        { count: Number(row.count), unassigned: Number(row.unassigned) },
+      ]),
+    );
+
+    return {
+      agents,
+      pipeline: OPEN_LEAD_STAGES.map((stage) => ({
+        stage,
+        count: censusByStage.get(stage)?.count ?? 0,
+      })),
+      won: censusByStage.get(LeadStatus.WON)?.count ?? 0,
+      lost: censusByStage.get(LeadStatus.LOST)?.count ?? 0,
+      unassignedOpen: OPEN_LEAD_STAGES.reduce(
+        (sum, stage) => sum + (censusByStage.get(stage)?.unassigned ?? 0),
+        0,
+      ),
+    };
   }
 
   async getBottlenecks(

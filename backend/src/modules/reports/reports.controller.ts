@@ -153,6 +153,30 @@ export class ReportsController {
     );
   }
 
+  @Get('lead-ownership')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'Open lead load per agent, plus the unassigned open count',
+  })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getLeadOwnership(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.reportsService.getLeadOwnership(
+      requireCompanyId(req.user),
+      regionCode,
+      req.user,
+    );
+  }
+
   @Get('bottlenecks')
   @Roles(
     Role.SUPER_ADMIN,

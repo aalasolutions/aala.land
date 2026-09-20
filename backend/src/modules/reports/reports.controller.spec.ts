@@ -39,6 +39,7 @@ describe('ReportsController', () => {
             getRedFlags: jest.fn(),
             getActivityFeed: jest.fn(),
             getPipelineFunnel: jest.fn(),
+            getLeadOwnership: jest.fn(),
             getBottlenecks: jest.fn(),
             getResponseTimeMetrics: jest.fn(),
           },
@@ -141,6 +142,28 @@ describe('ReportsController', () => {
         mockReq.user,
       );
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('getLeadOwnership', () => {
+    it('delegates to service with companyId and region', async () => {
+      const payload = {
+        agents: [],
+        pipeline: [],
+        won: 0,
+        lost: 0,
+        unassignedOpen: 0,
+      };
+      service.getLeadOwnership.mockResolvedValue(payload);
+
+      const result = await controller.getLeadOwnership(mockReq, 'AE');
+
+      expect(service.getLeadOwnership).toHaveBeenCalledWith(
+        companyId,
+        'AE',
+        mockReq.user,
+      );
+      expect(result).toEqual(payload);
     });
   });
 

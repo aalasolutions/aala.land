@@ -2,6 +2,9 @@
 @use "@nuvoui/ember/styles/mixins/var" as *;
 @use "@nuvoui/ember/styles/common/var" as *;
 
+// One height for every bar on this page: stage rows, agent rows and the closed split.
+$dashboard-bar-size: 10px;
+
 .dashboard-page {
   display: flex;
   flex-direction: column;
@@ -73,51 +76,146 @@
   }
 }
 
-.activity-feed {
-  padding: nu-space(3);
-  max-height: 360px;
-  overflow-y: auto;
-}
-
-.dashboard-activity-item {
-  display: flex;
-  align-items: center;
-  gap: nu-space(3);
-  padding: nu-space(2) nu-space(3);
-  border-radius: nu-radius(md);
-  background: var(--bg-alternate);
-  margin-block-end: nu-space(2);
-  transition: background nu-duration(fast);
-
-  &:last-child {
-    margin-block-end: 0;
-  }
-  &:hover {
-    background: var(--bg-base);
-  }
-}
-
-.dashboard-activity-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.ownership-header {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
   min-inline-size: 0;
 }
 
-.dashboard-activity-text {
-  font-size: nu-font-size(sm);
+.ownership-caption {
+  margin: 0;
+  font-size: nu-font-size(xs);
   color: var(--text-muted);
+}
+
+.ownership-rows {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+}
+
+.ownership-row {
+  display: block;
+  padding: nu-space(2) nu-space(3);
+  border-radius: nu-radius(md);
+  color: inherit;
+  text-decoration: none;
+  transition: background nu-duration(fast);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--bg-alternate);
+  }
+}
+
+.ownership-row-head {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+  min-inline-size: 0;
+}
+
+.ownership-name {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: nu-font-size(sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.dashboard-activity-time {
+// One treatment for every count on this page: stage rows, agent rows, closed and assignment.
+.pipeline-stage-count,
+.ownership-open,
+.closed-counts {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.ownership-bar {
+  display: flex;
+  block-size: $dashboard-bar-size;
+  margin-block-start: nu-space(1);
+  border-radius: nu-radius(full);
+  background: var(--bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--border-base);
+  overflow: hidden;
+}
+
+// Floor keeps a single lead visible next to an agent holding dozens.
+.ownership-segment {
+  block-size: 100%;
+  min-inline-size: 4px;
+}
+
+.ownership-more {
+  margin: 0;
+  padding-inline: nu-space(3);
   font-size: nu-font-size(xs);
   color: var(--text-muted);
+}
+
+.idle-overflow {
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-muted);
+}
+
+.closed-block {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  padding-block-start: nu-space(3);
+  border-block-start: 1px solid var(--border-base);
+}
+
+.closed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-space(3);
+  font-size: nu-font-size(sm);
+}
+
+.closed-label {
+  color: var(--text-color);
+}
+
+.dashboard-panel-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-space(3);
+  padding-block-start: nu-space(3);
+  border-block-start: 1px solid var(--border-base);
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .dashboard-strip-action,
+  &:focus-visible .dashboard-strip-action {
+    color: var(--primary);
+  }
+}
+
+.dashboard-strip-label {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+  min-inline-size: 0;
+}
+
+.dashboard-strip-action {
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-muted);
   white-space: nowrap;
-  margin-inline-start: nu-space(3);
+  transition: color nu-duration(fast);
 }
 
 .pipeline-bars {
@@ -138,15 +236,13 @@
   color: var(--text-color);
 }
 
-.pipeline-stage-count {
-  color: var(--text-muted);
-  font-weight: nu-font-weight(semibold);
-}
-
+// Inset hairline, not a border: the lightest stage sits under 3:1 on the track,
+// so the bar needs an edge of its own without changing its height.
 .pipeline-bar-track {
-  block-size: 8px;
+  block-size: $dashboard-bar-size;
   border-radius: nu-radius(full);
   background: var(--bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--border-base);
   overflow: hidden;
 }
 
@@ -159,5 +255,20 @@
 @each $variant in $nu-variants {
   .pipeline-bar-#{$variant} {
     background: var(--#{$variant});
+  }
+}
+
+// Ordered stages read as one hue getting deeper; the theme has only five
+// distinct variant colours, too few to keep six stages apart.
+$nu-stage-steps: (
+  "new": 300,
+  "contacted": 500,
+  "viewing": 700,
+  "negotiating": 900,
+);
+
+@each $stage, $step in $nu-stage-steps {
+  .pipeline-bar-stage-#{$stage} {
+    background: var(--secondary-#{$step});
   }
 }
