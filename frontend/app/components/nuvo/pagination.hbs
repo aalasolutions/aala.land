@@ -55,16 +55,29 @@
   {{#if this.showPerPage}}
     <div class="nu-pagination__per-page">
       <label for={{this.selectId}}>Per page</label>
-      <select
-        id={{this.selectId}}
-        class="nu-pagination__select"
-        data-test-nu-pagination-select
-        {{on "change" this.changePerPage}}
+      {{! label-for needs the id on the button; Dropdown splats onto a div. }}
+      <Nuvo::Dropdown
+        @options={{this.perPageOptions}}
+        @value={{this.perPage}}
+        @onSelect={{this.changePerPage}}
+        @size="sm"
+        @align="end"
       >
-        {{#each this.perPageOptions as |choice|}}
-          <option value={{choice}} selected={{eq choice this.perPage}}>{{choice}}</option>
-        {{/each}}
-      </select>
+        <:trigger as |toggle isOpen|>
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
+            @onClick={{toggle}}
+            id={{this.selectId}}
+            aria-haspopup="listbox"
+            aria-expanded={{if isOpen "true" "false"}}
+            data-test-nu-pagination-select
+          >
+            {{this.perPage}}
+            <span class="nu-dropdown__caret" aria-hidden="true">▾</span>
+          </Nuvo::Button>
+        </:trigger>
+      </Nuvo::Dropdown>
     </div>
   {{/if}}
 </div>

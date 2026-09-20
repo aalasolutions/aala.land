@@ -135,9 +135,11 @@ export default class NuPaginationComponent extends Component {
     this.goToPage(this.page + 1);
   }
 
+  // Nuvo::Dropdown reports the option value directly, not a DOM event.
   @action
-  changePerPage(event) {
-    const value = Number(event.target.value);
+  changePerPage(choice) {
+    const value = Number(choice);
+    if (!value) return;
     this.args.onPerPageChange?.(value);
     this.args.onLimitChange?.(value);
   }

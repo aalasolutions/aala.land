@@ -195,7 +195,7 @@
   }
 }
 
-// One line per cell, faded at the end edge (mask on the wrapper keeps fills solid).
+// One line per cell, clipped at the end edge.
 .data-table table td,
 .data-table .et-cell-content {
   overflow: hidden;
@@ -209,20 +209,25 @@
 
 .data-table__cell {
   overflow: hidden;
-  mask-image: linear-gradient(
-    to right,
-    #000 calc(100% - #{nu-space(4)}),
-    transparent
-  );
 }
 
-[dir="rtl"] .data-table__cell {
-  mask-image: linear-gradient(
-    to left,
-    #000 calc(100% - #{nu-space(4)}),
-    transparent
-  );
-}
+// Parked: a pinned last column paints over its neighbour, so the mask lands at
+// the cell edge rather than at the visible cutoff.
+// .data-table__cell {
+//   mask-image: linear-gradient(
+//     to right,
+//     #000 calc(100% - #{nu-space(2)}),
+//     transparent
+//   );
+// }
+//
+// [dir="rtl"] .data-table__cell {
+//   mask-image: linear-gradient(
+//     to left,
+//     #000 calc(100% - #{nu-space(2)}),
+//     transparent
+//   );
+// }
 
 // Inline cell editor (double-click). The dropdown menu is hosted on .nu-layer,
 // so the cell overflow never clips it.
@@ -256,6 +261,15 @@
   display: flex;
   justify-content: flex-end;
   margin-block-end: nu-space(2);
+}
+
+// Header titles truncate instead of spilling into the next column. Flex is not
+// an option here: it drops the cell out of the table formatting context and the
+// columns collapse onto one edge.
+.data-table thead th {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 // Sort direction arrow.

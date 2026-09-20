@@ -80,6 +80,7 @@ export default class DataTableComponent extends Component {
   }
 
   // Pinned columns always stay visible.
+  @cached
   get optionColumns() {
     return this.order
       .map((key) => this.copies.get(key))

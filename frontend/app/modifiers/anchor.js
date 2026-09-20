@@ -5,8 +5,8 @@ const EDGE = 8;
 const DEFAULT_GAP = 4;
 
 // Positions a body-level element against its trigger, viewport-fixed, flipping
-// to the opposite side when there is no room. Dismisses on outside scroll or
-// resize, like the tooltip host.
+// to the opposite side when there is no room. Tracks the trigger on scroll and
+// resize, dismissing only once the trigger itself leaves the viewport.
 //
 // {{anchor trigger placement="bottom" align="start" gap=4 matchWidth=false onDismiss=fn}}
 // placement: top | bottom | start | end (logical, resolved against the trigger's direction)
@@ -19,6 +19,7 @@ export default class AnchorModifier extends Modifier {
   observer = null;
   armed = false;
   frame = null;
+  trackFrame = null;
 
   constructor(owner, args) {
     super(owner, args);
@@ -54,12 +55,29 @@ export default class AnchorModifier extends Modifier {
     }
   }
 
-  onViewportChange = (event) => {
-    if (event.type === 'scroll' && this.element?.contains(event.target)) {
-      return;
-    }
-    this.options?.onDismiss?.();
+  // One pass per frame: scroll fires continuously and reposition reads layout.
+  onViewportChange = () => {
+    if (this.trackFrame) return;
+    this.trackFrame = requestAnimationFrame(() => {
+      this.trackFrame = null;
+      if (this.triggerOffViewport()) {
+        this.options?.onDismiss?.();
+        return;
+      }
+      this.reposition();
+    });
   };
+
+  triggerOffViewport() {
+    if (!this.trigger?.isConnected) return true;
+    const { top, bottom, left, right } = this.trigger.getBoundingClientRect();
+    return (
+      bottom <= 0 ||
+      right <= 0 ||
+      top >= window.innerHeight ||
+      left >= window.innerWidth
+    );
+  }
 
   reposition() {
     const { element, trigger } = this;
@@ -122,6 +140,10 @@ export default class AnchorModifier extends Modifier {
     if (this.frame) {
       cancelAnimationFrame(this.frame);
       this.frame = null;
+    }
+    if (this.trackFrame) {
+      cancelAnimationFrame(this.trackFrame);
+      this.trackFrame = null;
     }
     if (this.armed) {
       window.removeEventListener('scroll', this.onViewportChange, true);

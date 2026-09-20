@@ -14,7 +14,7 @@
         </:trigger>
         <:body>
           <div class="flex col gap-2" data-test-data-table-columns>
-            {{#each this.optionColumns as |option|}}
+            {{#each this.optionColumns key="key" as |option|}}
               <Nuvo::Checkbox
                 @label={{option.name}}
                 @checked={{option.visible}}
