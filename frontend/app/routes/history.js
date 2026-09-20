@@ -14,7 +14,7 @@ export default class HistoryRoute extends AuthenticatedRoute {
   async model(params) {
     const {
       page = 1,
-      limit = 10,
+      limit = 50,
       filterAction = '',
       filterEntityType = '',
     } = params;

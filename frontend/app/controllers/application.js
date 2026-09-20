@@ -4,6 +4,7 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { cancelDebounce, debounceTask, runTask } from 'ember-lifeline';
 import { isAdminRole, getVisibleGroups, canSwitchRegion } from '../utils/roles';
+import config from 'land/config/environment';
 
 export default class ApplicationController extends Controller {
   @service session;
@@ -12,6 +13,11 @@ export default class ApplicationController extends Controller {
   @service region;
   @service socket;
   @service uiSettings;
+
+  // Development-only navigation (Table Options showcase).
+  get isDevelopment() {
+    return config.environment === 'development';
+  }
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';

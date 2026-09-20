@@ -22,6 +22,16 @@ export default class HistoryController extends PaginatedController {
   actionOptions = HISTORY_ACTIONS;
   entityTypeOptions = HISTORY_ENTITY_TYPES;
 
+  columns = [
+    { name: 'Date', valuePath: 'createdAt', width: 140, isFixed: 'left' },
+    { name: 'Action', valuePath: 'actionLabel', width: 160 },
+    { name: 'Type', valuePath: 'entityTypeLabel', width: 160 },
+    { name: 'Record', valuePath: 'entityTitle', width: 220 },
+    { name: 'Context', valuePath: 'contextTitle', width: 200 },
+    { name: 'Reason', valuePath: 'reason', width: 220 },
+    { name: 'By', valuePath: 'actorName', width: 180 },
+  ];
+
   get rows() {
     return (this.model?.entries || []).map((entry) => ({
       ...entry,

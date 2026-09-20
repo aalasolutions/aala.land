@@ -36,86 +36,79 @@
     />
   </div>
 
-  <div class="nu-table-wrapper">
-    <table class="nu-table">
-      <thead>
-        <tr>
-          <th>Company</th>
-          <th>Plan</th>
-          <th>Rail</th>
-          <th>Seats</th>
-          <th>MRR</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {{#each this.rows as |row|}}
-          {{! Whole row is clickable, but the company name is also a real link, so
-          keyboard users reach the detail via the company-name link below. }}
-          {{! template-lint-disable no-invalid-interactive }}
-          <tr
-            class="console-row"
-            data-test-companies-row={{row.id}}
-            {{on "click" (fn this.openCompany row.id)}}
-          >
-            <td class="font-bold">
-              <LinkTo
-                @route="admin.companies.company"
-                @model={{row.id}}
-                class="console-row__name-link"
-              >{{row.name}}</LinkTo>
-            </td>
-            <td>
-              <Nuvo::Tag
-                class="tag-plan-{{lowercase row.tier}}"
-                @text={{row.tier}}
-              />
-            </td>
-            <td>{{if row.rail row.rail "—"}}</td>
-            <td>{{row.seatsUsed}}/{{row.seatCap}}</td>
-            <td>
-              {{#if row.mrr}}
-                {{format-money row.mrr.amountMinor row.mrr.currency}}
-              {{else}}
-                <span class="text-muted">—</span>
-              {{/if}}
-            </td>
-            <td data-test-companies-status={{row.id}}>
-              {{#if (eq row.status "locked")}}
-                <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
-              {{else if (eq row.status "lifted")}}
-                <Nuvo::Tag class="tag-account-lifted">
-                  lifted until
-                  {{format-date row.lockState.liftUntil}}
-                </Nuvo::Tag>
-              {{else if (eq row.status "deal")}}
-                <Nuvo::Tag class="tag-account-on_deal">
-                  {{#if row.deal.lifetime}}
-                    lifetime deal
-                  {{else}}
-                    deal until
-                    {{format-date row.deal.untilDate}}
-                  {{/if}}
-                </Nuvo::Tag>
-              {{else}}
-                <Nuvo::Tag class="tag-account-active" @text="active" />
-              {{/if}}
-            </td>
-            <td class="text-end">
-              <Ui::Ph @icon="caret-right" @size="18px" />
-            </td>
-          </tr>
+  {{#if this.rows.length}}
+    <DataTable
+      @columns={{this.columns}}
+      @rows={{this.rows}}
+      @onRowClick={{this.openCompany}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @tableId="console-companies"
+      data-test-companies-table
+      as |cell|
+    >
+      {{#if (eq cell.key "name")}}
+        <span class="font-bold" data-test-companies-row={{cell.row.id}}>
+          <LinkTo
+            @route="admin.companies.company"
+            @model={{cell.row.id}}
+            class="console-row__name-link"
+          >{{cell.value}}</LinkTo>
+        </span>
+      {{else if (eq cell.key "tier")}}
+        <Nuvo::Tag
+          class="tag-plan-{{lowercase cell.value}}"
+          @text={{cell.value}}
+        />
+      {{else if (eq cell.key "rail")}}
+        {{if cell.value cell.value "—"}}
+      {{else if (eq cell.key "seatsUsed")}}
+        {{cell.value}}/{{cell.row.seatCap}}
+      {{else if (eq cell.key "mrr.amountMinor")}}
+        {{#if cell.row.mrr}}
+          {{format-money cell.row.mrr.amountMinor cell.row.mrr.currency}}
         {{else}}
-          <tr>
-            <td colspan="7" class="text-muted text-center p-4">
-              No companies found.
-            </td>
-          </tr>
-        {{/each}}
-      </tbody>
-    </table>
-  </div>
+          <span class="text-muted">—</span>
+        {{/if}}
+      {{else if (eq cell.key "status")}}
+        <span data-test-companies-status={{cell.row.id}}>
+          {{#if (eq cell.value "locked")}}
+            <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
+          {{else if (eq cell.value "lifted")}}
+            <Nuvo::Tag class="tag-account-lifted">
+              lifted until
+              {{format-date cell.row.lockState.liftUntil}}
+            </Nuvo::Tag>
+          {{else if (eq cell.value "deal")}}
+            <Nuvo::Tag class="tag-account-on_deal">
+              {{#if cell.row.deal.lifetime}}
+                lifetime deal
+              {{else}}
+                deal until
+                {{format-date cell.row.deal.untilDate}}
+              {{/if}}
+            </Nuvo::Tag>
+          {{else}}
+            <Nuvo::Tag class="tag-account-active" @text="active" />
+          {{/if}}
+        </span>
+      {{else if (eq cell.key "id")}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="xs"
+          @icon="caret-right"
+          data-test-companies-open={{cell.row.id}}
+          {{on "click" (fn this.openCompany cell.row)}}
+        >Open</Nuvo::Button>
+      {{else}}
+        {{cell.value}}
+      {{/if}}
+    </DataTable>
+  {{else}}
+    <p class="text-muted text-center p-4">No companies found.</p>
+  {{/if}}
 
   <Nuvo::Pagination
     @selectId="console-companies-limit"

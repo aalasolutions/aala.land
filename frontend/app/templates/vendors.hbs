@@ -16,71 +16,54 @@
 
   <Nuvo::Card>
     {{#if @model.vendors.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Specialty</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Company</th>
-              <th>Rate/hr</th>
-              <th>Rating</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model.vendors as |vendor|}}
-              <tr data-test-vendor-row>
-                <td>
-                  <span class="font-bold">{{vendor.name}}</span>
-                </td>
-                <td>
-                  <div class="flex gap-2 wrap">
-                    {{#each vendor.specialties as |sp|}}
-                      <Nuvo::Tag
-                        class="tag-trade-{{lowercase sp}}"
-                        @text={{sp}}
-                      />
-                    {{/each}}
-                  </div>
-                </td>
-                <td>{{vendor.phone}}</td>
-                <td>{{vendor.email}}</td>
-                <td>{{vendor.companyName}}</td>
-                <td>{{format-currency vendor.hourlyRate}}</td>
-                <td>
-                  {{#if vendor.rating}}
-                    {{vendor.rating}}
-                    / 5
-                  {{/if}}
-                </td>
-                <td>
-                  <div class="flex gap-2">
-                    <Nuvo::Button
-                      data-test-edit-vendor
-                      @variant="secondary"
-                      @size="xs"
-                      @icon="pencil-simple"
-                      {{on "click" (fn this.openEdit vendor)}}
-                    >
-                      Edit
-                    </Nuvo::Button>
-                    <Nuvo::Button
-                      data-test-delete-vendor
-                      @variant="danger"
-                      @size="xs"
-                      @icon="trash"
-                      {{on "click" (fn this.openDelete vendor)}}
-                    />
-                  </div>
-                </td>
-              </tr>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model.vendors}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="vendors"
+        as |cell|
+      >
+        {{#if (eq cell.key "name")}}
+          <span class="font-bold" data-test-vendor-row>{{cell.value}}</span>
+        {{else if (eq cell.key "specialties")}}
+          <div class="flex gap-2 wrap">
+            {{#each cell.value as |sp|}}
+              <Nuvo::Tag class="tag-trade-{{lowercase sp}}" @text={{sp}} />
             {{/each}}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        {{else if (eq cell.key "hourlyRate")}}
+          {{format-currency cell.value}}
+        {{else if (eq cell.key "rating")}}
+          {{#if cell.value}}
+            {{cell.value}}
+            / 5
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <div class="flex gap-2">
+            <Nuvo::Button
+              data-test-edit-vendor
+              @variant="secondary"
+              @size="xs"
+              @icon="pencil-simple"
+              {{on "click" (fn this.openEdit cell.row)}}
+            >
+              Edit
+            </Nuvo::Button>
+            <Nuvo::Button
+              data-test-delete-vendor
+              @variant="danger"
+              @size="xs"
+              @icon="trash"
+              {{on "click" (fn this.openDelete cell.row)}}
+            />
+          </div>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

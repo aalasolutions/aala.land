@@ -5,7 +5,7 @@ import { validPage } from 'land/utils/page-number';
 
 export default class PaginatedController extends Controller {
   @tracked page = 1;
-  @tracked limit = 10;
+  @tracked limit = 50;
 
   get totalPages() {
     if (!this.model) return 0;
@@ -16,7 +16,7 @@ export default class PaginatedController extends Controller {
   @action setLimit(input) {
     const raw =
       typeof input === 'object' && input !== null ? input.target?.value : input;
-    this.limit = Number(raw) || 10;
+    this.limit = Number(raw) || 50;
     this.page = 1;
   }
 

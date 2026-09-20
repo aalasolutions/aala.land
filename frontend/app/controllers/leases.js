@@ -78,6 +78,32 @@ export default class LeasesController extends PaginatedController {
   statusTabs = LEASE_STATUS_OPTIONS;
   archivedTabs = LEASE_ARCHIVED_OPTIONS;
 
+  columns = [
+    {
+      name: 'Tenant',
+      valuePath: 'contact.displayName',
+      width: 220,
+      isFixed: 'left',
+    },
+    { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
+    { name: 'Type', valuePath: 'type', width: 140 },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
+    { name: 'Period', valuePath: 'startDate', width: 220 },
+    { name: 'Status', valuePath: 'status', width: 160 },
+    {
+      name: 'Tenancy Reg. Ref',
+      valuePath: 'tenancyRegistrationRef',
+      width: 180,
+    },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 360,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   resetState() {
     this.page = 1;
     this.archived = '';

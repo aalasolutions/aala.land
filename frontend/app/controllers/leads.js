@@ -150,6 +150,28 @@ export default class LeadsController extends Controller {
     ];
   }
 
+  listColumns = [
+    {
+      name: 'Name',
+      valuePath: 'contact.displayName',
+      width: 220,
+      isFixed: 'left',
+    },
+    { name: 'Contact', valuePath: 'contact.phone', width: 220 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    { name: 'Temperature', valuePath: 'temperature', width: 140 },
+    { name: 'Property', valuePath: 'locality.name', width: 200 },
+    { name: 'Assigned', valuePath: 'assignedAgentName', width: 180 },
+    { name: 'Created', valuePath: 'createdAt', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 170,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   get allLeads() {
     return this.model?.data ?? [];
   }

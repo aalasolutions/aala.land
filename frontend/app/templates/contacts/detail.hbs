@@ -221,41 +221,39 @@
       {{#if (includes @model.contact.tags "owner")}}
         <Nuvo::Card @title="Properties Owned">
           {{#if @model.units.length}}
-            <div class="nu-table-wrapper">
-              <table class="nu-table">
-                <thead>
-                  <tr>
-                    <th>Unit</th>
-                    <th>Area</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Price</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {{#each @model.units as |unit|}}
-                    <tr data-test-owned-unit-row>
-                      <td class="font-bold">{{unit.unitNumber}}</td>
-                      <td>{{unit.areaName}}</td>
-                      <td>{{#if unit.propertyType}}{{property-type-label unit.propertyType}}{{/if}}</td>
-                      <td><Nuvo::Tag class="tag-unit-{{lowercase unit.status}}" @text={{unit.status}} /></td>
-                      <td>{{format-currency unit.price}}</td>
-                      <td>
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          @route="properties.unit"
-                          @models={{array unit.areaId unit.id}}
-                          @text="View"
-                          data-test-view-owned-unit
-                        />
-                      </td>
-                    </tr>
-                  {{/each}}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              @columns={{this.unitColumns}}
+              @rows={{@model.units}}
+              @pinColumns={{true}}
+              @reorderable={{true}}
+              @sortable={{true}}
+              @showOptions={{true}}
+              @tableId="contact-units"
+              as |cell|
+            >
+              {{#if (eq cell.key "unitNumber")}}
+                <span class="font-bold" data-test-owned-unit-row>{{cell.value}}</span>
+              {{else if (eq cell.key "areaName")}}
+                {{cell.value}}
+              {{else if (eq cell.key "propertyType")}}
+                {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
+              {{else if (eq cell.key "status")}}
+                <Nuvo::Tag class="tag-unit-{{lowercase cell.value}}" @text={{cell.value}} />
+              {{else if (eq cell.key "price")}}
+                {{format-currency cell.value}}
+              {{else if (eq cell.key "id")}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  @route="properties.unit"
+                  @models={{array cell.row.areaId cell.row.id}}
+                  @text="View"
+                  data-test-view-owned-unit
+                />
+              {{else}}
+                <span class="text-muted">{{cell.value}}</span>
+              {{/if}}
+            </DataTable>
           {{else}}
             <Nuvo::EmptyState @description="No properties found for this owner." />
           {{/if}}
@@ -265,37 +263,35 @@
       {{#if (includes @model.contact.tags "tenant")}}
         <Nuvo::Card @title="Leases">
           {{#if @model.leases.length}}
-            <div class="nu-table-wrapper">
-              <table class="nu-table">
-                <thead>
-                  <tr>
-                    <th>Unit</th>
-                    <th>Status</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Rent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {{#each @model.leases as |lease|}}
-                    <tr data-test-lease-row>
-                      <td class="font-bold">{{lease.unit.unitNumber}}</td>
-                      <td>
-                        <div class="flex gap-1 wrap">
-                          <Nuvo::Tag class="tag-lease-{{lowercase lease.status}}" @text={{lease.status}} />
-                          {{#if lease.deletedAt}}
-                            <Nuvo::Tag @variant="secondary" @text="Archived" data-test-lease-archived-badge />
-                          {{/if}}
-                        </div>
-                      </td>
-                      <td>{{format-date lease.startDate}}</td>
-                      <td>{{format-date lease.endDate}}</td>
-                      <td>{{format-currency lease.monthlyRent}}</td>
-                    </tr>
-                  {{/each}}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              @columns={{this.leaseColumns}}
+              @rows={{@model.leases}}
+              @pinColumns={{true}}
+              @reorderable={{true}}
+              @sortable={{true}}
+              @showOptions={{true}}
+              @tableId="contact-leases"
+              as |cell|
+            >
+              {{#if (eq cell.key "unit.unitNumber")}}
+                <span class="font-bold" data-test-lease-row>{{cell.value}}</span>
+              {{else if (eq cell.key "status")}}
+                <div class="flex gap-1 wrap">
+                  <Nuvo::Tag class="tag-lease-{{lowercase cell.value}}" @text={{cell.value}} />
+                  {{#if cell.row.deletedAt}}
+                    <Nuvo::Tag @variant="secondary" @text="Archived" data-test-lease-archived-badge />
+                  {{/if}}
+                </div>
+              {{else if (eq cell.key "startDate")}}
+                {{format-date cell.value}}
+              {{else if (eq cell.key "endDate")}}
+                {{format-date cell.value}}
+              {{else if (eq cell.key "monthlyRent")}}
+                {{format-currency cell.value}}
+              {{else}}
+                <span class="text-muted">{{cell.value}}</span>
+              {{/if}}
+            </DataTable>
           {{else}}
             <Nuvo::EmptyState @description="No leases found for this tenant." />
           {{/if}}

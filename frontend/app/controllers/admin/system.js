@@ -14,9 +14,16 @@ export default class AdminSystemController extends Controller {
     return this.health ?? this.model;
   }
 
+  columns = [
+    { name: 'Price', valuePath: 'label', width: 240, isFixed: 'left' },
+    { name: 'Amount', valuePath: 'unitAmount', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 260 },
+  ];
+
   get rows() {
     return (this.data?.rows ?? []).map((row) => ({
       ...row,
+      id: `${row.kind}-${row.currency}`,
       label: `${row.kind} / ${(row.currency || '').toUpperCase()}`,
     }));
   }

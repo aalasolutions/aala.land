@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import { Repository, LessThan } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -97,8 +98,8 @@ export class AuditService {
     }
 
     const [data, total] = await queryBuilder
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
       .getManyAndCount();
 
     return {

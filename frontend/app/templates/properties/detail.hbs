@@ -220,109 +220,94 @@
         {{/each}}
       </div>
     {{else}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Asset</th>
-              <th>Property</th>
-              <th>Status</th>
-              <th>Type</th>
-              <th>Beds</th>
-              <th>Baths</th>
-              <th>Size</th>
-              <th>Price</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.assetsWithHistory as |asset|}}
-              {{#each asset.units as |unit|}}
-                <tr>
-                  <td class="font-bold">{{asset.name}}</td>
-                  <td>{{unit.unitNumber}}</td>
-                  <td>
-                    <div class="flex x-center gap-1">
-                      {{#if unit.deletedAt}}
-                        <Nuvo::Tag
-                          @variant="secondary"
-                          @text="Archived"
-                          data-test-archived-badge
-                        />
-                      {{/if}}
-                      <Nuvo::Tag
-                        class="tag-unit-{{lowercase unit.status}}"
-                        @text={{capitalize unit.status}}
-                      />
-                    </div>
-                  </td>
-                  <td>
-                    {{#if unit.propertyType}}
-                      <Nuvo::Tag
-                        class="tag-proptype-{{lowercase unit.propertyType}}"
-                        @text={{property-type-label unit.propertyType}}
-                      />
-                    {{/if}}
-                  </td>
-                  <td>{{unit.bedrooms}}</td>
-                  <td>{{unit.bathrooms}}</td>
-                  <td>{{if
-                      unit.sqFt
-                      (concat (format-number unit.sqFt) " sqft")
-                      ""
-                    }}</td>
-                  <td class="text-success">{{if
-                      unit.price
-                      (format-currency unit.price)
-                      ""
-                    }}</td>
-                  <td class="text-end">
-                    <div class="flex gap-1">
-                      <Nuvo::Button
-                        data-test-view-unit
-                        @variant="primary"
-                        @size="xs"
-                        @route="properties.unit"
-                        @models={{array @model.localityId unit.id}}
-                      >View</Nuvo::Button>
-                      {{#unless unit.deletedAt}}
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          data-test-edit-unit
-                          {{on "click" (fn this.openEditUnit unit asset.id)}}
-                        >Edit</Nuvo::Button>
-                      {{/unless}}
-                    </div>
-                  </td>
-                </tr>
-              {{else}}
-                <tr>
-                  <td colspan="9" class="p-0">
-                    <Nuvo::EmptyState
-                      @title="No properties in {{asset.name}}"
-                      @description="Add your first property to start managing this asset."
-                    >
-                      <:icon><Ui::Ph @icon="door" /></:icon>
-                      <:actions>
-                        <Nuvo::Button
-                          data-test-add-unit
-                          @variant="primary"
-                          @size="xs"
-                          @icon="plus"
-                          {{on "click" (fn this.openCreateUnit asset.id)}}
-                        >
-                          Add First Property
-                        </Nuvo::Button>
-                      </:actions>
-                    </Nuvo::EmptyState>
-                  </td>
-                </tr>
-              {{/each}}
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.unitColumns}}
+        @rows={{this.unitRows}}
+        @tree={{true}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="properties-detail-units"
+        data-test-units-table
+        as |cell|
+      >
+        {{#if (eq cell.key "assetName")}}
+          {{#unless cell.depth}}
+            <span class="font-bold">{{cell.value}}</span>
+          {{/unless}}
+        {{else if (eq cell.key "unitNumber")}}
+          {{#if cell.depth}}
+            {{cell.value}}
+          {{else}}
+            <span class="text-muted">{{cell.row.unitCount}}</span>
+          {{/if}}
+        {{else if (eq cell.key "status")}}
+          {{#if cell.depth}}
+            <div class="flex x-center gap-1">
+              {{#if cell.row.deletedAt}}
+                <Nuvo::Tag
+                  @variant="secondary"
+                  @text="Archived"
+                  data-test-archived-badge
+                />
+              {{/if}}
+              <Nuvo::Tag
+                class="tag-unit-{{lowercase cell.value}}"
+                @text={{capitalize cell.value}}
+              />
+            </div>
+          {{/if}}
+        {{else if (eq cell.key "propertyType")}}
+          {{#if cell.value}}
+            <Nuvo::Tag
+              class="tag-proptype-{{lowercase cell.value}}"
+              @text={{property-type-label cell.value}}
+            />
+          {{/if}}
+        {{else if (eq cell.key "sqFt")}}
+          {{if cell.value (concat (format-number cell.value) " sqft") ""}}
+        {{else if (eq cell.key "price")}}
+          <span class="text-success">{{if
+              cell.value
+              (format-currency cell.value)
+              ""
+            }}</span>
+        {{else if (eq cell.key "id")}}
+          {{#if cell.depth}}
+            <div class="flex gap-1">
+              <Nuvo::Button
+                data-test-view-unit
+                @variant="primary"
+                @size="xs"
+                @route="properties.unit"
+                @models={{array @model.localityId cell.row.id}}
+              >View</Nuvo::Button>
+              {{#unless cell.row.deletedAt}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  data-test-edit-unit
+                  {{on
+                    "click"
+                    (fn this.openEditUnit cell.row.unit cell.row.assetId)
+                  }}
+                >Edit</Nuvo::Button>
+              {{/unless}}
+            </div>
+          {{else if (eq cell.row.unitCount 0)}}
+            <Nuvo::Button
+              data-test-add-unit
+              @variant="primary"
+              @size="xs"
+              @icon="plus"
+              {{on "click" (fn this.openCreateUnit cell.row.assetId)}}
+            >Add First Property</Nuvo::Button>
+          {{/if}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{/if}}
   {{else}}
     <Nuvo::EmptyState

@@ -19,59 +19,56 @@
       data-test-record-history-error
     />
   {{else if this.rows.length}}
-    <div class="nu-table-wrapper">
-      <table class="nu-table">
-        <thead>
-          <tr>
-            <th>Action</th>
-            <th>Record</th>
-            <th>Reason</th>
-            <th>By</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each this.rows key="id" as |entry|}}
-            <tr data-test-record-history-row={{entry.id}}>
-              <td>
-                <Nuvo::Tag
-                  @variant={{entry.actionVariant}}
-                  @text={{entry.actionLabel}}
-                  data-test-record-history-action
-                />
-              </td>
-              <td>
-                <div class="flex col gap-1">
-                  <span
-                    class="font-bold"
-                    data-test-record-history-title
-                  >{{entry.entityTitle}}</span>
-                  {{#if entry.contextTitle}}
-                    <span
-                      class="text-xs text-muted"
-                      data-test-record-history-context
-                    >{{entry.contextTitle}}</span>
-                  {{/if}}
-                </div>
-              </td>
-              <td class="text-sm" data-test-record-history-reason>{{if
-                  entry.reason
-                  entry.reason
-                  "-"
-                }}</td>
-              <td
-                class="text-sm text-muted"
-                data-test-record-history-actor
-              >{{entry.actorName}}</td>
-              <td
-                class="text-sm text-muted"
-                data-test-record-history-date
-              >{{format-date-time entry.createdAt region=entry.regionCode}}</td>
-            </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      @columns={{this.columns}}
+      @rows={{this.rows}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @tableId="record-history"
+      data-test-record-history-table
+      as |cell|
+    >
+      {{#if (eq cell.key "actionLabel")}}
+        <Nuvo::Tag
+          @variant={{cell.row.actionVariant}}
+          @text={{cell.value}}
+          data-test-record-history-action
+        />
+      {{else if (eq cell.key "entityTitle")}}
+        <div class="flex col gap-1">
+          <span
+            class="font-bold"
+            data-test-record-history-title
+          >{{cell.value}}</span>
+          {{#if cell.row.contextTitle}}
+            <span
+              class="text-xs text-muted"
+              data-test-record-history-context
+            >{{cell.row.contextTitle}}</span>
+          {{/if}}
+        </div>
+      {{else if (eq cell.key "reason")}}
+        <span class="text-sm" data-test-record-history-reason>{{if
+            cell.value
+            cell.value
+            "-"
+          }}</span>
+      {{else if (eq cell.key "actorName")}}
+        <span
+          class="text-sm text-muted"
+          data-test-record-history-actor
+        >{{cell.value}}</span>
+      {{else if (eq cell.key "createdAt")}}
+        <span class="text-sm text-muted" data-test-record-history-date>{{format-date-time
+            cell.value
+            region=cell.row.regionCode
+          }}</span>
+      {{else}}
+        {{cell.value}}
+      {{/if}}
+    </DataTable>
 
     {{#if this.hasPages}}
       <Nuvo::Pagination

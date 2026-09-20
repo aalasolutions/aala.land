@@ -34,6 +34,34 @@ export default class ContactsDetailController extends Controller {
   @tracked leadActivities = {};
   @tracked loadingActivitiesFor = null;
 
+  unitColumns = [
+    { name: 'Unit', valuePath: 'unitNumber', width: 200, isFixed: 'left' },
+    { name: 'Area', valuePath: 'areaName', width: 200 },
+    { name: 'Type', valuePath: 'propertyType', width: 160 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    { name: 'Price', valuePath: 'price', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 120,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
+  leaseColumns = [
+    {
+      name: 'Unit',
+      valuePath: 'unit.unitNumber',
+      width: 200,
+      isFixed: 'left',
+    },
+    { name: 'Status', valuePath: 'status', width: 160 },
+    { name: 'Start', valuePath: 'startDate', width: 140 },
+    { name: 'End', valuePath: 'endDate', width: 140 },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
+  ];
+
   resetEditState() {
     this.isEditing = false;
     this.errorMsg = '';

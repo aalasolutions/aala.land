@@ -31,51 +31,47 @@
     {{/if}}
 
     {{#if this.rows.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Price</th>
-              <th>Amount</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.rows as |row|}}
-              <tr data-test-system-price-row="{{row.kind}}-{{row.currency}}">
-                <td class="font-bold">{{row.label}}</td>
-                <td>{{format-money row.unitAmount row.currency}}</td>
-                <td>
-                  {{#if (eq row.status "registered")}}
-                    <Nuvo::Tag class="tag-sub-active" @text="Registered" />
-                  {{else if (eq row.status "missing")}}
-                    <Nuvo::Tag
-                      class="tag-sub-incomplete"
-                      @text="Not yet registered"
-                    />
-                  {{else}}
-                    <div class="flex col gap-2">
-                      <Nuvo::Tag class="tag-sub-unpaid" @text="Failed" />
-                      {{#if row.lastError}}
-                        <Nuvo::Alert
-                          @variant="danger"
-                          data-test-system-price-error
-                        >
-                          <p class="text-sm">{{row.lastError}}</p>
-                          {{#if row.lastErrorAt}}
-                            <p class="text-xs text-muted mt-1">Failed
-                              {{format-date-time row.lastErrorAt}}</p>
-                          {{/if}}
-                        </Nuvo::Alert>
-                      {{/if}}
-                    </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.rows}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="console-system-prices"
+        data-test-system-prices-table
+        as |cell|
+      >
+        {{#if (eq cell.key "label")}}
+          <span
+            class="font-bold"
+            data-test-system-price-row={{cell.row.id}}
+          >{{cell.value}}</span>
+        {{else if (eq cell.key "unitAmount")}}
+          {{format-money cell.value cell.row.currency}}
+        {{else if (eq cell.key "status")}}
+          {{#if (eq cell.value "registered")}}
+            <Nuvo::Tag class="tag-sub-active" @text="Registered" />
+          {{else if (eq cell.value "missing")}}
+            <Nuvo::Tag class="tag-sub-incomplete" @text="Not yet registered" />
+          {{else}}
+            <div class="flex col gap-2">
+              <Nuvo::Tag class="tag-sub-unpaid" @text="Failed" />
+              {{#if cell.row.lastError}}
+                <Nuvo::Alert @variant="danger" data-test-system-price-error>
+                  <p class="text-sm">{{cell.row.lastError}}</p>
+                  {{#if cell.row.lastErrorAt}}
+                    <p class="text-xs text-muted mt-1">Failed
+                      {{format-date-time cell.row.lastErrorAt}}</p>
                   {{/if}}
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+                </Nuvo::Alert>
+              {{/if}}
+            </div>
+          {{/if}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       <p class="text-muted">No active price rows.</p>
     {{/if}}

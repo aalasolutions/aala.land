@@ -52,6 +52,24 @@ export default class MaintenanceController extends PaginatedController {
 
   statusOptions = MAINTENANCE_STATUS_OPTIONS;
 
+  columns = [
+    { name: 'Title', valuePath: 'title', width: 250, isFixed: 'left' },
+    { name: 'Property', valuePath: 'assetName', width: 220 },
+    { name: 'Category', valuePath: 'category', width: 140 },
+    { name: 'Priority', valuePath: 'priority', width: 120 },
+    { name: 'Est. Cost', valuePath: 'estimatedCost', width: 140 },
+    { name: 'Actual Cost', valuePath: 'actualCost', width: 140 },
+    { name: 'Scheduled', valuePath: 'scheduledDate', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 170,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   get isCancellingWorkOrder() {
     return (
       !!this.editWorkOrder &&

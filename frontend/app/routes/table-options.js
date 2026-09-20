@@ -1,8 +1,8 @@
-import AuthenticatedRoute from '../authenticated';
+import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
 import { localMidnightIso } from 'land/utils/local-date';
 
-export default class ContactsIndexRoute extends AuthenticatedRoute {
+export default class TableOptionsRoute extends AuthenticatedRoute {
   @service auth;
 
   queryParams = {

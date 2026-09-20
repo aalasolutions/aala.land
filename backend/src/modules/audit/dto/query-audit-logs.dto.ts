@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsEnum, IsUUID } from 'class-validator';
+import { MAX_PAGE_LIMIT } from '@shared/constants/pagination';
+import { IsOptional, IsString, IsEnum, IsUUID, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -24,6 +25,7 @@ export class QueryAuditLogsDto {
   @ApiProperty({ required: false, type: Number, default: 20 })
   @IsOptional()
   @Type(() => Number)
+  @Max(MAX_PAGE_LIMIT)
   limit?: number = 20;
 
   @ApiProperty({ required: false, enum: AuditAction })

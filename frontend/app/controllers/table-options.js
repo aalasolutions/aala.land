@@ -1,4 +1,4 @@
-import PaginatedController from '../paginated-base';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -7,19 +7,19 @@ import {
   closeDeleteModal,
   confirmDeleteModal,
   openDeleteModal,
-} from '../../utils/delete-modal';
+} from '../utils/delete-modal';
 import {
   contactFormToBody,
   contactToFormFields,
-} from '../../utils/contact-form';
-import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
+} from '../utils/contact-form';
+import { CONTACT_TAG_LABELS } from '../helpers/contact-tag-label';
 
 const ROLE_TABS = [
   { id: '', label: 'All' },
   ...Object.entries(CONTACT_TAG_LABELS).map(([id, label]) => ({ id, label })),
 ];
 
-export default class ContactsIndexController extends PaginatedController {
+export default class TableOptionsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
@@ -47,14 +47,68 @@ export default class ContactsIndexController extends PaginatedController {
 
   roleTabs = ROLE_TABS;
 
+  @tracked selection = [];
+
+  // TEMP DataTable variation demo, remove after review.
+  @tracked demoSelectionB = [];
+  @tracked demoSelectionRtl = [];
+  @tracked demoRtlRows = [
+    { id: 'rtl-1', displayName: 'أحمد بن سعيد الرشيدي', tags: ['owner', 'lead'], email: 'ahmed.alrashidi@example.com', phone: '+966501112233', isWhatsapp: true, contactCompany: 'شركة الرشيدي للعقارات' },
+    { id: 'rtl-2', displayName: 'فاطمة عبد الله', tags: ['tenant'], email: 'fatima@example.com', phone: '+966502223344', isWhatsapp: false, contactCompany: 'مؤسسة النور' },
+    { id: 'rtl-3', displayName: 'خالد العتيبي', tags: ['lead', 'owner', 'tenant'], email: 'khalid.alotaibi.long.address@example.com', phone: '+966503334455', isWhatsapp: true, contactCompany: 'مجموعة العتيبي القابضة للاستثمار' },
+    { id: 'rtl-4', displayName: 'نورة القحطاني', tags: [], email: '', phone: '+966504445566', isWhatsapp: false, contactCompany: '' },
+  ];
+
+  @action setDemoSelectionB(selection) {
+    this.demoSelectionB = selection;
+  }
+
+  @action setDemoSelectionRtl(selection) {
+    this.demoSelectionRtl = selection;
+  }
+
   columns = [
     { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left' },
     { name: 'Role', valuePath: 'tags', width: 220 },
-    { name: 'Email', valuePath: 'email', width: 240 },
-    { name: 'Phone', valuePath: 'phone', width: 190 },
-    { name: 'Company', valuePath: 'contactCompany', width: 170 },
+    { name: 'Email', valuePath: 'email', width: 240, editable: 'text' },
+    { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
+    { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'text' },
     { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
   ];
+
+  // TEMP demo columns: every editor type in one table, remove after review.
+  demoColumns = [
+    { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left', editable: 'text' },
+    { name: 'Role', valuePath: 'tags', width: 220 },
+    { name: 'Email', valuePath: 'email', width: 240, editable: 'search', searchUrl: '/contacts', searchParam: 'search', labelKey: 'displayName' },
+    { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
+    { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'select', options: ['شركة الرشيدي للعقارات', 'مؤسسة النور', 'مجموعة العتيبي القابضة للاستثمار'] },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+  ];
+
+  @action saveDemoCell(row, key, value) {
+    const next =
+      value && typeof value === 'object'
+        ? value.email || value.displayName
+        : value;
+    this.demoRtlRows = this.demoRtlRows.map((item) =>
+      item.id === row.id ? { ...item, [key]: next } : item,
+    );
+  }
+
+  // Inline edit from the list: one field per PATCH, then the list reloads.
+  @action async saveCell(row, key, value) {
+    try {
+      await this.auth.fetchJson(`/contacts/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [key]: value || null }),
+      });
+      this.notifications.success('Contact updated');
+      this.router.refresh('table-options');
+    } catch (e) {
+      this.notifications.error(e.message);
+    }
+  }
 
   resetState() {
     this.search = '';
@@ -75,6 +129,7 @@ export default class ContactsIndexController extends PaginatedController {
     this.isDeleting = false;
     this.deleteReason = '';
     this.reasonError = '';
+    this.selection = [];
   }
 
   get agentOptions() {
@@ -122,6 +177,10 @@ export default class ContactsIndexController extends PaginatedController {
   // Nuvo inputs pass (value, event), not the raw DOM event legacy setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+  }
+
+  @action setSelection(selection) {
+    this.selection = selection;
   }
 
   @action setTag(tabId) {
@@ -241,7 +300,7 @@ export default class ContactsIndexController extends PaginatedController {
         isEdit ? 'Contact updated' : 'Contact created',
       );
       this.closeModal();
-      this.router.refresh('contacts.index');
+      this.router.refresh('table-options');
     } catch (e) {
       this.errorMsg = e.message;
     } finally {
@@ -269,7 +328,7 @@ export default class ContactsIndexController extends PaginatedController {
       itemKey: 'contactToDelete',
       resourcePath: '/contacts',
       successMessage: 'Contact deleted',
-      refreshRoute: 'contacts.index',
+      refreshRoute: 'table-options',
       body: { reason },
     });
   }

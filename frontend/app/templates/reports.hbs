@@ -111,60 +111,52 @@
           Agent Performance</h4>
       </:header>
       <:body>
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Agent</th>
-              <th>Leads</th>
-              <th>Won</th>
-              <th>Lost</th>
-              <th>Conversion</th>
-              <th>Commissions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model.agents as |agent|}}
-              <tr data-test-agent-row data-test-agent-id={{agent.agentId}}>
-                <td>
-                  <div class="flex x-center gap-2">
-                    <div class="agent-avatar">{{uc-first agent.agentName}}</div>
-                    <span class="text-sm">{{if
-                        agent.agentName
-                        agent.agentName
-                        (truncate-id agent.agentId)
-                      }}</span>
-                  </div>
-                </td>
-                <td>{{format-number agent.leadsAssigned}}</td>
-                <td class="text-success font-bold">{{format-number
-                    agent.leadsWon
-                  }}</td>
-                <td class="text-danger">{{format-number agent.leadsLost}}</td>
-                <td>
-                  <span
-                    class="font-bold
-                      {{if
-                        (gt agent.conversionRate 50)
-                        'text-success'
-                        (if
-                          (gt agent.conversionRate 25)
-                          'text-warning'
-                          'text-danger'
-                        )
-                      }}"
-                  >
-                    {{agent.conversionRate}}%
-                  </span>
-                </td>
-                <td class="font-bold">{{format-currency
-                    agent.commissionsEarned
-                  }}</td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.agentRows}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="reports-agents"
+        as |cell|
+      >
+        {{#if (eq cell.key "agentName")}}
+          <div
+            class="flex x-center gap-2"
+            data-test-agent-row
+            data-test-agent-id={{cell.row.agentId}}
+          >
+            <div class="agent-avatar">{{uc-first cell.value}}</div>
+            <span class="text-sm">{{if
+                cell.value
+                cell.value
+                (truncate-id cell.row.agentId)
+              }}</span>
+          </div>
+        {{else if (eq cell.key "leadsAssigned")}}
+          {{format-number cell.value}}
+        {{else if (eq cell.key "leadsWon")}}
+          <span class="text-success font-bold">{{format-number cell.value}}</span>
+        {{else if (eq cell.key "leadsLost")}}
+          <span class="text-danger">{{format-number cell.value}}</span>
+        {{else if (eq cell.key "conversionRate")}}
+          <span
+            class="font-bold
+              {{if
+                (gt cell.value 50)
+                'text-success'
+                (if (gt cell.value 25) 'text-warning' 'text-danger')
+              }}"
+          >
+            {{cell.value}}%
+          </span>
+        {{else if (eq cell.key "commissionsEarned")}}
+          <span class="font-bold">{{format-currency cell.value}}</span>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
       </:body>
     </Nuvo::Panel>
   {{else}}

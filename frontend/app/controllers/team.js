@@ -62,6 +62,27 @@ export default class TeamController extends PaginatedController {
     return this.auth.currentUser?.role === 'super_admin';
   }
 
+  // The Company column only exists for super admins.
+  get columns() {
+    return [
+      { name: 'Name', valuePath: 'name', width: 200, isFixed: 'left' },
+      { name: 'Email', valuePath: 'email', width: 240 },
+      { name: 'Role', valuePath: 'role', width: 160 },
+      { name: 'Regions', valuePath: 'regionCodes', width: 160 },
+      ...(this.isSuperAdmin
+        ? [{ name: 'Company', valuePath: 'company.name', width: 200 }]
+        : []),
+      { name: 'Status', valuePath: 'isActive', width: 120 },
+      {
+        name: 'Actions',
+        valuePath: 'id',
+        width: 400,
+        isFixed: 'right',
+        isSortable: false,
+      },
+    ];
+  }
+
   get isImpersonating() {
     return this.auth.isImpersonating;
   }

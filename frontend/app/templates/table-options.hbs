@@ -1,13 +1,15 @@
-{{page-title "Contacts"}}
+{{page-title "Table Options"}}
 
-<div data-test-contacts class="flex col gap-6">
+{{! Development-only copy of the contacts list: every DataTable option in one place. }}
+<div data-test-table-options class="flex col gap-6">
   <Nuvo::PageHeader
-    @icon="address-book"
-    @title="Contacts"
-    @subtitle="Every person you deal with. Owners, tenants, leads and vendors are views into this list, not separate records."
+    @icon="table"
+    @title="Table Options"
+    @subtitle="DataTable showcase on live contacts. A: all options on. B: defaults. C: RTL with fake rows and every editor type."
   >
     <:meta>
-      <p class="text-muted">{{format-number @model.total unit="contact"}}</p>
+      <p class="text-muted">{{format-number @model.total unit="contact"}}{{#if this.selection.length}}
+          · {{this.selection.length}} selected{{/if}}</p>
     </:meta>
     <:actions>
       <Nuvo::Button
@@ -131,11 +133,14 @@
       <DataTable
         @columns={{this.columns}}
         @rows={{@model.contacts}}
+        @selection={{this.selection}}
+        @onSelect={{this.setSelection}}
+        @selectOnRowClick={{true}}
         @pinColumns={{true}}
         @reorderable={{true}}
-        @sortable={{true}}
         @showOptions={{true}}
-        @tableId="contacts"
+        @tableId="table-options-a"
+        @onCellEdit={{this.saveCell}}
         data-test-contacts-table
         as |cell|
       >
@@ -209,6 +214,134 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
+  </Nuvo::Card>
+
+  {{! TEMP DataTable variation demo, remove after review. }}
+  <Nuvo::Card>
+    <h3 class="nu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
+    <DataTable
+      @columns={{this.columns}}
+      @rows={{@model.contacts}}
+      @selection={{this.demoSelectionB}}
+      @onSelect={{this.setDemoSelectionB}}
+      @onCellEdit={{this.saveCell}}
+      data-test-demo-table-b
+      as |cell|
+    >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
+            {{/each}}
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+    </DataTable>
+    <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
+  </Nuvo::Card>
+
+  <Nuvo::Card>
+    <h3 class="nu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
+    <DataTable
+      @columns={{this.demoColumns}}
+      @rows={{this.demoRtlRows}}
+      @onCellEdit={{this.saveDemoCell}}
+      @selection={{this.demoSelectionRtl}}
+      @onSelect={{this.setDemoSelectionRtl}}
+      @selectOnRowClick={{true}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @showOptions={{true}}
+      @tableId="demo-rtl"
+      @sortable={{true}}
+      @dir="rtl"
+      data-test-demo-table-rtl
+      as |cell|
+    >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
+            {{/each}}
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+    </DataTable>
+    <p class="text-muted text-sm">{{this.demoSelectionRtl.length}} selected</p>
   </Nuvo::Card>
 </div>
 

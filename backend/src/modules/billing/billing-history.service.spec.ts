@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '@shared/constants/pagination';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -133,10 +134,10 @@ describe('BillingHistoryService', () => {
     it('clamps an oversized limit and a non-positive page', async () => {
       const result = await service.listBillingHistory(undefined, 0, 1000000);
       expect(repo.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 0, take: 100 }),
+        expect.objectContaining({ skip: 0, take: MAX_PAGE_LIMIT }),
       );
       expect(result.page).toBe(1);
-      expect(result.limit).toBe(100);
+      expect(result.limit).toBe(MAX_PAGE_LIMIT);
     });
   });
 });

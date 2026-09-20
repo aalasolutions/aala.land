@@ -46,6 +46,23 @@ export default class VendorsController extends PaginatedController {
 
   specialtyOptions = SPECIALTY_OPTIONS;
 
+  columns = [
+    { name: 'Name', valuePath: 'name', width: 220, isFixed: 'left' },
+    { name: 'Specialty', valuePath: 'specialties', width: 220 },
+    { name: 'Phone', valuePath: 'phone', width: 170 },
+    { name: 'Email', valuePath: 'email', width: 240 },
+    { name: 'Company', valuePath: 'companyName', width: 200 },
+    { name: 'Rate/hr', valuePath: 'hourlyRate', width: 140 },
+    { name: 'Rating', valuePath: 'rating', width: 120 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 170,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;

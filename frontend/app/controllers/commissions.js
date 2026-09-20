@@ -31,6 +31,22 @@ export default class CommissionsController extends PaginatedController {
 
   commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
 
+  columns = [
+    { name: 'Agent', valuePath: 'agentId', width: 200, isFixed: 'left' },
+    { name: 'Deal ID', valuePath: 'leadId', width: 180 },
+    { name: 'Type', valuePath: 'type', width: 140 },
+    { name: 'Amount', valuePath: 'commissionAmount', width: 220 },
+    { name: 'Rate', valuePath: 'commissionRate', width: 120 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 280,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   get agentOptions() {
     return (this.model.agents || []).map((agent) => ({
       value: agent.id,
