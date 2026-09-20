@@ -43,6 +43,42 @@ export function todayInZone(timeZone, now = new Date()) {
   return (zoned.isValid ? zoned : local).toISODate();
 }
 
+export const DEFAULT_RANGE = 'thisMonth';
+
+// A named period to its inclusive YYYY-MM-DD bounds, in browser-local time.
+// 'custom' has no preset bounds; the caller supplies them.
+export function rangeBounds(range, now = new Date()) {
+  const today = DateTime.fromJSDate(now).startOf('day');
+  if (range === 'last7') {
+    return { from: today.minus({ days: 6 }).toISODate(), to: today.toISODate() };
+  }
+  if (range === 'last30') {
+    return {
+      from: today.minus({ days: 29 }).toISODate(),
+      to: today.toISODate(),
+    };
+  }
+  if (range === 'lastMonth') {
+    const previous = today.minus({ months: 1 });
+    return {
+      from: previous.startOf('month').toISODate(),
+      to: previous.endOf('month').toISODate(),
+    };
+  }
+  return {
+    from: today.startOf('month').toISODate(),
+    to: today.endOf('month').toISODate(),
+  };
+}
+
+// Bounds for any range, falling back to the preset when a custom end is missing.
+export function resolveRange(range, from, to, now = new Date()) {
+  if (range === 'custom' && isDateOnly(from) && isDateOnly(to)) {
+    return from <= to ? { from, to } : { from: to, to: from };
+  }
+  return rangeBounds(range === 'custom' ? DEFAULT_RANGE : range, now);
+}
+
 // ISO instant of browser-local midnight of a YYYY-MM-DD date, shifted by dayOffset days.
 export function localMidnightIso(dateString, dayOffset = 0) {
   const date = parseDateOnly(dateString, 'local');

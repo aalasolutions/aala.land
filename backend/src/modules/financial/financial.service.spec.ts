@@ -775,4 +775,136 @@ describe('FinancialService', () => {
       expect(repo.findAndCount).not.toHaveBeenCalled();
     });
   });
+  describe('getCategoryBreakdown', () => {
+    const aggregateQb = (rows: unknown[]) => ({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue(rows),
+    });
+
+    it('returns one row per category with numeric totals', async () => {
+      const qb: any = aggregateQb([
+        { category: 'RENT', type: TransactionType.INCOME, total: '96000.50' },
+        {
+          category: 'MAINTENANCE',
+          type: TransactionType.EXPENSE,
+          total: '8238',
+        },
+      ]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getCategoryBreakdown(companyId);
+
+      expect(result).toEqual([
+        { category: 'RENT', type: TransactionType.INCOME, total: 96000.5 },
+        {
+          category: 'MAINTENANCE',
+          type: TransactionType.EXPENSE,
+          total: 8238,
+        },
+      ]);
+    });
+
+    it('labels a null category as OTHER', async () => {
+      const qb: any = aggregateQb([
+        { category: null, type: TransactionType.INCOME, total: '10' },
+      ]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getCategoryBreakdown(companyId);
+
+      expect(result[0].category).toBe('OTHER');
+    });
+
+    it('applies the date range when both ends are valid', async () => {
+      const qb: any = aggregateQb([]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      await service.getCategoryBreakdown(companyId, '2026-04-01', '2026-06-30');
+
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.any(String), {
+        from: '2026-04-01',
+        to: '2026-06-30',
+      });
+    });
+
+    it('returns nothing without querying when the caller has no regions', async () => {
+      const result = await service.getCategoryBreakdown(
+        companyId,
+        undefined,
+        undefined,
+        undefined,
+        { role: 'manager', regionCodes: [] } as any,
+      );
+
+      expect(result).toEqual([]);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getCashflowTrend', () => {
+    const trendQb = (rows: unknown[]) => ({
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      setParameters: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue(rows),
+    });
+
+    it('zero-fills months the query did not return', async () => {
+      const qb: any = trendQb([]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getCashflowTrend(companyId, 6);
+
+      expect(result).toHaveLength(6);
+      expect(result.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
+      // Oldest first, ending with the current month.
+      const months = result.map((p) => p.month);
+      expect([...months].sort()).toEqual(months);
+    });
+
+    it('maps returned months onto the series as numbers', async () => {
+      const qb: any = trendQb([]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+      const series = await service.getCashflowTrend(companyId, 6);
+      const latest = series[series.length - 1].month;
+
+      const filled: any = trendQb([
+        { month: latest, income: '1500.25', expense: '400' },
+      ]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(filled);
+
+      const result = await service.getCashflowTrend(companyId, 6);
+
+      expect(result[result.length - 1]).toEqual({
+        month: latest,
+        income: 1500.25,
+        expense: 400,
+      });
+      expect(result[0]).toEqual({
+        month: result[0].month,
+        income: 0,
+        expense: 0,
+      });
+    });
+
+    it('returns a zero-filled series without querying when the caller has no regions', async () => {
+      const result = await service.getCashflowTrend(companyId, 6, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      } as any);
+
+      expect(result).toHaveLength(6);
+      expect(result.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
 });

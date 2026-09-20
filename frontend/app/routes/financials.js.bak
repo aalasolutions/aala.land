@@ -1,6 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
-import { DEFAULT_RANGE, resolveRange } from 'land/utils/local-date';
+import { currentMonth } from 'land/utils/local-date';
 
 export default class FinancialsRoute extends AuthenticatedRoute {
   @service auth;
@@ -9,33 +9,23 @@ export default class FinancialsRoute extends AuthenticatedRoute {
     page: { refreshModel: true },
     limit: { refreshModel: true },
     activeTab: { refreshModel: true },
-    range: { refreshModel: true },
-    from: { refreshModel: true },
-    to: { refreshModel: true },
+    month: { refreshModel: true },
   };
 
-  async model({
-    page = 1,
-    limit = 50,
-    activeTab = 'all',
-    range = DEFAULT_RANGE,
-    from,
-    to,
-  }) {
-    const bounds = resolveRange(range, from, to);
+  async model({ page = 1, limit = 50, activeTab = 'all', month }) {
+    const selectedMonth = month || currentMonth();
 
     try {
-      const params = new URLSearchParams({ page, limit, ...bounds });
+      const params = new URLSearchParams({ page, limit, month: selectedMonth });
       if (activeTab !== 'all') {
         params.set('type', activeTab);
       }
+      const scoped = new URLSearchParams({ month: selectedMonth });
 
       const [txnJson, summaryJson, depositsJson, cashflowJson] =
         await Promise.all([
           this.auth.fetchJson(`/financial/transactions?${params}`),
-          this.auth.fetchJson(
-            `/financial/transactions/summary?${new URLSearchParams(bounds)}`,
-          ),
+          this.auth.fetchJson(`/financial/transactions/summary?${scoped}`),
           this.auth.fetchJson(`/financial/deposit-reminders`),
           this.auth.fetchJson(`/financial/cashflow-trend`),
         ]);
@@ -46,12 +36,12 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         total: transactions.total ?? 0,
         summary: summaryJson.data ?? null,
         depositReminders: depositsJson.data ?? [],
+        categoryTotals: categoryJson.data ?? [],
         cashflow: cashflowJson.data ?? [],
         page,
         limit,
         activeTab,
-        range,
-        bounds,
+        month: selectedMonth,
       };
     } catch {
       return {
@@ -59,12 +49,12 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         total: 0,
         summary: null,
         depositReminders: [],
+        categoryTotals: [],
         cashflow: [],
         page,
         limit,
         activeTab,
-        range,
-        bounds,
+        month: selectedMonth,
       };
     }
   }

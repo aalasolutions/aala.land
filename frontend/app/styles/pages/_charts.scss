@@ -1,0 +1,92 @@
+// Shared shell for every Chart.js chart: the sized frame, the HTML tooltip and
+// the screen-reader table. Per-chart sizing lives with the page that uses it.
+@use "@nuvoui/ember/styles/mixins/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+
+.chart-canvas {
+  position: relative;
+}
+
+// Chart.js sizes to the parent, so the parent must own the height.
+.chart-canvas__frame {
+  position: relative;
+  block-size: 100%;
+
+  // Chart.js writes an inline width onto the canvas. In flow that width becomes
+  // the column's min-content size, so the column can never shrink and the chart
+  // only ever grows. Out of flow it stops constraining its own container.
+  > canvas {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+// Sits outside the frame so it can float above the plot.
+.chart-canvas__tip {
+  position: absolute;
+  z-index: 2;
+  padding: nu-space(1) nu-space(2);
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-inverted);
+  white-space: pre;
+  pointer-events: none;
+  background-color: var(--text-color);
+  border-radius: nu-radius(md);
+  transform: translate(-50%, -100%);
+}
+
+// The canvas exposes nothing, so the same numbers ship as a table. A table
+// ignores a 1px size and grows to its content, so the wrapper carries the clip.
+.chart-canvas__a11y {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// Filters belong together, away from the header's primary action.
+.finance-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.finance-filters__range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(2);
+  align-items: center;
+}
+
+.finance-filters__dates {
+  display: flex;
+  gap: nu-space(2);
+  align-items: center;
+
+  .nu-input {
+    inline-size: auto;
+  }
+}
+
+.finance-filters__to {
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+// Sits at the foot of a stat card. The negative margins cancel the card's own
+// padding so the fill reaches the card edge on both sides and the bottom; the
+// top keeps its normal spacing from the value.
+.stat-sparkline .chart-canvas__frame {
+  block-size: 78px;
+  margin-inline: calc(var(--nu-stat--Padding) * -1);
+  margin-block-end: calc(var(--nu-stat--Padding) * -1);
+  overflow: hidden;
+  border-end-start-radius: var(--nu-stat--BorderRadius);
+  border-end-end-radius: var(--nu-stat--BorderRadius);
+}

@@ -147,6 +147,10 @@
     color: var(--text-muted);
   }
 
+  @include e(content) {
+    margin-block-start: nu-space(3);
+  }
+
   @each $variant in $nu-variants {
     @include m($variant) {
       --nu-stat--BackgroundColor: var(--#{$variant}-50);

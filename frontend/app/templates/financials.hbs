@@ -18,25 +18,46 @@
       <Nuvo::Stat
         data-test-summary="total-income"
         @variant="success"
-        @label="Total Income"
+        @label="Income"
         @value={{format-currency @model.summary.totalIncome}}
+        @delta={{this.rangeLabel}}
       >
-        <:icon><Ui::Ph @icon="trend-up" /></:icon>
+        <:content>
+          <StatSparkline
+            @points={{this.incomePoints}}
+            @color="--success"
+            @caption="Income by month"
+          />
+        </:content>
       </Nuvo::Stat>
       <Nuvo::Stat
         data-test-summary="total-expense"
         @variant="danger"
-        @label="Total Expenses"
+        @label="Expenses"
         @value={{format-currency @model.summary.totalExpense}}
+        @delta={{this.rangeLabel}}
       >
-        <:icon><Ui::Ph @icon="trend-down" /></:icon>
+        <:content>
+          <StatSparkline
+            @points={{this.expensePoints}}
+            @color="--danger"
+            @caption="Expenses by month"
+          />
+        </:content>
       </Nuvo::Stat>
       <Nuvo::Stat
         data-test-summary="net"
         @label="Net Balance"
         @value={{format-currency @model.summary.net}}
+        @delta={{this.rangeLabel}}
       >
-        <:icon><Ui::Ph @icon="scales" /></:icon>
+        <:content>
+          <StatSparkline
+            @points={{this.netPoints}}
+            @color="--primary"
+            @caption="Net balance by month"
+          />
+        </:content>
       </Nuvo::Stat>
     </div>
   {{/if}}
@@ -64,11 +85,46 @@
     </Nuvo::Card>
   {{/if}}
 
-  <Nuvo::Segmented
-    @options={{this.transactionTabs}}
-    @value={{this.activeTab}}
-    @onChange={{this.setTab}}
-  />
+  <div class="finance-filters">
+    <Nuvo::Segmented
+      @options={{this.transactionTabs}}
+      @value={{this.activeTab}}
+      @onChange={{this.setTab}}
+    />
+
+    <div class="finance-filters__range">
+      <Nuvo::Segmented
+        @options={{this.rangeOptions}}
+        @value={{this.range}}
+        @onChange={{this.setRange}}
+        data-test-financials-range
+      />
+
+      {{#if this.isCustomRange}}
+        <div class="finance-filters__dates" data-test-financials-custom-range>
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="From date"
+            value={{this.from}}
+            max={{this.to}}
+            {{on "change" this.setRangeStart}}
+            data-test-financials-from
+          />
+          <span class="finance-filters__to">to</span>
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="To date"
+            value={{this.to}}
+            min={{this.from}}
+            {{on "change" this.setRangeEnd}}
+            data-test-financials-to
+          />
+        </div>
+      {{/if}}
+    </div>
+  </div>
 
   <Nuvo::Card @title="Transactions">
     {{#if this.filteredTransactions.length}}

@@ -39,15 +39,7 @@
         data-test-kpi="monthly-revenue"
         @label="Monthly Revenue"
         @value={{format-currency @model.kpis.monthlyRevenue}}
-      >
-        <:content>
-          <StatSparkline
-            @points={{this.revenuePoints}}
-            @color="--primary"
-            @caption="Completed revenue by month"
-          />
-        </:content>
-      </Nuvo::Stat>
+      />
 
       <div class="kpi-status">
         <Nuvo::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />

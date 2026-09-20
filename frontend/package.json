@@ -93,6 +93,7 @@
   "dependencies": {
     "@ember/string": "^4.0.1",
     "@nuvoui/ember": "workspace:*",
+    "chart.js": "4.5.1",
     "ember-lifeline": "^7.1.0",
     "luxon": "3.7.2",
     "socket.io-client": "^4.8.3"

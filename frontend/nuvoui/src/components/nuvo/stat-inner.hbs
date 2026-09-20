@@ -1,8 +1,9 @@
 {{! Shared body for the div, anchor and LinkTo branches of Nuvo::Stat. The
-    parent forwards its `icon` named block as this component's default block. }}
+    parent forwards its `icon` and `content` named blocks to the matching
+    blocks here. `content` trails the value, for a sparkline or a small note. }}
 {{#if @hasIconBlock}}
   <div class="nu-stat__icon" aria-hidden="true" data-test-nu-stat-icon>
-    {{yield}}
+    {{yield to="icon"}}
   </div>
 {{else if @icon}}
   <div class="nu-stat__icon" aria-hidden="true" data-test-nu-stat-icon>
@@ -18,4 +19,10 @@
 
 {{#if @delta}}
   <div class="nu-stat__delta" data-test-nu-stat-delta>{{@delta}}</div>
+{{/if}}
+
+{{#if @hasContentBlock}}
+  <div class="nu-stat__content" data-test-nu-stat-content>
+    {{yield to="content"}}
+  </div>
 {{/if}}

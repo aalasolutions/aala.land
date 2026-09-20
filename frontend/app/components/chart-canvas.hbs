@@ -1,0 +1,32 @@
+<div class="chart-canvas" data-test-chart-canvas ...attributes>
+  <div class="chart-canvas__frame">
+    <canvas {{this.draw}} data-test-chart-canvas-el></canvas>
+  </div>
+
+  <div
+    class="chart-canvas__tip"
+    role="presentation"
+    data-test-chart-canvas-tip
+    hidden
+  ></div>
+
+  <div class="chart-canvas__a11y">
+    <table data-test-chart-canvas-table>
+      <caption>{{this.caption}}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Label</th>
+          <th scope="col">{{this.valueLabel}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each this.rows as |row|}}
+          <tr>
+            <th scope="row">{{row.label}}</th>
+            <td>{{row.value}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+</div>

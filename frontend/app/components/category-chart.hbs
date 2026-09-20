@@ -1,0 +1,12 @@
+{{#if this.hasData}}
+  <ChartCanvas
+    class="category-chart"
+    data-test-category-chart
+    @config={{this.config}}
+    @rows={{this.rows}}
+    @caption="Totals by category"
+    @valueLabel="Amount"
+  />
+{{else}}
+  <Nuvo::EmptyState @description="No transactions in this month" />
+{{/if}}

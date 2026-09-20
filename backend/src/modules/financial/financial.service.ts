@@ -354,7 +354,7 @@ export class FinancialService {
     };
   }
 
-  // One row per category actually present, split by type, for the given month.
+  // One row per category actually present, split by type, over the given range.
   async getCategoryBreakdown(
     companyId: string,
     from?: string,
