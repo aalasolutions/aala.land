@@ -15,7 +15,7 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "pnpm --filter @nuvoui/ember build && STRIP_TEST_SELECTORS=true vite build",
+    "build": "pnpm --filter @nuvoui/ember build && STRIP_TEST_SELECTORS=${STRIP_TEST_SELECTORS:-true} vite build",
     "format": "prettier . --cache --write",
     "lint": "concurrently \"pnpm:lint:*(!fix)\" --names \"lint:\" --prefixColors auto",
     "lint:css": "stylelint \"**/*.css\"",

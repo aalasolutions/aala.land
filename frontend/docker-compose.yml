@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
       args:
         GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+        STRIP_TEST_SELECTORS: ${STRIP_TEST_SELECTORS:-true}
     image: ${STACK_NAME:-aala-land}-frontend
     container_name: ${STACK_NAME:-aala-land}-frontend
     restart: always
