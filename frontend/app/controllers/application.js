@@ -6,8 +6,8 @@ import { cancelDebounce, debounceTask, runTask } from 'ember-lifeline';
 import {
   isAdminRole,
   getVisibleGroups,
-  canSwitchRegion,
   canAccessWhatsapp,
+  canManageRegions,
 } from '../utils/roles';
 import config from 'land/config/environment';
 
@@ -95,14 +95,11 @@ export default class ApplicationController extends Controller {
   @tracked activeSearchIndex = -1;
 
   get showRegionSwitcher() {
-    return canSwitchRegion(this.region.regions.length);
+    return this.region.regions.length > 0;
   }
 
-  get showRegionLabel() {
-    return (
-      !canSwitchRegion(this.region.regions.length) &&
-      this.region.regions.length > 0
-    );
+  get canManageRegions() {
+    return canManageRegions(this.auth.currentUser?.role);
   }
 
   get groupedRegions() {

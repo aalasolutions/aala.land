@@ -613,13 +613,23 @@
                       </button>
                     {{/each}}
                   {{/each}}
+                  {{#if this.canManageRegions}}
+                    <div
+                      class="nu-topbar-menu__divider"
+                      role="presentation"
+                    ></div>
+                    <LinkTo
+                      @route="company"
+                      @query={{hash tab="regions"}}
+                      class="nu-topbar-menu__item"
+                      data-test-region-manage
+                      {{on "click" this.closeRegionDropdown}}
+                    >
+                      <span>Manage regions</span>
+                    </LinkTo>
+                  {{/if}}
                 </div>
               {{/if}}
-            </div>
-          {{else if this.showRegionLabel}}
-            <div class="region-label" data-test-region-label>
-              <Ui::Ph @icon="globe" @size="18px" />
-              <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
           {{/if}}
           <div class="notification-wrapper">

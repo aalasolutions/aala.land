@@ -326,96 +326,8 @@
       @onClose={{this.closeDowngradeConfirm}}
       @onConfirm={{this.confirmDowngrade}}
     />
-  {{else}}
+  {{else if (eq this.activeTab "regions")}}
     <div class="company-settings-grid">
-      <Nuvo::Card>
-        <h3 class="text-lg font-bold mb-4">Company Information</h3>
-        <form
-          aria-label="Company Information"
-          class="flex col gap-4"
-          {{on "submit" this.saveCompany}}
-        >
-          <Nuvo::Field @label="Company Name" @required={{true}}>
-            <Nuvo::Input
-              id="company-name"
-              type="text"
-              @value={{or this.formName this.company.name}}
-              @onInput={{fn this.setFieldValue "formName"}}
-              required={{true}}
-              readonly={{not this.isAdmin}}
-            />
-          </Nuvo::Field>
-
-          {{#if this.company.adminEmail}}
-            <Nuvo::Field @label="Admin Email">
-              <Nuvo::Input
-                id="company-email"
-                type="email"
-                @value={{this.company.adminEmail}}
-                disabled={{true}}
-              />
-            </Nuvo::Field>
-          {{/if}}
-
-          <Nuvo::Field
-            @label="Plan"
-            @tooltip="Your current subscription. It sets the limits on users, regions and storage shown below."
-          >
-            <Nuvo::Input
-              id="company-plan"
-              type="text"
-              @value={{or this.company.subscriptionTier "FREE"}}
-              disabled={{true}}
-            />
-          </Nuvo::Field>
-
-          {{#unless this.isAdmin}}
-            <p class="text-sm text-muted">Only company admins and super admins
-              can change these settings.</p>
-          {{/unless}}
-
-          {{#if this.errorMsg}}
-            <p class="text-danger">{{this.errorMsg}}</p>
-          {{/if}}
-
-          {{#if this.storageUsage}}
-            <div data-test-storage-usage>
-              <h3 class="text-sm font-bold uppercase text-muted mb-2">Storage
-                Usage</h3>
-              <p class="text-sm mb-2" data-test-storage-label>
-                {{format-bytes this.storageUsage.usedBytes}}
-                of
-                {{format-bytes this.storageUsage.quotaBytes}}
-                used ({{this.storageUsage.percentUsed}}%)
-              </p>
-              <Nuvo::Progress
-                @value={{this.storageUsage.percentUsed}}
-                @variant={{if this.isStorageWarning "danger" "primary"}}
-                data-test-storage-bar
-              />
-              <p class="text-xs text-muted mt-1">
-                Tier:
-                {{this.storageUsage.tier}}
-                /
-                {{this.storageUsage.purchasedSeats}}
-                {{this.seatLabel}}
-              </p>
-            </div>
-          {{/if}}
-
-          <Nuvo::FormActions>
-            <Nuvo::Button
-              @variant="primary"
-              @type="submit"
-              @loading={{this.isSaving}}
-              @disabled={{not this.isAdmin}}
-            >
-              {{if this.isSaving "Saving..." "Save Changes"}}
-            </Nuvo::Button>
-          </Nuvo::FormActions>
-        </form>
-      </Nuvo::Card>
-
       {{#if this.model.regions.length}}
         <Nuvo::Card
           class="{{unless this.isAdmin 'region-settings-readonly'}}"
@@ -511,6 +423,96 @@
           {{/each}}
         </Nuvo::Card>
       {{/if}}
+    </div>
+  {{else}}
+    <div class="company-settings-grid">
+      <Nuvo::Card>
+        <h3 class="text-lg font-bold mb-4">Company Information</h3>
+        <form
+          aria-label="Company Information"
+          class="flex col gap-4"
+          {{on "submit" this.saveCompany}}
+        >
+          <Nuvo::Field @label="Company Name" @required={{true}}>
+            <Nuvo::Input
+              id="company-name"
+              type="text"
+              @value={{or this.formName this.company.name}}
+              @onInput={{fn this.setFieldValue "formName"}}
+              required={{true}}
+              readonly={{not this.isAdmin}}
+            />
+          </Nuvo::Field>
+
+          {{#if this.company.adminEmail}}
+            <Nuvo::Field @label="Admin Email">
+              <Nuvo::Input
+                id="company-email"
+                type="email"
+                @value={{this.company.adminEmail}}
+                disabled={{true}}
+              />
+            </Nuvo::Field>
+          {{/if}}
+
+          <Nuvo::Field
+            @label="Plan"
+            @tooltip="Your current subscription. It sets the limits on users, regions and storage shown below."
+          >
+            <Nuvo::Input
+              id="company-plan"
+              type="text"
+              @value={{or this.company.subscriptionTier "FREE"}}
+              disabled={{true}}
+            />
+          </Nuvo::Field>
+
+          {{#unless this.isAdmin}}
+            <p class="text-sm text-muted">Only company admins and super admins
+              can change these settings.</p>
+          {{/unless}}
+
+          {{#if this.errorMsg}}
+            <p class="text-danger">{{this.errorMsg}}</p>
+          {{/if}}
+
+          {{#if this.storageUsage}}
+            <div data-test-storage-usage>
+              <h3 class="text-sm font-bold uppercase text-muted mb-2">Storage
+                Usage</h3>
+              <p class="text-sm mb-2" data-test-storage-label>
+                {{format-bytes this.storageUsage.usedBytes}}
+                of
+                {{format-bytes this.storageUsage.quotaBytes}}
+                used ({{this.storageUsage.percentUsed}}%)
+              </p>
+              <Nuvo::Progress
+                @value={{this.storageUsage.percentUsed}}
+                @variant={{if this.isStorageWarning "danger" "primary"}}
+                data-test-storage-bar
+              />
+              <p class="text-xs text-muted mt-1">
+                Tier:
+                {{this.storageUsage.tier}}
+                /
+                {{this.storageUsage.purchasedSeats}}
+                {{this.seatLabel}}
+              </p>
+            </div>
+          {{/if}}
+
+          <Nuvo::FormActions>
+            <Nuvo::Button
+              @variant="primary"
+              @type="submit"
+              @loading={{this.isSaving}}
+              @disabled={{not this.isAdmin}}
+            >
+              {{if this.isSaving "Saving..." "Save Changes"}}
+            </Nuvo::Button>
+          </Nuvo::FormActions>
+        </form>
+      </Nuvo::Card>
     </div>
   {{/if}}
 {{else}}

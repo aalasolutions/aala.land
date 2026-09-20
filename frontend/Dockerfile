@@ -7,8 +7,6 @@ ENV EMBER_CLI_DISABLE_ANALYTICS=true
 ARG GOOGLE_CLIENT_ID
 ENV GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
 
-# Defaults to stripping so an unconfigured build never ships test hooks. Staging
-# sets this false to keep data-test-* selectors available for browser testing.
 ARG STRIP_TEST_SELECTORS=true
 ENV STRIP_TEST_SELECTORS=$STRIP_TEST_SELECTORS
 

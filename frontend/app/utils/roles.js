@@ -102,9 +102,8 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
-// Bootstrap already narrows `regions` to what the user is assigned; >1 means switchable.
-export function canSwitchRegion(assignedRegionCount) {
-  return assignedRegionCount > 1;
+export function canManageRegions(role) {
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
 }
 
 export function getVisibleGroups(role) {

@@ -282,6 +282,12 @@
     border-block-end: 1px solid var(--border-base);
   }
 
+  @include e(divider) {
+    block-size: 1px;
+    margin-block: nu-space(1);
+    background-color: var(--border-base);
+  }
+
   @include e(item) {
     display: flex;
     align-items: center;

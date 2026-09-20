@@ -55,7 +55,6 @@ export default class AnchorModifier extends Modifier {
     }
   }
 
-  // One pass per frame: scroll fires continuously and reposition reads layout.
   onViewportChange = () => {
     if (this.trackFrame) return;
     this.trackFrame = requestAnimationFrame(() => {
@@ -99,8 +98,6 @@ export default class AnchorModifier extends Modifier {
     element.style.inset = 'auto';
     element.style.margin = '0';
     element.style.transform = 'none';
-    // Cleared on the false branch too: setting it only when true left a stale
-    // inline min-width behind when matchWidth flipped off.
     element.style.minInlineSize = matchWidth ? `${rect.width}px` : '';
 
     const size = element.getBoundingClientRect();

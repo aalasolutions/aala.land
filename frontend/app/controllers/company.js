@@ -28,6 +28,8 @@ export default class CompanyController extends Controller {
   // Selected payment currency (default USD), sent at checkout.
   @tracked selectedCurrency = 'usd';
 
+  queryParams = [{ activeTab: 'tab' }];
+
   @tracked activeTab = 'general';
   @tracked aiPrompt = '';
   @tracked isSavingAI = false;
@@ -251,8 +253,9 @@ export default class CompanyController extends Controller {
   get settingsTabs() {
     return [
       { id: 'general', label: 'General' },
-      { id: 'billing', label: 'Billing' },
+      { id: 'regions', label: 'Manage Regions' },
       { id: 'ai', label: 'AI Settings' },
+      { id: 'billing', label: 'Billing' },
     ];
   }
 

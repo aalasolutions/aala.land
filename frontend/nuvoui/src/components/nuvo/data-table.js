@@ -27,9 +27,7 @@ export default class DataTableComponent extends Component {
   @service nuvoStorage;
   @service layer;
 
-  // ember-table math is LTR only; RTL mirrors columns instead. A getter, not a
-  // field: as a field it froze at construction and stayed stale when the
-  // direction changed after mount.
+  // ember-table math is LTR only; RTL mirrors columns instead.
   get isRtl() {
     return (this.args.dir ?? document.documentElement.dir) === 'rtl';
   }
@@ -311,8 +309,6 @@ export default class DataTableComponent extends Component {
     let value = this.draft;
     if (column.editable === 'number') {
       value = value === '' ? null : Number(value);
-      // Stay in the editor so the bad value is visible and correctable; clearing
-      // first discarded the entry silently.
       if (Number.isNaN(value)) return;
     }
     this.editing = null;
