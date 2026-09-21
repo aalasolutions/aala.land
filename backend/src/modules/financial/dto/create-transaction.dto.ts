@@ -49,7 +49,7 @@ export class CreateTransactionDto {
     format: 'date',
     example: '2026-01-31',
     description:
-      'Accepted from 30 days before to 1 month after the region business day.',
+      'The day the money arrived. Never in the future, and no more than 30 days before the region business day. Required when status is COMPLETED.',
   })
   @IsDateOnly()
   @IsOptional()

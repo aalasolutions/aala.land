@@ -75,7 +75,7 @@ export default class FinancialsRoute extends AuthenticatedRoute {
             `/financial/transactions/summary?${new URLSearchParams(bounds)}`,
           ),
           optional('/financial/deposit-reminders'),
-          optional('/financial/cashflow-trend'),
+          optional(`/financial/cashflow-trend?${new URLSearchParams(bounds)}`),
         ]);
 
       const transactions = txnJson.data ?? { data: [], total: 0 };

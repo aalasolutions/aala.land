@@ -11,8 +11,10 @@ import { Locality } from '../locations/entities/locality.entity';
 import { City } from '../locations/entities/city.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { User } from '../users/entities/user.entity';
-import { businessDateSql } from '../../shared/utils/region-time.util';
-import { monthLabelSql } from '../../shared/utils/month-series.util';
+import {
+  dayBucketSql,
+  monthLabelSql,
+} from '../../shared/utils/month-series.util';
 
 interface Compiled {
   sql: string;
@@ -23,7 +25,7 @@ interface Compiled {
 const quoted = (expression: string) =>
   expression.replace(/\bt\.(\w+)/g, '"t"."$1"');
 
-const BUSINESS_DATE = quoted(businessDateSql('t'));
+const MONEY_DATE = quoted('t.transaction_date');
 
 function boundsOf(entry: Compiled): { from: unknown; to: unknown } | null {
   const clause = entry.sql.match(/BETWEEN \$(\d+)::date AND \$(\d+)::date/);
@@ -32,11 +34,6 @@ function boundsOf(entry: Compiled): { from: unknown; to: unknown } | null {
     from: entry.params[Number(clause[1]) - 1],
     to: entry.params[Number(clause[2]) - 1],
   };
-}
-
-function lowerBoundOf(entry: Compiled): unknown {
-  const clause = entry.sql.match(/>= \$(\d+)::date/);
-  return clause ? entry.params[Number(clause[1]) - 1] : null;
 }
 
 describe('FinancialAnalyticsService', () => {
@@ -146,26 +143,37 @@ describe('FinancialAnalyticsService', () => {
         });
 
         const [entry] = compiled;
-        expect(entry.sql).toContain(`${BUSINESS_DATE} BETWEEN $`);
+        expect(entry.sql).toContain(`${MONEY_DATE} BETWEEN $`);
         expect(boundsOf(entry)).toEqual({
           from: '2026-02-01',
           to: '2026-02-28',
         });
       });
 
-      it('bounds the business date, never created_at on its own', async () => {
+      it('bounds the day the money arrived, never created_at', async () => {
         await service.getSummary(companyId, {
           from: '2026-02-01',
           to: '2026-02-28',
         });
 
         const [entry] = compiled;
-        // The bound reads transaction_date first and only falls back to the region day of created_at.
-        expect(entry.sql).toContain(
-          'COALESCE("t"."transaction_date", ("t"."created_at" AT TIME ZONE',
-        );
-        expect(entry.sql).not.toMatch(/"t"\."created_at" BETWEEN/);
-        expect(entry.sql).not.toMatch(/"t"\."transaction_date" BETWEEN/);
+        expect(entry.sql).toContain('"t"."transaction_date" BETWEEN');
+        expect(entry.sql).not.toMatch(/"t"\."created_at"/);
+      });
+
+      // Ranged or not, the money totals answer for periods, so a row in none is in neither answer.
+      it('excludes undated rows whether or not a range is given', async () => {
+        await service.getSummary(companyId);
+        const [unranged] = compiled;
+        expect(unranged.sql).toContain('"t"."transaction_date" IS NOT NULL');
+
+        compiled.length = 0;
+        await service.getSummary(companyId, {
+          from: '2026-02-01',
+          to: '2026-02-28',
+        });
+        const [ranged] = compiled;
+        expect(ranged.sql).toContain('"t"."transaction_date" IS NOT NULL');
       });
 
       it('omits the clause entirely when no range is given', async () => {
@@ -178,8 +186,7 @@ describe('FinancialAnalyticsService', () => {
           'INCOME',
           'EXPENSE',
           companyId,
-          'CANCELLED',
-          'FAILED',
+          'COMPLETED',
         ]);
       });
 
@@ -195,13 +202,12 @@ describe('FinancialAnalyticsService', () => {
           'INCOME',
           'EXPENSE',
           companyId,
-          'CANCELLED',
-          'FAILED',
+          'COMPLETED',
           'dubai',
           '2026-02-01',
           '2026-02-28',
         ]);
-        expect(entry.sql).toContain('"t"."region_code" IN ($6)');
+        expect(entry.sql).toContain('"t"."region_code" IN ($5)');
       });
 
       it('sorts a reversed range into ascending bounds', async () => {
@@ -232,6 +238,22 @@ describe('FinancialAnalyticsService', () => {
     });
   });
 
+  // Money is money once it is in the bank: pending is not profit and not an expense.
+  describe('only completed money counts', () => {
+    it.each([
+      ['getSummary', () => service.getSummary(companyId)],
+      ['getCategoryBreakdown', () => service.getCategoryBreakdown(companyId)],
+      ['getCashflowTrend', () => service.getCashflowTrend(companyId)],
+    ])('%s counts COMPLETED rows only', async (_name, run) => {
+      await run();
+
+      const [entry] = compiled;
+      expect(entry.sql).toContain('"t"."status" = $');
+      expect(entry.params).toContain('COMPLETED');
+      expect(entry.params).not.toContain('PENDING');
+    });
+  });
+
   describe('getCategoryBreakdown', () => {
     it('bounds the same business date and returns one row per category', async () => {
       rawMany = [
@@ -253,7 +275,7 @@ describe('FinancialAnalyticsService', () => {
         { category: 'OTHER', type: 'EXPENSE', total: 250.5 },
       ]);
       const [entry] = compiled;
-      expect(entry.sql).toContain(`${BUSINESS_DATE} BETWEEN $`);
+      expect(entry.sql).toContain(`${MONEY_DATE} BETWEEN $`);
       expect(boundsOf(entry)).toEqual({
         from: '2026-01-01',
         to: '2026-03-31',
@@ -268,22 +290,32 @@ describe('FinancialAnalyticsService', () => {
       jest.useRealTimers();
     });
 
-    it('zero-fills every month of the series and bounds on the first of it', async () => {
+    it('zero-fills every month of the series and bounds on the whole span', async () => {
       jest.useFakeTimers().setSystemTime(boundary);
-      rawMany = [{ month: '2026-10', income: '5000', expense: '1200.25' }];
+      rawMany = [{ bucket: '2026-10', income: '5000', expense: '1200.25' }];
 
-      const result = await service.getCashflowTrend(companyId, { months: 6 });
+      const result = await service.getCashflowTrend(companyId, { periods: 6 });
 
-      expect(result).toEqual([
-        { month: '2026-05', income: 0, expense: 0 },
-        { month: '2026-06', income: 0, expense: 0 },
-        { month: '2026-07', income: 0, expense: 0 },
-        { month: '2026-08', income: 0, expense: 0 },
-        { month: '2026-09', income: 0, expense: 0 },
-        { month: '2026-10', income: 5000, expense: 1200.25 },
+      expect(result.map((point) => point.month)).toEqual([
+        '2026-05',
+        '2026-06',
+        '2026-07',
+        '2026-08',
+        '2026-09',
+        '2026-10',
       ]);
+      expect(result[result.length - 1]).toEqual({
+        month: '2026-10',
+        from: '2026-10-01',
+        to: '2026-10-31',
+        income: 5000,
+        expense: 1200.25,
+      });
       const [entry] = compiled;
-      expect(lowerBoundOf(entry)).toBe('2026-05-01');
+      expect(boundsOf(entry)).toEqual({
+        from: '2026-05-01',
+        to: '2026-10-31',
+      });
       expect(entry.sql).toContain(quoted(monthLabelSql('t')));
     });
 
@@ -291,17 +323,45 @@ describe('FinancialAnalyticsService', () => {
       jest.useFakeTimers().setSystemTime(boundary);
 
       const result = await service.getCashflowTrend(companyId, {
-        months: 3,
+        periods: 3,
         caller: { role: 'agent', regionCodes: [] },
       });
 
       // No readable region leaves only the UTC fallback, which is still in September.
-      expect(result).toEqual([
-        { month: '2026-07', income: 0, expense: 0 },
-        { month: '2026-08', income: 0, expense: 0 },
-        { month: '2026-09', income: 0, expense: 0 },
+      expect(result.map((point) => point.month)).toEqual([
+        '2026-07',
+        '2026-08',
+        '2026-09',
       ]);
       expect(compiled).toHaveLength(0);
+    });
+
+    it('groups on the block index and bounds the series when the range is not a month', async () => {
+      rawMany = [{ bucket: '5', income: '750', expense: '0' }];
+
+      const result = await service.getCashflowTrend(companyId, {
+        periods: 6,
+        from: '2026-09-15',
+        to: '2026-09-21',
+      });
+
+      expect(result[5]).toEqual({
+        from: '2026-09-15',
+        to: '2026-09-21',
+        income: 750,
+        expense: 0,
+      });
+      const [entry] = compiled;
+      const bucketSql = quoted(dayBucketSql('t'))
+        .replace(':seriesFrom', '$1')
+        .replace(':bucketSize', '$2');
+      expect(entry.sql).toContain(`${bucketSql} AS "bucket"`);
+      expect(entry.sql).toContain(`GROUP BY ${bucketSql}`);
+      expect(boundsOf(entry)).toEqual({
+        from: '2026-08-11',
+        to: '2026-09-21',
+      });
+      expect(entry.params).toContain(7);
     });
   });
 });

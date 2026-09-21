@@ -150,9 +150,7 @@ describe('FinancialController', () => {
 
   describe('getCategoryBreakdown', () => {
     it('delegates to service with companyId and date range', async () => {
-      const breakdown = [
-        { category: 'RENT', total: 10000, currency: 'AED' },
-      ];
+      const breakdown = [{ category: 'RENT', total: 10000, currency: 'AED' }];
       service.getCategoryBreakdown.mockResolvedValue(breakdown as any);
 
       const result = await controller.getCategoryBreakdown(mockReq, {
@@ -172,18 +170,45 @@ describe('FinancialController', () => {
   });
 
   describe('getCashflowTrend', () => {
-    it('delegates to service with companyId, region and a 6-month window', async () => {
-      const trend = [{ month: '2026-02', income: 10000, expense: 4000 }];
+    it('delegates to service with companyId and region, leaving the count to the service', async () => {
+      const trend = [
+        {
+          month: '2026-02',
+          from: '2026-02-01',
+          to: '2026-02-28',
+          income: 10000,
+          expense: 4000,
+        },
+      ];
       service.getCashflowTrend.mockResolvedValue(trend as any);
 
-      const result = await controller.getCashflowTrend(mockReq, 'dubai');
+      const result = await controller.getCashflowTrend(mockReq, {
+        regionCode: 'dubai',
+      });
 
       expect(service.getCashflowTrend).toHaveBeenCalledWith(companyId, {
-        months: 6,
         regionCode: 'dubai',
         caller: mockReq.user,
+        from: undefined,
+        to: undefined,
       });
       expect(result).toEqual(trend);
+    });
+
+    it('passes the selected range through, so the buckets can match it', async () => {
+      service.getCashflowTrend.mockResolvedValue([] as any);
+
+      await controller.getCashflowTrend(mockReq, {
+        from: '2026-09-15',
+        to: '2026-09-21',
+      });
+
+      expect(service.getCashflowTrend).toHaveBeenCalledWith(companyId, {
+        regionCode: undefined,
+        caller: mockReq.user,
+        from: '2026-09-15',
+        to: '2026-09-21',
+      });
     });
   });
 

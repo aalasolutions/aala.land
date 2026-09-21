@@ -68,6 +68,24 @@ export function daysBetween(from: string, to: string): number {
   );
 }
 
+/** True when a range covers exactly one whole calendar month. */
+export function isWholeCalendarMonth(from: string, to: string): boolean {
+  const start = parseDateOnly(from);
+  const end = parseDateOnly(to);
+  if (!start || !end) return false;
+  return (
+    start.day === 1 &&
+    start.hasSame(end, 'month') &&
+    end.day === end.daysInMonth
+  );
+}
+
+/** First and last calendar day of a 'YYYY-MM' month. */
+export function monthBounds(month: string): { from: string; to: string } {
+  const start = requireDateOnly(`${month}-01`);
+  return { from: start.toISODate(), to: start.endOf('month').toISODate() };
+}
+
 /** Midnight of the instant's calendar day in the given zone, as an instant. */
 export function startOfDayInZone(
   timeZone: string,
@@ -128,11 +146,6 @@ export function regionTimezoneSql(column: string): string {
 /** SQL date expression for "today" in the row's region. */
 export function regionTodaySql(column: string): string {
   return `((now() AT TIME ZONE ${regionTimezoneSql(column)})::date)`;
-}
-
-/** SQL business date of a row: its transaction date, else the region day it was recorded on. */
-export function businessDateSql(alias: string): string {
-  return `COALESCE(${alias}.transaction_date, (${alias}.created_at AT TIME ZONE ${regionTimezoneSql(`${alias}.region_code`)})::date)`;
 }
 
 function minutesOfDayInZone(timeZone: string, at: Date): number {

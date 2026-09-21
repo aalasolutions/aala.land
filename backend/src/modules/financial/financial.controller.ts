@@ -111,16 +111,19 @@ export class FinancialController {
 
   @Get('cashflow-trend')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
-  @ApiOperation({ summary: 'Income and expense per month, last 6 months' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiOperation({
+    summary:
+      'Income and expense over consecutive periods the length of the given range, ending with it',
+  })
   getCashflowTrend(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
+    @Query() query?: QueryFinancialRangeDto,
   ) {
     return this.financialService.getCashflowTrend(requireCompanyId(req.user), {
-      months: 6,
-      regionCode,
+      regionCode: query?.regionCode,
       caller: req.user,
+      from: query?.from,
+      to: query?.to,
     });
   }
 

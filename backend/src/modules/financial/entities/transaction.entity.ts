@@ -41,11 +41,16 @@ export enum PaymentMethod {
 }
 
 @Entity('transactions')
+@Index('IDX_TRANSACTIONS_COMPANY_TRANSACTION_DATE', [
+  'companyId',
+  'transactionDate',
+])
+@Index('IDX_TRANSACTIONS_COMPANY_CREATED_AT', ['companyId', 'createdAt'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index('IDX_TRANSACTIONS_COMPANY_ID')
+  // Covered by the leading column of IDX_TRANSACTIONS_COMPANY_TRANSACTION_DATE.
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -117,14 +122,12 @@ export class Transaction {
   })
   unit: Unit;
 
+  // The day the money arrived. Required once the row is COMPLETED, empty while PENDING.
   @Column({ name: 'transaction_date', type: 'date', nullable: true })
   transactionDate: string | null;
 
   @Column({ name: 'due_date', type: 'date', nullable: true })
   dueDate: string | null;
-
-  @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
-  paidAt: Date;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

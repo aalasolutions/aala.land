@@ -3,12 +3,13 @@ import {
   FALLBACK_TIMEZONE,
   addDays,
   addMonthsToInstant,
-  businessDateSql,
   dateInZone,
   daysBetween,
   formatDateLong,
   hourInZone,
   isDateOnly,
+  isWholeCalendarMonth,
+  monthBounds,
   monthsBetweenInstants,
   regionCodesAtLocalHour,
   regionTimezone,
@@ -300,20 +301,47 @@ describe('region-time.util', () => {
     });
   });
 
-  describe('businessDateSql', () => {
-    it('falls back to the row region day it was recorded on', () => {
-      expect(businessDateSql('t')).toBe(
-        `COALESCE(t.transaction_date, (t.created_at AT TIME ZONE ${regionTimezoneSql('t.region_code')})::date)`,
-      );
+  describe('isWholeCalendarMonth', () => {
+    it('accepts the first to the last day of the same month', () => {
+      expect(isWholeCalendarMonth('2026-02-01', '2026-02-28')).toBe(true);
+      expect(isWholeCalendarMonth('2024-02-01', '2024-02-29')).toBe(true);
+      expect(isWholeCalendarMonth('2026-09-01', '2026-09-30')).toBe(true);
     });
 
-    it('qualifies every column with the alias it is given', () => {
-      const sql = businessDateSql('txn');
+    it('refuses a partial month, a short end and a span of two months', () => {
+      expect(isWholeCalendarMonth('2026-02-02', '2026-02-28')).toBe(false);
+      expect(isWholeCalendarMonth('2026-02-01', '2026-02-27')).toBe(false);
+      expect(isWholeCalendarMonth('2026-01-01', '2026-02-28')).toBe(false);
+    });
 
-      expect(sql).toContain('txn.transaction_date');
-      expect(sql).toContain('txn.created_at');
-      expect(sql).toContain('txn.region_code');
-      expect(sql).not.toContain('t.transaction_date');
+    it('refuses the same month of a different year', () => {
+      expect(isWholeCalendarMonth('2025-02-01', '2026-02-28')).toBe(false);
+    });
+
+    it('refuses anything that is not a calendar date', () => {
+      expect(isWholeCalendarMonth('2026-02', '2026-02-28')).toBe(false);
+      expect(isWholeCalendarMonth('2026-02-31', '2026-02-28')).toBe(false);
+    });
+  });
+
+  describe('monthBounds', () => {
+    it('returns the first and last day of the month', () => {
+      expect(monthBounds('2026-02')).toEqual({
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+      expect(monthBounds('2024-02')).toEqual({
+        from: '2024-02-01',
+        to: '2024-02-29',
+      });
+      expect(monthBounds('2026-12')).toEqual({
+        from: '2026-12-01',
+        to: '2026-12-31',
+      });
+    });
+
+    it('throws on a month that is not real', () => {
+      expect(() => monthBounds('2026-13')).toThrow(RangeError);
     });
   });
 });

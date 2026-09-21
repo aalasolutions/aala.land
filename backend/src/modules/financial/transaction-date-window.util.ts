@@ -1,17 +1,15 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   addDays,
-  addMonthsToInstant,
   dateInZone,
   daysBetween,
   isDateOnly,
   regionTimezone,
   regionToday,
 } from '../../shared/utils/region-time.util';
-import { Transaction } from './entities/transaction.entity';
+import { Transaction, TransactionStatus } from './entities/transaction.entity';
 
 export const MAX_BACKDATE_DAYS = 30;
-export const MAX_FORWARD_MONTHS = 1;
 export const LOCK_AFTER_DAYS = 30;
 
 // The row fields a window decision needs; the stored entity satisfies it.
@@ -20,16 +18,9 @@ export type TransactionDateBasis = Pick<
   'transactionDate' | 'regionCode' | 'createdAt'
 >;
 
-// A date-only string carries no zone, so UTC midnight keeps month arithmetic on the same day.
-function addMonths(day: string, months: number): string {
-  return dateInZone(
-    'UTC',
-    addMonthsToInstant(new Date(`${day}T00:00:00.000Z`), months),
-  );
-}
-
-// Same basis as businessDateSql: the stated date, else the region day the row was recorded on.
-export function transactionBusinessDate(
+// PARKED with assertTransactionEditable below: the basis that rule was written against.
+// Not the money date, which is transactionDate.
+function transactionBusinessDate(
   transaction: TransactionDateBasis,
   at: Date = new Date(),
 ): string {
@@ -42,18 +33,27 @@ export function transactionBusinessDate(
   );
 }
 
+// COMPLETED means the money arrived, so the day it arrived cannot be missing.
+export function assertCompletedHasDate(
+  status: TransactionStatus | undefined,
+  transactionDate: string | null | undefined,
+): void {
+  if (status === TransactionStatus.COMPLETED && !isDateOnly(transactionDate)) {
+    throw new BadRequestException(
+      'A completed transaction needs the date the money arrived.',
+    );
+  }
+}
+
 export function transactionDateWindow(
   regionCode?: string | null,
   at: Date = new Date(),
 ): { earliest: string; latest: string } {
   const today = regionToday(regionCode, at);
-  return {
-    earliest: addDays(today, -MAX_BACKDATE_DAYS),
-    latest: addMonths(today, MAX_FORWARD_MONTHS),
-  };
+  return { earliest: addDays(today, -MAX_BACKDATE_DAYS), latest: today };
 }
 
-// Backdating is bounded rather than forbidden: reconciliation lands after the business day.
+// The date money arrived: never ahead of today, never more than MAX_BACKDATE_DAYS behind it.
 export function assertTransactionDateInWindow(
   transactionDate: string | null | undefined,
   regionCode?: string | null,
@@ -73,7 +73,7 @@ export function assertTransactionDateInWindow(
   }
   if (daysBetween(date, latest) < 0) {
     throw new BadRequestException(
-      `Transaction date cannot be more than ${MAX_FORWARD_MONTHS} month ahead. The latest date accepted today is ${latest}.`,
+      `Transaction date cannot be in the future. The latest date accepted today is ${latest}.`,
     );
   }
 }

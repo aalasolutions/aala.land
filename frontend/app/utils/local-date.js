@@ -52,6 +52,12 @@ export function todayInZone(timeZone, now = new Date()) {
   return (zoned.isValid ? zoned : local).toISODate();
 }
 
+// Calendar arithmetic on a YYYY-MM-DD value; no zone is involved.
+export function addCalendarDays(date, days) {
+  const parsed = parseDateOnly(date, 'utc');
+  return parsed ? parsed.plus({ days }).toISODate() : null;
+}
+
 export const DEFAULT_RANGE = 'thisMonth';
 
 export const RANGES = ['last7', 'last30', 'thisMonth', 'lastMonth', 'custom'];
@@ -175,6 +181,24 @@ export function formatCalendarDate(value, locale, options = {}) {
   }
   const date = toDateTime(value);
   return date ? withLocale(date, locale).toLocaleString(options) : null;
+}
+
+// A calendar range such as "Sep 14-20", rendered in UTC so neither end shifts a day.
+export function formatCalendarRange(from, to, locale, options = {}) {
+  const start = parseDateOnly(from, 'utc');
+  const end = parseDateOnly(to, 'utc');
+  if (!start || !end) return null;
+  const formatter = new Intl.DateTimeFormat(locale || undefined, {
+    ...options,
+    timeZone: 'UTC',
+  });
+  // Older engines without formatRange: match how ICU renders a range, including a single day.
+  if (typeof formatter.formatRange !== 'function') {
+    const head = formatter.format(start.toJSDate());
+    const tail = formatter.format(end.toJSDate());
+    return head === tail ? head : `${head} – ${tail}`;
+  }
+  return formatter.formatRange(start.toJSDate(), end.toJSDate());
 }
 
 // An instant in browser time, or in timeZone when given, with plain spaces; null if invalid.

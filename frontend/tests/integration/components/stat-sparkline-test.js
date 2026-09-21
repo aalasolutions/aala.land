@@ -3,7 +3,7 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import { find, findAll, render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { Chart } from 'chart.js';
-import { formatCalendarDate } from 'land/utils/local-date';
+import { formatCalendarDate, formatCalendarRange } from 'land/utils/local-date';
 import { token } from 'land/utils/chart-style';
 
 // Assertions check the ChartCanvas table, the only reader-accessible output.
@@ -89,11 +89,10 @@ module('Integration | Component | stat-sparkline', function (hooks) {
     assert.strictEqual(cells()[0].value, (1200).toLocaleString(locale()));
   });
 
-  test('captions default to monthly totals and take an override', async function (assert) {
+  // The component no longer knows the period, so the fallback cannot name one.
+  test('captions default to a period-free label and take an override', async function (assert) {
     await render(hbs`<StatSparkline @points={{this.points}} />`);
-    assert
-      .dom('[data-test-chart-canvas-table] caption')
-      .hasText('Monthly totals');
+    assert.dom('[data-test-chart-canvas-table] caption').hasText('Totals');
     assert
       .dom('[data-test-chart-canvas-table] thead th:last-child')
       .hasText('Amount');
@@ -104,6 +103,50 @@ module('Integration | Component | stat-sparkline', function (hooks) {
     assert
       .dom('[data-test-chart-canvas-table] caption')
       .hasText('Net by month');
+  });
+
+  test('a point with bounds reads as the span it covers, not as a month', async function (assert) {
+    this.points = [
+      { from: '2026-09-08', to: '2026-09-14', value: 200 },
+      { from: '2026-09-15', to: '2026-09-21', value: 300 },
+    ];
+    await render(hbs`<StatSparkline @points={{this.points}} />`);
+
+    const span = (from, to) =>
+      formatCalendarRange(from, to, locale(), {
+        month: 'short',
+        day: 'numeric',
+      });
+    assert.deepEqual(cells(), [
+      { label: span('2026-09-08', '2026-09-14'), value: money(200, 'AED') },
+      { label: span('2026-09-15', '2026-09-21'), value: money(300, 'AED') },
+    ]);
+  });
+
+  test('a series longer than a year names the year, so two buckets cannot read alike', async function (assert) {
+    // Six 90-day blocks span 540 days, so 'Jun 29 - Sep 26' would otherwise appear twice.
+    this.points = [
+      { from: '2025-03-31', to: '2025-06-28', value: 1 },
+      { from: '2026-03-26', to: '2026-06-23', value: 2 },
+    ];
+    await render(hbs`<StatSparkline @points={{this.points}} />`);
+
+    const labels = cells().map((cell) => cell.label);
+    assert.true(labels[0].includes('2025'), labels[0]);
+    assert.true(labels[1].includes('2026'), labels[1]);
+  });
+
+  test('a series inside one year keeps the short label', async function (assert) {
+    this.points = [
+      { from: '2026-09-08', to: '2026-09-14', value: 1 },
+      { from: '2026-09-15', to: '2026-09-21', value: 2 },
+    ];
+    await render(hbs`<StatSparkline @points={{this.points}} />`);
+
+    assert.false(
+      cells().some((cell) => cell.label.includes('2026')),
+      'no year on a short series',
+    );
   });
 
   test('renders with no points at all', async function (assert) {

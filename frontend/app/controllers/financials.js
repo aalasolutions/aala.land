@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import {
+  MAX_BACKDATE_DAYS,
   TRANSACTION_TYPE_OPTIONS,
   TRANSACTION_CATEGORY_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
@@ -10,6 +11,7 @@ import {
 } from 'land/constants';
 import {
   DEFAULT_RANGE,
+  addCalendarDays,
   formatCalendarDate,
   isDateOnly,
   resolveRange,
@@ -93,25 +95,32 @@ export default class FinancialsController extends PaginatedController {
     return this.model?.cashflow ?? [];
   }
 
-  get incomePoints() {
+  series(valueOf) {
     return this.cashflow.map((point) => ({
       month: point.month,
-      value: Number(point.income) || 0,
+      from: point.from,
+      to: point.to,
+      value: valueOf(point),
     }));
+  }
+
+  get incomePoints() {
+    return this.series((point) => Number(point.income) || 0);
   }
 
   get expensePoints() {
-    return this.cashflow.map((point) => ({
-      month: point.month,
-      value: Number(point.expense) || 0,
-    }));
+    return this.series((point) => Number(point.expense) || 0);
   }
 
   get netPoints() {
-    return this.cashflow.map((point) => ({
-      month: point.month,
-      value: (Number(point.income) || 0) - (Number(point.expense) || 0),
-    }));
+    return this.series(
+      (point) => (Number(point.income) || 0) - (Number(point.expense) || 0),
+    );
+  }
+
+  // The API buckets by calendar month only when the selected range is one; a month point says so.
+  get bucketNoun() {
+    return this.cashflow[0]?.month ? 'month' : 'period';
   }
 
   rangeOptions = [
@@ -201,6 +210,19 @@ export default class FinancialsController extends PaginatedController {
     this.page = 1;
   }
 
+  // Money cannot arrive in the future, and a month already closed cannot be reopened.
+  get dateWindow() {
+    const today = todayInZone(this.region.activeRegion?.timezone);
+    return {
+      earliest: addCalendarDays(today, -MAX_BACKDATE_DAYS),
+      latest: today,
+    };
+  }
+
+  get dateRequired() {
+    return this.formStatus === 'COMPLETED';
+  }
+
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
@@ -247,6 +269,10 @@ export default class FinancialsController extends PaginatedController {
 
   @action async saveTx(event) {
     event.preventDefault();
+    if (this.dateRequired && !this.formDate) {
+      this.errorMsg = 'Enter the date the money arrived.';
+      return;
+    }
     if (this.isSaving) return;
     this.isSaving = true;
     this.errorMsg = '';

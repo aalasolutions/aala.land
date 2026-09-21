@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
-import { businessDateSql, isDateOnly, regionToday } from './region-time.util';
+import { addDays, isDateOnly, regionToday } from './region-time.util';
+import { MAX_RANGE_DAYS } from '../constants/date-range';
 import { REGIONS } from '../constants/regions';
 
 const isRangeEnd = (value?: string): value is string => isDateOnly(value);
@@ -17,6 +18,50 @@ export function dateRange(
   }
   // Reversed input is swapped, so a backwards range still returns rows.
   return from <= to ? { from, to } : { from: to, to: from };
+}
+
+// `month` is set by the month path only; consumers read it to tell the two shapes apart.
+export interface BucketBounds {
+  from: string;
+  to: string;
+  month?: string;
+}
+
+// `count` blocks of `size` days, oldest first, the last one ending on `to`.
+export function dayBlockSeries(
+  to: string,
+  size: number,
+  count: number,
+): BucketBounds[] {
+  const span = Math.max(Math.trunc(size) || 1, 1);
+  // Clamping the span would silently stop the last block being the selected range.
+  if (span > MAX_RANGE_DAYS) {
+    throw new BadRequestException(
+      `date range must not exceed ${MAX_RANGE_DAYS} days`,
+    );
+  }
+  const blocks = Math.min(Math.max(Math.trunc(count) || 1, 1), 24);
+  const series: BucketBounds[] = [];
+  try {
+    for (let back = blocks - 1; back >= 0; back--) {
+      const end = addDays(to, -back * span);
+      series.push({ from: addDays(end, -(span - 1)), to: end });
+    }
+  } catch (error) {
+    // Walking back off the start of the calendar is bad input, not a server fault.
+    if (error instanceof RangeError) {
+      throw new BadRequestException(
+        'date range starts too early to build a trend',
+      );
+    }
+    throw error;
+  }
+  return series;
+}
+
+/** SQL index of a row within day blocks starting at :seriesFrom. */
+export function dayBucketSql(alias: string): string {
+  return `FLOOR((${moneyDateSql(alias)} - :seriesFrom::date)::numeric / :bucketSize::numeric)::int`;
 }
 
 // The last `count` months as 'YYYY-MM', oldest first, ending with the current one.
@@ -50,9 +95,14 @@ export function trendAnchor(
   return new Date(`${latest}T00:00:00Z`);
 }
 
-/** SQL month bucket of a row's business date. */
+/** SQL column holding the day the money arrived. */
+export function moneyDateSql(alias: string): string {
+  return `${alias}.transaction_date`;
+}
+
+/** SQL month bucket of the day the money arrived. */
 export function monthBucketSql(alias: string): string {
-  return `date_trunc('month', ${businessDateSql(alias)})`;
+  return `date_trunc('month', ${moneyDateSql(alias)})`;
 }
 
 /** SQL month label in the same 'YYYY-MM' form monthSeries emits, so the two join up. */
@@ -78,5 +128,26 @@ export function zeroFillMonths<K extends string>(
       totals[key] = Number(row?.[key] ?? 0);
     }
     return { month, ...totals };
+  });
+}
+
+type BucketRow<K extends string> = { bucket: string | number } & Partial<
+  Record<K, string | number | null>
+>;
+
+// Sparse SQL rows become one point per bucket, so a gap cannot shorten the series.
+export function zeroFillBuckets<K extends string>(
+  series: BucketBounds[],
+  rows: ReadonlyArray<BucketRow<K>>,
+  keys: readonly K[],
+): Array<BucketBounds & Record<K, number>> {
+  const found = new Map(rows.map((row) => [Number(row.bucket), row]));
+  return series.map((bounds, index) => {
+    const row = found.get(index);
+    const totals = {} as Record<K, number>;
+    for (const key of keys) {
+      totals[key] = Number(row?.[key] ?? 0);
+    }
+    return { ...bounds, ...totals };
   });
 }

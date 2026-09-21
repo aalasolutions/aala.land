@@ -8,7 +8,7 @@ export default class StatSparklineComponent extends ChartBase {
   }
 
   get labels() {
-    return this.monthLabels(this.points);
+    return this.pointLabels(this.points);
   }
 
   get values() {
@@ -16,7 +16,7 @@ export default class StatSparklineComponent extends ChartBase {
   }
 
   get caption() {
-    return this.args.caption ?? 'Monthly totals';
+    return this.args.caption ?? 'Totals';
   }
 
   get rows() {
@@ -44,7 +44,7 @@ export default class StatSparklineComponent extends ChartBase {
             borderWidth: 2,
             backgroundColor: withAlpha(line, 0.14),
             fill: true,
-            // Straight segments: curve interpolation invents months that never existed.
+            // Straight segments: curve interpolation invents values between the buckets.
             tension: 0,
             pointRadius: 3,
             pointHoverRadius: 6,

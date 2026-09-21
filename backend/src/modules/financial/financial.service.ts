@@ -25,7 +25,7 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 import {
-  applyBusinessDateRange,
+  applyMoneyDateRange,
   CashflowPoint,
   CashflowTrendQuery,
   CategoryTotal,
@@ -40,6 +40,7 @@ import {
   clampPage,
 } from '../../shared/utils/pagination.util';
 import {
+  assertCompletedHasDate,
   assertTransactionDateInWindow,
 } from './transaction-date-window.util';
 
@@ -108,6 +109,7 @@ export class FinancialService {
     );
     // The row's own region decides its business day, so the window is checked once it is known.
     assertTransactionDateInWindow(dto.transactionDate, regionCode);
+    assertCompletedHasDate(dto.status, dto.transactionDate);
     const transaction = this.transactionRepository.create({
       ...dto,
       companyId,
@@ -169,7 +171,8 @@ export class FinancialService {
       qb.andWhere('t.type = :type', { type });
     }
 
-    applyBusinessDateRange(qb, from, to);
+    // The list keeps undated rows in view: an outstanding row is outstanding now.
+    applyMoneyDateRange(qb, from, to, true);
 
     qb.skip(pageSkip(safePage, safeLimit))
       .take(safeLimit)
@@ -235,9 +238,12 @@ export class FinancialService {
         'This unit is archived. Its records can no longer be edited.',
       );
 
-      if (dto.status === TransactionStatus.COMPLETED && !transaction.paidAt) {
-        transaction.paidAt = new Date();
-      }
+      assertCompletedHasDate(
+        dto.status ?? transaction.status,
+        dto.transactionDate !== undefined
+          ? dto.transactionDate
+          : transaction.transactionDate,
+      );
 
       Object.assign(transaction, dto);
       return repo.save(transaction);

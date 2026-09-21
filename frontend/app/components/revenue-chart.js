@@ -7,7 +7,7 @@ export default class RevenueChartComponent extends ChartBase {
   }
 
   get labels() {
-    return this.monthLabels(this.points);
+    return this.pointLabels(this.points);
   }
 
   get values() {

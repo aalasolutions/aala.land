@@ -359,7 +359,7 @@ describe('FinancialService', () => {
       expect(result.limit).toBe(500);
     });
 
-    it('filters on the business date when a range is given', async () => {
+    it('filters on the money date when a range is given, and keeps undated rows', async () => {
       const qb: any = listQb();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
@@ -370,10 +370,14 @@ describe('FinancialService', () => {
         to: '2026-02-28',
       });
 
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('BETWEEN :from::date AND :to::date'),
-        { from: '2026-02-01', to: '2026-02-28' },
+      const clause = qb.andWhere.mock.calls.find(
+        (call: unknown[]) =>
+          typeof call[0] === 'string' && call[0].includes('BETWEEN'),
       );
+      expect(clause[0]).toContain('BETWEEN :from::date AND :to::date');
+      // Outstanding is a state of today, so a pending row stays listed whatever the range.
+      expect(clause[0]).toContain('IS NULL');
+      expect(clause[1]).toEqual({ from: '2026-02-01', to: '2026-02-28' });
     });
 
     it('rejects a range that is not a YYYY-MM-DD pair', async () => {
@@ -421,6 +425,9 @@ describe('FinancialService', () => {
   });
 
   describe('update', () => {
+    // The row carries no region, so its window pivots on the UTC day.
+    const todayForRegion = () => new Date().toISOString().slice(0, 10);
+
     it('updates transaction status', async () => {
       repo.findOne.mockResolvedValue({ ...mockTransaction } as Transaction);
       repo.save.mockResolvedValue({
@@ -430,26 +437,35 @@ describe('FinancialService', () => {
 
       const result = await service.update('txn-uuid-1', companyId, {
         status: TransactionStatus.COMPLETED,
+        transactionDate: todayForRegion(),
       });
 
       expect(result.status).toBe(TransactionStatus.COMPLETED);
     });
 
-    it('sets paidAt when status is COMPLETED', async () => {
-      const txnWithoutPaidAt = {
+    it('refuses COMPLETED when no date is given and the row has none', async () => {
+      repo.findOne.mockResolvedValue({ ...mockTransaction } as Transaction);
+
+      await expect(
+        service.update('txn-uuid-1', companyId, {
+          status: TransactionStatus.COMPLETED,
+        }),
+      ).rejects.toThrow(/needs the date the money arrived/);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts COMPLETED when the row already carries a date', async () => {
+      repo.findOne.mockResolvedValue({
         ...mockTransaction,
-        paidAt: null,
-      } as unknown as Transaction;
-      repo.findOne.mockResolvedValue(txnWithoutPaidAt);
+        transactionDate: todayForRegion(),
+      } as Transaction);
       repo.save.mockImplementation(async (t) => t as Transaction);
 
       await service.update('txn-uuid-1', companyId, {
         status: TransactionStatus.COMPLETED,
       });
 
-      expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ paidAt: expect.any(Date) }),
-      );
+      expect(repo.save).toHaveBeenCalled();
     });
   });
 
@@ -459,6 +475,7 @@ describe('FinancialService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         setParameters: jest.fn().mockReturnThis(),
         getRawOne: jest.fn().mockResolvedValue({
           totalIncome: '15000',
@@ -480,6 +497,7 @@ describe('FinancialService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
         setParameters: jest.fn().mockReturnThis(),
         // A value a naive `totalIncome - totalExpense` float subtraction would not reproduce.
         getRawOne: jest.fn().mockResolvedValue({
@@ -875,7 +893,7 @@ describe('FinancialService', () => {
       const qb: any = trendQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      const result = await service.getCashflowTrend(companyId, { months: 6 });
+      const result = await service.getCashflowTrend(companyId, { periods: 6 });
 
       expect(result).toHaveLength(6);
       expect(result.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
@@ -887,31 +905,59 @@ describe('FinancialService', () => {
     it('maps returned months onto the series as numbers', async () => {
       const qb: any = trendQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      const series = await service.getCashflowTrend(companyId, { months: 6 });
+      const series = await service.getCashflowTrend(companyId, { periods: 6 });
       const latest = series[series.length - 1].month;
 
       const filled: any = trendQb([
-        { month: latest, income: '1500.25', expense: '400' },
+        { bucket: latest, income: '1500.25', expense: '400' },
       ]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(filled);
 
-      const result = await service.getCashflowTrend(companyId, { months: 6 });
+      const result = await service.getCashflowTrend(companyId, { periods: 6 });
 
-      expect(result[result.length - 1]).toEqual({
+      expect(result[result.length - 1]).toMatchObject({
         month: latest,
         income: 1500.25,
         expense: 400,
       });
-      expect(result[0]).toEqual({
+      expect(result[0]).toMatchObject({
         month: result[0].month,
         income: 0,
         expense: 0,
       });
     });
 
+    it('carries the calendar bounds of each month alongside its key', async () => {
+      const qb: any = trendQb([]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getCashflowTrend(companyId, {
+        periods: 2,
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+
+      expect(result).toEqual([
+        {
+          month: '2026-01',
+          from: '2026-01-01',
+          to: '2026-01-31',
+          income: 0,
+          expense: 0,
+        },
+        {
+          month: '2026-02',
+          from: '2026-02-01',
+          to: '2026-02-28',
+          income: 0,
+          expense: 0,
+        },
+      ]);
+    });
+
     it('returns a zero-filled series without querying when the caller has no regions', async () => {
       const result = await service.getCashflowTrend(companyId, {
-        months: 6,
+        periods: 6,
         caller: { role: 'manager', regionCodes: [] } as any,
       });
 
@@ -935,7 +981,7 @@ describe('FinancialService', () => {
         (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
         const result = await service.getCashflowTrend(companyId, {
-          months: 6,
+          periods: 6,
           regionCode: 'dubai',
         });
 
@@ -947,7 +993,7 @@ describe('FinancialService', () => {
         (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
         const result = await service.getCashflowTrend(companyId, {
-          months: 6,
+          periods: 6,
           caller: { role: 'manager', regionCodes: ['riyadh'] } as any,
         });
 
@@ -959,15 +1005,89 @@ describe('FinancialService', () => {
       const qb: any = trendQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      const result = await service.getCashflowTrend(companyId, { months: 6 });
+      const result = await service.getCashflowTrend(companyId, { periods: 6 });
 
       const bound = qb.andWhere.mock.calls.find(
         (call: unknown[]) =>
-          typeof call[0] === 'string' && call[0].includes(':from'),
+          typeof call[0] === 'string' && call[0].includes(':seriesFrom'),
       );
-      expect(bound[0]).toContain('>= :from::date');
+      expect(bound[0]).toContain(
+        'BETWEEN :seriesFrom::date AND :seriesTo::date',
+      );
       expect(bound[0]).not.toContain('date_trunc');
-      expect(bound[1]).toEqual({ from: `${result[0].month}-01` });
+      expect(bound[1]).toEqual({
+        seriesFrom: `${result[0].month}-01`,
+        seriesTo: result[result.length - 1].to,
+      });
+    });
+
+    describe('when the range is not a whole calendar month', () => {
+      it('returns six blocks the length of the range, ending with it', async () => {
+        const qb: any = trendQb([]);
+        (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+        const result = await service.getCashflowTrend(companyId, {
+          periods: 6,
+          from: '2026-09-15',
+          to: '2026-09-21',
+        });
+
+        expect(result).toHaveLength(6);
+        expect(result[result.length - 1]).toMatchObject({
+          from: '2026-09-15',
+          to: '2026-09-21',
+        });
+        expect(result[0]).toMatchObject({
+          from: '2026-08-11',
+          to: '2026-08-17',
+        });
+        expect(result[0].month).toBeUndefined();
+      });
+
+      it('buckets on the block width and bounds the whole series', async () => {
+        const qb: any = trendQb([]);
+        (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+        await service.getCashflowTrend(companyId, {
+          periods: 6,
+          from: '2026-09-15',
+          to: '2026-09-21',
+        });
+
+        expect(qb.setParameters).toHaveBeenCalledWith(
+          expect.objectContaining({
+            seriesFrom: '2026-08-11',
+            seriesTo: '2026-09-21',
+            bucketSize: 7,
+          }),
+        );
+      });
+
+      it('maps a returned bucket index onto its block', async () => {
+        const qb: any = trendQb([
+          { bucket: '5', income: '900', expense: '100.5' },
+        ]);
+        (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+        const result = await service.getCashflowTrend(companyId, {
+          periods: 6,
+          from: '2026-09-19',
+          to: '2026-09-21',
+        });
+
+        expect(result[5]).toEqual({
+          from: '2026-09-19',
+          to: '2026-09-21',
+          income: 900,
+          expense: 100.5,
+        });
+        expect(result[4]).toEqual({
+          from: '2026-09-16',
+          to: '2026-09-18',
+          income: 0,
+          expense: 0,
+        });
+      });
     });
   });
   // 20:30Z is already the next calendar day in Asia/Dubai: region day 2026-09-22, UTC day 2026-09-21.
@@ -1020,15 +1140,15 @@ describe('FinancialService', () => {
       expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('accepts a create dated exactly one month ahead', async () => {
-      const result = await createDated('2026-10-22');
+    it('accepts a create dated today on the region day', async () => {
+      const result = await createDated('2026-09-22');
 
-      expect(result.transactionDate).toBe('2026-10-22');
+      expect(result.transactionDate).toBe('2026-09-22');
     });
 
-    it('refuses a create dated beyond one month ahead', async () => {
-      await expect(createDated('2026-10-23')).rejects.toThrow(
-        /latest date accepted today is 2026-10-22/,
+    it('refuses a create dated tomorrow: money cannot arrive in the future', async () => {
+      await expect(createDated('2026-09-23')).rejects.toThrow(
+        /cannot be in the future. The latest date accepted today is 2026-09-22/,
       );
       expect(repo.save).not.toHaveBeenCalled();
     });
@@ -1044,7 +1164,7 @@ describe('FinancialService', () => {
     });
 
     // PARKED with the lock itself: it froze PENDING rent-due rows before their due date.
-  it.skip('locks a record dated 31 days back', async () => {
+    it.skip('locks a record dated 31 days back', async () => {
       repo.findOne.mockResolvedValue(dated('2026-08-22'));
 
       await expect(

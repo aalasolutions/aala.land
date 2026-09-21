@@ -1,13 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
 import {
   dateRange,
+  dayBlockSeries,
+  dayBucketSql,
   monthBucketSql,
   monthLabelSql,
   monthSeries,
   trendAnchor,
+  zeroFillBuckets,
   zeroFillMonths,
 } from './month-series.util';
-import { businessDateSql, dateInZone, regionToday } from './region-time.util';
+import { dateInZone, regionToday } from './region-time.util';
 
 describe('month-series.util', () => {
   describe('dateRange', () => {
@@ -225,11 +228,10 @@ describe('month-series.util', () => {
   });
 
   describe('month bucket SQL', () => {
-    it('buckets the business date, not created_at on its own', () => {
+    it('buckets the day the money arrived', () => {
       expect(monthBucketSql('t')).toBe(
-        `date_trunc('month', ${businessDateSql('t')})`,
+        "date_trunc('month', t.transaction_date)",
       );
-      expect(monthBucketSql('t')).toContain('COALESCE(t.transaction_date,');
     });
 
     it('labels months in the same form monthSeries emits', () => {
@@ -245,7 +247,7 @@ describe('month-series.util', () => {
 
     it('follows the alias it is given', () => {
       expect(monthBucketSql('txn')).toContain('txn.transaction_date');
-      expect(monthBucketSql('txn')).not.toContain('t.transaction_date');
+      expect(monthBucketSql('txn')).not.toContain(' t.transaction_date');
     });
   });
 
@@ -305,6 +307,87 @@ describe('month-series.util', () => {
         { month: '2026-07', total: 0 },
         { month: '2026-08', total: 5 },
         { month: '2026-09', total: 0 },
+      ]);
+    });
+  });
+
+  describe('dayBlockSeries', () => {
+    it('ends on the given day and walks backwards in equal blocks', () => {
+      expect(dayBlockSeries('2026-09-21', 7, 3)).toEqual([
+        { from: '2026-09-01', to: '2026-09-07' },
+        { from: '2026-09-08', to: '2026-09-14' },
+        { from: '2026-09-15', to: '2026-09-21' },
+      ]);
+    });
+
+    it('handles a single-day block', () => {
+      expect(dayBlockSeries('2026-03-02', 1, 2)).toEqual([
+        { from: '2026-03-01', to: '2026-03-01' },
+        { from: '2026-03-02', to: '2026-03-02' },
+      ]);
+    });
+
+    it('crosses a month and a leap day without drifting', () => {
+      expect(dayBlockSeries('2024-03-01', 30, 2)).toEqual([
+        { from: '2024-01-02', to: '2024-01-31' },
+        { from: '2024-02-01', to: '2024-03-01' },
+      ]);
+    });
+
+    it('treats a nonsense size or count as one, and caps the bucket count', () => {
+      expect(dayBlockSeries('2026-09-21', 0, 0)).toEqual([
+        { from: '2026-09-21', to: '2026-09-21' },
+      ]);
+      expect(dayBlockSeries('2026-09-21', 5, 50)).toHaveLength(24);
+    });
+
+    it('refuses a block longer than the range cap rather than clamping it', () => {
+      expect(() => dayBlockSeries('2026-09-21', 367, 6)).toThrow(
+        BadRequestException,
+      );
+      expect(dayBlockSeries('2026-09-21', 366, 1)).toEqual([
+        { from: '2025-09-21', to: '2026-09-21' },
+      ]);
+    });
+
+    it('refuses a series that would walk off the start of the calendar', () => {
+      expect(() => dayBlockSeries('0001-01-05', 5, 6)).toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('dayBucketSql', () => {
+    it('divides the business date offset by the bound block width', () => {
+      expect(dayBucketSql('t')).toBe(
+        'FLOOR((t.transaction_date - :seriesFrom::date)::numeric / :bucketSize::numeric)::int',
+      );
+    });
+  });
+
+  describe('zeroFillBuckets', () => {
+    const series = dayBlockSeries('2026-09-21', 7, 3);
+
+    it('places a row on the block its index names', () => {
+      const rows = [{ bucket: '2', income: '500', expense: '20.5' }];
+
+      expect(zeroFillBuckets(series, rows, ['income', 'expense'])).toEqual([
+        { from: '2026-09-01', to: '2026-09-07', income: 0, expense: 0 },
+        { from: '2026-09-08', to: '2026-09-14', income: 0, expense: 0 },
+        { from: '2026-09-15', to: '2026-09-21', income: 500, expense: 20.5 },
+      ]);
+    });
+
+    it('drops a bucket index outside the series', () => {
+      const rows = [
+        { bucket: 9, income: '999' },
+        { bucket: 0, income: '5' },
+      ];
+
+      expect(zeroFillBuckets(series, rows, ['income'])).toEqual([
+        { from: '2026-09-01', to: '2026-09-07', income: 5 },
+        { from: '2026-09-08', to: '2026-09-14', income: 0 },
+        { from: '2026-09-15', to: '2026-09-21', income: 0 },
       ]);
     });
   });

@@ -21,7 +21,6 @@ const OLD_VALUE_SOURCES: Record<string, OldValueSource> = {
       unitId: 'unit_id',
       transactionDate: 'transaction_date',
       dueDate: 'due_date',
-      paidAt: 'paid_at',
       updatedAt: 'updated_at',
     },
   },

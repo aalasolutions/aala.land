@@ -10,9 +10,9 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { daysBetween, isDateOnly } from '@shared/utils/region-time.util';
+import { MAX_RANGE_DAYS } from '@shared/constants/date-range';
 
-// An uncapped span scans every transaction a company has ever recorded.
-export const MAX_RANGE_DAYS = 366;
+export { MAX_RANGE_DAYS } from '@shared/constants/date-range';
 
 // Both ends are required together; a half-supplied range would drop the BETWEEN clause and answer with all-time totals.
 const rangeTouched = (dto: QueryFinancialRangeDto): boolean =>

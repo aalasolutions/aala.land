@@ -26,11 +26,11 @@ import {
   isAdminRole,
 } from '../../shared/utils/region-visibility.util';
 import {
-  businessDateSql,
   regionTimezoneSql,
   subtractDaysFromInstant,
 } from '../../shared/utils/region-time.util';
 import {
+  moneyDateSql,
   monthBucketSql,
   monthLabelSql,
   monthSeries,
@@ -202,9 +202,9 @@ export class ReportsService {
 
     // Same business date as the revenue trend, so one card cannot show two answers.
     const zone = regionTimezoneSql('t.region_code');
-    const businessDate = businessDateSql('t');
+    const moneyDate = moneyDateSql('t');
     const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
-    const inRegionMonth = `(${businessDate} >= ${monthStart} AND ${businessDate} < (${monthStart} + INTERVAL '1 month'))`;
+    const inRegionMonth = `(${moneyDate} >= ${monthStart} AND ${moneyDate} < (${monthStart} + INTERVAL '1 month'))`;
 
     // Leads and Commissions have direct regionCode
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
@@ -305,7 +305,7 @@ export class ReportsService {
     };
   }
 
-  // Buckets on transaction_date, falling back to created_at because it is nullable.
+  // Buckets on the day the money arrived; a completed row always carries one.
   async getRevenueTrend(
     companyId: string,
     months = 6,

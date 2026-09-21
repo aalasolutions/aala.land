@@ -129,6 +129,9 @@ export const EMAIL_FILTER_CATEGORIES = [
   ...EMAIL_CATEGORIES,
 ];
 
+// Mirrors MAX_BACKDATE_DAYS in backend transaction-date-window.util.ts.
+export const MAX_BACKDATE_DAYS = 30;
+
 export const TRANSACTION_TYPE_OPTIONS = [
   { value: 'INCOME', label: 'Income / Revenue' },
   { value: 'EXPENSE', label: 'Expense / Outflow' },

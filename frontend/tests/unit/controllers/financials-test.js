@@ -304,13 +304,30 @@ module('Unit | Controller | financials', function (hooks) {
 
   module('cashflow series', function () {
     const CASHFLOW = [
-      { month: '2026-01', income: '1000.50', expense: '400' },
-      { month: '2026-02', income: null, expense: 'not a number' },
+      {
+        month: '2026-01',
+        from: '2026-01-01',
+        to: '2026-01-31',
+        income: '1000.50',
+        expense: '400',
+      },
+      {
+        month: '2026-02',
+        from: '2026-02-01',
+        to: '2026-02-28',
+        income: null,
+        expense: 'not a number',
+      },
     ];
 
-    function makeController(ctx) {
+    const BLOCKS = [
+      { from: '2026-09-08', to: '2026-09-14', income: '200', expense: '50' },
+      { from: '2026-09-15', to: '2026-09-21', income: '300', expense: '0' },
+    ];
+
+    function makeController(ctx, cashflow = CASHFLOW) {
       const controller = ctx.owner.lookup('controller:financials');
-      controller.model = { cashflow: CASHFLOW };
+      controller.model = { cashflow };
       return controller;
     }
 
@@ -318,22 +335,47 @@ module('Unit | Controller | financials', function (hooks) {
       const controller = makeController(this);
 
       assert.deepEqual(controller.incomePoints, [
-        { month: '2026-01', value: 1000.5 },
-        { month: '2026-02', value: 0 },
+        {
+          month: '2026-01',
+          from: '2026-01-01',
+          to: '2026-01-31',
+          value: 1000.5,
+        },
+        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
       ]);
       assert.deepEqual(controller.expensePoints, [
-        { month: '2026-01', value: 400 },
-        { month: '2026-02', value: 0 },
+        { month: '2026-01', from: '2026-01-01', to: '2026-01-31', value: 400 },
+        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
       ]);
     });
 
-    test('net is income less expense, month by month', function (assert) {
+    test('net is income less expense, bucket by bucket', function (assert) {
       const controller = makeController(this);
 
       assert.deepEqual(controller.netPoints, [
-        { month: '2026-01', value: 600.5 },
-        { month: '2026-02', value: 0 },
+        {
+          month: '2026-01',
+          from: '2026-01-01',
+          to: '2026-01-31',
+          value: 600.5,
+        },
+        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
       ]);
+    });
+
+    test('a day-block series keeps its bounds and has no month', function (assert) {
+      const controller = makeController(this, BLOCKS);
+
+      assert.deepEqual(controller.incomePoints, [
+        { month: undefined, from: '2026-09-08', to: '2026-09-14', value: 200 },
+        { month: undefined, from: '2026-09-15', to: '2026-09-21', value: 300 },
+      ]);
+    });
+
+    test('bucketNoun follows what the API actually bucketed by', function (assert) {
+      assert.strictEqual(makeController(this).bucketNoun, 'month');
+      assert.strictEqual(makeController(this, BLOCKS).bucketNoun, 'period');
+      assert.strictEqual(makeController(this, []).bucketNoun, 'period');
     });
 
     test('no cashflow yields empty series rather than failing', function (assert) {
@@ -343,6 +385,56 @@ module('Unit | Controller | financials', function (hooks) {
       assert.deepEqual(controller.cashflow, []);
       assert.deepEqual(controller.incomePoints, []);
       assert.deepEqual(controller.netPoints, []);
+    });
+  });
+
+  module('transaction date rules', function () {
+    function makeController(ctx, timezone = 'Asia/Dubai') {
+      const controller = ctx.owner.lookup('controller:financials');
+      controller.region.activeRegion = { code: 'dxb', timezone };
+      return controller;
+    }
+
+    test('the picker closes today and opens 30 days back', function (assert) {
+      const controller = makeController(this);
+      const { earliest, latest } = controller.dateWindow;
+
+      const days = (Date.parse(latest) - Date.parse(earliest)) / 86400000;
+      assert.strictEqual(days, 30, 'exactly 30 days of window');
+      assert.strictEqual(
+        latest,
+        new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dubai' }),
+        'the latest day is today in the active region',
+      );
+    });
+
+    test('a date is required only once the row is completed', function (assert) {
+      const controller = makeController(this);
+
+      controller.formStatus = 'PENDING';
+      assert.false(controller.dateRequired);
+
+      controller.formStatus = 'COMPLETED';
+      assert.true(controller.dateRequired);
+    });
+
+    test('completing with no date is refused before any request', async function (assert) {
+      const controller = makeController(this);
+      controller.auth = {
+        fetchJson() {
+          throw new Error('no request expected');
+        },
+      };
+      controller.formStatus = 'COMPLETED';
+      controller.formDate = '';
+
+      await controller.saveTx({ preventDefault() {} });
+
+      assert.strictEqual(
+        controller.errorMsg,
+        'Enter the date the money arrived.',
+      );
+      assert.false(controller.isSaving);
     });
   });
 

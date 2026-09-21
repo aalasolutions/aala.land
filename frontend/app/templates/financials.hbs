@@ -30,7 +30,7 @@
           <StatSparkline
             @points={{this.incomePoints}}
             @variant="success"
-            @caption="Income by month"
+            @caption="Income by {{this.bucketNoun}}"
           />
         </:content>
       </Nuvo::Stat>
@@ -46,7 +46,7 @@
           <StatSparkline
             @points={{this.expensePoints}}
             @variant="danger"
-            @caption="Expenses by month"
+            @caption="Expenses by {{this.bucketNoun}}"
           />
         </:content>
       </Nuvo::Stat>
@@ -61,7 +61,7 @@
           <StatSparkline
             @points={{this.netPoints}}
             @variant="primary"
-            @caption="Net balance by month"
+            @caption="Net balance by {{this.bucketNoun}}"
           />
         </:content>
       </Nuvo::Stat>
@@ -316,10 +316,16 @@
         />
       </Nuvo::Field>
       <div class="flex gap-4">
-        <Nuvo::Field @label="Date" class="grow">
+        <Nuvo::Field
+          @label="Date money arrived"
+          @required={{this.dateRequired}}
+          class="grow"
+        >
           <Nuvo::Input
             id="tx-date"
             type="date"
+            min={{this.dateWindow.earliest}}
+            max={{this.dateWindow.latest}}
             @value={{this.formDate}}
             @onInput={{fn this.setFieldValue "formDate"}}
           />

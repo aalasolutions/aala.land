@@ -5,6 +5,7 @@ import {
   browserTimeZone,
   daysUntil,
   formatCalendarDate,
+  formatCalendarRange,
   formatInstant,
   isDateOnly,
   isKnownRange,
@@ -299,5 +300,62 @@ module('Unit | Utility | local-date', function () {
       resolveRange('last7', null, null, ACROSS_MONTH_END, 'Asia/Dubai'),
       { from: '2026-08-26', to: '2026-09-01' },
     );
+  });
+
+  module('formatCalendarRange', function () {
+    const en = 'en-US';
+
+    test('reads as one span when both ends share a month', function (assert) {
+      const label = formatCalendarRange('2026-09-14', '2026-09-20', en, {
+        month: 'short',
+        day: 'numeric',
+      });
+
+      assert.true(label.startsWith('Sep 14'), `names the start: ${label}`);
+      assert.true(label.includes('20'), `names the end: ${label}`);
+    });
+
+    test('names both months when the span crosses one', function (assert) {
+      const label = formatCalendarRange('2026-08-23', '2026-09-21', en, {
+        month: 'short',
+        day: 'numeric',
+      });
+
+      assert.true(label.includes('Aug 23'), label);
+      assert.true(label.includes('Sep 21'), label);
+    });
+
+    test('a single day reads as that day, not as a range', function (assert) {
+      assert.strictEqual(
+        formatCalendarRange('2026-09-21', '2026-09-21', en, {
+          month: 'short',
+          day: 'numeric',
+        }),
+        'Sep 21',
+      );
+    });
+
+    test('renders in UTC, so neither end shifts a day', function (assert) {
+      assert.strictEqual(
+        formatCalendarRange('2026-01-01', '2026-01-01', en, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }),
+        'Jan 1, 2026',
+      );
+    });
+
+    test('returns null when either end is not a calendar date', function (assert) {
+      assert.strictEqual(
+        formatCalendarRange('2026-09', '2026-09-21', en),
+        null,
+      );
+      assert.strictEqual(
+        formatCalendarRange('2026-09-21', '2026-02-31', en),
+        null,
+      );
+      assert.strictEqual(formatCalendarRange(null, undefined, en), null);
+    });
   });
 });

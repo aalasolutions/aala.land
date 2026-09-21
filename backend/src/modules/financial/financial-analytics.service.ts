@@ -9,19 +9,26 @@ import {
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 import {
-  businessDateSql,
+  daysBetween,
+  isWholeCalendarMonth,
+  monthBounds,
   regionTodaySql,
 } from '../../shared/utils/region-time.util';
 import {
+  BucketBounds,
   dateRange,
+  dayBlockSeries,
+  dayBucketSql,
+  moneyDateSql,
   monthLabelSql,
   monthSeries,
   trendAnchor,
+  zeroFillBuckets,
   zeroFillMonths,
 } from '../../shared/utils/month-series.util';
 
 // Every query in this file aliases transactions as t.
-const BUSINESS_DATE = businessDateSql('t');
+const MONEY_DATE = moneyDateSql('t');
 
 const CASHFLOW_KEYS = ['income', 'expense'] as const;
 
@@ -31,8 +38,7 @@ export interface CategoryTotal {
   total: number;
 }
 
-export interface CashflowPoint {
-  month: string;
+export interface CashflowPoint extends BucketBounds {
   income: number;
   expense: number;
 }
@@ -54,8 +60,8 @@ export interface DateRangeQuery extends RegionQuery {
   to?: string;
 }
 
-export interface CashflowTrendQuery extends RegionQuery {
-  months?: number;
+export interface CashflowTrendQuery extends DateRangeQuery {
+  periods?: number;
 }
 
 export interface DepositReminders {
@@ -66,16 +72,26 @@ export interface DepositReminders {
 }
 
 // One definition of the range clause, so a bound or a cast changes in one place.
-export function applyBusinessDateRange(
+export function applyMoneyDateRange(
   qb: SelectQueryBuilder<Transaction>,
   from?: string,
   to?: string,
+  keepUndated = false,
 ): void {
   const bounds = dateRange(from, to);
+  // A row with no money date sits in no period, ranged or not. The list keeps it, because
+  // outstanding is a state of today; the money totals answer for periods and never ask for it.
+  if (!keepUndated) {
+    qb.andWhere(`${MONEY_DATE} IS NOT NULL`);
+  }
   if (!bounds) {
     return;
   }
-  qb.andWhere(`${BUSINESS_DATE} BETWEEN :from::date AND :to::date`, bounds);
+  const inRange = `${MONEY_DATE} BETWEEN :from::date AND :to::date`;
+  qb.andWhere(
+    keepUndated ? `(${inRange} OR ${MONEY_DATE} IS NULL)` : inRange,
+    bounds,
+  );
 }
 
 @Injectable()
@@ -110,16 +126,11 @@ export class FinancialAnalyticsService {
         'COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount WHEN t.type = :expense THEN -t.amount ELSE 0 END), 0)',
         'net',
       )
-      .where(
-        't.companyId = :companyId AND t.status NOT IN (:...excludedStatuses)',
-        {
-          companyId,
-          excludedStatuses: [
-            TransactionStatus.CANCELLED,
-            TransactionStatus.FAILED,
-          ],
-        },
-      )
+      // Pending is not money: nothing counts until it is completed.
+      .where('t.companyId = :companyId AND t.status = :completed', {
+        companyId,
+        completed: TransactionStatus.COMPLETED,
+      })
       .setParameters({
         income: TransactionType.INCOME,
         expense: TransactionType.EXPENSE,
@@ -129,7 +140,7 @@ export class FinancialAnalyticsService {
       qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
 
-    applyBusinessDateRange(qb, from, to);
+    applyMoneyDateRange(qb, from, to);
 
     const result = await qb.getRawOne();
 
@@ -159,8 +170,8 @@ export class FinancialAnalyticsService {
       .addSelect('t.type', 'type')
       .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
       .where('t.companyId = :companyId', { companyId })
-      .andWhere('t.status NOT IN (:...excluded)', {
-        excluded: [TransactionStatus.CANCELLED, TransactionStatus.FAILED],
+      .andWhere('t.status = :completed', {
+        completed: TransactionStatus.COMPLETED,
       })
       .groupBy('t.category')
       .addGroupBy('t.type')
@@ -170,7 +181,7 @@ export class FinancialAnalyticsService {
       qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
 
-    applyBusinessDateRange(qb, from, to);
+    applyMoneyDateRange(qb, from, to);
 
     const rows = await qb.getRawMany<{
       category: string | null;
@@ -185,22 +196,101 @@ export class FinancialAnalyticsService {
     }));
   }
 
-  // Income and expense per month, oldest first, zero-filled so a gap does not shorten the series.
+  // The last bucket is the selected range; the rest are the same width, running backwards from it.
   async getCashflowTrend(
     companyId: string,
     query: CashflowTrendQuery = {},
   ): Promise<CashflowPoint[]> {
-    const { months = 6, regionCode, caller } = query;
+    const { periods = 6, from, to, regionCode, caller } = query;
     const regionCodes = effectiveRegionCodes(regionCode, caller);
-    const series = monthSeries(months, trendAnchor(regionCodes));
-    const empty = zeroFillMonths(series, [], CASHFLOW_KEYS);
+    const range = dateRange(from, to);
 
-    if (regionCodes?.length === 0) return empty;
+    if (range && !isWholeCalendarMonth(range.from, range.to)) {
+      const size = daysBetween(range.from, range.to) + 1;
+      return this.blockCashflow(
+        companyId,
+        range.to,
+        size,
+        periods,
+        regionCodes,
+      );
+    }
+    return this.monthlyCashflow(companyId, range?.to, periods, regionCodes);
+  }
+
+  // Calendar months, oldest first, zero-filled, ending on the selected month or the current one.
+  private async monthlyCashflow(
+    companyId: string,
+    anchorDate: string | undefined,
+    periods: number,
+    regionCodes: string[] | null,
+  ): Promise<CashflowPoint[]> {
+    const anchor = anchorDate
+      ? new Date(`${anchorDate}T00:00:00Z`)
+      : trendAnchor(regionCodes);
+    const series = monthSeries(periods, anchor);
+    const withBounds = (rows: Array<{ month: string }>) =>
+      zeroFillMonths(series, rows, CASHFLOW_KEYS).map((point) => ({
+        ...monthBounds(point.month),
+        ...point,
+      }));
+
+    if (regionCodes?.length === 0) return withBounds([]);
 
     const label = monthLabelSql('t');
+    const rows = await this.cashflowQuery(companyId, label, regionCodes)
+      // Bound the date itself, not its month: the truncated form cannot use an index.
+      .andWhere(`${MONEY_DATE} BETWEEN :seriesFrom::date AND :seriesTo::date`, {
+        seriesFrom: `${series[0]}-01`,
+        seriesTo: monthBounds(series[series.length - 1]).to,
+      })
+      .getRawMany<{ bucket: string; income: string; expense: string }>();
+
+    return withBounds(
+      rows.map(({ bucket, ...totals }) => ({ month: bucket, ...totals })),
+    );
+  }
+
+  // Fixed-length day blocks, oldest first, the last one being the selected range.
+  private async blockCashflow(
+    companyId: string,
+    rangeEnd: string,
+    size: number,
+    count: number,
+    regionCodes: string[] | null,
+  ): Promise<CashflowPoint[]> {
+    const series = dayBlockSeries(rangeEnd, size, count);
+    // Read back from the series, so SQL buckets on exactly the width it was built with.
+    const span = daysBetween(series[0].from, series[0].to) + 1;
+    if (regionCodes?.length === 0) {
+      return zeroFillBuckets(series, [], CASHFLOW_KEYS);
+    }
+
+    const rows = await this.cashflowQuery(
+      companyId,
+      dayBucketSql('t'),
+      regionCodes,
+    )
+      .andWhere(`${MONEY_DATE} BETWEEN :seriesFrom::date AND :seriesTo::date`)
+      .setParameters({
+        seriesFrom: series[0].from,
+        seriesTo: series[series.length - 1].to,
+        bucketSize: span,
+      })
+      .getRawMany<{ bucket: string; income: string; expense: string }>();
+
+    return zeroFillBuckets(series, rows, CASHFLOW_KEYS);
+  }
+
+  // One shape for both bucketings, so a filter can never apply to only one of them.
+  private cashflowQuery(
+    companyId: string,
+    bucket: string,
+    regionCodes: string[] | null,
+  ): SelectQueryBuilder<Transaction> {
     const qb = this.transactionRepository
       .createQueryBuilder('t')
-      .select(label, 'month')
+      .select(bucket, 'bucket')
       .addSelect(
         `COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)`,
         'income',
@@ -210,12 +300,10 @@ export class FinancialAnalyticsService {
         'expense',
       )
       .where('t.companyId = :companyId', { companyId })
-      .andWhere('t.status NOT IN (:...excluded)', {
-        excluded: [TransactionStatus.CANCELLED, TransactionStatus.FAILED],
+      .andWhere('t.status = :completed', {
+        completed: TransactionStatus.COMPLETED,
       })
-      // Bound the business date itself, not its month: the truncated form cannot use an index.
-      .andWhere(`${BUSINESS_DATE} >= :from::date`, { from: `${series[0]}-01` })
-      .groupBy(label)
+      .groupBy(bucket)
       .setParameters({
         income: TransactionType.INCOME,
         expense: TransactionType.EXPENSE,
@@ -224,14 +312,7 @@ export class FinancialAnalyticsService {
     if (regionCodes) {
       qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
-
-    const rows = await qb.getRawMany<{
-      month: string;
-      income: string;
-      expense: string;
-    }>();
-
-    return zeroFillMonths(series, rows, CASHFLOW_KEYS);
+    return qb;
   }
 
   async getDepositReminders(

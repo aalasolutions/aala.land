@@ -14,7 +14,6 @@ import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import {
-  businessDateSql,
   isDateOnly,
   regionTimezoneSql,
 } from '../../shared/utils/region-time.util';
@@ -179,7 +178,7 @@ describe('ReportsService', () => {
             typeof clause === 'string' && clause.includes('date_trunc'),
         );
 
-      expect(monthClause).toContain(businessDateSql('t'));
+      expect(monthClause).toContain('t.transaction_date');
       expect(monthClause).not.toContain('t.created_at >=');
       // The month boundary still resolves in the row own region zone.
       expect(monthClause).toContain(regionTimezoneSql('t.region_code'));
@@ -193,7 +192,7 @@ describe('ReportsService', () => {
 
       await service.getRevenueTrend(companyId, 6);
 
-      expect(trendQb.select.mock.calls[0][0]).toContain(businessDateSql('t'));
+      expect(trendQb.select.mock.calls[0][0]).toContain('t.transaction_date');
     });
   });
 
