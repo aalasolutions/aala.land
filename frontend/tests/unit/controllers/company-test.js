@@ -158,6 +158,20 @@ module('Unit | Controller | company', function (hooks) {
       assert.deepEqual(this.errors, [], 'and not told off for trying');
     });
 
+    // An agent fails the admin check before the region guard, so only an admin reaches it.
+    test('an admin cannot change the region selection either', function (assert) {
+      const controller = makeController(this, {
+        role: 'admin',
+        formActiveRegions: ['dxb'],
+      });
+
+      controller.toggleRegion('auh');
+      controller.toggleRegion('dxb');
+
+      assert.deepEqual(controller.formActiveRegions, ['dxb'], 'untouched');
+      assert.deepEqual(this.errors, [], 'and not told off for trying');
+    });
+
     test('the first region picked becomes the default', function (assert) {
       const controller = makeController(this, { formActiveRegions: [] });
 
@@ -328,6 +342,50 @@ module('Unit | Controller | company', function (hooks) {
         'At least one region must be selected.',
       );
       assert.false(controller.showRegionRemovalConfirm);
+    });
+
+    test('an admin saving a region change is refused, and told which right is missing', function (assert) {
+      const controller = makeController(this, {
+        role: 'admin',
+        company: { activeRegions: ['dxb'] },
+        formActiveRegions: ['dxb', 'auh'],
+      });
+
+      controller.saveCompany({ preventDefault() {} });
+
+      assert.strictEqual(
+        controller.errorMsg,
+        'Only company admins can add or remove regions.',
+      );
+      assert.false(controller.showRegionRemovalConfirm);
+      assert.false(controller.isSaving, 'nothing was sent');
+    });
+
+    test('an admin saving without touching the regions still goes through', async function (assert) {
+      const controller = makeController(this, {
+        role: 'admin',
+        company: { activeRegions: ['dxb'], defaultRegionCode: 'dxb' },
+        formActiveRegions: ['dxb'],
+        formDefaultRegionCode: 'dxb',
+        formName: 'Renamed',
+      });
+      let sent = false;
+      controller.auth.fetchJson = () => {
+        sent = true;
+        return Promise.resolve({});
+      };
+      controller.region = { initialize() {} };
+      controller.session = {
+        data: { authenticated: {} },
+        saveToStorage() {},
+      };
+      controller.notifications.success = () => {};
+      controller.router = { refresh() {}, on() {}, off() {} };
+
+      await controller.saveCompany({ preventDefault() {} });
+
+      assert.strictEqual(controller.errorMsg, '');
+      assert.true(sent, 'the refusal is field-level, not a blanket block');
     });
 
     test('a non-admin is told why the save did not happen', function (assert) {

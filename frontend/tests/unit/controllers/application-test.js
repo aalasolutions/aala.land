@@ -193,27 +193,38 @@ module('Unit | Controller | application', function (hooks) {
       assert.false(controller.showRegionSwitcher);
       assert.false(controller.showRegionLabel);
 
+      // The module signs in as an admin, who is confined to their assigned regions.
       controller.region.regions = [REGIONS[0]];
-      assert.true(
-        controller.showRegionSwitcher,
-        'an admin keeps the picker as the way into region management',
-      );
-      assert.false(controller.showRegionLabel);
-
-      controller.auth.currentUser = { role: 'agent' };
       assert.false(
         controller.showRegionSwitcher,
         'one region and no manage rights leaves nothing to pick',
       );
       assert.true(controller.showRegionLabel, 'the region is still named');
 
+      controller.auth.currentUser = { role: 'company_admin' };
+      assert.true(
+        controller.showRegionSwitcher,
+        'a company admin keeps the picker as the way into region management',
+      );
+      assert.false(controller.showRegionLabel);
+
+      controller.auth.currentUser = { role: 'agent' };
+      assert.false(controller.showRegionSwitcher);
+      assert.true(controller.showRegionLabel);
+
       controller.region.regions = [REGIONS[0], REGIONS[1]];
       assert.true(controller.showRegionSwitcher);
       assert.false(controller.showRegionLabel);
     });
 
-    test('managing regions is an admin power', function (assert) {
+    test('managing regions stops above admin', function (assert) {
       const controller = withRegions(this);
+      assert.false(controller.canManageRegions, 'not for an admin');
+
+      controller.auth.currentUser = { role: 'company_admin' };
+      assert.true(controller.canManageRegions);
+
+      controller.auth.currentUser = { role: 'super_admin' };
       assert.true(controller.canManageRegions);
 
       controller.auth.currentUser = { role: 'agent' };

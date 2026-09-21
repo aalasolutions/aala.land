@@ -33,12 +33,13 @@ module('Unit | Utility | roles', function () {
     }
   });
 
-  test('region management is an admin power', function (assert) {
+  // Region changes are a paid entitlement, above the admin line.
+  test('region management stops above admin', function (assert) {
     assert.deepEqual(allowed(canManageRegions), [
       ROLES.SUPER_ADMIN,
       ROLES.COMPANY_ADMIN,
-      ROLES.ADMIN,
     ]);
+    assert.false(canManageRegions(ROLES.ADMIN));
   });
 
   test('isAdminRole and canManageUsers cover the same three roles', function (assert) {

@@ -283,6 +283,32 @@ describe('CompaniesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
+    // Only the region field is in the DTO, so nothing else can be the reason for the refusal.
+    it.each([
+      ['activeRegions', { activeRegions: ['dubai'] }],
+      ['defaultRegionCode', { defaultRegionCode: 'dubai' }],
+    ])('refuses an ADMIN changing %s on its own', async (field, dto) => {
+      repo.findOne.mockResolvedValue(mockCompany);
+
+      await expect(
+        service.update('company-uuid-1', dto as any, Role.ADMIN),
+      ).rejects.toThrow(`You are not allowed to update: ${field}`);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('lets an ADMIN edit a field that is not a paid entitlement', async () => {
+      repo.findOne.mockResolvedValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+
+      await service.update(
+        'company-uuid-1',
+        { name: 'Renamed' } as any,
+        Role.ADMIN,
+      );
+
+      expect(repo.save).toHaveBeenCalled();
+    });
+
     it('allows restricted fields for COMPANY_ADMIN', async () => {
       const dto: any = {
         name: 'Updated Company',
