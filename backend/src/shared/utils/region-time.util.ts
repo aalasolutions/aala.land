@@ -130,6 +130,11 @@ export function regionTodaySql(column: string): string {
   return `((now() AT TIME ZONE ${regionTimezoneSql(column)})::date)`;
 }
 
+/** SQL business date of a row: its transaction date, else the region day it was recorded on. */
+export function businessDateSql(alias: string): string {
+  return `COALESCE(${alias}.transaction_date, (${alias}.created_at AT TIME ZONE ${regionTimezoneSql(`${alias}.region_code`)})::date)`;
+}
+
 function minutesOfDayInZone(timeZone: string, at: Date): number {
   const local = inZone(timeZone, at);
   return local.hour * 60 + local.minute;

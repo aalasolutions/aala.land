@@ -614,10 +614,7 @@
                     {{/each}}
                   {{/each}}
                   {{#if this.canManageRegions}}
-                    <div
-                      class="nu-topbar-menu__divider"
-                      role="presentation"
-                    ></div>
+                    <div class="nu-topbar-menu__divider"></div>
                     <LinkTo
                       @route="company"
                       @query={{hash tab="regions"}}
@@ -630,6 +627,11 @@
                   {{/if}}
                 </div>
               {{/if}}
+            </div>
+          {{else if this.showRegionLabel}}
+            <div class="nu-tag m-pill" data-test-region-label>
+              <Ui::Ph @icon="globe" @size="16px" />
+              <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
           {{/if}}
           <div class="notification-wrapper">

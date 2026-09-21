@@ -3,6 +3,7 @@ import {
   FALLBACK_TIMEZONE,
   addDays,
   addMonthsToInstant,
+  businessDateSql,
   dateInZone,
   daysBetween,
   formatDateLong,
@@ -296,6 +297,23 @@ describe('region-time.util', () => {
       expect(regionTodaySql('c.region_code')).toBe(
         `((now() AT TIME ZONE ${regionTimezoneSql('c.region_code')})::date)`,
       );
+    });
+  });
+
+  describe('businessDateSql', () => {
+    it('falls back to the row region day it was recorded on', () => {
+      expect(businessDateSql('t')).toBe(
+        `COALESCE(t.transaction_date, (t.created_at AT TIME ZONE ${regionTimezoneSql('t.region_code')})::date)`,
+      );
+    });
+
+    it('qualifies every column with the alias it is given', () => {
+      const sql = businessDateSql('txn');
+
+      expect(sql).toContain('txn.transaction_date');
+      expect(sql).toContain('txn.created_at');
+      expect(sql).toContain('txn.region_code');
+      expect(sql).not.toContain('t.transaction_date');
     });
   });
 });

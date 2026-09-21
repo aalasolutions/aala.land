@@ -1,7 +1,10 @@
 {{page-title "Financials"}}
 
 <div data-test-financials-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Financial Overview" @subtitle="Transactions, revenue, and payment tracking.">
+  <Nuvo::PageHeader
+    @title="Financial Overview"
+    @subtitle="Transactions, revenue, and payment tracking."
+  >
     <:actions>
       <Nuvo::Button
         @variant="primary"
@@ -17,6 +20,7 @@
     <div class="grid cols-3 gap-4">
       <Nuvo::Stat
         data-test-summary="total-income"
+        @contentBleed={{true}}
         @variant="success"
         @label="Income"
         @value={{format-currency @model.summary.totalIncome}}
@@ -25,13 +29,14 @@
         <:content>
           <StatSparkline
             @points={{this.incomePoints}}
-            @color="--success"
+            @variant="success"
             @caption="Income by month"
           />
         </:content>
       </Nuvo::Stat>
       <Nuvo::Stat
         data-test-summary="total-expense"
+        @contentBleed={{true}}
         @variant="danger"
         @label="Expenses"
         @value={{format-currency @model.summary.totalExpense}}
@@ -40,13 +45,14 @@
         <:content>
           <StatSparkline
             @points={{this.expensePoints}}
-            @color="--danger"
+            @variant="danger"
             @caption="Expenses by month"
           />
         </:content>
       </Nuvo::Stat>
       <Nuvo::Stat
         data-test-summary="net"
+        @contentBleed={{true}}
         @label="Net Balance"
         @value={{format-currency @model.summary.net}}
         @delta={{this.rangeLabel}}
@@ -54,7 +60,7 @@
         <:content>
           <StatSparkline
             @points={{this.netPoints}}
-            @color="--primary"
+            @variant="primary"
             @caption="Net balance by month"
           />
         </:content>
@@ -77,7 +83,9 @@
               </div>
             </:main>
             <:actions>
-              <p class="text-sm font-bold">{{format-currency reminder.amount}}</p>
+              <p class="text-sm font-bold">{{format-currency
+                  reminder.amount
+                }}</p>
             </:actions>
           </Nuvo::ListItem>
         {{/each}}
@@ -90,6 +98,7 @@
       @options={{this.transactionTabs}}
       @value={{this.activeTab}}
       @onChange={{this.setTab}}
+      data-test-financials-tabs
     />
 
     <div class="finance-filters__range">
@@ -102,32 +111,64 @@
 
       {{#if this.isCustomRange}}
         <div class="finance-filters__dates" data-test-financials-custom-range>
-          <input
+          <Nuvo::Input
             type="date"
-            class="nu-input"
             aria-label="From date"
-            value={{this.from}}
             max={{this.to}}
-            {{on "change" this.setRangeStart}}
+            @value={{this.from}}
+            @invalid={{this.rangeError}}
+            @onChange={{fn this.setRangeBound "from"}}
             data-test-financials-from
           />
           <span class="finance-filters__to">to</span>
-          <input
+          <Nuvo::Input
             type="date"
-            class="nu-input"
             aria-label="To date"
-            value={{this.to}}
             min={{this.from}}
-            {{on "change" this.setRangeEnd}}
+            @value={{this.to}}
+            @invalid={{this.rangeError}}
+            @onChange={{fn this.setRangeBound "to"}}
             data-test-financials-to
           />
         </div>
+        {{#if this.rangeError}}
+          <p
+            class="text-xs text-danger"
+            role="alert"
+            data-test-financials-range-error
+          >{{this.rangeError}}</p>
+        {{/if}}
       {{/if}}
     </div>
   </div>
 
   <Nuvo::Card @title="Transactions">
-    {{#if this.filteredTransactions.length}}
+    {{#if @model.forbidden}}
+      <Nuvo::Alert
+        @variant="danger"
+        @title="No access to financial records"
+        @description="Your role or the active region does not allow viewing financial records."
+        data-test-financials-forbidden
+      />
+    {{else if @model.error}}
+      <Nuvo::Alert
+        @variant="danger"
+        @title="Could not load financials"
+        @description={{@model.error}}
+        data-test-financials-error
+      >
+        <:actions>
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
+            {{on "click" this.retryLoad}}
+            data-test-financials-retry
+          >
+            Try again
+          </Nuvo::Button>
+        </:actions>
+      </Nuvo::Alert>
+    {{else if this.filteredTransactions.length}}
       <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{this.filteredTransactions}}
@@ -170,24 +211,24 @@
           {{cell.value}}
         {{/if}}
       </Nuvo::DataTable>
+    {{else if @model.total}}
+      <Nuvo::EmptyState
+        data-test-financials-page-empty
+        @description="No transactions on this page with current filters. Adjust filters or navigate to find transactions."
+      />
     {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No transactions on this page with current filters. Adjust filters or navigate to find transactions."
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description={{if
-            (eq this.activeTab "INCOME")
-            "No income transactions."
-            (if
-              (eq this.activeTab "EXPENSE")
-              "No expense transactions."
-              "No transactions yet."
-            )
-          }}
-        />
-      {{/if}}
+      <Nuvo::EmptyState
+        data-test-financials-empty
+        @description={{if
+          (eq this.activeTab "INCOME")
+          "No income transactions."
+          (if
+            (eq this.activeTab "EXPENSE")
+            "No expense transactions."
+            "No transactions yet."
+          )
+        }}
+      />
     {{/if}}
 
     {{#if @model.total}}

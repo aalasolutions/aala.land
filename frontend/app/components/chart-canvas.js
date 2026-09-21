@@ -34,11 +34,11 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-// Owns the Chart.js lifecycle, the HTML tooltip and the screen-reader table so
-// the charts above it only have to describe their data.
+// Owns the Chart.js lifecycle, the HTML tooltip and the screen-reader table.
 export default class ChartCanvasComponent extends Component {
   chart = null;
   signature = null;
+  optionsSignature = null;
 
   constructor() {
     super(...arguments);
@@ -60,8 +60,7 @@ export default class ChartCanvasComponent extends Component {
     return this.args.valueLabel ?? 'Value';
   }
 
-  // Canvas-painted tooltips are trapped inside the canvas box, which is far too
-  // small on a sparkline. This one is an element beside it.
+  // An element, not a canvas-painted tooltip: those are trapped inside the canvas box.
   positionTip = ({ chart, tooltip }) => {
     const host = chart.canvas.closest('.chart-canvas');
     const tip = host?.querySelector('.chart-canvas__tip');
@@ -93,8 +92,8 @@ export default class ChartCanvasComponent extends Component {
   };
 
   // Never mutates the caller's config.
-  withTooltip(config) {
-    const options = config.options ?? {};
+  withTooltip(config = {}) {
+    const options = config?.options ?? {};
     const plugins = options.plugins ?? {};
     return {
       ...config,
@@ -112,21 +111,25 @@ export default class ChartCanvasComponent extends Component {
     };
   }
 
-  // @config is rebuilt on every model refresh, so identity says nothing about
-  // whether the data moved. Switching a filter that the chart does not depend
-  // on must not tear the chart down and animate it back in.
+  // @config is rebuilt on every model refresh, so identity cannot tell whether data moved.
   draw = modifier((canvas) => {
     const config = this.withTooltip(this.args.config);
     const signature = JSON.stringify(config.data);
+    // JSON drops functions: callback-only options changes ride with the data.
+    const optionsSignature = JSON.stringify(config.options);
 
     if (!this.chart) {
       this.chart = new Chart(canvas, config);
-    } else if (signature !== this.signature) {
+    } else if (
+      signature !== this.signature ||
+      optionsSignature !== this.optionsSignature
+    ) {
       this.chart.data = config.data;
       this.chart.options = config.options;
       this.chart.update();
     }
 
     this.signature = signature;
+    this.optionsSignature = optionsSignature;
   });
 }

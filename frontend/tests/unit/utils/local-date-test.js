@@ -1,13 +1,18 @@
 import { module, test } from 'qunit';
 import {
+  DEFAULT_RANGE,
+  RANGES,
   browserTimeZone,
   daysUntil,
   formatCalendarDate,
   formatInstant,
   isDateOnly,
+  isKnownRange,
   localDateString,
   localEndOfDayIso,
   localMidnightIso,
+  rangeBounds,
+  resolveRange,
   timeAgo,
   toDateOnly,
   toEpochMs,
@@ -190,5 +195,109 @@ module('Unit | Utility | local-date', function () {
     assert.strictEqual(todayInZone(null, at), localDateString(at));
     assert.strictEqual(todayInZone('Not/AZone', at), localDateString(at));
     assert.strictEqual(todayInZone('Asia/Dubai', new Date('bad')), null);
+  });
+
+  // 20:30 UTC is already the 1st in Dubai and still the 31st in Los Angeles.
+  const ACROSS_MONTH_END = new Date('2026-08-31T20:30:00Z');
+
+  test('rangeBounds pivots the day and the month on the given zone', function (assert) {
+    assert.deepEqual(rangeBounds('thisMonth', ACROSS_MONTH_END, 'Asia/Dubai'), {
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    assert.deepEqual(
+      rangeBounds('thisMonth', ACROSS_MONTH_END, 'America/Los_Angeles'),
+      { from: '2026-08-01', to: '2026-08-31' },
+    );
+    assert.deepEqual(rangeBounds('lastMonth', ACROSS_MONTH_END, 'Asia/Dubai'), {
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
+    assert.deepEqual(rangeBounds('last7', ACROSS_MONTH_END, 'Asia/Dubai'), {
+      from: '2026-08-26',
+      to: '2026-09-01',
+    });
+    assert.deepEqual(rangeBounds('last30', ACROSS_MONTH_END, 'Asia/Dubai'), {
+      from: '2026-08-03',
+      to: '2026-09-01',
+    });
+  });
+
+  test('rangeBounds falls back to browser time without a usable zone', function (assert) {
+    const local = rangeBounds('last7', ACROSS_MONTH_END);
+    assert.strictEqual(local.to, localDateString(ACROSS_MONTH_END));
+    assert.deepEqual(
+      rangeBounds('last7', ACROSS_MONTH_END, 'Not/AZone'),
+      local,
+    );
+    assert.strictEqual(
+      rangeBounds('thisMonth', ACROSS_MONTH_END).from,
+      `${localDateString(ACROSS_MONTH_END).slice(0, 7)}-01`,
+    );
+  });
+
+  test('rangeBounds returns null instead of guessing a period', function (assert) {
+    assert.strictEqual(rangeBounds('garbage', ACROSS_MONTH_END), null);
+    assert.strictEqual(rangeBounds('', ACROSS_MONTH_END), null);
+    assert.strictEqual(rangeBounds(undefined, ACROSS_MONTH_END), null);
+    assert.strictEqual(rangeBounds('custom', ACROSS_MONTH_END), null);
+    assert.strictEqual(rangeBounds('thisMonth', new Date('bad')), null);
+  });
+
+  test('isKnownRange covers exactly the offered periods', function (assert) {
+    assert.deepEqual(RANGES, [
+      'last7',
+      'last30',
+      'thisMonth',
+      'lastMonth',
+      'custom',
+    ]);
+    assert.true(RANGES.every((range) => isKnownRange(range)));
+    assert.true(isKnownRange(DEFAULT_RANGE));
+    assert.false(isKnownRange('garbage'));
+    assert.false(isKnownRange(undefined));
+  });
+
+  test('resolveRange keeps a complete custom pair and orders it', function (assert) {
+    assert.deepEqual(resolveRange('custom', '2026-09-01', '2026-09-10'), {
+      from: '2026-09-01',
+      to: '2026-09-10',
+    });
+    assert.deepEqual(resolveRange('custom', '2026-09-10', '2026-09-01'), {
+      from: '2026-09-01',
+      to: '2026-09-10',
+    });
+  });
+
+  test('resolveRange falls back to the preset and forwards the zone', function (assert) {
+    const dubaiMonth = { from: '2026-09-01', to: '2026-09-30' };
+    assert.deepEqual(
+      resolveRange('garbage', null, null, ACROSS_MONTH_END, 'Asia/Dubai'),
+      dubaiMonth,
+    );
+    assert.deepEqual(
+      resolveRange(
+        'custom',
+        '2026-09-01',
+        null,
+        ACROSS_MONTH_END,
+        'Asia/Dubai',
+      ),
+      dubaiMonth,
+    );
+    assert.deepEqual(
+      resolveRange(
+        'custom',
+        '2026-02-31',
+        '2026-09-10',
+        ACROSS_MONTH_END,
+        'Asia/Dubai',
+      ),
+      dubaiMonth,
+    );
+    assert.deepEqual(
+      resolveRange('last7', null, null, ACROSS_MONTH_END, 'Asia/Dubai'),
+      { from: '2026-08-26', to: '2026-09-01' },
+    );
   });
 });

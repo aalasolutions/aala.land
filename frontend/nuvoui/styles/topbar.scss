@@ -267,12 +267,20 @@
   inset-block-start: calc(100% + #{nu-space(1)});
   inset-inline-end: 0;
   min-inline-size: 14rem;
+  max-block-size: calc(100vh - #{nu-var("topbar", "Height")} - #{nu-space(4)});
   background-color: nu-var("topbar-menu", "BackgroundColor");
   border: 1px solid nu-var("topbar-menu", "BorderColor");
   border-radius: nu-var("topbar-menu", "BorderRadius");
   box-shadow: nu-var("topbar-menu", "BoxShadow");
   z-index: nu-z(dropdown);
-  overflow: hidden;
+  overflow-y: auto;
+
+  // dvh so a mobile URL bar cannot push the menu bottom off screen.
+  @supports (max-block-size: 1dvh) {
+    max-block-size: calc(
+      100dvh - #{nu-var("topbar", "Height")} - #{nu-space(4)}
+    );
+  }
 
   @include e(header) {
     display: flex;
@@ -300,6 +308,7 @@
     color: var(--text-color);
     font-size: nu-font-size(sm);
     text-align: start;
+    text-decoration: none;
     cursor: pointer;
     transition: background-color nu-duration(fast) $nu-ease;
 

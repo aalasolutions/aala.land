@@ -13,6 +13,11 @@ import { Commission } from '../commissions/entities/commission.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
+import {
+  businessDateSql,
+  isDateOnly,
+  regionTimezoneSql,
+} from '../../shared/utils/region-time.util';
 import { User } from '../users/entities/user.entity';
 
 function createMockQueryBuilder(result: any = []) {
@@ -22,8 +27,11 @@ function createMockQueryBuilder(result: any = []) {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
+    addGroupBy: jest.fn().mockReturnThis(),
+    having: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
     setParameter: jest.fn().mockReturnThis(),
+    setParameters: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
     leftJoin: jest.fn().mockReturnThis(),
     leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -153,6 +161,40 @@ describe('ReportsService', () => {
       expect(result.activeLeases).toBe(5);
       expect(result.pendingCheques).toBe(2);
     });
+
+    it('windows monthly revenue on the business date, not on created_at', async () => {
+      leadRepo.count.mockResolvedValue(0);
+      const txnQb = createMockQueryBuilder({ total: '0' });
+      transactionRepo.createQueryBuilder.mockReturnValue(txnQb);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chequeRepo.count.mockResolvedValue(0);
+
+      await service.getDashboardKpis(companyId);
+
+      const monthClause = txnQb.andWhere.mock.calls
+        .map((call: any[]) => call[0])
+        .find(
+          (clause: unknown) =>
+            typeof clause === 'string' && clause.includes('date_trunc'),
+        );
+
+      expect(monthClause).toContain(businessDateSql('t'));
+      expect(monthClause).not.toContain('t.created_at >=');
+      // The month boundary still resolves in the row own region zone.
+      expect(monthClause).toContain(regionTimezoneSql('t.region_code'));
+      // Bounded above, because the trend series drops a future month.
+      expect(monthClause).toContain("INTERVAL '1 month'");
+    });
+
+    it('buckets the trend on the same business date the KPI windows on', async () => {
+      const trendQb = createMockQueryBuilder([]);
+      transactionRepo.createQueryBuilder.mockReturnValue(trendQb);
+
+      await service.getRevenueTrend(companyId, 6);
+
+      expect(trendQb.select.mock.calls[0][0]).toContain(businessDateSql('t'));
+    });
   });
 
   describe('getAgentPerformance', () => {
@@ -194,6 +236,145 @@ describe('ReportsService', () => {
       expect(agent3).toBeDefined();
       expect(agent3!.commissionsEarned).toBe(1000);
       expect(agent3!.leadsAssigned).toBe(0);
+    });
+  });
+
+  describe('getLeadOwnership', () => {
+    const rowFor = (overrides: any) => ({
+      agentId: 'agent-1',
+      agentName: 'Agent One',
+      newCount: 0,
+      contactedCount: 0,
+      viewingCount: 0,
+      negotiatingCount: 0,
+      wonCount: 0,
+      lostCount: 0,
+      ...overrides,
+    });
+
+    it('sorts agents by open load and breaks the load down by stage', async () => {
+      userRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([
+          rowFor({ agentId: 'agent-light', agentName: 'Bea', newCount: 1 }),
+          rowFor({
+            agentId: 'agent-heavy',
+            agentName: 'Ana',
+            newCount: 6,
+            contactedCount: 4,
+            viewingCount: 2,
+            wonCount: 2,
+            lostCount: 1,
+          }),
+        ]),
+      );
+      leadRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([
+          { stage: 'NEW', count: 9, unassigned: 3 },
+          { stage: 'CONTACTED', count: 7, unassigned: 0 },
+          { stage: 'WON', count: 2, unassigned: 0 },
+        ]),
+      );
+
+      const result = await service.getLeadOwnership(companyId);
+
+      expect(result.agents.map((a) => a.agentId)).toEqual([
+        'agent-heavy',
+        'agent-light',
+      ]);
+
+      const heavy = result.agents[0];
+      expect(heavy.openTotal).toBe(12);
+      expect(heavy.won).toBe(2);
+      expect(heavy.lost).toBe(1);
+      expect(heavy.stages).toEqual([
+        { stage: LeadStatus.NEW, count: 6 },
+        { stage: LeadStatus.CONTACTED, count: 4 },
+        { stage: LeadStatus.VIEWING, count: 2 },
+        { stage: LeadStatus.NEGOTIATING, count: 0 },
+      ]);
+      expect(result.unassignedOpen).toBe(3);
+      expect(result.pipeline).toEqual([
+        { stage: LeadStatus.NEW, count: 9 },
+        { stage: LeadStatus.CONTACTED, count: 7 },
+        { stage: LeadStatus.VIEWING, count: 0 },
+        { stage: LeadStatus.NEGOTIATING, count: 0 },
+      ]);
+      expect(result.won).toBe(2);
+      expect(result.lost).toBe(0);
+    });
+
+    it('keeps agents holding no leads, sorted last', async () => {
+      userRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([
+          rowFor({ agentId: 'agent-idle', agentName: 'Zed' }),
+          rowFor({ agentId: 'agent-busy', agentName: 'Ana', newCount: 2 }),
+        ]),
+      );
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+
+      const result = await service.getLeadOwnership(companyId);
+
+      expect(result.agents.map((a) => a.agentId)).toEqual([
+        'agent-busy',
+        'agent-idle',
+      ]);
+      expect(result.agents[1].openTotal).toBe(0);
+      expect(result.agents[1].won).toBe(0);
+    });
+
+    it('bounds closed leads to the 30 day window in the join', async () => {
+      const qb = createMockQueryBuilder([]);
+      userRepo.createQueryBuilder.mockReturnValue(qb);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+
+      await service.getLeadOwnership(companyId);
+
+      const joinCondition = qb.leftJoin.mock.calls[0][2];
+      expect(joinCondition).toContain('l.stageEnteredAt >= :closedSince');
+
+      const params = qb.setParameters.mock.calls[0][0];
+      const daysBack =
+        (Date.now() - new Date(params.closedSince).getTime()) / 86400000;
+      expect(Math.round(daysBack)).toBe(30);
+    });
+
+    it('lists an agent only when assigned to a readable region', async () => {
+      const qb = createMockQueryBuilder([]);
+      userRepo.createQueryBuilder.mockReturnValue(qb);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+
+      await service.getLeadOwnership(companyId, undefined, {
+        role: 'agent',
+        regionCodes: ['makkah'],
+      } as any);
+
+      const having = qb.having.mock.calls[0][0];
+      expect(having).toContain('jsonb_array_elements_text');
+      expect(having).toContain('COUNT(l.id) > 0');
+    });
+
+    it('skips the region predicate when the caller reads every region', async () => {
+      const qb = createMockQueryBuilder([]);
+      userRepo.createQueryBuilder.mockReturnValue(qb);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+
+      await service.getLeadOwnership(companyId);
+
+      expect(qb.having.mock.calls[0][0]).not.toContain(
+        'jsonb_array_elements_text',
+      );
+    });
+
+    it('returns nothing when the caller can read no region', async () => {
+      const result = await service.getLeadOwnership(companyId, undefined, {
+        role: 'agent',
+        regionCodes: [],
+      } as any);
+
+      expect(result.agents).toEqual([]);
+      expect(result.unassignedOpen).toBe(0);
+      expect(result.pipeline.every((stage) => stage.count === 0)).toBe(true);
+      expect(userRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
@@ -422,8 +603,7 @@ describe('ReportsService', () => {
     const admin = { role: 'company_admin', regionCodes: ['makkah'] };
     const unassignedManager = { role: 'manager', regionCodes: [] };
 
-    // Stands in for Postgres on a QueryBuilder read: the seeded rows survive
-    // only when the predicate the service built admits their region.
+    // Stands in for Postgres: seeded rows survive only if the built predicate admits their region.
     function createRegionAwareQb(rows: any[]) {
       let codes: string[] | undefined;
       const capture = (_sql: string, params?: any) => {
@@ -460,8 +640,7 @@ describe('ReportsService', () => {
       return qb;
     }
 
-    // Stands in for Postgres on a find/count read: In() carries the admitted
-    // regions on `.value`, and a row outside them is not returned.
+    // Stands in for Postgres: In() carries the admitted regions on `.value`.
     function rowsMatchingWhere(rows: any[], where: any) {
       const codes = where?.regionCode?.value as string[] | undefined;
       const byRegion = codes
@@ -990,6 +1169,87 @@ describe('ReportsService', () => {
       expect(result).toHaveLength(6);
       expect(result.every((point) => point.total === 0)).toBe(true);
       expect(transactionRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    // Every region zone runs ahead of UTC, so a UTC window drops the newest region month.
+    describe('region-anchored window', () => {
+      const boundary = new Date('2026-09-30T21:00:00.000Z');
+
+      // The shared anchor is unit-tested in month-series.util.spec; these read it through the series.
+      const lastMonthOf = async (regionCode?: string, caller?: any) => {
+        jest.useFakeTimers().setSystemTime(boundary);
+        transactionRepo.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder([]),
+        );
+        const result = await service.getRevenueTrend(
+          companyId,
+          6,
+          regionCode,
+          caller,
+        );
+        return result[result.length - 1].month;
+      };
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('ends on the newest region month when the caller reads every region', async () => {
+        expect(boundary.getUTCMonth()).toBe(8);
+        expect(await lastMonthOf()).toBe('2026-10');
+      });
+
+      it('ends on the requested region month, not the server UTC month', async () => {
+        expect(await lastMonthOf('dubai')).toBe('2026-10');
+      });
+
+      it('falls back to the UTC month for an unknown region code', async () => {
+        expect(await lastMonthOf('nowhere')).toBe('2026-09');
+      });
+
+      it('falls back to the UTC month when no region is readable', async () => {
+        expect(
+          await lastMonthOf(undefined, { role: 'manager', regionCodes: [] }),
+        ).toBe('2026-09');
+      });
+
+      it('ends the series on the region month so its rows are not zero-filled away', async () => {
+        jest.useFakeTimers().setSystemTime(boundary);
+        transactionRepo.createQueryBuilder.mockReturnValue(
+          createMockQueryBuilder([{ month: '2026-10', total: '5000.00' }]),
+        );
+
+        const result = await service.getRevenueTrend(companyId, 6, 'dubai');
+
+        expect(result.map((point) => point.month)).toEqual([
+          '2026-05',
+          '2026-06',
+          '2026-07',
+          '2026-08',
+          '2026-09',
+          '2026-10',
+        ]);
+        expect(result[result.length - 1]).toEqual({
+          month: '2026-10',
+          total: 5000,
+        });
+      });
+
+      it('hands SQL a real first-of-month calendar date', async () => {
+        jest.useFakeTimers().setSystemTime(boundary);
+        const qb = createMockQueryBuilder([]);
+        transactionRepo.createQueryBuilder.mockReturnValue(qb);
+
+        await service.getRevenueTrend(companyId, 6, 'dubai');
+
+        const bound = qb.andWhere.mock.calls.find(([sql]: [string]) =>
+          sql.includes('>= :from'),
+        );
+        expect(bound).toBeDefined();
+        const from: string = bound[1].from;
+        expect(from).toBe('2026-05-01');
+        expect(isDateOnly(from)).toBe(true);
+      });
     });
   });
 });

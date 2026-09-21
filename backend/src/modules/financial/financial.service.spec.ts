@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FinancialService } from './financial.service';
+import { FinancialAnalyticsService } from './financial-analytics.service';
 import {
   Transaction,
   TransactionType,
@@ -45,6 +46,7 @@ describe('FinancialService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialService,
+        FinancialAnalyticsService,
         {
           provide: DataSource,
           useValue: {
@@ -319,6 +321,7 @@ describe('FinancialService', () => {
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       getManyAndCount: jest
         .fn()
         .mockResolvedValue([[mockTransaction as Transaction], 1]),
@@ -328,7 +331,7 @@ describe('FinancialService', () => {
       const qb: any = listQb();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      const result = await service.findAll(companyId, 1, 20);
+      const result = await service.findAll(companyId, { page: 1, limit: 20 });
 
       expect(qb.where).toHaveBeenCalledWith('t.companyId = :companyId', {
         companyId,
@@ -336,49 +339,55 @@ describe('FinancialService', () => {
       expect(qb.skip).toHaveBeenCalledWith(0);
       expect(qb.take).toHaveBeenCalledWith(20);
       expect(qb.orderBy).toHaveBeenCalledWith('t.createdAt', 'DESC');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('t.id', 'DESC');
       expect(result.data).toEqual([mockTransaction]);
       expect(result.total).toBe(1);
+    });
+
+    it('echoes the clamped page and limit, not the raw caller input', async () => {
+      const qb: any = listQb();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.findAll(companyId, {
+        page: -3,
+        limit: 5000,
+      });
+
+      expect(qb.skip).toHaveBeenCalledWith(0);
+      expect(qb.take).toHaveBeenCalledWith(500);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(500);
     });
 
     it('filters on the business date when a range is given', async () => {
       const qb: any = listQb();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        '2026-02-01',
-        '2026-02-28',
-      );
-
-      expect(qb.andWhere).toHaveBeenCalledWith(expect.any(String), {
+      await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
         from: '2026-02-01',
         to: '2026-02-28',
       });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('BETWEEN :from::date AND :to::date'),
+        { from: '2026-02-01', to: '2026-02-28' },
+      );
     });
 
-    it('ignores a range that is not a YYYY-MM-DD pair', async () => {
+    it('rejects a range that is not a YYYY-MM-DD pair', async () => {
       const qb: any = listQb();
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        'nonsense',
-        '2026-02-28',
-      );
-
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      await expect(
+        service.findAll(companyId, {
+          page: 1,
+          limit: 20,
+          from: 'nonsense',
+          to: '2026-02-28',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -451,9 +460,11 @@ describe('FinancialService', () => {
         addSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         setParameters: jest.fn().mockReturnThis(),
-        getRawOne: jest
-          .fn()
-          .mockResolvedValue({ totalIncome: '15000', totalExpense: '3000' }),
+        getRawOne: jest.fn().mockResolvedValue({
+          totalIncome: '15000',
+          totalExpense: '3000',
+          net: '12000',
+        }),
       };
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
@@ -462,6 +473,26 @@ describe('FinancialService', () => {
       expect(result.totalIncome).toBe(15000);
       expect(result.totalExpense).toBe(3000);
       expect(result.net).toBe(12000);
+    });
+
+    it('takes net from the SQL-computed value rather than re-subtracting in JS', async () => {
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        // A value a naive `totalIncome - totalExpense` float subtraction would not reproduce.
+        getRawOne: jest.fn().mockResolvedValue({
+          totalIncome: '100000.1',
+          totalExpense: '12237.93',
+          net: '87762.17',
+        }),
+      };
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getSummary(companyId);
+
+      expect(result.net).toBe(87762.17);
     });
   });
 
@@ -640,9 +671,7 @@ describe('FinancialService', () => {
       { id: 'txn-no-unit', unitId: null, regionCode: null },
     ];
 
-    // Stands in for Postgres on the QueryBuilder read. The predicate is
-    // "unit is null OR unit sits in one of these regions", so an unlinked
-    // transaction survives whatever the caller is assigned to.
+    // Stands in for Postgres: the predicate admits a transaction with no unit at all.
     function seedTransactions() {
       let codes: string[] | undefined;
       const capture = (_sql: string, params?: any) => {
@@ -663,6 +692,7 @@ describe('FinancialService', () => {
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
         where: jest.fn(capture),
         andWhere: jest.fn(capture),
         getManyAndCount: jest.fn(() =>
@@ -677,15 +707,11 @@ describe('FinancialService', () => {
     it('confines the list to the caller regions with no regionCode argument', async () => {
       seedTransactions();
 
-      const result = await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        makkahManager,
-      );
+      const result = await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
+        caller: makkahManager,
+      });
 
       expect(result.data.map((t) => t.id)).toEqual([
         'txn-makkah',
@@ -697,15 +723,12 @@ describe('FinancialService', () => {
     it('lists no transaction from a region outside the caller assignments', async () => {
       seedTransactions();
 
-      const result = await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        'punjab',
-        makkahManager,
-      );
+      const result = await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
+        regionCode: 'punjab',
+        caller: makkahManager,
+      });
 
       expect(result.data.map((t) => t.id)).not.toContain('txn-punjab');
     });
@@ -713,15 +736,12 @@ describe('FinancialService', () => {
     it('narrows the list to a requested region the caller is assigned to', async () => {
       seedTransactions();
 
-      const result = await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        'punjab',
-        twoRegionManager,
-      );
+      const result = await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
+        regionCode: 'punjab',
+        caller: twoRegionManager,
+      });
 
       expect(result.data.map((t) => t.id)).toEqual([
         'txn-punjab',
@@ -732,15 +752,11 @@ describe('FinancialService', () => {
     it('leaves the list unfiltered for admins', async () => {
       seedTransactions();
 
-      const result = await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        admin,
-      );
+      const result = await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
+        caller: admin,
+      });
 
       expect(result.data.map((t) => t.id)).toEqual([
         'txn-makkah',
@@ -752,7 +768,7 @@ describe('FinancialService', () => {
     it('stays unscoped when no caller is supplied', async () => {
       seedTransactions();
 
-      const result = await service.findAll(companyId, 1, 20);
+      const result = await service.findAll(companyId, { page: 1, limit: 20 });
 
       expect(result.total).toBe(3);
     });
@@ -760,15 +776,11 @@ describe('FinancialService', () => {
     it('lists nothing when the caller has no assigned region', async () => {
       seedTransactions();
 
-      const result = await service.findAll(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        unassignedManager,
-      );
+      const result = await service.findAll(companyId, {
+        page: 1,
+        limit: 20,
+        caller: unassignedManager,
+      });
 
       expect(result).toEqual({ data: [], total: 0, page: 1, limit: 20 });
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
@@ -808,6 +820,8 @@ describe('FinancialService', () => {
           total: 8238,
         },
       ]);
+      // Sorts by the named aggregate alias, not its position in the select list.
+      expect(qb.orderBy).toHaveBeenCalledWith('total', 'DESC');
     });
 
     it('labels a null category as OTHER', async () => {
@@ -825,7 +839,10 @@ describe('FinancialService', () => {
       const qb: any = aggregateQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      await service.getCategoryBreakdown(companyId, '2026-04-01', '2026-06-30');
+      await service.getCategoryBreakdown(companyId, {
+        from: '2026-04-01',
+        to: '2026-06-30',
+      });
 
       expect(qb.andWhere).toHaveBeenCalledWith(expect.any(String), {
         from: '2026-04-01',
@@ -834,13 +851,9 @@ describe('FinancialService', () => {
     });
 
     it('returns nothing without querying when the caller has no regions', async () => {
-      const result = await service.getCategoryBreakdown(
-        companyId,
-        undefined,
-        undefined,
-        undefined,
-        { role: 'manager', regionCodes: [] } as any,
-      );
+      const result = await service.getCategoryBreakdown(companyId, {
+        caller: { role: 'manager', regionCodes: [] } as any,
+      });
 
       expect(result).toEqual([]);
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
@@ -862,7 +875,7 @@ describe('FinancialService', () => {
       const qb: any = trendQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
-      const result = await service.getCashflowTrend(companyId, 6);
+      const result = await service.getCashflowTrend(companyId, { months: 6 });
 
       expect(result).toHaveLength(6);
       expect(result.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
@@ -874,7 +887,7 @@ describe('FinancialService', () => {
     it('maps returned months onto the series as numbers', async () => {
       const qb: any = trendQb([]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      const series = await service.getCashflowTrend(companyId, 6);
+      const series = await service.getCashflowTrend(companyId, { months: 6 });
       const latest = series[series.length - 1].month;
 
       const filled: any = trendQb([
@@ -882,7 +895,7 @@ describe('FinancialService', () => {
       ]);
       (repo.createQueryBuilder as jest.Mock).mockReturnValue(filled);
 
-      const result = await service.getCashflowTrend(companyId, 6);
+      const result = await service.getCashflowTrend(companyId, { months: 6 });
 
       expect(result[result.length - 1]).toEqual({
         month: latest,
@@ -897,14 +910,203 @@ describe('FinancialService', () => {
     });
 
     it('returns a zero-filled series without querying when the caller has no regions', async () => {
-      const result = await service.getCashflowTrend(companyId, 6, undefined, {
-        role: 'manager',
-        regionCodes: [],
-      } as any);
+      const result = await service.getCashflowTrend(companyId, {
+        months: 6,
+        caller: { role: 'manager', regionCodes: [] } as any,
+      });
 
       expect(result).toHaveLength(6);
       expect(result.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    // 20:00Z on the last of February is already March 1 in Asia/Dubai but still February in Asia/Riyadh.
+    describe('at a region month boundary', () => {
+      beforeEach(() => {
+        jest.useFakeTimers().setSystemTime(new Date('2026-02-28T20:00:00Z'));
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('ends on the newest region month rather than the UTC month', async () => {
+        const qb: any = trendQb([]);
+        (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+        const result = await service.getCashflowTrend(companyId, {
+          months: 6,
+          regionCode: 'dubai',
+        });
+
+        expect(result[result.length - 1].month).toBe('2026-03');
+      });
+
+      it('keeps the series on the caller region month', async () => {
+        const qb: any = trendQb([]);
+        (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+        const result = await service.getCashflowTrend(companyId, {
+          months: 6,
+          caller: { role: 'manager', regionCodes: ['riyadh'] } as any,
+        });
+
+        expect(result[result.length - 1].month).toBe('2026-02');
+      });
+    });
+
+    it('bounds the raw business date so the predicate can use an index', async () => {
+      const qb: any = trendQb([]);
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.getCashflowTrend(companyId, { months: 6 });
+
+      const bound = qb.andWhere.mock.calls.find(
+        (call: unknown[]) =>
+          typeof call[0] === 'string' && call[0].includes(':from'),
+      );
+      expect(bound[0]).toContain('>= :from::date');
+      expect(bound[0]).not.toContain('date_trunc');
+      expect(bound[1]).toEqual({ from: `${result[0].month}-01` });
+    });
+  });
+  // 20:30Z is already the next calendar day in Asia/Dubai: region day 2026-09-22, UTC day 2026-09-21.
+  describe('transaction date window', () => {
+    const regionCode = 'dubai';
+    const caller = { role: 'manager', regionCodes: [regionCode] } as any;
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-09-21T20:30:00Z'));
+      (repo.create as jest.Mock).mockImplementation((value: unknown) => value);
+      (repo.save as jest.Mock).mockImplementation(
+        (value: unknown) => value as Transaction,
+      );
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    const createDated = (transactionDate: string) =>
+      service.create(
+        companyId,
+        { type: TransactionType.INCOME, amount: 100, transactionDate } as any,
+        regionCode,
+        caller,
+      );
+
+    const dated = (transactionDate: string | null) =>
+      ({
+        ...mockTransaction,
+        regionCode,
+        transactionDate,
+        createdAt: new Date('2026-09-21T20:30:00Z'),
+      }) as Transaction;
+
+    it('accepts a create dated exactly 30 days back on the region day', async () => {
+      const result = await createDated('2026-08-23');
+
+      expect(result.transactionDate).toBe('2026-08-23');
+    });
+
+    it('refuses a create dated 31 days back and names the region earliest', async () => {
+      // 2026-08-22 is still inside the window on the UTC day, not on the region day.
+      await expect(createDated('2026-08-22')).rejects.toThrow(
+        /earliest date accepted today is 2026-08-23/,
+      );
+      await expect(createDated('2026-08-22')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts a create dated exactly one month ahead', async () => {
+      const result = await createDated('2026-10-22');
+
+      expect(result.transactionDate).toBe('2026-10-22');
+    });
+
+    it('refuses a create dated beyond one month ahead', async () => {
+      await expect(createDated('2026-10-23')).rejects.toThrow(
+        /latest date accepted today is 2026-10-22/,
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('keeps a record dated exactly 30 days back editable', async () => {
+      repo.findOne.mockResolvedValue(dated('2026-08-23'));
+
+      const result = await service.update('txn-uuid-1', companyId, {
+        status: TransactionStatus.COMPLETED,
+      });
+
+      expect(result.status).toBe(TransactionStatus.COMPLETED);
+    });
+
+    // PARKED with the lock itself: it froze PENDING rent-due rows before their due date.
+  it.skip('locks a record dated 31 days back', async () => {
+      repo.findOne.mockResolvedValue(dated('2026-08-22'));
+
+      await expect(
+        service.update('txn-uuid-1', companyId, {
+          status: TransactionStatus.COMPLETED,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it.skip('locks every field of an aged record, not only its date', async () => {
+      // Dated 20 days back and edited 20 days later: 40 days old on the region day.
+      repo.findOne.mockResolvedValue(dated('2026-08-13'));
+
+      await expect(
+        service.update('txn-uuid-1', companyId, { amount: 999 }),
+      ).rejects.toThrow(/dated 2026-08-13, 40 days ago/);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it.skip('ages an undated record on the region day it was created', async () => {
+      const row = dated(null);
+      // 21:00Z on 2026-08-21 is already 2026-08-22 in Asia/Dubai: 31 region days old.
+      row.createdAt = new Date('2026-08-21T21:00:00Z');
+      repo.findOne.mockResolvedValue(row);
+
+      await expect(
+        service.update('txn-uuid-1', companyId, { amount: 999 }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('keeps an undated record created 30 region days back editable', async () => {
+      const row = dated(null);
+      row.createdAt = new Date('2026-08-22T21:00:00Z');
+      repo.findOne.mockResolvedValue(row);
+
+      const result = await service.update('txn-uuid-1', companyId, {
+        amount: 999,
+      });
+
+      expect(result.amount).toBe(999);
+    });
+
+    it('refuses backdating an editable record beyond the window', async () => {
+      repo.findOne.mockResolvedValue(dated('2026-09-20'));
+
+      await expect(
+        service.update('txn-uuid-1', companyId, {
+          transactionDate: '2024-01-15',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts a new date inside the window on an editable record', async () => {
+      repo.findOne.mockResolvedValue(dated('2026-09-20'));
+
+      const result = await service.update('txn-uuid-1', companyId, {
+        transactionDate: '2026-08-23',
+      });
+
+      expect(result.transactionDate).toBe('2026-08-23');
     });
   });
 });

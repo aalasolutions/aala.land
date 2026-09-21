@@ -1,32 +1,14 @@
-import Component from '@glimmer/component';
-import { service } from '@ember/service';
-import { formatCalendarDate } from '../utils/local-date';
-import { moneyFormatter, token, withAlpha } from '../utils/chart-style';
+import { token, withAlpha } from '../utils/chart-style';
+import ChartBase from './chart-base';
 
-// A bare line for the foot of a stat card: no scales, grid, ticks or legend.
-// `@points` is [{ month: 'YYYY-MM', value: Number }], `@color` a token name.
-export default class StatSparklineComponent extends Component {
-  @service region;
-
+// Bare line for a stat card foot (no scales/grid/legend); `@variant` is a kit variant name.
+export default class StatSparklineComponent extends ChartBase {
   get points() {
     return this.args.points ?? [];
   }
 
-  get locale() {
-    return navigator.language || 'en';
-  }
-
-  get money() {
-    return moneyFormatter(this.locale, this.region.currencyCode);
-  }
-
   get labels() {
-    return this.points.map(
-      (point) =>
-        formatCalendarDate(`${point.month}-01`, this.locale, {
-          month: 'short',
-        }) ?? point.month,
-    );
+    return this.monthLabels(this.points);
   }
 
   get values() {
@@ -38,14 +20,18 @@ export default class StatSparklineComponent extends Component {
   }
 
   get rows() {
+    const money = this.money;
+    // Hoisted: each read of a getter rebuilds the whole array, so reading it per row is quadratic.
+    const labels = this.labels;
+    const values = this.values;
     return this.points.map((point, index) => ({
-      label: this.labels[index],
-      value: this.money(this.values[index]),
+      label: labels[index],
+      value: money(values[index]),
     }));
   }
 
   get config() {
-    const line = token(this.args.color ?? '--primary');
+    const line = token(`--${this.args.variant ?? 'primary'}`);
 
     return {
       type: 'line',
@@ -58,8 +44,7 @@ export default class StatSparklineComponent extends Component {
             borderWidth: 2,
             backgroundColor: withAlpha(line, 0.14),
             fill: true,
-            // Straight segments. Curve interpolation invents values between
-            // months that never existed, and smooths a real change into a wave.
+            // Straight segments: curve interpolation invents months that never existed.
             tension: 0,
             pointRadius: 3,
             pointHoverRadius: 6,
@@ -84,10 +69,7 @@ export default class StatSparklineComponent extends Component {
         },
         scales: {
           x: { display: false },
-          // Scaled to the data, not to zero: six months of revenue vary by a
-          // few percent, and a zero baseline flattens that into a straight
-          // line. The value above the chart carries the magnitude; this
-          // carries the shape. `grace` keeps the extremes off the edges.
+          // Scaled to the data, not zero: a zero baseline flattens a few percent into a flat line.
           y: { display: false, grace: '20%' },
         },
       },

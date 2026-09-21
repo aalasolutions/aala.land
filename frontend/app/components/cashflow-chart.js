@@ -1,46 +1,27 @@
-import Component from '@glimmer/component';
-import { service } from '@ember/service';
-import { formatCalendarDate } from '../utils/local-date';
-import {
-  compactFormatter,
-  moneyFormatter,
-  token,
-  withAlpha,
-} from '../utils/chart-style';
+import { token, withAlpha } from '../utils/chart-style';
+import ChartBase from './chart-base';
 
-export default class CashflowChartComponent extends Component {
-  @service region;
-
-  get locale() {
-    return navigator.language || 'en';
-  }
-
-  get money() {
-    return moneyFormatter(this.locale, this.region.currencyCode);
-  }
-
+export default class CashflowChartComponent extends ChartBase {
   get points() {
     return this.args.points ?? [];
   }
 
   get labels() {
-    return this.points.map(
-      (point) =>
-        formatCalendarDate(`${point.month}-01`, this.locale, {
-          month: 'short',
-        }) ?? point.month,
-    );
+    return this.monthLabels(this.points);
   }
 
   get rows() {
+    const money = this.money;
+    // Hoisted: each read of a getter rebuilds the whole array, so reading it per row is quadratic.
+    const labels = this.labels;
     return this.points.flatMap((point, index) => [
       {
-        label: `${this.labels[index]} income`,
-        value: this.money(Number(point.income) || 0),
+        label: `${labels[index]} income`,
+        value: money(Number(point.income) || 0),
       },
       {
-        label: `${this.labels[index]} expense`,
-        value: this.money(Number(point.expense) || 0),
+        label: `${labels[index]} expense`,
+        value: money(Number(point.expense) || 0),
       },
     ]);
   }
@@ -50,7 +31,7 @@ export default class CashflowChartComponent extends Component {
     const expense = token('--danger');
     const muted = token('--text-muted');
     const border = token('--border-base');
-    const compact = compactFormatter(this.locale);
+    const compact = this.compact;
 
     const series = (label, color, key) => ({
       label,

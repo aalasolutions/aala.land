@@ -7,6 +7,10 @@ const LTR_TYPES = ['tel', 'number', 'email', 'url'];
 export default class NuInputComponent extends Component {
   get wrapClasses() {
     const parts = ['nu-input-wrap'];
+    // The wrapper is what claims the row width, so @auto has to reach it too.
+    if (this.args.auto) {
+      parts.push('m-auto');
+    }
     if (this.args.prefixIcon) {
       parts.push('m-has-prefix');
     }

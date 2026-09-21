@@ -202,6 +202,15 @@
     }
   }
 
+  // The wrapper is the sizing box: the control fills it and the inner input
+  // fills the control. `m-auto` on the input alone therefore changes nothing,
+  // because this box still claims the full row. `fit-content` shrinks it to
+  // the input's intrinsic width in a block context, and in a flex row the
+  // item sizes to its content the same way.
+  @include m(auto) {
+    inline-size: fit-content;
+  }
+
   // Reserve room so text clears the affix.
   @include m(has-prefix) {
     .nu-input {

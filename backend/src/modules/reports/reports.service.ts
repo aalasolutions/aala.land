@@ -26,10 +26,26 @@ import {
   isAdminRole,
 } from '../../shared/utils/region-visibility.util';
 import {
+  businessDateSql,
   regionTimezoneSql,
   subtractDaysFromInstant,
 } from '../../shared/utils/region-time.util';
-import { monthSeries } from '../../shared/utils/month-series.util';
+import {
+  monthBucketSql,
+  monthLabelSql,
+  monthSeries,
+  trendAnchor,
+  zeroFillMonths,
+} from '../../shared/utils/month-series.util';
+import {
+  AgentLoadRow,
+  CensusRow,
+  agentLoadQuery,
+  closedWindowStart,
+  emptyLeadOwnership,
+  leadCensusQuery,
+  shapeLeadOwnership,
+} from './lead-ownership.query';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -78,6 +94,23 @@ export interface PipelineFunnel {
   count: number;
 }
 
+export interface AgentLeadLoad {
+  agentId: string;
+  agentName: string;
+  openTotal: number;
+  stages: PipelineFunnel[];
+  won: number;
+  lost: number;
+}
+
+export interface LeadOwnership {
+  agents: AgentLeadLoad[];
+  pipeline: PipelineFunnel[];
+  won: number;
+  lost: number;
+  unassignedOpen: number;
+}
+
 export interface StageBottleneck {
   stage: string;
   avgDays: number;
@@ -106,6 +139,8 @@ export interface AgentComparison {
   commissionsEarned: number;
   rank: number;
 }
+
+const REVENUE_KEYS = ['total'] as const;
 
 const PIPELINE_STAGE_ORDER = [
   LeadStatus.NEW,
@@ -165,9 +200,11 @@ export class ReportsService {
       };
     }
 
-    // Month start in each transaction's own region.
+    // Same business date as the revenue trend, so one card cannot show two answers.
     const zone = regionTimezoneSql('t.region_code');
-    const inRegionMonth = `t.created_at >= (date_trunc('month', now() AT TIME ZONE ${zone}) AT TIME ZONE ${zone})`;
+    const businessDate = businessDateSql('t');
+    const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
+    const inRegionMonth = `(${businessDate} >= ${monthStart} AND ${businessDate} < (${monthStart} + INTERVAL '1 month'))`;
 
     // Leads and Commissions have direct regionCode
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
@@ -268,42 +305,39 @@ export class ReportsService {
     };
   }
 
-  // Completed income per month, oldest first. Buckets on the business date, with
-  // created_at only as a fallback because transaction_date is nullable.
+  // Buckets on transaction_date, falling back to created_at because it is nullable.
   async getRevenueTrend(
     companyId: string,
     months = 6,
     regionCode?: string,
     caller?: RegionScope,
   ): Promise<RevenueTrendPoint[]> {
-    const series = monthSeries(months);
-    const empty = series.map((month) => ({ month, total: 0 }));
-
     const regionCodes = effectiveRegionCodes(regionCode, caller);
+    const series = monthSeries(months, trendAnchor(regionCodes));
+    const empty = zeroFillMonths(series, [], REVENUE_KEYS);
+
     // No readable region means nothing to total, and an empty IN () is invalid SQL.
     if (regionCodes?.length === 0) return empty;
 
-    const zone = regionTimezoneSql('t.region_code');
-    const bucket = `date_trunc('month', COALESCE(t.transaction_date, (t.created_at AT TIME ZONE ${zone})::date))`;
+    const label = monthLabelSql('t');
 
     const qb = this.transactionRepository
       .createQueryBuilder('t')
-      .select(`to_char(${bucket}, 'YYYY-MM')`, 'month')
+      .select(label, 'month')
       .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
       .where('t.companyId = :companyId', { companyId })
       .andWhere('t.type = :type', { type: TransactionType.INCOME })
       .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
-      .andWhere(`${bucket} >= :from`, { from: `${series[0]}-01` })
-      .groupBy(`to_char(${bucket}, 'YYYY-MM')`);
+      .andWhere(`${monthBucketSql('t')} >= :from`, { from: `${series[0]}-01` })
+      .groupBy(label);
 
     if (regionCodes) {
       qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
 
     const rows = await qb.getRawMany<{ month: string; total: string }>();
-    const totals = new Map(rows.map((row) => [row.month, Number(row.total)]));
 
-    return series.map((month) => ({ month, total: totals.get(month) ?? 0 }));
+    return zeroFillMonths(series, rows, REVENUE_KEYS);
   }
 
   async getAgentPerformance(
@@ -663,6 +697,35 @@ export class ReportsService {
       stage,
       count: countMap.get(stage) ?? 0,
     }));
+  }
+
+  // lead-ownership.query.ts owns the two builders and the row shaping.
+  async getLeadOwnership(
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<LeadOwnership> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no leads, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) return emptyLeadOwnership();
+
+    const closedSince = closedWindowStart();
+    const [rows, census] = await Promise.all([
+      agentLoadQuery(
+        this.userRepository,
+        companyId,
+        regionCodes,
+        closedSince,
+      ).getRawMany<AgentLoadRow>(),
+      leadCensusQuery(
+        this.leadRepository,
+        companyId,
+        regionCodes,
+        closedSince,
+      ).getRawMany<CensusRow>(),
+    ]);
+
+    return shapeLeadOwnership(rows, census);
   }
 
   async getBottlenecks(

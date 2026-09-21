@@ -175,7 +175,12 @@ export class CompaniesService {
         'maxProperties',
         'subscriptionExpiresAt',
       ];
-      const attempted = superAdminOnlyFields.filter((f) => f in dto);
+      // Region shape is a paid entitlement, so it stays with the owner; an admin is region-scoped.
+      const forbidden =
+        role === Role.ADMIN
+          ? [...superAdminOnlyFields, 'activeRegions', 'defaultRegionCode']
+          : superAdminOnlyFields;
+      const attempted = forbidden.filter((f) => f in dto);
       if (attempted.length) {
         throw new ForbiddenException(
           `You are not allowed to update: ${attempted.join(', ')}`,

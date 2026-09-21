@@ -1,12 +1,12 @@
 const FALLBACKS = {
   '--primary': '#1ab5a5',
+  '--success': '#059669',
   '--danger': '#dc2626',
   '--text-muted': '#64748b',
   '--border-base': '#e2e8f0',
 };
 
-// Tokens are defined on :root and inherit, so the root is as good a source as
-// the canvas, which belongs to ChartCanvas rather than to the chart above it.
+// Tokens inherit from :root, which the chart can read without owning the canvas.
 export function token(name) {
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue(name)
@@ -14,18 +14,27 @@ export function token(name) {
   return value || FALLBACKS[name] || '#000000';
 }
 
-// Accepts the hex and rgb() forms a CSS custom property can hold.
+// Accepts the hex, short-hex and rgb()/rgba() forms a CSS custom property can hold.
 export function withAlpha(color, alpha) {
   const hex = color.match(/^#([0-9a-f]{6})$/i);
   if (hex) {
     const int = parseInt(hex[1], 16);
     return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
   }
-  const rgb = color.match(/^rgba?\(([^)]+)\)$/i);
-  if (rgb) {
-    const [r, g, b] = rgb[1].split(',').map((part) => parseFloat(part));
+  const short = color.match(/^#([0-9a-f]{3})$/i);
+  if (short) {
+    const [r, g, b] = [...short[1]].map((c) => parseInt(c + c, 16));
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
+  const rgb = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgb) {
+    const [r, g, b] = rgb[1]
+      .split(/[\s,/]+/)
+      .filter(Boolean)
+      .map((part) => parseFloat(part));
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  console.warn(`withAlpha: unsupported colour format "${color}"`);
   return color;
 }
 
@@ -37,18 +46,24 @@ export function moneyFormatter(locale, currency, fractionDigits = 0) {
       maximumFractionDigits: fractionDigits,
     });
     return (value) => format.format(value);
-  } catch {
+  } catch (error) {
+    console.error(`moneyFormatter: currency "${currency}" rejected`, error);
     return (value) =>
-      `${currency ?? ''} ${value.toLocaleString(locale)}`.trim();
+      `${currency ?? ''} ${(Number(value) || 0).toLocaleString(locale)}`.trim();
   }
 }
 
 export function compactFormatter(locale) {
-  const format = new Intl.NumberFormat(locale, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  });
-  return (value) => format.format(value);
+  try {
+    const format = new Intl.NumberFormat(locale, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    });
+    return (value) => format.format(value);
+  } catch (error) {
+    console.error(`compactFormatter: locale "${locale}" rejected`, error);
+    return (value) => String(Number(value) || 0);
+  }
 }
 
 // Title-cases an enum such as BANK_TRANSFER for display.

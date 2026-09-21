@@ -78,14 +78,14 @@ export default class CompanyRoute extends AuthenticatedRoute {
     };
   }
 
+  // Transient state is cleared by the controller's own routeWillChange listener, not here.
   setupController(controller, model) {
     super.setupController(controller, model);
+    // Controller is a singleton: a null company must clear the form, not keep the previous one's.
     const c = model?.company;
-    if (c) {
-      controller.formName = c.name || '';
-      controller.formActiveRegions = c.activeRegions || [];
-      controller.formDefaultRegionCode = c.defaultRegionCode || null;
-    }
+    controller.formName = c?.name || '';
+    controller.formActiveRegions = c?.activeRegions || [];
+    controller.formDefaultRegionCode = c?.defaultRegionCode || null;
     controller.storageUsage = model?.storageUsage?.data ?? null;
     controller.billing = model?.billing?.data ?? null;
     const history = model?.billingHistory?.data ?? null;

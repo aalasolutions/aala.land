@@ -12,7 +12,6 @@ import {
   DEFAULT_RANGE,
   formatCalendarDate,
   isDateOnly,
-  rangeBounds,
   resolveRange,
   toDateOnly,
   todayInZone,
@@ -27,6 +26,7 @@ export default class FinancialsController extends PaginatedController {
   @tracked range = DEFAULT_RANGE;
   @tracked from = null;
   @tracked to = null;
+  @tracked rangeError = '';
   @tracked showModal = false;
   @tracked editTransaction = null;
   @tracked formType = 'INCOME';
@@ -84,6 +84,11 @@ export default class FinancialsController extends PaginatedController {
     this.page = 1;
   }
 
+  // Re-runs the model hook so a failed load retries with the filters already in the URL.
+  @action retryLoad() {
+    this.router.refresh('financials');
+  }
+
   get cashflow() {
     return this.model?.cashflow ?? [];
   }
@@ -121,50 +126,79 @@ export default class FinancialsController extends PaginatedController {
     return this.range === 'custom';
   }
 
+  // The bounds the API was queried with, so the label matches the data on screen.
   get bounds() {
-    return resolveRange(this.range, this.from, this.to);
+    // The fallback pivots on the region business day, matching how the route queried.
+    return (
+      this.model?.bounds ??
+      resolveRange(
+        this.range,
+        this.from,
+        this.to,
+        new Date(),
+        this.region.activeRegion?.timezone,
+      )
+    );
   }
 
   // What the stat cards say they are counting.
   get rangeLabel() {
     if (this.range === 'thisMonth' || this.range === 'lastMonth') {
-      return this.dayLabel(this.bounds.from, { month: 'long', year: 'numeric' });
+      return this.dayLabel(this.bounds.from, {
+        month: 'long',
+        year: 'numeric',
+      });
     }
     const preset = this.rangeOptions.find((o) => o.id === this.range);
     if (this.range !== 'custom') return preset?.label ?? '';
     return `${this.dayLabel(this.bounds.from)} to ${this.dayLabel(this.bounds.to)}`;
   }
 
-  dayLabel(date, options = { day: 'numeric', month: 'short', year: 'numeric' }) {
-    return formatCalendarDate(date, navigator.language || 'en', options) ?? date;
+  dayLabel(
+    date,
+    options = { day: 'numeric', month: 'short', year: 'numeric' },
+  ) {
+    return (
+      formatCalendarDate(date, navigator.language || 'en', options) ?? date
+    );
   }
 
-  // Switching into Custom seeds the inputs from the period already on screen,
-  // so the table does not jump before anything is typed.
+  // Custom seeds from the period on screen; a preset clears the custom window.
   @action setRange(range) {
-    if (range === 'custom') {
-      const seed = rangeBounds(this.range === 'custom' ? DEFAULT_RANGE : this.range);
-      this.from = this.from ?? seed.from;
-      this.to = this.to ?? seed.to;
-    }
+    const seed = range === 'custom' ? this.bounds : null;
+    this.from = seed?.from ?? null;
+    this.to = seed?.to ?? null;
+    this.rangeError = '';
     this.range = range;
     this.page = 1;
   }
 
-  @action setRangeStart(event) {
-    const value = event.target.value;
-    if (isDateOnly(value)) {
-      this.from = value;
-      this.page = 1;
-    }
-  }
+  // The server rejects a half-supplied or reversed range, so a bad entry reverts here.
+  @action setRangeBound(field, value, event) {
+    const current = field === 'from' ? this.from : this.to;
+    const revert = () => {
+      if (event?.target) {
+        event.target.value = current ?? '';
+      }
+    };
 
-  @action setRangeEnd(event) {
-    const value = event.target.value;
-    if (isDateOnly(value)) {
-      this.to = value;
-      this.page = 1;
+    if (!isDateOnly(value)) {
+      this.rangeError = 'Enter a complete date for both ends of the range.';
+      revert();
+      return;
     }
+
+    const from = field === 'from' ? value : this.from;
+    const to = field === 'from' ? this.to : value;
+    if (isDateOnly(from) && isDateOnly(to) && from > to) {
+      this.rangeError = 'Start date must be on or before the end date.';
+      revert();
+      return;
+    }
+
+    this.rangeError = '';
+    this[field] = value;
+    this.page = 1;
   }
 
   @action setField(fieldName, e) {

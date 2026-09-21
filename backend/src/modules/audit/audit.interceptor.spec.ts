@@ -1,6 +1,6 @@
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { of, lastValueFrom } from 'rxjs';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { AuditInterceptor } from './audit.interceptor';
 import { AuditService } from './audit.service';
 import { AuditLog } from './entities/audit-log.entity';
@@ -21,8 +21,7 @@ function handlerFor(responseData: unknown): CallHandler {
   return { handle: () => of(responseData) };
 }
 
-// The interceptor writes the audit row fire-and-forget after the response is
-// emitted, so the pending promise chain has to drain before asserting.
+// The audit row is written fire-and-forget, so the promise chain must drain before asserting.
 function flush(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));
 }
@@ -208,4 +207,191 @@ describe('AuditInterceptor region attribution', () => {
       expect(row.newValue).toEqual({ reason: 'Duplicate', _action: subAction });
     },
   );
+});
+
+describe('AuditInterceptor old value capture', () => {
+  const TX_ID = '123e4567-e89b-12d3-a456-426614174020';
+  const PREVIOUS = {
+    status: 'PENDING',
+    amount: '250.00',
+    transactionDate: '2026-08-01',
+  };
+
+  let auditLogRepository: { create: jest.Mock; save: jest.Mock };
+  let companyRepository: { findOne: jest.Mock };
+  let dataSource: { isInitialized: boolean; query: jest.Mock };
+  let order: string[];
+
+  function build(): AuditInterceptor {
+    const service = new AuditService(
+      auditLogRepository as unknown as Repository<AuditLog>,
+      companyRepository as unknown as Repository<Company>,
+    );
+    return new AuditInterceptor(service, dataSource as unknown as DataSource);
+  }
+
+  function orderedHandler(responseData: unknown): CallHandler {
+    return {
+      handle: () => {
+        order.push('handler');
+        return of(responseData);
+      },
+    };
+  }
+
+  async function run(
+    request: Record<string, unknown>,
+    responseData: unknown,
+    interceptor: AuditInterceptor = build(),
+  ): Promise<Partial<AuditLog>> {
+    await lastValueFrom(
+      interceptor.intercept(ctxFor(request), orderedHandler(responseData)),
+    );
+    await flush();
+    expect(auditLogRepository.save).toHaveBeenCalledTimes(1);
+    return auditLogRepository.save.mock.calls[0][0] as Partial<AuditLog>;
+  }
+
+  function patchTransaction(id: string = TX_ID): Record<string, unknown> {
+    return {
+      method: 'PATCH',
+      path: `/v1/financial/transactions/${id}`,
+      headers: {},
+      query: {},
+      body: { status: 'COMPLETED' },
+      user: { userId: USER_ID, companyId: COMPANY_ID, role: 'company_admin' },
+    };
+  }
+
+  beforeEach(() => {
+    order = [];
+    auditLogRepository = {
+      create: jest.fn((row: Partial<AuditLog>) => row),
+      save: jest.fn((row: Partial<AuditLog>) => Promise.resolve(row)),
+    };
+    companyRepository = {
+      findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'makkah' }),
+    };
+    dataSource = {
+      isInitialized: true,
+      query: jest.fn(() => {
+        order.push('pre-read');
+        return Promise.resolve([{ ...PREVIOUS }]);
+      }),
+    };
+  });
+
+  it('records the previous transaction state as oldValue', async () => {
+    const row = await run(patchTransaction(), {
+      data: { id: TX_ID, status: 'COMPLETED' },
+    });
+
+    expect(row.oldValue).toEqual(PREVIOUS);
+    expect(row.newValue).toEqual({ status: 'COMPLETED' });
+  });
+
+  it('reads the previous state before the handler mutates the row', async () => {
+    await run(patchTransaction(), { data: { id: TX_ID } });
+
+    expect(order).toEqual(['pre-read', 'handler']);
+  });
+
+  it('scopes the pre-read to the entity id and the company', async () => {
+    await run(patchTransaction(), { data: { id: TX_ID } });
+
+    expect(dataSource.query).toHaveBeenCalledTimes(1);
+    const [sql, params] = dataSource.query.mock.calls[0] as [string, string[]];
+    expect(sql).toContain('FROM "transactions"');
+    expect(sql).toContain('"company_id" = $2');
+    expect(params).toEqual([TX_ID, COMPANY_ID]);
+  });
+
+  it('never pre-reads an entity type that has not opted in', async () => {
+    const row = await run(
+      {
+        method: 'PATCH',
+        path: `/v1/leads/${LEASE_ID}`,
+        headers: {},
+        query: {},
+        body: { status: 'WON' },
+        user: { userId: USER_ID, companyId: COMPANY_ID, role: 'company_admin' },
+      },
+      { data: { id: LEASE_ID, regionCode: 'punjab' } },
+    );
+
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(row.oldValue).toBeUndefined();
+  });
+
+  it('never pre-reads on create, where there is no previous state', async () => {
+    const row = await run(
+      {
+        method: 'POST',
+        path: '/v1/financial/transactions',
+        headers: {},
+        query: {},
+        body: { amount: 250 },
+        user: { userId: USER_ID, companyId: COMPANY_ID, role: 'company_admin' },
+      },
+      { data: { id: TX_ID } },
+    );
+
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(row.oldValue).toBeUndefined();
+  });
+
+  it('still logs when the entity no longer exists', async () => {
+    dataSource.query = jest.fn().mockResolvedValue([]);
+
+    const row = await run(patchTransaction(), { data: { id: TX_ID } });
+
+    expect(row.oldValue).toBeUndefined();
+    expect(row.action).toBe('UPDATE');
+  });
+
+  it('does not fail the request when the pre-read throws', async () => {
+    dataSource.query = jest
+      .fn()
+      .mockRejectedValue(new Error('connection lost'));
+
+    const row = await run(patchTransaction(), { data: { id: TX_ID } });
+
+    expect(row.oldValue).toBeUndefined();
+    expect(row.entityId).toBe(TX_ID);
+  });
+
+  it('skips the pre-read when the path carries no uuid', async () => {
+    const request = patchTransaction();
+    request.path = '/v1/financial/transactions/not-a-uuid';
+
+    const row = await run(request, { data: { id: TX_ID } });
+
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(row.oldValue).toBeUndefined();
+  });
+
+  it('skips the pre-read when the data source is not initialized', async () => {
+    dataSource.isInitialized = false;
+
+    const row = await run(patchTransaction(), { data: { id: TX_ID } });
+
+    expect(dataSource.query).not.toHaveBeenCalled();
+    expect(row.oldValue).toBeUndefined();
+  });
+
+  it('works when no data source is injected at all', async () => {
+    const service = new AuditService(
+      auditLogRepository as unknown as Repository<AuditLog>,
+      companyRepository as unknown as Repository<Company>,
+    );
+
+    const row = await run(
+      patchTransaction(),
+      { data: { id: TX_ID } },
+      new AuditInterceptor(service),
+    );
+
+    expect(row.oldValue).toBeUndefined();
+    expect(row.entityId).toBe(TX_ID);
+  });
 });

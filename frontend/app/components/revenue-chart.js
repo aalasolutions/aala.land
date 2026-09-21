@@ -1,30 +1,13 @@
-import Component from '@glimmer/component';
-import { service } from '@ember/service';
-import { formatCalendarDate } from '../utils/local-date';
-import { moneyFormatter, token, withAlpha } from '../utils/chart-style';
+import { token, withAlpha } from '../utils/chart-style';
+import ChartBase from './chart-base';
 
-export default class RevenueChartComponent extends Component {
-  @service region;
-
+export default class RevenueChartComponent extends ChartBase {
   get points() {
     return this.args.points ?? [];
   }
 
-  get locale() {
-    return navigator.language || 'en';
-  }
-
-  get money() {
-    return moneyFormatter(this.locale, this.region.currencyCode);
-  }
-
   get labels() {
-    return this.points.map(
-      (point) =>
-        formatCalendarDate(`${point.month}-01`, this.locale, {
-          month: 'short',
-        }) ?? point.month,
-    );
+    return this.monthLabels(this.points);
   }
 
   get values() {
@@ -32,9 +15,13 @@ export default class RevenueChartComponent extends Component {
   }
 
   get rows() {
+    const money = this.money;
+    // Hoisted: each read of a getter rebuilds the whole array, so reading it per row is quadratic.
+    const labels = this.labels;
+    const values = this.values;
     return this.points.map((point, index) => ({
-      label: this.labels[index],
-      value: this.money(this.values[index]),
+      label: labels[index],
+      value: money(values[index]),
     }));
   }
 

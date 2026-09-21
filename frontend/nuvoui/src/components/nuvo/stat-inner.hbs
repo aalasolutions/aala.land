@@ -1,6 +1,8 @@
 {{! Shared body for the div, anchor and LinkTo branches of Nuvo::Stat. The
     parent forwards its `icon` and `content` named blocks to the matching
-    blocks here. `content` trails the value, for a sparkline or a small note. }}
+    blocks here. `content` trails the value, for a sparkline or a small note.
+    `@contentBleed` adds the sheet's `m-bleed` modifier, which cancels the
+    card padding so the block reaches the card edge. }}
 {{#if @hasIconBlock}}
   <div class="nu-stat__icon" aria-hidden="true" data-test-nu-stat-icon>
     {{yield to="icon"}}
@@ -22,7 +24,10 @@
 {{/if}}
 
 {{#if @hasContentBlock}}
-  <div class="nu-stat__content" data-test-nu-stat-content>
+  <div
+    class="nu-stat__content{{if @contentBleed ' m-bleed'}}"
+    data-test-nu-stat-content
+  >
     {{yield to="content"}}
   </div>
 {{/if}}

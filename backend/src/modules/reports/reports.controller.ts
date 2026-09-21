@@ -1,11 +1,20 @@
 import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
-import { ReportsService } from './reports.service';
+  ReportsService,
+  Achievement,
+  ActivityFeedItem,
+  AgentComparison,
+  AgentPerformance,
+  AgentResponseTime,
+  DashboardKpis,
+  LeadOwnership,
+  PipelineFunnel,
+  RedFlag,
+  RevenueTrendPoint,
+  StageBottleneck,
+} from './reports.service';
+import { QueryReportsDto } from './dto/query-reports.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -30,14 +39,13 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Boss dashboard KPIs' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getDashboard(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<DashboardKpis> {
     return this.reportsService.getDashboardKpis(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -52,15 +60,14 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Completed income per month, last 6 months' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getRevenueTrend(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<RevenueTrendPoint[]> {
     return this.reportsService.getRevenueTrend(
       requireCompanyId(req.user),
       6,
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -75,14 +82,13 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Agent performance report' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getAgentPerformance(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<AgentPerformance[]> {
     return this.reportsService.getAgentPerformance(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -97,14 +103,13 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Red flag alerts for boss' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getRedFlags(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<RedFlag[]> {
     return this.reportsService.getRedFlags(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -119,14 +124,13 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Recent activity feed' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getActivityFeed(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<ActivityFeedItem[]> {
     return this.reportsService.getActivityFeed(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -141,14 +145,36 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Lead pipeline funnel counts' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getPipelineFunnel(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<PipelineFunnel[]> {
     return this.reportsService.getPipelineFunnel(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
+      req.user,
+    );
+  }
+
+  @Get('lead-ownership')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'Open lead load per agent, plus the unassigned open count',
+  })
+  getLeadOwnership(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: QueryReportsDto,
+  ): Promise<LeadOwnership> {
+    return this.reportsService.getLeadOwnership(
+      requireCompanyId(req.user),
+      query.regionCode,
       req.user,
     );
   }
@@ -165,14 +191,13 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Pipeline bottleneck identification: avg days per stage',
   })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getBottlenecks(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<StageBottleneck[]> {
     return this.reportsService.getBottlenecks(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -190,14 +215,13 @@ export class ReportsController {
     summary:
       'Agent response time metrics: avg minutes from lead creation to first status change',
   })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getResponseTimes(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<AgentResponseTime[]> {
     return this.reportsService.getResponseTimeMetrics(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -214,14 +238,13 @@ export class ReportsController {
   @ApiOperation({
     summary: 'Team achievements: best converter, most wins, top earner',
   })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getAchievements(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<Achievement[]> {
     return this.reportsService.getAchievements(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }
@@ -236,14 +259,13 @@ export class ReportsController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Agent comparison with ranking' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
   getAgentComparison(
     @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
+    @Query() query: QueryReportsDto,
+  ): Promise<AgentComparison[]> {
     return this.reportsService.getAgentComparison(
       requireCompanyId(req.user),
-      regionCode,
+      query.regionCode,
       req.user,
     );
   }

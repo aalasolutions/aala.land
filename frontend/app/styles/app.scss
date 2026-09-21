@@ -6,6 +6,9 @@
 // Shared domain vocabulary. Read-only to page agents.
 @use "./pages/tags";
 
+// Shared Chart.js shell: frame, tooltip, screen-reader table.
+@use "./pages/charts";
+
 // The frame every authenticated route renders inside.
 @use "./pages/shell";
 
@@ -13,11 +16,11 @@
 @use "./pages/admin";
 @use "./pages/audit";
 @use "./pages/auth";
-@use "./pages/charts";
 @use "./pages/company";
 @use "./pages/contacts";
 @use "./pages/dashboard";
 @use "./pages/email-templates";
+@use "./pages/financials";
 @use "./pages/kanban";
 @use "./pages/leads";
 @use "./pages/properties-detail";

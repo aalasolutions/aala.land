@@ -35,10 +35,12 @@ describe('ReportsController', () => {
           provide: ReportsService,
           useValue: {
             getDashboardKpis: jest.fn(),
+            getRevenueTrend: jest.fn(),
             getAgentPerformance: jest.fn(),
             getRedFlags: jest.fn(),
             getActivityFeed: jest.fn(),
             getPipelineFunnel: jest.fn(),
+            getLeadOwnership: jest.fn(),
             getBottlenecks: jest.fn(),
             getResponseTimeMetrics: jest.fn(),
           },
@@ -61,7 +63,7 @@ describe('ReportsController', () => {
     it('returns dashboard KPIs for company', async () => {
       service.getDashboardKpis.mockResolvedValue(mockKpis);
 
-      const result = await controller.getDashboard(mockReq);
+      const result = await controller.getDashboard(mockReq, {});
 
       expect(service.getDashboardKpis).toHaveBeenCalledWith(
         companyId,
@@ -69,6 +71,39 @@ describe('ReportsController', () => {
         mockReq.user,
       );
       expect(result).toEqual(mockKpis);
+    });
+  });
+
+  describe('getRevenueTrend', () => {
+    it('delegates to service with companyId, a 6-month window and region', async () => {
+      const trend = [{ month: '2026-02', revenue: 15000 }];
+      service.getRevenueTrend.mockResolvedValue(trend as any);
+
+      const result = await controller.getRevenueTrend(mockReq, {
+        regionCode: 'AE',
+      });
+
+      expect(service.getRevenueTrend).toHaveBeenCalledWith(
+        companyId,
+        6,
+        'AE',
+        mockReq.user,
+      );
+      expect(result).toEqual(trend);
+    });
+
+    it('delegates to service with undefined region when none is given', async () => {
+      service.getRevenueTrend.mockResolvedValue([]);
+
+      const result = await controller.getRevenueTrend(mockReq, {});
+
+      expect(service.getRevenueTrend).toHaveBeenCalledWith(
+        companyId,
+        6,
+        undefined,
+        mockReq.user,
+      );
+      expect(result).toEqual([]);
     });
   });
 
@@ -88,7 +123,7 @@ describe('ReportsController', () => {
       ];
       service.getAgentPerformance.mockResolvedValue(mockPerf as any);
 
-      const result = await controller.getAgentPerformance(mockReq);
+      const result = await controller.getAgentPerformance(mockReq, {});
 
       expect(service.getAgentPerformance).toHaveBeenCalledWith(
         companyId,
@@ -103,7 +138,7 @@ describe('ReportsController', () => {
     it('delegates to service with companyId', async () => {
       service.getRedFlags.mockResolvedValue([]);
 
-      const result = await controller.getRedFlags(mockReq);
+      const result = await controller.getRedFlags(mockReq, {});
 
       expect(service.getRedFlags).toHaveBeenCalledWith(
         companyId,
@@ -118,7 +153,7 @@ describe('ReportsController', () => {
     it('delegates to service with companyId', async () => {
       service.getActivityFeed.mockResolvedValue([]);
 
-      const result = await controller.getActivityFeed(mockReq);
+      const result = await controller.getActivityFeed(mockReq, {});
 
       expect(service.getActivityFeed).toHaveBeenCalledWith(
         companyId,
@@ -133,7 +168,7 @@ describe('ReportsController', () => {
     it('delegates to service with companyId', async () => {
       service.getPipelineFunnel.mockResolvedValue([]);
 
-      const result = await controller.getPipelineFunnel(mockReq);
+      const result = await controller.getPipelineFunnel(mockReq, {});
 
       expect(service.getPipelineFunnel).toHaveBeenCalledWith(
         companyId,
@@ -144,6 +179,30 @@ describe('ReportsController', () => {
     });
   });
 
+  describe('getLeadOwnership', () => {
+    it('delegates to service with companyId and region', async () => {
+      const payload = {
+        agents: [],
+        pipeline: [],
+        won: 0,
+        lost: 0,
+        unassignedOpen: 0,
+      };
+      service.getLeadOwnership.mockResolvedValue(payload);
+
+      const result = await controller.getLeadOwnership(mockReq, {
+        regionCode: 'AE',
+      });
+
+      expect(service.getLeadOwnership).toHaveBeenCalledWith(
+        companyId,
+        'AE',
+        mockReq.user,
+      );
+      expect(result).toEqual(payload);
+    });
+  });
+
   describe('getBottlenecks', () => {
     it('returns bottleneck data for company', async () => {
       const mockBottlenecks = [
@@ -151,7 +210,7 @@ describe('ReportsController', () => {
       ];
       service.getBottlenecks.mockResolvedValue(mockBottlenecks);
 
-      const result = await controller.getBottlenecks(mockReq);
+      const result = await controller.getBottlenecks(mockReq, {});
 
       expect(service.getBottlenecks).toHaveBeenCalledWith(
         companyId,
@@ -169,7 +228,7 @@ describe('ReportsController', () => {
       ];
       service.getResponseTimeMetrics.mockResolvedValue(mockTimes);
 
-      const result = await controller.getResponseTimes(mockReq);
+      const result = await controller.getResponseTimes(mockReq, {});
 
       expect(service.getResponseTimeMetrics).toHaveBeenCalledWith(
         companyId,

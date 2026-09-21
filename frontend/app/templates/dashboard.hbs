@@ -37,13 +37,14 @@
       <Nuvo::Stat
         class="kpi-outcome"
         data-test-kpi="monthly-revenue"
+        @contentBleed={{true}}
         @label="Monthly Revenue"
         @value={{format-currency @model.kpis.monthlyRevenue}}
       >
         <:content>
           <StatSparkline
             @points={{this.revenuePoints}}
-            @color="--primary"
+            @variant="primary"
             @caption="Completed revenue by month"
           />
         </:content>
@@ -56,6 +57,14 @@
         <Nuvo::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
       </div>
     </div>
+  {{else if this.loadFailed}}
+    <Nuvo::Panel class="p-8 text-center">
+      <Nuvo::EmptyState
+        data-test-dashboard-error
+        @title="Could not load the dashboard"
+        @description="Reload the page to try again."
+      />
+    </Nuvo::Panel>
   {{else}}
     <Nuvo::Panel class="p-8 text-center">
       <p class="text-muted">Loading KPIs...</p>
@@ -65,37 +74,15 @@
   <div class="dashboard-panels">
     <Nuvo::Panel class="dashboard-panel">
       <:header>
-        <h3 class="nu-panel__title">
-          Recent Activity</h3>
-      </:header>
-      <:body>
-        <div class="activity-feed">
-          {{#each @model.activity as |item|}}
-            <div class="dashboard-activity-item">
-              <Nuvo::Dot @variant={{this.activityColor item.entityType}} />
-              <div class="dashboard-activity-content">
-                <span class="dashboard-activity-text">{{item.action}}
-                  {{item.entityType}}</span>
-                <span class="dashboard-activity-time">{{this.timeAgo
-                    item.createdAt
-                  }}</span>
-              </div>
-            </div>
-          {{else}}
-            <Nuvo::EmptyState @description="No recent activity" />
-          {{/each}}
+        <div class="ownership-header">
+          <h3 class="nu-panel__title">
+            Lead Pipeline</h3>
+          <p class="ownership-caption">All open leads by stage.</p>
         </div>
-      </:body>
-    </Nuvo::Panel>
-
-    <Nuvo::Panel class="dashboard-panel">
-      <:header>
-        <h3 class="nu-panel__title">
-          Lead Pipeline</h3>
       </:header>
       <:body>
         <div class="pipeline-bars">
-          {{#each @model.pipeline as |stage|}}
+          {{#each this.pipelineStages as |stage|}}
             <div class="pipeline-stage">
               <div class="pipeline-stage-header">
                 <span class="pipeline-stage-name">{{stage.stage}}</span>
@@ -103,10 +90,10 @@
               </div>
               <div class="pipeline-bar-track">
                 <div
-                  class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor
+                  class="pipeline-bar-fill pipeline-bar-{{this.resolveStageColor
                       stage.stage
                     }}"
-                  style={{this.pipelineBarStyle stage.count}}
+                  style={{this.buildBarStyle stage.count}}
                 ></div>
               </div>
             </div>
@@ -114,6 +101,133 @@
             <Nuvo::EmptyState @description="No leads in pipeline" />
           {{/each}}
         </div>
+
+        <div class="closed-block" data-test-closed-leads>
+          <span class="closed-head">
+            <span class="closed-label">Closed</span>
+            <span class="closed-counts">{{this.closedText}}</span>
+          </span>
+          <p class="ownership-caption">Won and lost from the last 30 days.</p>
+          {{#if this.closedSegments}}
+            <span class="ownership-bar" aria-hidden="true">
+              {{#each this.closedSegments as |segment|}}
+                <span
+                  class="ownership-segment pipeline-bar-{{segment.variant}}"
+                  style={{segment.style}}
+                  data-tooltip={{segment.tooltip}}
+                ></span>
+              {{/each}}
+            </span>
+          {{/if}}
+        </div>
+
+        <LinkTo
+          @route="leads"
+          class="dashboard-panel-strip"
+          data-test-unassigned-leads
+        >
+          <span class="dashboard-strip-label">
+            <strong>{{format-number this.unassignedOpen}}</strong>
+            unassigned
+          </span>
+          <span class="dashboard-strip-action">Assign</span>
+        </LinkTo>
+      </:body>
+    </Nuvo::Panel>
+
+    <Nuvo::Panel class="dashboard-panel">
+      <:header>
+        <div class="ownership-header">
+          <h3 class="nu-panel__title">
+            Lead Ownership</h3>
+          <p class="ownership-caption">Open leads by agent. Won and lost from
+            the last 30 days.</p>
+        </div>
+      </:header>
+      <:body>
+        {{#if this.ownershipAgents.length}}
+          <div class="ownership-rows" data-test-ownership-rows>
+            {{#each this.agentRows as |agent|}}
+              <LinkTo
+                @route="leads"
+                class="ownership-row"
+                data-test-ownership-agent={{agent.agentId}}
+                aria-label={{agent.label}}
+              >
+                <span class="ownership-row-head">
+                  <Nuvo::Avatar @initials={{agent.initials}} @size="sm" />
+                  <span class="ownership-name">{{agent.agentName}}</span>
+                  <span class="ownership-open">{{format-number agent.openTotal}}
+                    open</span>
+                </span>
+                <span class="ownership-bar" aria-hidden="true">
+                  {{#each agent.segments as |segment|}}
+                    <span
+                      class="ownership-segment pipeline-bar-{{segment.variant}}"
+                      style={{segment.style}}
+                      data-tooltip={{segment.tooltip}}
+                    ></span>
+                  {{/each}}
+                </span>
+              </LinkTo>
+            {{/each}}
+          </div>
+
+          {{#if this.hiddenAgentCount}}
+            <p class="ownership-more" data-test-ownership-more>
+              {{this.hiddenAgentCount}}
+              more carrying leads
+            </p>
+          {{/if}}
+
+          {{#if this.idleAgents.length}}
+            <LinkTo
+              @route="leads"
+              class="dashboard-panel-strip"
+              data-test-ownership-idle
+              aria-label={{this.idleLabel}}
+            >
+              <span class="dashboard-strip-label">
+                <Nuvo::AvatarGroup>
+                  {{#each this.visibleIdleAgents as |agent|}}
+                    <Nuvo::Avatar
+                      @initials={{agent.initials}}
+                      @size="xs"
+                      data-tooltip={{agent.agentName}}
+                    />
+                  {{/each}}
+                </Nuvo::AvatarGroup>
+                {{#if this.hiddenIdleCount}}
+                  <span class="idle-overflow">+{{this.hiddenIdleCount}}</span>
+                {{/if}}
+                {{this.idleAgents.length}}
+                with no leads
+              </span>
+              <span class="dashboard-strip-action">Assign</span>
+            </LinkTo>
+          {{/if}}
+          <div class="closed-block" data-test-assignment>
+            <span class="closed-head">
+              <span class="closed-label">Assignment</span>
+              <span class="closed-counts">{{this.assignmentText}}</span>
+            </span>
+            <p class="ownership-caption">Every open lead, held or waiting.</p>
+            {{#if this.assignmentSegments}}
+              <span class="ownership-bar" aria-hidden="true">
+                {{#each this.assignmentSegments as |segment|}}
+                  <span
+                    class="ownership-segment pipeline-bar-{{segment.variant}}"
+                    style={{segment.style}}
+                    data-tooltip={{segment.tooltip}}
+                  ></span>
+                {{/each}}
+              </span>
+            {{/if}}
+          </div>
+
+        {{else}}
+          <Nuvo::EmptyState @description="No agents yet" />
+        {{/if}}
       </:body>
     </Nuvo::Panel>
   </div>

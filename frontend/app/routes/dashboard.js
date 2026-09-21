@@ -5,17 +5,29 @@ export default class DashboardRoute extends AuthenticatedRoute {
   @service auth;
 
   async model() {
-    const [kpisRes, activityRes, pipelineRes, revenueRes] = await Promise.all([
-      this.auth.fetchJson('/reports/dashboard').catch(() => null),
-      this.auth.fetchJson('/reports/activity-feed').catch(() => null),
-      this.auth.fetchJson('/reports/pipeline-funnel').catch(() => null),
-      this.auth.fetchJson('/reports/revenue-trend').catch(() => null),
+    const failed = [];
+    const load = (path) =>
+      this.auth.fetchJson(path).catch(() => {
+        failed.push(path);
+        return null;
+      });
+
+    const [kpisRes, ownershipRes, revenueRes] = await Promise.all([
+      load('/reports/dashboard'),
+      load('/reports/lead-ownership'),
+      load('/reports/revenue-trend'),
     ]);
 
     return {
+      failed,
       kpis: kpisRes?.data ?? null,
-      activity: activityRes?.data ?? [],
-      pipeline: pipelineRes?.data ?? [],
+      ownership: ownershipRes?.data ?? {
+        agents: [],
+        pipeline: [],
+        won: 0,
+        lost: 0,
+        unassignedOpen: 0,
+      },
       revenueTrend: revenueRes?.data ?? [],
     };
   }

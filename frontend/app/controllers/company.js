@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { validPage } from 'land/utils/page-number';
 import { service } from '@ember/service';
-import { isAdminRole } from '../utils/roles';
+import { canManageRegions, isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
 import { daysUntil, formatInstant } from '../utils/local-date';
 
@@ -25,11 +25,17 @@ export default class CompanyController extends Controller {
   @tracked billing = null;
   @tracked isBillingBusy = false;
   @tracked showDowngradeConfirm = false;
+  @tracked showRegionRemovalConfirm = false;
   // Selected payment currency (default USD), sent at checkout.
   @tracked selectedCurrency = 'usd';
 
-  queryParams = [{ activeTab: 'tab' }];
+  // Bound to its own property because route setup resets activeTab on every entry.
+  queryParams = ['tab'];
 
+  // Null keeps `?tab=` out of the URL until a tab is picked.
+  @tracked tab = null;
+
+  // Default panel, used whenever the URL carries no tab.
   @tracked activeTab = 'general';
   @tracked aiPrompt = '';
   @tracked isSavingAI = false;
@@ -46,6 +52,43 @@ export default class CompanyController extends Controller {
   @tracked billingHistoryPage = 1;
   @tracked billingHistoryLimit = 10;
   @tracked isLoadingHistory = false;
+
+  routeWillChangeHandler = null;
+
+  constructor() {
+    super(...arguments);
+    // Controllers are singletons, so transient page state must not survive the visit.
+    this.routeWillChangeHandler = (transition) => {
+      if (
+        transition.from?.name === 'company' &&
+        transition.to?.name !== 'company'
+      ) {
+        this.resetTransientState();
+      }
+    };
+    this.router.on('routeWillChange', this.routeWillChangeHandler);
+  }
+
+  willDestroy() {
+    if (this.routeWillChangeHandler) {
+      this.router.off('routeWillChange', this.routeWillChangeHandler);
+      this.routeWillChangeHandler = null;
+    }
+    super.willDestroy(...arguments);
+  }
+
+  resetTransientState() {
+    // Route setup only repopulates these when a company is loaded.
+    this.formName = '';
+    this.formActiveRegions = [];
+    this.formDefaultRegionCode = '';
+    this.errorMsg = '';
+    this.isSaving = false;
+    this.expandedCountries = [];
+    this.showDowngradeConfirm = false;
+    this.showRegionRemovalConfirm = false;
+    this.selectedCurrency = 'usd';
+  }
 
   @action toggleCountry(countryCode) {
     if (this.expandedCountries.includes(countryCode)) {
@@ -90,6 +133,11 @@ export default class CompanyController extends Controller {
     const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
     const used = c.usersCount ?? '?';
     return `${used} / ${users} users · ${regions} region${regions === 1 ? '' : 's'} · ${props} properties`;
+  }
+
+  // Region edits are owner-only; isAdmin still gates the rest of the company form.
+  get canManageRegions() {
+    return canManageRegions(this.auth.currentUser?.role);
   }
 
   get isAdmin() {
@@ -259,8 +307,16 @@ export default class CompanyController extends Controller {
     ];
   }
 
+  // Unknown tab ids from the URL fall back to the default panel.
+  get currentTab() {
+    const requested = this.tab ?? this.activeTab;
+    return this.settingsTabs.some((t) => t.id === requested)
+      ? requested
+      : 'general';
+  }
+
   @action setTab(tab) {
-    this.activeTab = tab;
+    this.tab = tab;
   }
 
   @action setAIPrompt(value) {
@@ -445,7 +501,7 @@ export default class CompanyController extends Controller {
   }
 
   @action toggleRegion(code) {
-    if (!this.isAdmin) return;
+    if (!this.canManageRegions) return;
 
     if (this.formActiveRegions.includes(code)) {
       this.formActiveRegions = this.formActiveRegions.filter((c) => c !== code);
@@ -468,11 +524,46 @@ export default class CompanyController extends Controller {
     }
   }
 
-  @action async saveCompany(event) {
-    event.preventDefault();
+  // Saved regions the pending edit drops; the server prunes them off every user.
+  get removedRegionNames() {
+    const saved = this.company?.activeRegions || [];
+    const regions = this.model?.regions || [];
+    return saved
+      .filter((code) => !this.formActiveRegions.includes(code))
+      .map((code) => regions.find((r) => r.code === code)?.name || code);
+  }
+
+  get regionRemovalMessage() {
+    const names = this.removedRegionNames;
+    const pronoun = names.length === 1 ? 'it' : 'them';
+    return `${names.join(', ')} will be removed from every user assigned to ${pronoun}. Those user assignments are not restored if you add ${pronoun} back later.`;
+  }
+
+  @action closeRegionRemovalConfirm() {
+    this.showRegionRemovalConfirm = false;
+  }
+
+  @action async confirmRegionRemoval() {
+    if (this.isSaving) return;
+    await this.persistCompany();
+    this.showRegionRemovalConfirm = false;
+  }
+
+  @action saveCompany(event) {
+    if (event) event.preventDefault();
     if (!this.isAdmin) {
       this.errorMsg =
         'Only company admins and super admins can update company settings.';
+      return;
+    }
+    // Regions are a paid entitlement, so an admin saving the form must not carry region edits.
+    const regionsChanged =
+      this.canManageRegions ||
+      (JSON.stringify([...this.formActiveRegions].sort()) ===
+        JSON.stringify([...(this.company?.activeRegions ?? [])].sort()) &&
+        this.formDefaultRegionCode === (this.company?.defaultRegionCode ?? ''));
+    if (!regionsChanged) {
+      this.errorMsg = 'Only company admins can add or remove regions.';
       return;
     }
 
@@ -483,6 +574,16 @@ export default class CompanyController extends Controller {
       return;
     }
 
+    if (this.removedRegionNames.length) {
+      this.errorMsg = '';
+      this.showRegionRemovalConfirm = true;
+      return;
+    }
+
+    return this.persistCompany();
+  }
+
+  async persistCompany() {
     this.isSaving = true;
     this.errorMsg = '';
 
