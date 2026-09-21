@@ -1,0 +1,24 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/src/shared/utils/utc-runtime.ts"],
+  "testRegex": ".db-spec.ts$",
+  "moduleNameMapper": {
+    "^@modules/(.*)$": "<rootDir>/src/modules/$1",
+    "^@shared/(.*)$": "<rootDir>/src/shared/$1",
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  "transform": {
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "types": ["node", "jest"]
+        }
+      }
+    ]
+  },
+  "maxWorkers": 1,
+  "testTimeout": 60000
+}
