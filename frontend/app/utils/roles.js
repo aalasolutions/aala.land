@@ -102,8 +102,9 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
+// Adding or removing a region is a paid entitlement, so it stays with the owner.
 export function canManageRegions(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
 }
 
 export function getVisibleGroups(role) {

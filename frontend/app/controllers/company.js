@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { validPage } from 'land/utils/page-number';
 import { service } from '@ember/service';
-import { isAdminRole } from '../utils/roles';
+import { canManageRegions, isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
 import { daysUntil, formatInstant } from '../utils/local-date';
 
@@ -133,6 +133,11 @@ export default class CompanyController extends Controller {
     const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
     const used = c.usersCount ?? '?';
     return `${used} / ${users} users · ${regions} region${regions === 1 ? '' : 's'} · ${props} properties`;
+  }
+
+  // Region edits are owner-only; isAdmin still gates the rest of the company form.
+  get canManageRegions() {
+    return canManageRegions(this.auth.currentUser?.role);
   }
 
   get isAdmin() {
@@ -496,7 +501,7 @@ export default class CompanyController extends Controller {
   }
 
   @action toggleRegion(code) {
-    if (!this.isAdmin) return;
+    if (!this.canManageRegions) return;
 
     if (this.formActiveRegions.includes(code)) {
       this.formActiveRegions = this.formActiveRegions.filter((c) => c !== code);
@@ -549,6 +554,16 @@ export default class CompanyController extends Controller {
     if (!this.isAdmin) {
       this.errorMsg =
         'Only company admins and super admins can update company settings.';
+      return;
+    }
+    // Regions are a paid entitlement, so an admin saving the form must not carry region edits.
+    const regionsChanged =
+      this.canManageRegions ||
+      (JSON.stringify([...this.formActiveRegions].sort()) ===
+        JSON.stringify([...(this.company?.activeRegions ?? [])].sort()) &&
+        this.formDefaultRegionCode === (this.company?.defaultRegionCode ?? ''));
+    if (!regionsChanged) {
+      this.errorMsg = 'Only company admins can add or remove regions.';
       return;
     }
 

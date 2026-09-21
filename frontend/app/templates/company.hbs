@@ -330,7 +330,7 @@
     <div class="company-settings-grid">
       {{#if this.model.regions.length}}
         <Nuvo::Card
-          class="{{unless this.isAdmin 'region-settings-readonly'}}"
+          class="{{unless this.canManageRegions 'region-settings-readonly'}}"
           data-test-region-settings
         >
           <h3 class="text-lg font-bold mb-2">Operating Regions</h3>
@@ -361,7 +361,7 @@
                 @onSelect={{fn this.setFieldValue "formDefaultRegionCode"}}
                 @options={{this.activeRegionOptions}}
                 @placeholder="Select default region..."
-                @disabled={{not this.isAdmin}}
+                @disabled={{not this.canManageRegions}}
                 data-test-default-region
               />
             </Nuvo::Field>
@@ -372,7 +372,7 @@
 
           {{#each this.model.groupedRegions as |group|}}
             <div
-              class="region-country-group mb-2 {{unless this.isAdmin 'is-readonly'}}"
+              class="region-country-group mb-2 {{unless this.canManageRegions 'is-readonly'}}"
               data-test-country-group={{group.country}}
             >
               <button
@@ -405,13 +405,13 @@
                 <div class="region-grid mt-2 mb-2 ms-2">
                   {{#each group.regions as |r|}}
                     <div
-                      class="region-checkbox {{unless this.isAdmin 'is-readonly'}}"
+                      class="region-checkbox {{unless this.canManageRegions 'is-readonly'}}"
                       data-test-region-checkbox={{r.code}}
                     >
                       <Nuvo::Checkbox
                         id={{r.code}}
                         @checked={{includes this.formActiveRegions r.code}}
-                        @disabled={{not this.isAdmin}}
+                        @disabled={{not this.canManageRegions}}
                         @label={{r.name}}
                         @onChange={{fn this.toggleRegionChecked r.code}}
                       />
@@ -423,7 +423,7 @@
             </div>
           {{/each}}
 
-          {{#unless this.isAdmin}}
+          {{#unless this.canManageRegions}}
             <p class="text-sm text-muted">Only company admins and super admins
               can change these settings.</p>
           {{/unless}}
@@ -436,7 +436,7 @@
             <Nuvo::Button
               @variant="primary"
               @loading={{this.isSaving}}
-              @disabled={{not this.isAdmin}}
+              @disabled={{not this.canManageRegions}}
               @onClick={{this.saveCompany}}
               data-test-save-regions
             >
