@@ -120,6 +120,65 @@ module('Unit | Controller | cheques', function (hooks) {
     });
   });
 
+  module('deposit date', function () {
+    test('is read-only when the cheque already has one', function (assert) {
+      const controller = makeController(this);
+      controller.openClear({
+        id: 'c1',
+        dueDate: '2020-01-01',
+        depositDate: '2026-08-10',
+      });
+
+      assert.false(controller.depositDateEditable);
+      assert.true(controller.depositDateReadonly);
+      assert.strictEqual(controller.clearDepositDate, '2026-08-10');
+    });
+
+    test('is editable and empty when clearing straight from PENDING', function (assert) {
+      const controller = makeController(this);
+      controller.openClear({ id: 'c1', dueDate: '2020-01-01' });
+
+      assert.true(controller.depositDateEditable);
+      assert.strictEqual(controller.clearDepositDate, '');
+    });
+
+    // Moving the clearing day back drags the deposit with it.
+    test('is pulled back when the clearing date moves before it', function (assert) {
+      const controller = makeController(this);
+      controller.openClear({ id: 'c1', dueDate: '2020-01-01' });
+      controller.clearDepositDate = '2026-08-05';
+
+      controller.setClearedDate('2026-08-02');
+
+      assert.strictEqual(controller.clearDepositDate, '2026-08-02');
+    });
+
+    // And the correction sticks: moving the clearing day forward does not restore it.
+    test('stays where it was pulled to when the clearing date moves forward again', function (assert) {
+      const controller = makeController(this);
+      controller.openClear({ id: 'c1', dueDate: '2020-01-01' });
+      controller.clearDepositDate = '2026-08-05';
+      controller.setClearedDate('2026-08-02');
+
+      controller.setClearedDate('2026-08-05');
+
+      assert.strictEqual(controller.clearDepositDate, '2026-08-02');
+    });
+
+    test('a settled deposit date is never pulled', function (assert) {
+      const controller = makeController(this);
+      controller.openClear({
+        id: 'c1',
+        dueDate: '2020-01-01',
+        depositDate: '2026-08-10',
+      });
+
+      controller.setClearedDate('2026-08-02');
+
+      assert.strictEqual(controller.clearDepositDate, '2026-08-10');
+    });
+  });
+
   module('confirmClear', function () {
     test('refuses an empty date and calls no endpoint', async function (assert) {
       const controller = makeController(this);
@@ -174,6 +233,58 @@ module('Unit | Controller | cheques', function (hooks) {
       assert.deepEqual(JSON.parse(calls[0].options.body), {
         clearedDate: date,
       });
+    });
+  });
+
+  module('confirmClear with a deposit date', function () {
+    const cheque = {
+      id: 'c1',
+      dueDate: '2020-01-01',
+      createdAt: '2026-08-01T06:00:00Z',
+    };
+
+    test('sends the deposit date when one was typed', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.router.refresh = () => {};
+      controller.openClear(cheque);
+      controller.clearDepositDate = '2026-08-05';
+      // A successful clear closes the dialog, which resets clearedDate.
+      const date = controller.clearedDate;
+
+      await controller.confirmClear();
+
+      assert.strictEqual(calls.length, 1);
+      assert.deepEqual(JSON.parse(calls[0].options.body), {
+        clearedDate: date,
+        depositDate: '2026-08-05',
+      });
+    });
+
+    test('omits the deposit date when it was left empty', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.router.refresh = () => {};
+      controller.openClear(cheque);
+      const date = controller.clearedDate;
+
+      await controller.confirmClear();
+
+      assert.deepEqual(JSON.parse(calls[0].options.body), {
+        clearedDate: date,
+      });
+    });
+
+    test('refuses a deposit date before the cheque was added', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.openClear(cheque);
+      controller.clearDepositDate = '2026-07-31';
+
+      await controller.confirmClear();
+
+      assert.strictEqual(calls.length, 0);
+      assert.true(controller.clearError.includes('2026-08-01'));
     });
   });
 

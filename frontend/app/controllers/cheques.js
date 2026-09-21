@@ -107,6 +107,7 @@ export default class ChequesController extends PaginatedController {
   @tracked showClearModal = false;
   @tracked clearChequeItem = null;
   @tracked clearedDate = '';
+  @tracked clearDepositDate = '';
   @tracked clearError = '';
   @tracked isClearing = false;
 
@@ -275,6 +276,8 @@ export default class ChequesController extends PaginatedController {
     const floors = [
       today && addCalendarDays(today, -MAX_BACKDATE_DAYS),
       toDateOnly(cheque?.dueDate),
+      // Only a deposit date the cheque ALREADY holds floors the clearing day. One
+      // typed in this dialog gets pulled down instead, see setClearedDate.
       toDateOnly(cheque?.depositDate),
     ].filter(Boolean);
     return { earliest: floors.sort().at(-1) ?? null, latest: today ?? null };
@@ -296,6 +299,24 @@ export default class ChequesController extends PaginatedController {
     return 'This cheque has no date that can be recorded as its clearing day.';
   }
 
+  // Read-only context: the day the record was added, and the floor for a deposit date.
+  get chequeAddedDate() {
+    return toDateOnly(this.clearChequeItem?.createdAt);
+  }
+
+  // Settled once the cheque was marked DEPOSITED; only a PENDING clear may set it.
+  get depositDateEditable() {
+    return Boolean(this.clearChequeItem) && !this.clearChequeItem.depositDate;
+  }
+
+  get depositDateReadonly() {
+    return !this.depositDateEditable;
+  }
+
+  get depositDateWindow() {
+    return { earliest: this.chequeAddedDate || null, latest: this.clearedDate };
+  }
+
   @action openClear(cheque) {
     this.clearChequeItem = cheque;
     this.clearError = '';
@@ -303,12 +324,29 @@ export default class ChequesController extends PaginatedController {
     this.clearedDate = this.clearWindowUnusable
       ? ''
       : this.clearDateWindow.latest;
+    this.clearDepositDate = toDateOnly(cheque?.depositDate);
+  }
+
+  // A deposit cannot outlive the clearing. Moving the clearing day back drags the
+  // deposit with it, and that correction sticks: moving the clearing day forward
+  // again leaves the deposit where it landed.
+  @action setClearedDate(value) {
+    this.clearedDate = value;
+    if (
+      this.depositDateEditable &&
+      this.clearDepositDate &&
+      value &&
+      this.clearDepositDate > value
+    ) {
+      this.clearDepositDate = value;
+    }
   }
 
   @action closeClearModal() {
     this.showClearModal = false;
     this.clearChequeItem = null;
     this.clearedDate = '';
+    this.clearDepositDate = '';
     this.clearError = '';
   }
 
@@ -327,12 +365,29 @@ export default class ChequesController extends PaginatedController {
       this.clearError = `Pick a date between ${earliest} and ${latest}.`;
       return;
     }
+    // The deposit date is optional; when typed it must sit inside its own range.
+    // The server checks this too, so neither layer is the only guard.
+    const depositDate = this.depositDateEditable ? this.clearDepositDate : '';
+    if (depositDate) {
+      const { earliest: depositFloor } = this.depositDateWindow;
+      if (depositFloor && depositDate < depositFloor) {
+        this.clearError = `The deposit date cannot be before the cheque was added on ${depositFloor}.`;
+        return;
+      }
+      if (depositDate > this.clearedDate) {
+        this.clearError = 'The deposit date cannot be after the clearing date.';
+        return;
+      }
+    }
 
     this.isClearing = true;
     try {
       await this.auth.fetchJson(`/cheques/${this.clearChequeItem.id}/clear`, {
         method: 'POST',
-        body: JSON.stringify({ clearedDate: this.clearedDate }),
+        body: JSON.stringify({
+          clearedDate: this.clearedDate,
+          ...(depositDate ? { depositDate } : {}),
+        }),
       });
       this.notifications.success('Cheque cleared and payment recorded');
       this.closeClearModal();

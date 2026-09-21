@@ -1,5 +1,6 @@
 import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ClearChequeDto {
   @ApiProperty({
@@ -9,4 +10,14 @@ export class ClearChequeDto {
   })
   @IsDateOnly()
   clearedDate: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The day it was deposited. Only accepted when the cheque has none yet, i.e. when clearing straight from PENDING.',
+    format: 'date',
+    example: '2026-09-18',
+  })
+  @IsOptional()
+  @IsDateOnly()
+  depositDate?: string;
 }

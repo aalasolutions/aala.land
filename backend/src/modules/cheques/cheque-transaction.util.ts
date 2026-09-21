@@ -35,3 +35,21 @@ export function assertChequeClearedDate(
     );
   }
 }
+
+// A deposit sits between the day the record was added and the day it cleared.
+export function assertChequeDepositDate(
+  depositDate: string,
+  addedDate: string,
+  clearedDate: string,
+): void {
+  if (daysBetween(addedDate, depositDate) < 0) {
+    throw new BadRequestException(
+      `A cheque cannot be deposited before it was added on ${addedDate}.`,
+    );
+  }
+  if (daysBetween(depositDate, clearedDate) < 0) {
+    throw new BadRequestException(
+      `A cheque cannot be deposited after it cleared on ${clearedDate}.`,
+    );
+  }
+}

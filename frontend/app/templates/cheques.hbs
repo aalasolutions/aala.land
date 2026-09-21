@@ -77,26 +77,22 @@
                 >
                   Edit
                 </Nuvo::Button>
-                {{#if (eq cell.row.status "PENDING")}}
-                  <Nuvo::Button
-                    @variant="success"
-                    @size="xs"
-                    @icon="bank"
-                    {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
-                  >
-                    Deposit
-                  </Nuvo::Button>
-                  <Nuvo::Button
-                    @variant="danger"
-                    @size="xs"
-                    data-test-bounce
-                    @icon="x-circle"
-                    {{on "click" (fn this.openBounceModal cell.row)}}
-                  >
-                    Bounce
-                  </Nuvo::Button>
-                {{/if}}
-                {{#if (eq cell.row.status "DEPOSITED")}}
+                {{#if
+                  (or
+                    (eq cell.row.status "PENDING")
+                    (eq cell.row.status "DEPOSITED")
+                  )
+                }}
+                  {{#if (eq cell.row.status "PENDING")}}
+                    <Nuvo::Button
+                      @variant="success"
+                      @size="xs"
+                      @icon="bank"
+                      {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
+                    >
+                      Deposit
+                    </Nuvo::Button>
+                  {{/if}}
                   <Nuvo::Button
                     @variant="success"
                     @size="xs"
@@ -411,6 +407,29 @@
       data-test-clear-blocked
     />
   {{else}}
+    <div class="flex gap-4">
+      <Nuvo::Field @label="Added" class="grow">
+        <Nuvo::Input
+          id="cheque-added-date"
+          type="date"
+          readonly={{true}}
+          @value={{this.chequeAddedDate}}
+          data-test-input-added-date
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Deposited" class="grow">
+        <Nuvo::Input
+          id="cheque-deposit-date"
+          type="date"
+          readonly={{this.depositDateReadonly}}
+          min={{this.depositDateWindow.earliest}}
+          max={{this.depositDateWindow.latest}}
+          @value={{this.clearDepositDate}}
+          @onInput={{fn this.setFieldValue "clearDepositDate"}}
+          data-test-input-deposit-date
+        />
+      </Nuvo::Field>
+    </div>
     <Nuvo::Field
       @label="Date it cleared"
       @required={{true}}
@@ -422,7 +441,7 @@
         min={{this.clearDateWindow.earliest}}
         max={{this.clearDateWindow.latest}}
         @value={{this.clearedDate}}
-        @onInput={{fn this.setFieldValue "clearedDate"}}
+        @onInput={{this.setClearedDate}}
         @invalid={{if this.clearError true false}}
         data-test-input-cleared-date
       />

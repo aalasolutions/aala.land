@@ -2248,6 +2248,8 @@ describe('ChequesService', () => {
       ({
         ...mockCheque,
         amount: PG_AMOUNT,
+        // The added date is the floor for a deposit date typed at clearing time.
+        createdAt: new Date('2026-08-01T06:00:00Z'),
         status: ChequeStatus.DEPOSITED,
         depositDate: null,
         clearedDate: null,
@@ -2440,6 +2442,98 @@ describe('ChequesService', () => {
       expect(txRepo.insert).not.toHaveBeenCalled();
     });
 
+    describe('deposit date supplied while clearing', () => {
+      const pending = (overrides: Partial<Cheque> = {}) =>
+        clearable({
+          status: ChequeStatus.PENDING,
+          depositDate: null,
+          ...overrides,
+        });
+
+      it('writes a deposit date typed on a cheque that had none', async () => {
+        const cheque = pending();
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.clear('cheque-uuid-1', companyId, {
+          clearedDate: today,
+          depositDate: '2026-08-05',
+        });
+
+        expect(cheque.depositDate).toBe('2026-08-05');
+        expect(cheque.status).toBe(ChequeStatus.CLEARED);
+      });
+
+      it('leaves the deposit date null when none is supplied', async () => {
+        const cheque = pending();
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.clear('cheque-uuid-1', companyId, {
+          clearedDate: today,
+        });
+
+        expect(cheque.depositDate).toBeNull();
+        expect(cheque.status).toBe(ChequeStatus.CLEARED);
+      });
+
+      it('refuses a deposit date before the day the cheque was added', async () => {
+        const cheque = pending();
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await expect(
+          service.clear('cheque-uuid-1', companyId, {
+            clearedDate: today,
+            depositDate: '2026-07-31',
+          }),
+        ).rejects.toThrow(/cannot be deposited before it was added/);
+        expect(txRepo.insert).not.toHaveBeenCalled();
+      });
+
+      it('refuses a deposit date after the cleared date', async () => {
+        const cheque = pending();
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await expect(
+          service.clear('cheque-uuid-1', companyId, {
+            clearedDate: addDays(today, -2),
+            depositDate: addDays(today, -1),
+          }),
+        ).rejects.toThrow(/cannot be deposited after it cleared/);
+        expect(txRepo.insert).not.toHaveBeenCalled();
+      });
+
+      it('refuses to move the deposit date of an already deposited cheque', async () => {
+        const cheque = clearable({ depositDate: '2026-08-10' });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await expect(
+          service.clear('cheque-uuid-1', companyId, {
+            clearedDate: today,
+            depositDate: '2026-08-05',
+          }),
+        ).rejects.toThrow(/already has a deposit date/);
+        expect(txRepo.insert).not.toHaveBeenCalled();
+      });
+
+      it('accepts the deposit date it already holds, echoed back', async () => {
+        const cheque = clearable({ depositDate: '2026-08-10' });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.clear('cheque-uuid-1', companyId, {
+          clearedDate: today,
+          depositDate: '2026-08-10',
+        });
+
+        expect(cheque.depositDate).toBe('2026-08-10');
+        expect(txRepo.insert).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe('unclear', () => {
       it('cancels the transaction and returns a deposited cheque to DEPOSITED', async () => {
         const cheque = clearable({
@@ -2621,6 +2715,21 @@ describe('ChequesService', () => {
         await expect(
           service.update('cheque-uuid-1', companyId, {
             chequeNumber: 'CHQ999',
+          }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('refuses a deposit date change on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+          depositDate: '2026-08-10',
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, {
+            depositDate: '2026-08-12',
           }),
         ).rejects.toThrow(ConflictException);
       });

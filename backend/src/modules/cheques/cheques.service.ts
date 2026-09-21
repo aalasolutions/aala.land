@@ -24,6 +24,7 @@ import { ClearChequeDto } from './dto/clear-cheque.dto';
 import { UnclearChequeDto } from './dto/unclear-cheque.dto';
 import {
   assertChequeClearedDate,
+  assertChequeDepositDate,
   chequeTransactionCategory,
 } from './cheque-transaction.util';
 import {
@@ -365,6 +366,7 @@ export class ChequesService {
         'unitId',
         'chequeNumber',
         'dueDate',
+        'depositDate',
       ];
       const otherChanged = copied.some(
         (field) =>
@@ -372,7 +374,7 @@ export class ChequesService {
       );
       if (amountChanged || otherChanged) {
         throw new ConflictException(
-          'A cleared cheque records a payment. Its amount, type, unit, number and due date cannot be changed. Un-clear it first.',
+          'A cleared cheque records a payment. Its amount, type, unit, number and dates cannot be changed. Un-clear it first.',
         );
       }
     }
@@ -673,11 +675,28 @@ export class ChequesService {
     // Existence, tenant and region check.
     const cheque = await this.findOne(id, companyId, caller);
     this.assertClearable(cheque.status);
-    assertChequeClearedDate(
-      dto.clearedDate,
-      cheque.dueDate,
-      cheque.depositDate,
-    );
+
+    // A deposited cheque's date is settled; the dialog shows it read-only. Only a
+    // cheque clearing straight from PENDING may supply one.
+    if (
+      cheque.depositDate &&
+      dto.depositDate &&
+      dto.depositDate !== cheque.depositDate
+    ) {
+      throw new BadRequestException(
+        'This cheque already has a deposit date, which cannot be changed while clearing it.',
+      );
+    }
+    const depositDate = cheque.depositDate ?? dto.depositDate ?? null;
+    if (!cheque.depositDate && dto.depositDate) {
+      assertChequeDepositDate(
+        dto.depositDate,
+        regionToday(cheque.regionCode, cheque.createdAt),
+        dto.clearedDate,
+      );
+    }
+
+    assertChequeClearedDate(dto.clearedDate, cheque.dueDate, depositDate);
     // The same window finance enforces on every money date: 30 days back, never ahead.
     assertTransactionDateInWindow(dto.clearedDate, cheque.regionCode);
 
@@ -719,6 +738,7 @@ export class ChequesService {
 
       locked.status = ChequeStatus.CLEARED;
       locked.clearedDate = dto.clearedDate;
+      locked.depositDate = depositDate;
       locked.version += 1;
       await manager.getRepository(Cheque).save(locked);
 
@@ -732,6 +752,7 @@ export class ChequesService {
           from: oldStatus,
           to: ChequeStatus.CLEARED,
           clearedDate: dto.clearedDate,
+          depositDate,
         },
       );
     });
