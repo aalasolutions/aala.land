@@ -19,6 +19,7 @@ const OLD_VALUE_SOURCES: Record<string, OldValueSource> = {
       referenceNumber: 'reference_number',
       regionCode: 'region_code',
       unitId: 'unit_id',
+      chequeId: 'cheque_id',
       transactionDate: 'transaction_date',
       dueDate: 'due_date',
       updatedAt: 'updated_at',

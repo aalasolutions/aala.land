@@ -85,6 +85,10 @@ export class Cheque {
   @Column({ name: 'deposit_date', type: 'date', nullable: true })
   depositDate: string | null;
 
+  // The day the bank honoured it, which is the money date on the transaction it writes.
+  @Column({ name: 'cleared_date', type: 'date', nullable: true })
+  clearedDate: string | null;
+
   @Column({
     type: 'enum',
     enum: ChequeStatus,

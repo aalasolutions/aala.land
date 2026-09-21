@@ -8,12 +8,17 @@ import {
   closeDeleteModal,
   confirmDeleteModal,
 } from '../utils/delete-modal';
-import { toDateOnly } from '../utils/local-date';
-import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
+import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
+import {
+  CHEQUE_TYPE_OPTIONS,
+  EMPTY_UNIT_OPTION,
+  MAX_BACKDATE_DAYS,
+} from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
   @service auth;
   @service notifications;
+  @service region;
   @service router;
   @service socket;
   chequeUpdatedHandler = null;
@@ -98,6 +103,17 @@ export default class ChequesController extends PaginatedController {
   @tracked deleteReason = '';
   @tracked isDeleting = false;
   @tracked reasonError = '';
+
+  @tracked showClearModal = false;
+  @tracked clearChequeItem = null;
+  @tracked clearedDate = '';
+  @tracked clearError = '';
+  @tracked isClearing = false;
+
+  @tracked showUnclearModal = false;
+  @tracked unclearChequeItem = null;
+  @tracked unclearReason = '';
+  @tracked isUnclearing = false;
 
   // Matches POST and PATCH /cheques roles; ACCOUNTANT is read-only.
   get canWriteCheques() {
@@ -243,6 +259,126 @@ export default class ChequesController extends PaginatedController {
       this.router.refresh('cheques');
     } catch (e) {
       this.notifications.error(e.message);
+    }
+  }
+
+  // The backend refuses anything outside this, so the picker offers nothing else.
+  // The cheque's OWN region decides its business day, matching
+  // assertTransactionDateInWindow(dto.clearedDate, cheque.regionCode) on the server.
+  // Reading the viewed region instead shifts the boundary for a cross-zone company.
+  get clearDateWindow() {
+    const cheque = this.clearChequeItem;
+    const zone =
+      this.region.regions?.find((r) => r.code === cheque?.regionCode)
+        ?.timezone ?? this.region.activeRegion?.timezone;
+    const today = todayInZone(zone);
+    const floors = [
+      today && addCalendarDays(today, -MAX_BACKDATE_DAYS),
+      toDateOnly(cheque?.dueDate),
+      toDateOnly(cheque?.depositDate),
+    ].filter(Boolean);
+    return { earliest: floors.sort().at(-1) ?? null, latest: today ?? null };
+  }
+
+  // A cheque that is not due yet has no clearable date at all: its due-date floor
+  // sits past today. Binding that pair to min/max makes every value invalid.
+  get clearWindowUnusable() {
+    const { earliest, latest } = this.clearDateWindow;
+    return !earliest || !latest || earliest > latest;
+  }
+
+  get clearBlockedMessage() {
+    const dueDate = toDateOnly(this.clearChequeItem?.dueDate);
+    const { latest } = this.clearDateWindow;
+    if (dueDate && latest && dueDate > latest) {
+      return `This cheque is not due until ${dueDate}, so it cannot be cleared yet.`;
+    }
+    return 'This cheque has no date that can be recorded as its clearing day.';
+  }
+
+  @action openClear(cheque) {
+    this.clearChequeItem = cheque;
+    this.clearError = '';
+    this.showClearModal = true;
+    this.clearedDate = this.clearWindowUnusable
+      ? ''
+      : this.clearDateWindow.latest;
+  }
+
+  @action closeClearModal() {
+    this.showClearModal = false;
+    this.clearChequeItem = null;
+    this.clearedDate = '';
+    this.clearError = '';
+  }
+
+  @action async confirmClear() {
+    if (!this.clearChequeItem || this.isClearing) return;
+    if (this.clearWindowUnusable) {
+      this.clearError = this.clearBlockedMessage;
+      return;
+    }
+    const { earliest, latest } = this.clearDateWindow;
+    if (!this.clearedDate) {
+      this.clearError = 'The date the cheque cleared is required.';
+      return;
+    }
+    if (this.clearedDate < earliest || this.clearedDate > latest) {
+      this.clearError = `Pick a date between ${earliest} and ${latest}.`;
+      return;
+    }
+
+    this.isClearing = true;
+    try {
+      await this.auth.fetchJson(`/cheques/${this.clearChequeItem.id}/clear`, {
+        method: 'POST',
+        body: JSON.stringify({ clearedDate: this.clearedDate }),
+      });
+      this.notifications.success('Cheque cleared and payment recorded');
+      this.closeClearModal();
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.clearError = e.message || 'Failed to clear cheque';
+    } finally {
+      this.isClearing = false;
+    }
+  }
+
+  @action openUnclear(cheque) {
+    this.unclearChequeItem = cheque;
+    this.unclearReason = '';
+    this.reasonError = '';
+    this.showUnclearModal = true;
+  }
+
+  @action closeUnclearModal() {
+    this.showUnclearModal = false;
+    this.unclearChequeItem = null;
+    this.unclearReason = '';
+    this.reasonError = '';
+  }
+
+  @action async confirmUnclear() {
+    if (!this.unclearChequeItem || this.isUnclearing) return;
+    const reason = this.unclearReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+
+    this.isUnclearing = true;
+    try {
+      await this.auth.fetchJson(
+        `/cheques/${this.unclearChequeItem.id}/unclear`,
+        { method: 'POST', body: JSON.stringify({ reason }) },
+      );
+      this.notifications.success('Cheque clearing reversed');
+      this.closeUnclearModal();
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to reverse the clearing');
+    } finally {
+      this.isUnclearing = false;
     }
   }
 

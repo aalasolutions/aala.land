@@ -17,7 +17,18 @@ import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
-import { regionTodaySql } from '../../shared/utils/region-time.util';
+import {
+  addDays,
+  regionToday,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
+import {
+  Transaction,
+  TransactionCategory,
+  TransactionStatus,
+  TransactionType,
+  PaymentMethod,
+} from '../financial/entities/transaction.entity';
 
 describe('ChequesService', () => {
   let service: ChequesService;
@@ -31,6 +42,7 @@ describe('ChequesService', () => {
     findOne: jest.Mock;
     remove: jest.Mock;
   };
+  let txRepo: { insert: jest.Mock; update: jest.Mock };
   let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   let updateBuilder: {
     update: jest.Mock;
@@ -99,8 +111,14 @@ describe('ChequesService', () => {
   };
 
   beforeEach(async () => {
+    txRepo = {
+      insert: jest.fn().mockResolvedValue({ identifiers: [{ id: 'tx-1' }] }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
     manager = {
-      getRepository: jest.fn(() => repo),
+      getRepository: jest.fn((entity: unknown) =>
+        entity === Transaction ? txRepo : repo,
+      ),
       // Locked reads find live rows unless a test says otherwise.
       findOne: jest.fn((entity: unknown, opts: any) =>
         Promise.resolve(
@@ -464,36 +482,19 @@ describe('ChequesService', () => {
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
-    it('creates PAYMENT_RECEIVED notification when status changes to CLEARED', async () => {
-      const adminUser = {
-        id: 'admin-2',
-        name: 'Admin Two',
-        email: 'admin2@test.com',
-      };
-      const updated = { ...mockCheque, status: ChequeStatus.CLEARED } as Cheque;
-      repo.findOne
-        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
-        .mockResolvedValueOnce(updated);
-      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
-        adminUser,
-      ]);
+    it('refuses CLEARED and notifies nobody, because clearing must write money', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
       const notificationsService = module.get(NotificationsService) as any;
 
-      await service.update(
-        'cheque-uuid-1',
-        companyId,
-        { status: ChequeStatus.CLEARED },
-        'user-1',
-      );
-
-      expect(notificationsService.create).toHaveBeenCalledWith(
-        companyId,
-        expect.objectContaining({
-          title: 'Cheque Cleared',
-          message: expect.stringContaining('has been CLEARED'),
-          type: NotificationType.PAYMENT_RECEIVED,
-        }),
-      );
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.CLEARED },
+          'user-1',
+        ),
+      ).rejects.toThrow(/clear endpoint/);
+      expect(notificationsService.create).not.toHaveBeenCalled();
     });
 
     it('creates SYSTEM notification when status changes to CANCELLED', async () => {
@@ -1400,12 +1401,71 @@ describe('ChequesService', () => {
       repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
       updateBuilder = makeUpdateBuilder(0);
       repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
+      // The row really is gone, so the failure-path re-read finds nothing.
+      manager.findOne = jest.fn((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Cheque
+            ? null
+            : { id: opts?.where?.id, unitId: null, deletedAt: null },
+        ),
+      );
 
       await expect(
         service.bounce('cheque-uuid-1', companyId, {}),
       ).rejects.toThrow(NotFoundException);
-      // No re-read after a no-op UPDATE.
+      // Still no re-read through the repository; the check rides the transaction.
       expect(repo.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws ConflictException when the cheque went terminal mid-flight', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
+      updateBuilder = makeUpdateBuilder(0);
+      repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
+      manager.findOne = jest.fn((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Cheque
+            ? { id: 'cheque-uuid-1', status: ChequeStatus.CLEARED }
+            : { id: opts?.where?.id, unitId: null, deletedAt: null },
+        ),
+      );
+
+      await expect(
+        service.bounce('cheque-uuid-1', companyId, {}),
+      ).rejects.toThrow(/became CLEARED/);
+    });
+
+    it('refuses to bounce a cleared cheque, so its income row cannot outlive it', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        status: ChequeStatus.CLEARED,
+      } as Cheque);
+
+      await expect(
+        service.bounce('cheque-uuid-1', companyId, {}),
+      ).rejects.toThrow(ConflictException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('refuses to bounce a cancelled or replaced cheque', async () => {
+      for (const status of [ChequeStatus.CANCELLED, ChequeStatus.REPLACED]) {
+        repo.findOne.mockResolvedValue({ ...mockCheque, status } as Cheque);
+        await expect(
+          service.bounce('cheque-uuid-1', companyId, {}),
+        ).rejects.toThrow(ConflictException);
+      }
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('still bounces a cheque that already bounced once', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        status: ChequeStatus.BOUNCED,
+        bounceCount: 1,
+      } as Cheque);
+
+      await service.bounce('cheque-uuid-1', companyId, {});
+
+      expect(updateBuilder.execute).toHaveBeenCalled();
     });
   });
 
@@ -2171,6 +2231,436 @@ describe('ChequesService', () => {
         expect(updateBuilder.set).toHaveBeenCalledWith(
           expect.objectContaining({ regionCode: 'punjab' }),
         );
+      });
+    });
+  });
+
+  describe('clear', () => {
+    const region = 'dubai';
+    const today = regionToday(region);
+
+    // amount is @Column({ type: 'decimal' }) with no transformer, so the driver hands
+    // back a STRING even though the entity declares number. The fixture uses the real
+    // runtime shape; asserting 15000 would assert a value Postgres never returns.
+    const PG_AMOUNT = '15000.00' as unknown as number;
+
+    const clearable = (overrides: Partial<Cheque> = {}): Cheque =>
+      ({
+        ...mockCheque,
+        amount: PG_AMOUNT,
+        status: ChequeStatus.DEPOSITED,
+        depositDate: null,
+        clearedDate: null,
+        unitId: null,
+        regionCode: region,
+        ...overrides,
+      }) as Cheque;
+
+    // The locked re-read inside the db transaction returns this row.
+    const lockReturns = (cheque: Cheque) => {
+      manager.findOne = jest.fn((entity: unknown, opts: any) => {
+        if (entity === Lease) {
+          return Promise.resolve({
+            id: opts?.where?.id,
+            unitId: null,
+            deletedAt: null,
+          });
+        }
+        if (entity === Cheque) {
+          return Promise.resolve(cheque);
+        }
+        return Promise.resolve({ id: opts?.where?.id, deletedAt: null });
+      });
+    };
+
+    it('writes one completed income transaction dated the day it cleared', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await service.clear('cheque-uuid-1', companyId, { clearedDate: today });
+
+      expect(txRepo.insert).toHaveBeenCalledTimes(1);
+      expect(txRepo.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          companyId,
+          chequeId: 'cheque-uuid-1',
+          type: TransactionType.INCOME,
+          category: TransactionCategory.RENT,
+          status: TransactionStatus.COMPLETED,
+          amount: PG_AMOUNT,
+          paymentMethod: PaymentMethod.CHEQUE,
+          transactionDate: today,
+          dueDate: cheque.dueDate,
+          regionCode: region,
+        }),
+      );
+      expect(cheque.status).toBe(ChequeStatus.CLEARED);
+      expect(cheque.clearedDate).toBe(today);
+      expect(repo.save).toHaveBeenCalledWith(cheque);
+    });
+
+    it('maps a security deposit cheque to the deposit category', async () => {
+      const cheque = clearable({ type: ChequeType.SECURITY_DEPOSIT });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await service.clear('cheque-uuid-1', companyId, { clearedDate: today });
+
+      expect(txRepo.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ category: TransactionCategory.DEPOSIT }),
+      );
+    });
+
+    it('records the status change in history', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await service.clear(
+        'cheque-uuid-1',
+        companyId,
+        { clearedDate: today },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          entityType: 'Cheque',
+          entityId: 'cheque-uuid-1',
+          actorId: 'user-1',
+          metadata: expect.objectContaining({
+            to: ChequeStatus.CLEARED,
+            clearedDate: today,
+          }),
+        }),
+      );
+    });
+
+    it('refuses a cleared date more than 30 days back', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, {
+          clearedDate: addDays(today, -31),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses a cleared date in the future', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, {
+          clearedDate: addDays(today, 1),
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses to clear before the due date', async () => {
+      const cheque = clearable({ dueDate: addDays(today, 5) });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(/cannot clear before its due date/);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses to clear before it was deposited', async () => {
+      const cheque = clearable({ depositDate: today });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, {
+          clearedDate: addDays(today, -1),
+        }),
+      ).rejects.toThrow(/cannot clear before it was deposited/);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses a cheque that is already cleared', async () => {
+      const cheque = clearable({
+        status: ChequeStatus.CLEARED,
+        clearedDate: today,
+      });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(ConflictException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses a bounced cheque, so a bounce never becomes income', async () => {
+      const cheque = clearable({ status: ChequeStatus.BOUNCED });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(BadRequestException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses a cancelled cheque', async () => {
+      const cheque = clearable({ status: ChequeStatus.CANCELLED });
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(BadRequestException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('re-checks the locked row, so a concurrent clear cannot write twice', async () => {
+      const seen = clearable();
+      const lockedAlreadyCleared = clearable({
+        status: ChequeStatus.CLEARED,
+        clearedDate: today,
+      });
+      repo.findOne.mockResolvedValue(seen);
+      lockReturns(lockedAlreadyCleared);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(ConflictException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    describe('unclear', () => {
+      it('cancels the transaction and returns a deposited cheque to DEPOSITED', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+          depositDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.unclear('cheque-uuid-1', companyId, {
+          reason: 'Bank reversed the credit',
+        });
+
+        expect(txRepo.update).toHaveBeenCalledWith(
+          {
+            chequeId: 'cheque-uuid-1',
+            companyId,
+            status: expect.anything(),
+          },
+          { status: TransactionStatus.CANCELLED },
+        );
+        expect(cheque.status).toBe(ChequeStatus.DEPOSITED);
+        expect(cheque.clearedDate).toBeNull();
+      });
+
+      it('returns a never-deposited cheque to PENDING', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+          depositDate: null,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.unclear('cheque-uuid-1', companyId, { reason: 'Typo' });
+
+        expect(cheque.status).toBe(ChequeStatus.PENDING);
+      });
+
+      it('records the reason in history', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await service.unclear(
+          'cheque-uuid-1',
+          companyId,
+          { reason: 'Bank reversed the credit' },
+          'user-1',
+        );
+
+        expect(recordHistory.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            action: RecordHistoryAction.STATUS_CHANGE,
+            reason: 'Bank reversed the credit',
+            actorId: 'user-1',
+            metadata: expect.objectContaining({ from: ChequeStatus.CLEARED }),
+          }),
+        );
+      });
+
+      it('records that nothing was cancelled when no transaction was linked', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+        txRepo.update.mockResolvedValue({ affected: 0 });
+        (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+          { id: 'admin-9', name: 'Admin Nine', email: 'admin9@test.com' },
+        ]);
+        const notificationsService = module.get(NotificationsService) as any;
+
+        await service.unclear('cheque-uuid-1', companyId, { reason: 'Legacy' });
+
+        expect(recordHistory.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            metadata: expect.objectContaining({ cancelledTransactions: 0 }),
+          }),
+        );
+        expect(notificationsService.create).toHaveBeenCalledWith(
+          companyId,
+          expect.objectContaining({
+            message: expect.stringContaining('no recorded payment to cancel'),
+          }),
+        );
+      });
+
+      it('says the payment was cancelled when a row was actually reversed', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+        (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+          { id: 'admin-9', name: 'Admin Nine', email: 'admin9@test.com' },
+        ]);
+        const notificationsService = module.get(NotificationsService) as any;
+
+        await service.unclear('cheque-uuid-1', companyId, { reason: 'Error' });
+
+        expect(notificationsService.create).toHaveBeenCalledWith(
+          companyId,
+          expect.objectContaining({
+            message: expect.stringContaining('its payment was cancelled'),
+          }),
+        );
+      });
+
+      it('refuses a cheque that was never cleared', async () => {
+        const cheque = clearable();
+        repo.findOne.mockResolvedValue(cheque);
+        lockReturns(cheque);
+
+        await expect(
+          service.unclear('cheque-uuid-1', companyId, { reason: 'Mistake' }),
+        ).rejects.toThrow(BadRequestException);
+        expect(txRepo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('update guards around a cleared cheque', () => {
+      it('refuses to set CLEARED through the generic update', async () => {
+        const cheque = clearable({ status: ChequeStatus.PENDING });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, {
+            status: ChequeStatus.CLEARED,
+          }),
+        ).rejects.toThrow(/clear endpoint/);
+      });
+
+      it('refuses an amount change on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, { amount: 999 }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('refuses a unit change on a cleared cheque, which would move its money row', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+          unitId: 'unit-makkah',
+        });
+        repo.findOne.mockResolvedValue(cheque);
+        // The region precheck runs first, so the target unit has to be real.
+        unitRepo.findOne.mockResolvedValue({
+          id: 'unit-punjab',
+          deletedAt: null,
+        } as Unit);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, { unitId: 'unit-punjab' }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('refuses a cheque number change on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, {
+            chequeNumber: 'CHQ999',
+          }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('refuses a due date change on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, { dueDate: '2026-01-15' }),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('still allows a harmless field such as notes on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, { notes: 'Filed' }),
+        ).resolves.toBeDefined();
+      });
+
+      it('refuses a type change on a cleared cheque', async () => {
+        const cheque = clearable({
+          status: ChequeStatus.CLEARED,
+          clearedDate: today,
+        });
+        repo.findOne.mockResolvedValue(cheque);
+
+        await expect(
+          service.update('cheque-uuid-1', companyId, {
+            type: ChequeType.MAINTENANCE,
+          }),
+        ).rejects.toThrow(ConflictException);
       });
     });
   });

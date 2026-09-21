@@ -24,6 +24,8 @@ import { ChequesService } from './cheques.service';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
+import { ClearChequeDto } from './dto/clear-cheque.dto';
+import { UnclearChequeDto } from './dto/unclear-cheque.dto';
 import { ProcessOcrDto } from './dto/process-ocr.dto';
 import { DeleteChequeDto } from './dto/delete-cheque.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -141,13 +143,59 @@ export class ChequesController {
 
   @Post(':id/bounce')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Record a cheque bounce (ADMIN+)' })
+  @ApiOperation({
+    summary: 'Record a cheque bounce (ADMIN+)',
+    description:
+      '409 when the cheque is already CLEARED, CANCELLED or REPLACED, and when it reaches one of those between the check and the write. A BOUNCED cheque may be bounced again.',
+  })
   bounce(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: BounceChequeDto,
     @Request() req: AuthenticatedRequest,
   ) {
     return this.chequesService.bounce(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post(':id/clear')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({
+    summary: 'Mark a cheque as cleared and record the payment (ADMIN+)',
+    description:
+      'Writes one COMPLETED income transaction dated the day the cheque cleared. 400 when that date is outside the backdating window, in the future, before the due date or before the deposit date. 409 when the cheque is already cleared.',
+  })
+  clear(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ClearChequeDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.chequesService.clear(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post(':id/unclear')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Reverse a cheque clearing with a reason (COMPANY_ADMIN+)',
+    description:
+      'Cancels the transaction the clearing wrote, so the money stops counting while the row stays on the books.',
+  })
+  unclear(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UnclearChequeDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.chequesService.unclear(
       id,
       requireCompanyId(req.user),
       dto,
