@@ -45,7 +45,12 @@ export class CreateTransactionDto {
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ format: 'date', example: '2026-01-31' })
+  @ApiPropertyOptional({
+    format: 'date',
+    example: '2026-01-31',
+    description:
+      'Accepted from 30 days before to 1 month after the region business day.',
+  })
   @IsDateOnly()
   @IsOptional()
   transactionDate?: string;

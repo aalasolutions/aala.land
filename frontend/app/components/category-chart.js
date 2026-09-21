@@ -1,23 +1,7 @@
-import Component from '@glimmer/component';
-import { service } from '@ember/service';
-import {
-  compactFormatter,
-  humanize,
-  moneyFormatter,
-  token,
-} from '../utils/chart-style';
+import { humanize, token } from '../utils/chart-style';
+import ChartBase from './chart-base';
 
-export default class CategoryChartComponent extends Component {
-  @service region;
-
-  get locale() {
-    return navigator.language || 'en';
-  }
-
-  get money() {
-    return moneyFormatter(this.locale, this.region.currencyCode);
-  }
-
+export default class CategoryChartComponent extends ChartBase {
   get totals() {
     return this.args.totals ?? [];
   }
@@ -46,16 +30,19 @@ export default class CategoryChartComponent extends Component {
   }
 
   get rows() {
+    const money = this.money;
+    // Hoisted: each read of a getter rebuilds the whole array, so reading it per row is quadratic.
+    const labels = this.labels;
     return this.categories.flatMap((entry, index) => {
-      const label = this.labels[index];
+      const label = labels[index];
       const out = [];
       if (entry.income) {
-        out.push({ label: `${label} income`, value: this.money(entry.income) });
+        out.push({ label: `${label} income`, value: money(entry.income) });
       }
       if (entry.expense) {
         out.push({
           label: `${label} expense`,
-          value: this.money(entry.expense),
+          value: money(entry.expense),
         });
       }
       return out;
@@ -67,7 +54,7 @@ export default class CategoryChartComponent extends Component {
     const expense = token('--danger');
     const muted = token('--text-muted');
     const border = token('--border-base');
-    const compact = compactFormatter(this.locale);
+    const compact = this.compact;
 
     return {
       type: 'bar',

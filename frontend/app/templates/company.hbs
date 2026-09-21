@@ -26,12 +26,12 @@
     {{#if this.isCompanyAdmin}}
       <Nuvo::Tabs
         @tabs={{this.settingsTabs}}
-        @activeTab={{this.activeTab}}
+        @activeTab={{this.currentTab}}
         @onChange={{this.setTab}}
       />
     {{/if}}
 
-  {{#if (eq this.activeTab "ai")}}
+  {{#if (eq this.currentTab "ai")}}
     {{#if this.creditUsageLabel}}
       <Nuvo::Card class="max-w-lg text-muted text-sm">
         <div data-test-ai-credit-usage>{{this.creditUsageLabel}}</div>
@@ -112,7 +112,7 @@
         </Nuvo::FormActions>
       </form>
     </Nuvo::Card>
-  {{else if (eq this.activeTab "billing")}}
+  {{else if (eq this.currentTab "billing")}}
     <Nuvo::Card class="max-w-lg" data-test-billing-panel>
       <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
@@ -326,7 +326,7 @@
       @onClose={{this.closeDowngradeConfirm}}
       @onConfirm={{this.confirmDowngrade}}
     />
-  {{else if (eq this.activeTab "regions")}}
+  {{else if (eq this.currentTab "regions")}}
     <div class="company-settings-grid">
       {{#if this.model.regions.length}}
         <Nuvo::Card
@@ -378,6 +378,7 @@
               <button
                 type="button"
                 class="region-country-header"
+                data-test-country-toggle={{group.country}}
                 {{on "click" (fn this.toggleCountry group.country)}}
               >
                 <span class="country-name">{{group.countryName}}</span>
@@ -421,6 +422,27 @@
               {{/if}}
             </div>
           {{/each}}
+
+          {{#unless this.isAdmin}}
+            <p class="text-sm text-muted">Only company admins and super admins
+              can change these settings.</p>
+          {{/unless}}
+
+          {{#if this.errorMsg}}
+            <p class="text-danger" data-test-region-error>{{this.errorMsg}}</p>
+          {{/if}}
+
+          <Nuvo::FormActions>
+            <Nuvo::Button
+              @variant="primary"
+              @loading={{this.isSaving}}
+              @disabled={{not this.isAdmin}}
+              @onClick={{this.saveCompany}}
+              data-test-save-regions
+            >
+              {{if this.isSaving "Saving..." "Save Changes"}}
+            </Nuvo::Button>
+          </Nuvo::FormActions>
         </Nuvo::Card>
       {{/if}}
     </div>
@@ -515,6 +537,20 @@
       </Nuvo::Card>
     </div>
   {{/if}}
+
+  {{! Rendered outside the tab branches: both region and general saves prune users. }}
+  <ConfirmModal
+    @open={{this.showRegionRemovalConfirm}}
+    @title="Remove region access"
+    @message={{this.regionRemovalMessage}}
+    @confirmText="Remove and save"
+    @confirmingText="Saving..."
+    @confirmVariant="danger"
+    @cancelText="I changed my mind"
+    @isConfirming={{this.isSaving}}
+    @onClose={{this.closeRegionRemovalConfirm}}
+    @onConfirm={{this.confirmRegionRemoval}}
+  />
 {{else}}
   <Nuvo::EmptyState
     @title="No Company Data"

@@ -1,6 +1,7 @@
 // Dashboard page: bespoke layout around Nuvo::PageHeader/Stat/Panel/Dot/Tag.
 @use "@nuvoui/ember/styles/mixins/var" as *;
 @use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // One height for every bar on this page: stage rows, agent rows and the closed split.
 $dashboard-bar-size: 10px;
@@ -29,7 +30,7 @@ $dashboard-bar-size: 10px;
     "outcome status";
   gap: nu-space(4);
 
-  @media (max-width: 1024px) {
+  @include media-down(lg) {
     grid-template-columns: 1fr;
     grid-template-areas:
       "action"
@@ -44,7 +45,7 @@ $dashboard-bar-size: 10px;
   grid-template-columns: repeat(2, 1fr);
   gap: nu-space(4);
 
-  @media (max-width: 640px) {
+  @include media-down(sm) {
     grid-template-columns: 1fr;
   }
 }
@@ -53,8 +54,7 @@ $dashboard-bar-size: 10px;
   grid-area: outcome;
 }
 
-// Rows share the rail's height equally so the gaps stay on the scale instead of
-// being inflated by leftover space.
+// Equal row heights keep the gaps on the scale instead of inflating them with leftover space.
 .kpi-status {
   grid-area: status;
   display: flex;
@@ -71,7 +71,7 @@ $dashboard-bar-size: 10px;
   grid-template-columns: 1fr 1fr;
   gap: nu-space(4);
 
-  @media (max-width: 768px) {
+  @include media-down(md) {
     grid-template-columns: 1fr;
   }
 }
@@ -150,6 +150,7 @@ $dashboard-bar-size: 10px;
 .ownership-segment {
   block-size: 100%;
   min-inline-size: 4px;
+  inline-size: var(--seg-width, 0%);
 }
 
 .ownership-more {
@@ -236,8 +237,7 @@ $dashboard-bar-size: 10px;
   color: var(--text-color);
 }
 
-// Inset hairline, not a border: the lightest stage sits under 3:1 on the track,
-// so the bar needs an edge of its own without changing its height.
+// Inset hairline, not a border: gives the bar an edge without changing its height.
 .pipeline-bar-track {
   block-size: $dashboard-bar-size;
   border-radius: nu-radius(full);
@@ -248,8 +248,9 @@ $dashboard-bar-size: 10px;
 
 .pipeline-bar-fill {
   block-size: 100%;
+  inline-size: var(--bar-width, 0%);
   border-radius: nu-radius(full);
-  transition: width nu-duration(normal);
+  transition: inline-size nu-duration(normal);
 }
 
 @each $variant in $nu-variants {
@@ -258,8 +259,7 @@ $dashboard-bar-size: 10px;
   }
 }
 
-// Ordered stages read as one hue getting deeper; the theme has only five
-// distinct variant colours, too few to keep six stages apart.
+// One hue deepening by stage: the theme has only five distinct variants for six stages.
 $nu-stage-steps: (
   "new": 300,
   "contacted": 500,

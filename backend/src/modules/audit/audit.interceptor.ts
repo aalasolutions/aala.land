@@ -4,10 +4,13 @@ import {
   ExecutionContext,
   CallHandler,
   Logger,
+  Optional,
 } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
+import { Observable, from, switchMap, tap } from 'rxjs';
+import { DataSource } from 'typeorm';
 import { AuditService } from './audit.service';
 import { isGlobalEntityType } from './audit-global-entities';
+import { oldValueSourceFor } from './audit-old-value-entities';
 import { AuditAction } from './dto/query-audit-logs.dto';
 import { NO_REGION_SENTINEL } from '@shared/interceptors/region-scope.interceptor';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
@@ -75,7 +78,10 @@ const ENTITY_TYPE_MAP: Record<string, string> = {
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
 
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    @Optional() private readonly dataSource?: DataSource,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -134,72 +140,119 @@ export class AuditInterceptor implements NestInterceptor {
       request.ip;
     const userAgent = request.headers['user-agent'];
 
-    return next.handle().pipe(
-      tap({
-        next: (responseData) => {
-          let logCompanyId = companyId;
-          let logUserId = userId;
-          let logEntityId = entityId;
+    const handleWithAudit = (oldValue?: Record<string, any>): Observable<any> =>
+      next.handle().pipe(
+        tap({
+          next: (responseData) => {
+            let logCompanyId = companyId;
+            let logUserId = userId;
+            let logEntityId = entityId;
 
-          // Login: extract user info from response (may be wrapped by ResponseInterceptor)
-          if (action === AuditAction.LOGIN) {
-            const userData = responseData?.user || responseData?.data?.user;
-            if (userData) {
-              logCompanyId = userData.companyId;
-              logUserId = userData.id;
-              logEntityId = userData.id;
+            // Login: extract user info from response (may be wrapped by ResponseInterceptor)
+            if (action === AuditAction.LOGIN) {
+              const userData = responseData?.user || responseData?.data?.user;
+              if (userData) {
+                logCompanyId = userData.companyId;
+                logUserId = userData.id;
+                logEntityId = userData.id;
+              }
             }
-          }
 
-          if (!logCompanyId) {
-            return;
-          }
-
-          if (!logEntityId) {
-            const payload = responseData?.data || responseData;
-            if (payload?.id) {
-              logEntityId = payload.id;
+            if (!logCompanyId) {
+              return;
             }
-          }
 
-          const actionDetail =
-            ACTION_OVERRIDES[lastSegment] && segments.length > 1
-              ? lastSegment
-              : undefined;
+            if (!logEntityId) {
+              const payload = responseData?.data || responseData;
+              if (payload?.id) {
+                logEntityId = payload.id;
+              }
+            }
 
-          // Fire and forget (never block the response)
-          this.auditService
-            .log({
-              companyId: logCompanyId,
-              userId: logUserId || undefined,
-              action,
-              entityType,
-              entityId: logEntityId,
-              oldValue: undefined,
-              newValue: body
-                ? {
-                    ...body,
-                    ...(actionDetail ? { _action: actionDetail } : {}),
-                  }
-                : undefined,
-              ipAddress:
-                typeof ipAddress === 'string'
-                  ? ipAddress.substring(0, 100)
-                  : undefined,
-              userAgent: userAgent || undefined,
-              regionCode: this.resolveRegionCode(
+            const actionDetail =
+              ACTION_OVERRIDES[lastSegment] && segments.length > 1
+                ? lastSegment
+                : undefined;
+
+            // Fire and forget (never block the response)
+            this.auditService
+              .log({
+                companyId: logCompanyId,
+                userId: logUserId || undefined,
+                action,
                 entityType,
-                request as AuditRequestContext,
-                responseData,
-              ),
-            })
-            .catch((err: unknown) => {
-              const message = errorMessage(err);
-              this.logger.error(`Audit log failed: ${message}`);
-            });
-        },
-      }),
+                entityId: logEntityId,
+                oldValue,
+                newValue: body
+                  ? {
+                      ...body,
+                      ...(actionDetail ? { _action: actionDetail } : {}),
+                    }
+                  : undefined,
+                ipAddress:
+                  typeof ipAddress === 'string'
+                    ? ipAddress.substring(0, 100)
+                    : undefined,
+                userAgent: userAgent || undefined,
+                regionCode: this.resolveRegionCode(
+                  entityType,
+                  request as AuditRequestContext,
+                  responseData,
+                ),
+              })
+              .catch((err: unknown) => {
+                const message = errorMessage(err);
+                this.logger.error(`Audit log failed: ${message}`);
+              });
+          },
+        }),
+      );
+
+    // Opt-in only: an unconditional pre-read would add a query to every write in the app.
+    const capturesOldValue =
+      (action === AuditAction.UPDATE || action === AuditAction.DELETE) &&
+      Boolean(entityId) &&
+      Boolean(companyId) &&
+      Boolean(oldValueSourceFor(entityType));
+
+    if (!capturesOldValue) {
+      return handleWithAudit();
+    }
+
+    // Read before the handler runs, otherwise the update has already overwritten the row.
+    return from(this.readOldValue(entityType, entityId!, companyId)).pipe(
+      switchMap((oldValue) => handleWithAudit(oldValue)),
     );
+  }
+
+  // Whitelisted table and columns only; the id and company are bound parameters.
+  private async readOldValue(
+    entityType: string,
+    entityId: string,
+    companyId: string,
+  ): Promise<Record<string, any> | undefined> {
+    const source = oldValueSourceFor(entityType);
+    if (!source || !this.dataSource?.isInitialized) {
+      return undefined;
+    }
+
+    const columns = Object.entries(source.fields)
+      .map(([field, column]) => `"${column}" AS "${field}"`)
+      .join(', ');
+
+    try {
+      const rows: unknown = await this.dataSource.query(
+        `SELECT ${columns} FROM "${source.table}" WHERE "id" = $1 AND "company_id" = $2 LIMIT 1`,
+        [entityId, companyId],
+      );
+      const row = Array.isArray(rows) ? rows[0] : undefined;
+      return row ? (row as Record<string, any>) : undefined;
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Audit pre-read failed for ${entityType}: ${errorMessage(err)}`,
+      );
+      return undefined;
+    }
   }
 
   // Admin requests carry no query.regionCode; the acted-on entity is the only source, may be NULL.

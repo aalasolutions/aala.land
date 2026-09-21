@@ -19,6 +19,10 @@ function stageWord(stage) {
 export default class DashboardController extends Controller {
   @service region;
 
+  get loadFailed() {
+    return (this.model?.failed ?? []).length > 0;
+  }
+
   get regionLabel() {
     return this.region.activeRegion?.name ?? 'All Regions';
   }
@@ -70,16 +74,16 @@ export default class DashboardController extends Controller {
     return this.buildSegments(stages);
   }
 
-  pipelineWidth = (count) => {
+  computeBarWidth = (count) => {
     return Math.max(Math.round((count / this.maxPipelineCount) * 100), 2);
   };
 
-  pipelineBarStyle = (count) => {
-    return htmlSafe(`width:${this.pipelineWidth(count)}%;`);
+  buildBarStyle = (count) => {
+    return htmlSafe(`--bar-width:${this.computeBarWidth(count)}%;`);
   };
 
   // Open stages are ordinal, so they ramp one hue; outcomes keep their own colours.
-  pipelineColor = (stage) => {
+  resolveStageColor = (stage) => {
     const colors = {
       NEW: 'stage-new',
       CONTACTED: 'stage-contacted',
@@ -123,17 +127,17 @@ export default class DashboardController extends Controller {
   }
 
   // Idle means no counted lead at all: someone who only closed deals still gets a row.
-  countedTotal = (agent) => {
+  countLeads = (agent) => {
     return (agent.openTotal || 0) + (agent.won || 0) + (agent.lost || 0);
   };
 
   get loadedAgents() {
-    return this.ownershipAgents.filter((agent) => this.countedTotal(agent) > 0);
+    return this.ownershipAgents.filter((agent) => this.countLeads(agent) > 0);
   }
 
   get idleAgents() {
     return this.ownershipAgents
-      .filter((agent) => this.countedTotal(agent) === 0)
+      .filter((agent) => this.countLeads(agent) === 0)
       .map((agent) => ({
         agentId: agent.agentId,
         agentName: agent.agentName,
@@ -143,8 +147,13 @@ export default class DashboardController extends Controller {
 
   get idleLabel() {
     const count = this.idleAgents.length;
-    const names = this.idleAgents.map((agent) => agent.agentName).join(', ');
-    return `${count} ${count === 1 ? 'agent' : 'agents'} with no leads: ${names}`;
+    const names = this.visibleIdleAgents
+      .map((agent) => agent.agentName)
+      .join(', ');
+    const rest = this.hiddenIdleCount
+      ? ` and ${this.hiddenIdleCount} more`
+      : '';
+    return `${count} ${count === 1 ? 'agent' : 'agents'} with no leads: ${names}${rest}`;
   }
 
   get visibleIdleAgents() {
@@ -160,7 +169,7 @@ export default class DashboardController extends Controller {
   }
 
   // Every counted lead of an agent becomes a segment.
-  agentSegments = (agent) => {
+  buildAgentStages = (agent) => {
     return [
       ...(agent.stages || []),
       { stage: 'WON', count: agent.won },
@@ -175,9 +184,11 @@ export default class DashboardController extends Controller {
     return stages.map((stage) => ({
       stage: stage.stage,
       count: stage.count,
-      variant: stage.variant ?? this.pipelineColor(stage.stage),
+      variant: stage.variant ?? this.resolveStageColor(stage.stage),
       tooltip: `${stage.count} ${stageWord(stage.stage)}`,
-      style: htmlSafe(`width:${(stage.count / total) * 100}%;`),
+      style: htmlSafe(
+        `--seg-width:${((stage.count / total) * 100).toFixed(2)}%;`,
+      ),
     }));
   };
 
@@ -187,13 +198,13 @@ export default class DashboardController extends Controller {
       agentName: agent.agentName,
       initials: initialsOf(agent.agentName),
       openTotal: agent.openTotal,
-      label: this.agentLabel(agent),
-      segments: this.buildSegments(this.agentSegments(agent)),
+      label: this.buildAgentLabel(agent),
+      segments: this.buildSegments(this.buildAgentStages(agent)),
     }));
   }
 
   // Colour alone cannot carry the breakdown, so the row states it for assistive tech.
-  agentLabel = (agent) => {
+  buildAgentLabel = (agent) => {
     const parts = [`${agent.agentName}, ${agent.openTotal} open leads`];
 
     for (const stage of agent.stages || []) {

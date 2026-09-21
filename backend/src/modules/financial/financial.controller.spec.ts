@@ -47,6 +47,8 @@ describe('FinancialController', () => {
             update: jest.fn(),
             getSummary: jest.fn(),
             getDepositReminders: jest.fn(),
+            getCategoryBreakdown: jest.fn(),
+            getCashflowTrend: jest.fn(),
           },
         },
       ],
@@ -86,17 +88,16 @@ describe('FinancialController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(
-        companyId,
-        1,
-        20,
-        undefined,
-        undefined,
-        undefined,
-        mockReq.user,
-        undefined,
-        undefined,
-      );
+      expect(service.findAll).toHaveBeenCalledWith(companyId, {
+        page: 1,
+        limit: 20,
+        type: undefined,
+        ownerId: undefined,
+        regionCode: undefined,
+        caller: mockReq.user,
+        from: undefined,
+        to: undefined,
+      });
       expect(result).toEqual(paginated);
     });
   });
@@ -113,14 +114,76 @@ describe('FinancialController', () => {
 
       const result = await controller.getSummary(mockReq);
 
-      expect(service.getSummary).toHaveBeenCalledWith(
-        companyId,
-        undefined,
-        mockReq.user,
-        undefined,
-        undefined,
-      );
+      expect(service.getSummary).toHaveBeenCalledWith(companyId, {
+        regionCode: undefined,
+        caller: mockReq.user,
+        from: undefined,
+        to: undefined,
+      });
       expect(result).toEqual(summary);
+    });
+
+    it('passes the date-range query through to the service', async () => {
+      const summary = {
+        totalIncome: 20000,
+        totalExpense: 5000,
+        net: 15000,
+        currency: 'AED',
+      };
+      service.getSummary.mockResolvedValue(summary as any);
+
+      const result = await controller.getSummary(mockReq, {
+        regionCode: 'dubai',
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+
+      expect(service.getSummary).toHaveBeenCalledWith(companyId, {
+        regionCode: 'dubai',
+        caller: mockReq.user,
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+      expect(result).toEqual(summary);
+    });
+  });
+
+  describe('getCategoryBreakdown', () => {
+    it('delegates to service with companyId and date range', async () => {
+      const breakdown = [
+        { category: 'RENT', total: 10000, currency: 'AED' },
+      ];
+      service.getCategoryBreakdown.mockResolvedValue(breakdown as any);
+
+      const result = await controller.getCategoryBreakdown(mockReq, {
+        regionCode: 'dubai',
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+
+      expect(service.getCategoryBreakdown).toHaveBeenCalledWith(companyId, {
+        from: '2026-02-01',
+        to: '2026-02-28',
+        regionCode: 'dubai',
+        caller: mockReq.user,
+      });
+      expect(result).toEqual(breakdown);
+    });
+  });
+
+  describe('getCashflowTrend', () => {
+    it('delegates to service with companyId, region and a 6-month window', async () => {
+      const trend = [{ month: '2026-02', income: 10000, expense: 4000 }];
+      service.getCashflowTrend.mockResolvedValue(trend as any);
+
+      const result = await controller.getCashflowTrend(mockReq, 'dubai');
+
+      expect(service.getCashflowTrend).toHaveBeenCalledWith(companyId, {
+        months: 6,
+        regionCode: 'dubai',
+        caller: mockReq.user,
+      });
+      expect(result).toEqual(trend);
     });
   });
 

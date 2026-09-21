@@ -147,10 +147,12 @@ export default class NuvoCardController extends Controller {
     { name: '@label', type: 'string', default: '', description: 'Caption above the value.' },
     { name: '@value', type: 'string | number', default: '', description: 'The headline figure. Always rendered.' },
     { name: '@delta', type: 'string', default: '', description: 'Trend or context line under the value.' },
+    { name: '@contentBleed', type: 'boolean', default: 'false', description: 'Adds m-bleed to the content block so it reaches the card edge; for a sparkline, not for text.' },
   ];
 
   statBlockRows = [
     { name: 'icon', description: 'Custom icon content in the aria-hidden icon well.' },
+    { name: 'content', description: 'Trails the value and delta, for a sparkline or a note.' },
   ];
 
   infoRowArgRows = [
@@ -169,6 +171,7 @@ export default class NuvoCardController extends Controller {
 
   // Modifiers the sheets ship that no argument maps to; pass them through class.
   classRows = [
+    { name: 'nu-stat__content.m-bleed', description: 'Cancels the card padding so the content block reaches the card edge. Set it with @contentBleed.' },
     { name: 'nu-info-row.m-stacked', description: 'Label above the value instead of beside it.' },
     { name: 'nu-info-row.m-borderless', description: 'Removes the row divider.' },
     { name: 'nu-list-item.m-raised', description: 'Elevated shadow on the row.' },

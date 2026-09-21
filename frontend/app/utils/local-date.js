@@ -17,9 +17,18 @@ function withLocale(date, locale) {
   return locale ? date.setLocale(locale) : date;
 }
 
+// Strings parse as ISO, never via the Date constructor, which coerces junk into a real date.
 function toDateTime(value) {
-  const date = value instanceof Date ? value : new Date(value);
-  const result = DateTime.fromJSDate(date);
+  let result;
+  if (value instanceof Date) result = DateTime.fromJSDate(value);
+  else if (typeof value === 'number') result = DateTime.fromMillis(value);
+  else {
+    const text = String(value);
+    // A bare YYYY-MM-DD stays UTC midnight; Luxon would otherwise shift it to the browser zone.
+    result = DATE_ONLY.test(text)
+      ? DateTime.fromISO(text, { zone: 'utc' })
+      : DateTime.fromISO(text);
+  }
   return result.isValid ? result : null;
 }
 
@@ -45,12 +54,23 @@ export function todayInZone(timeZone, now = new Date()) {
 
 export const DEFAULT_RANGE = 'thisMonth';
 
-// A named period to its inclusive YYYY-MM-DD bounds, in browser-local time.
-// 'custom' has no preset bounds; the caller supplies them.
-export function rangeBounds(range, now = new Date()) {
-  const today = DateTime.fromJSDate(now).startOf('day');
+export const RANGES = ['last7', 'last30', 'thisMonth', 'lastMonth', 'custom'];
+
+export function isKnownRange(range) {
+  return RANGES.includes(range);
+}
+
+// Named period to inclusive YYYY-MM-DD bounds, pivoted on timeZone; null for 'custom'/unknown/invalid.
+export function rangeBounds(range, now = new Date(), timeZone = null) {
+  const local = toDateTime(now);
+  if (!local) return null;
+  const zoned = timeZone ? local.setZone(timeZone) : local;
+  const today = (zoned.isValid ? zoned : local).startOf('day');
   if (range === 'last7') {
-    return { from: today.minus({ days: 6 }).toISODate(), to: today.toISODate() };
+    return {
+      from: today.minus({ days: 6 }).toISODate(),
+      to: today.toISODate(),
+    };
   }
   if (range === 'last30') {
     return {
@@ -65,18 +85,30 @@ export function rangeBounds(range, now = new Date()) {
       to: previous.endOf('month').toISODate(),
     };
   }
-  return {
-    from: today.startOf('month').toISODate(),
-    to: today.endOf('month').toISODate(),
-  };
+  if (range === 'thisMonth') {
+    return {
+      from: today.startOf('month').toISODate(),
+      to: today.endOf('month').toISODate(),
+    };
+  }
+  return null;
 }
 
-// Bounds for any range, falling back to the preset when a custom end is missing.
-export function resolveRange(range, from, to, now = new Date()) {
+// Bounds for any range; an unknown range or an incomplete custom pair falls back to the preset.
+export function resolveRange(
+  range,
+  from,
+  to,
+  now = new Date(),
+  timeZone = null,
+) {
   if (range === 'custom' && isDateOnly(from) && isDateOnly(to)) {
     return from <= to ? { from, to } : { from: to, to: from };
   }
-  return rangeBounds(range === 'custom' ? DEFAULT_RANGE : range, now);
+  return (
+    rangeBounds(range, now, timeZone) ??
+    rangeBounds(DEFAULT_RANGE, now, timeZone)
+  );
 }
 
 // ISO instant of browser-local midnight of a YYYY-MM-DD date, shifted by dayOffset days.

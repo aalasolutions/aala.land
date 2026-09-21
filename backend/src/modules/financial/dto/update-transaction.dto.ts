@@ -46,7 +46,12 @@ export class UpdateTransactionDto {
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ format: 'date', example: '2026-02-15' })
+  @ApiPropertyOptional({
+    format: 'date',
+    example: '2026-02-15',
+    description:
+      'Accepted from 30 days before to 1 month after the region business day.',
+  })
   @IsDateOnly()
   @IsOptional()
   transactionDate?: string;

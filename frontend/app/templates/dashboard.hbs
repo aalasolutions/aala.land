@@ -37,13 +37,14 @@
       <Nuvo::Stat
         class="kpi-outcome"
         data-test-kpi="monthly-revenue"
+        @contentBleed={{true}}
         @label="Monthly Revenue"
         @value={{format-currency @model.kpis.monthlyRevenue}}
       >
         <:content>
           <StatSparkline
             @points={{this.revenuePoints}}
-            @color="--primary"
+            @variant="primary"
             @caption="Completed revenue by month"
           />
         </:content>
@@ -56,6 +57,14 @@
         <Nuvo::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
       </div>
     </div>
+  {{else if this.loadFailed}}
+    <Nuvo::Panel class="p-8 text-center">
+      <Nuvo::EmptyState
+        data-test-dashboard-error
+        @title="Could not load the dashboard"
+        @description="Reload the page to try again."
+      />
+    </Nuvo::Panel>
   {{else}}
     <Nuvo::Panel class="p-8 text-center">
       <p class="text-muted">Loading KPIs...</p>
@@ -81,10 +90,10 @@
               </div>
               <div class="pipeline-bar-track">
                 <div
-                  class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor
+                  class="pipeline-bar-fill pipeline-bar-{{this.resolveStageColor
                       stage.stage
                     }}"
-                  style={{this.pipelineBarStyle stage.count}}
+                  style={{this.buildBarStyle stage.count}}
                 ></div>
               </div>
             </div>

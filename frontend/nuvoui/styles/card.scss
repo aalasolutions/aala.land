@@ -149,6 +149,20 @@
 
   @include e(content) {
     margin-block-start: nu-space(3);
+
+    // Full-bleed foot, for a sparkline or any fill that should reach the card
+    // edge. The negative margins cancel the card's own padding on both sides
+    // and the bottom; the top keeps its normal spacing from the value. The
+    // tokens are declared on .nu-stat, so the modifier only resolves inside
+    // one, and overflow plus the two end radii keep the fill inside the
+    // rounded corners.
+    @include m(bleed) {
+      margin-inline: calc(#{nu-var("stat", "Padding")} * -1);
+      margin-block-end: calc(#{nu-var("stat", "Padding")} * -1);
+      overflow: hidden;
+      border-end-start-radius: nu-var("stat", "BorderRadius");
+      border-end-end-radius: nu-var("stat", "BorderRadius");
+    }
   }
 
   @each $variant in $nu-variants {

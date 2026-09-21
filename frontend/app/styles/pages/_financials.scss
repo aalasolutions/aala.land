@@ -1,0 +1,37 @@
+// Financials page: the filter bar above the ledger and the sparkline height.
+@use "@nuvoui/ember/styles/common/var" as *;
+
+// Tall enough for a six-point trend without crowding the stat value.
+$stat-sparkline-height: 78px;
+
+// Filters belong together, away from the header's primary action.
+.finance-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.finance-filters__range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(2);
+  align-items: center;
+}
+
+.finance-filters__dates {
+  display: flex;
+  gap: nu-space(2);
+  align-items: center;
+}
+
+.finance-filters__to {
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+// Height only: the card-edge bleed is the kit's `nu-stat__content.m-bleed`.
+.stat-sparkline .chart-canvas__frame {
+  block-size: $stat-sparkline-height;
+}

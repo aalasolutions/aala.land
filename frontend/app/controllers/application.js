@@ -94,8 +94,15 @@ export default class ApplicationController extends Controller {
   @tracked searchError = false;
   @tracked activeSearchIndex = -1;
 
+  // Manage rights alone are not enough: with no assigned region the picker has nothing to offer.
   get showRegionSwitcher() {
-    return this.region.regions.length > 0;
+    const count = this.region.regions.length;
+    return count > 1 || (count > 0 && this.canManageRegions);
+  }
+
+  // One assigned region and no manage rights: name the region instead of offering a picker.
+  get showRegionLabel() {
+    return !this.showRegionSwitcher && this.region.regions.length > 0;
   }
 
   get canManageRegions() {

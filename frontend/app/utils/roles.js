@@ -103,7 +103,7 @@ export function canUpdateUser(role, targetRole) {
 }
 
 export function canManageRegions(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }
 
 export function getVisibleGroups(role) {
