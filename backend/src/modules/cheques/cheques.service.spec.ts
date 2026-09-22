@@ -12,6 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { formatMoney } from '@shared/utils/money.util';
 import { ChequesService } from './cheques.service';
 import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
 import { Unit } from '../properties/entities/unit.entity';
@@ -41,6 +42,7 @@ describe('ChequesService', () => {
     getRepository: jest.Mock;
     findOne: jest.Mock;
     remove: jest.Mock;
+    count: jest.Mock;
   };
   let txRepo: { insert: jest.Mock; update: jest.Mock };
   let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
@@ -128,6 +130,7 @@ describe('ChequesService', () => {
         ),
       ),
       remove: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
     };
     recordHistory = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -755,7 +758,7 @@ describe('ChequesService', () => {
 
       expect(result.status).toBe(ChequeStatus.DEPOSITED);
       expect(loggerErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to create cheque status notification'),
+        expect.stringContaining('Failed to create cheque notification'),
       );
 
       loggerErrorSpy.mockRestore();
@@ -1352,6 +1355,73 @@ describe('ChequesService', () => {
       expect(result.status).toBe(ChequeStatus.BOUNCED);
     });
 
+    it('tells admins what bounced, through the shared fan-out', async () => {
+      const persisted = {
+        ...mockCheque,
+        status: ChequeStatus.BOUNCED,
+        bounceReason: 'Insufficient funds',
+      } as unknown as Cheque;
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce(persisted);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'admin-1', name: 'Admin One', email: 'admin@test.com' },
+      ]);
+      const notificationsService = module.get(NotificationsService) as any;
+      const gateway = module.get(NotificationsGateway) as any;
+
+      await service.bounce('cheque-uuid-1', companyId, {
+        bounceReason: 'Insufficient funds',
+      });
+
+      expect(gateway.broadcastToCompany).toHaveBeenCalledWith(
+        companyId,
+        'chequeUpdated',
+        expect.objectContaining({
+          id: 'cheque-uuid-1',
+          status: ChequeStatus.BOUNCED,
+        }),
+      );
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        companyId,
+        expect.objectContaining({
+          userId: 'admin-1',
+          title: 'Cheque Bounced!',
+          type: NotificationType.CHEQUE_BOUNCED,
+          entityType: 'cheque',
+          entityId: 'cheque-uuid-1',
+          message: expect.stringContaining('Reason: Insufficient funds'),
+        }),
+      );
+      // The amount goes through formatMoney, the same as every other money message.
+      const sent = notificationsService.create.mock.calls[0][1].message;
+      expect(sent).toContain(formatMoney(persisted.amount, persisted.currency));
+    });
+
+    it('still answers 2xx when the fan-out throws on the update path', async () => {
+      // update() reaches the primitives directly rather than through
+      // announceChequeStatus, so it needs the same guarantee.
+      const updated = {
+        ...mockCheque,
+        status: ChequeStatus.DEPOSITED,
+      } as Cheque;
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockRejectedValue(
+        new Error('connection terminated'),
+      );
+
+      const result = await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.DEPOSITED },
+        'user-1',
+      );
+
+      expect(result).toBeDefined();
+    });
+
     it('scopes the atomic UPDATE by id and companyId', async () => {
       repo.findOne
         .mockResolvedValueOnce({ ...mockCheque } as Cheque)
@@ -1587,6 +1657,19 @@ describe('ChequesService', () => {
       );
       return row;
     };
+
+    it('refuses a cheque a transaction still points at', async () => {
+      lockRow();
+      (manager.count as jest.Mock).mockResolvedValue(1);
+
+      await expect(
+        service.remove('cheque-uuid-1', companyId, 'Entered twice', 'user-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.count).toHaveBeenCalledWith(Transaction, {
+        where: { chequeId: 'cheque-uuid-1', companyId },
+      });
+      expect(manager.remove).not.toHaveBeenCalled();
+    });
 
     it('locks the row, records DELETE, then removes it', async () => {
       const row = lockRow();
@@ -2276,6 +2359,113 @@ describe('ChequesService', () => {
       });
     };
 
+    it('re-checks the due date against the LOCKED row, not the first read', async () => {
+      // A PATCH moves dueDate after the pre-lock read and before the lock:
+      // without the re-check the cheque clears before it was ever due.
+      const seen = clearable({ dueDate: '2026-08-20' });
+      const locked = clearable({ dueDate: addDays(today, 5) });
+      repo.findOne.mockResolvedValue(seen);
+      lockReturns(locked);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(BadRequestException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the cheque moved unit between the two reads', async () => {
+      // The archived-unit guard took its locks for the unit we first saw, so a
+      // move in between leaves the write unchecked for the unit it lands on.
+      const seen = clearable({ unitId: 'unit-a' });
+      const locked = clearable({ unitId: 'unit-b' });
+      repo.findOne.mockResolvedValue(seen);
+      lockReturns(locked);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(ConflictException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('re-checks the deposit date against the LOCKED row', async () => {
+      // A concurrent PATCH deposits the cheque after the pre-lock read. Checked
+      // against the row we first saw there is no deposit date at all and the
+      // call passes; against the locked row it clears before it was deposited.
+      const seen = clearable({ depositDate: null });
+      const locked = clearable({ depositDate: addDays(today, 1) });
+      repo.findOne.mockResolvedValue(seen);
+      lockReturns(locked);
+
+      await expect(
+        service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
+      ).rejects.toThrow(/cannot clear before it was deposited/);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('will not clear a cheque a concurrent move put outside the caller regions', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      // The locked read applies the caller's regions; a moved row matches nothing.
+      manager.findOne = jest.fn((entity: unknown, opts: any) => {
+        if (entity === Cheque) {
+          return Promise.resolve(opts?.where?.regionCode ? null : cheque);
+        }
+        return Promise.resolve({ id: opts?.where?.id, deletedAt: null });
+      });
+
+      await expect(
+        service.clear(
+          'cheque-uuid-1',
+          companyId,
+          { clearedDate: today },
+          'u1',
+          {
+            role: 'agent',
+            regionCodes: [region],
+          } as never,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(txRepo.insert).not.toHaveBeenCalled();
+    });
+
+    it('still answers 2xx when the post-commit fan-out throws', async () => {
+      const cheque = clearable();
+      repo.findOne.mockResolvedValue(cheque);
+      lockReturns(cheque);
+      // A pool exhaustion right after the commit: the money IS written.
+      (module.get(UsersService).findAdmins as jest.Mock).mockRejectedValue(
+        new Error('connection terminated'),
+      );
+
+      const result = await service.clear('cheque-uuid-1', companyId, {
+        clearedDate: today,
+      });
+
+      expect(result).toBeDefined();
+      expect(txRepo.insert).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the committed row when the re-read throws', async () => {
+      const cheque = clearable();
+      // First findOne is the pre-lock read, the second is the post-commit one.
+      repo.findOne
+        .mockResolvedValueOnce(cheque)
+        .mockRejectedValueOnce(new Error('connection terminated'));
+      lockReturns(cheque);
+      manager.getRepository = jest.fn((entity: unknown) =>
+        entity === Transaction
+          ? txRepo
+          : { ...repo, save: jest.fn(async (row: Cheque) => row) },
+      ) as any;
+
+      const result = await service.clear('cheque-uuid-1', companyId, {
+        clearedDate: today,
+      });
+
+      expect(result.status).toBe(ChequeStatus.CLEARED);
+      expect(txRepo.insert).toHaveBeenCalledTimes(1);
+    });
+
     it('writes one completed income transaction dated the day it cleared', async () => {
       const cheque = clearable();
       repo.findOne.mockResolvedValue(cheque);
@@ -2402,7 +2592,9 @@ describe('ChequesService', () => {
 
       await expect(
         service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(
+        new ConflictException('This cheque is already cleared.'),
+      );
       expect(txRepo.insert).not.toHaveBeenCalled();
     });
 
@@ -2413,7 +2605,9 @@ describe('ChequesService', () => {
 
       await expect(
         service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(
+        new ConflictException('A bounced cheque cannot be cleared.'),
+      );
       expect(txRepo.insert).not.toHaveBeenCalled();
     });
 
@@ -2424,7 +2618,9 @@ describe('ChequesService', () => {
 
       await expect(
         service.clear('cheque-uuid-1', companyId, { clearedDate: today }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(
+        new ConflictException('A cancelled cheque cannot be cleared.'),
+      );
       expect(txRepo.insert).not.toHaveBeenCalled();
     });
 

@@ -9,6 +9,9 @@
 // Shared Chart.js shell: frame, tooltip, screen-reader table.
 @use "./pages/charts";
 
+// Shared DataTable row states, used by any page that passes @getRowClass.
+@use "./pages/data-table";
+
 // The frame every authenticated route renders inside.
 @use "./pages/shell";
 

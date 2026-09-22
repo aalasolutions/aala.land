@@ -30,8 +30,13 @@ export default class DataTableComponent extends Component {
   // ember-table math is LTR only; RTL mirrors columns instead. A getter, not a
   // field: as a field it froze at construction and stayed stale when the
   // direction changed after mount.
-  // Opt-in per-row class from the caller.
-  rowClassFor = (row) => this.args.rowClass?.(row) ?? '';
+  // Resolves @getRowClass for one row: a function is called per row, a string
+  // applies to every row, anything else is ignored rather than breaking render.
+  rowClassFor = (row) => {
+    const arg = this.args.getRowClass;
+    if (typeof arg === 'function') return arg(row) ?? '';
+    return typeof arg === 'string' ? arg : '';
+  };
 
   get isRtl() {
     return (this.args.dir ?? document.documentElement.dir) === 'rtl';

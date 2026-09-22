@@ -38,7 +38,6 @@ describe('LeasesService', () => {
   let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   // The count re-check inside the locked transaction resolves through this.
   let activeLeaseCount: number;
-  // The region the unit join resolves to.
   let unitRegionCode: string | undefined;
 
   const companyId = 'company-uuid-1';
@@ -65,6 +64,13 @@ describe('LeasesService', () => {
     return err;
   };
 
+  const unitWithRegion = (id: string, deletedAt: Date | null = null): Unit =>
+    ({
+      id,
+      deletedAt,
+      asset: { locality: { city: { regionCode: unitRegionCode } } },
+    }) as unknown as Unit;
+
   const mockLease: Partial<Lease> = {
     id: 'lease-uuid-1',
     companyId,
@@ -89,19 +95,6 @@ describe('LeasesService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getCount: jest.fn().mockImplementation(async () => activeLeaseCount),
-    };
-
-    // The join that resolves a lease's region.
-    const unitRegionQb: any = {
-      innerJoin: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      getRawOne: jest
-        .fn()
-        .mockImplementation(async () =>
-          unitRegionCode ? { regionCode: unitRegionCode } : undefined,
-        ),
     };
 
     manager = {
@@ -145,7 +138,6 @@ describe('LeasesService', () => {
           provide: getRepositoryToken(Unit),
           useValue: {
             findOne: jest.fn(),
-            createQueryBuilder: jest.fn().mockReturnValue(unitRegionQb),
           },
         },
         {
@@ -169,7 +161,9 @@ describe('LeasesService', () => {
     unitRepo = module.get(getRepositoryToken(Unit));
     // The unit lookup now runs for every caller, admins included, because it
     // also enforces company ownership. Region tests override this.
-    unitRepo.findOne.mockResolvedValue({ id: 'unit-uuid-1' } as Unit);
+    unitRepo.findOne.mockImplementation(() =>
+      Promise.resolve(unitWithRegion('unit-uuid-1')),
+    );
     contactsService = module.get(ContactsService);
   });
 
@@ -667,10 +661,7 @@ describe('LeasesService', () => {
         status: LeaseStatus.DRAFT,
       } as Lease);
       manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-2',
-        deletedAt: null,
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(unitWithRegion('unit-uuid-2'));
 
       await service.update(
         'lease-uuid-1',
@@ -681,7 +672,15 @@ describe('LeasesService', () => {
 
       expect(unitRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'unit-uuid-2', companyId },
-        select: { id: true, deletedAt: true },
+        select: {
+          id: true,
+          deletedAt: true,
+          asset: {
+            id: true,
+            locality: { id: true, city: { regionCode: true } },
+          },
+        },
+        relations: { asset: { locality: { city: true } } },
       });
       expect(manager.findOne).toHaveBeenCalledWith(Unit, {
         where: { id: 'unit-uuid-2', companyId },
@@ -700,11 +699,8 @@ describe('LeasesService', () => {
         status: LeaseStatus.DRAFT,
       } as Lease);
       manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-2',
-        deletedAt: null,
-      } as Unit);
       unitRegionCode = 'punjab';
+      unitRepo.findOne.mockResolvedValue(unitWithRegion('unit-uuid-2'));
 
       await service.update(
         'lease-uuid-1',
@@ -731,10 +727,7 @@ describe('LeasesService', () => {
             : { ...mockLease, status: LeaseStatus.DRAFT },
         ),
       );
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-2',
-        deletedAt: null,
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(unitWithRegion('unit-uuid-2'));
 
       await expect(
         service.update(
@@ -771,10 +764,9 @@ describe('LeasesService', () => {
         ...mockLease,
         status: LeaseStatus.DRAFT,
       } as Lease);
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-2',
-        deletedAt: new Date(),
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(
+        unitWithRegion('unit-uuid-2', new Date()),
+      );
 
       await expect(
         service.update(
@@ -1502,10 +1494,9 @@ describe('LeasesService', () => {
     } as any;
 
     it('create refuses an archived unit with 409', async () => {
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-1',
-        deletedAt: new Date(),
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(
+        unitWithRegion('unit-uuid-1', new Date()),
+      );
 
       await expect(service.create(companyId, dto)).rejects.toThrow(
         ConflictException,
@@ -1514,10 +1505,7 @@ describe('LeasesService', () => {
     });
 
     it('create refuses a unit archived after the first read, under a share lock', async () => {
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-1',
-        deletedAt: null,
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(unitWithRegion('unit-uuid-1'));
       repo.create.mockReturnValue(mockLease as Lease);
       manager.findOne.mockResolvedValue({
         id: 'unit-uuid-1',
@@ -1531,10 +1519,7 @@ describe('LeasesService', () => {
     });
 
     it('create refuses a unit deleted while waiting for the lock', async () => {
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-1',
-        deletedAt: null,
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(unitWithRegion('unit-uuid-1'));
       repo.create.mockReturnValue(mockLease as Lease);
       manager.findOne.mockResolvedValue(null);
 
@@ -1545,10 +1530,9 @@ describe('LeasesService', () => {
     });
 
     it('findByUnit still lists leases of an archived unit', async () => {
-      unitRepo.findOne.mockResolvedValue({
-        id: 'unit-uuid-1',
-        deletedAt: new Date(),
-      } as Unit);
+      unitRepo.findOne.mockResolvedValue(
+        unitWithRegion('unit-uuid-1', new Date()),
+      );
       repo.find.mockResolvedValue([mockLease as Lease]);
 
       const result = await service.findByUnit('unit-uuid-1', companyId);
@@ -1569,7 +1553,8 @@ describe('LeasesService', () => {
       'unit-punjab': 'punjab',
     };
 
-    // Stands in for Postgres: matches region_code against the caller's IN list.
+    // Stands in for Postgres: matches the lease's own region_code against the
+    // caller's IN list, the same rule the locked read inside the transaction uses.
     function seedLeaseOnUnit(unitId: string) {
       const row = {
         ...mockLease,
@@ -1802,7 +1787,11 @@ describe('LeasesService', () => {
         if (!region || (codes && !codes.includes(region))) {
           return Promise.resolve(null);
         }
-        return Promise.resolve({ id } as Unit);
+        return Promise.resolve({
+          id,
+          deletedAt: null,
+          asset: { locality: { city: { regionCode: region } } },
+        } as unknown as Unit);
       });
     }
 

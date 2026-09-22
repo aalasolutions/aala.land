@@ -1,4 +1,5 @@
 import { regionCurrency } from '../../shared/constants/regions';
+import { formatMoney } from '@shared/utils/money.util';
 import {
   Injectable,
   NotFoundException,
@@ -333,7 +334,7 @@ export class CommissionsService {
       action,
       entityType: 'Commission',
       entityId: commission.id,
-      entityTitle: `Commission ${commission.commissionAmount} ${commission.currency}`,
+      entityTitle: `Commission ${formatMoney(commission.commissionAmount, commission.currency)}`,
       contextTitle: await this.agentName(
         manager,
         commission.agentId,

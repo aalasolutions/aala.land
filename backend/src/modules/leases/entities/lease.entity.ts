@@ -52,7 +52,7 @@ export class Lease {
   @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_leases_unit' })
   unit: Unit;
 
-  // Denormalised from the unit's city so reads need no join.
+  // Denormalised from the unit's city so reads filter without the four-table join.
   @Index('IDX_LEASES_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;

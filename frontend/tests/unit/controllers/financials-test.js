@@ -457,4 +457,20 @@ module('Unit | Controller | financials', function (hooks) {
     assert.strictEqual(controller.activeTab, 'EXPENSE');
     assert.strictEqual(controller.page, 1);
   });
+
+  test('getRowClass mutes cancelled and failed rows only', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+
+    assert.strictEqual(
+      controller.getRowClass({ status: 'CANCELLED' }),
+      'is-muted',
+    );
+    assert.strictEqual(
+      controller.getRowClass({ status: 'FAILED' }),
+      'is-muted',
+    );
+    assert.strictEqual(controller.getRowClass({ status: 'COMPLETED' }), '');
+    assert.strictEqual(controller.getRowClass({ status: 'PENDING' }), '');
+    assert.strictEqual(controller.getRowClass(undefined), '');
+  });
 });

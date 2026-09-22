@@ -9,6 +9,8 @@ import {
 } from '../../shared/utils/region-time.util';
 import { Transaction, TransactionStatus } from './entities/transaction.entity';
 
+// Mirrored by MAX_BACKDATE_DAYS in frontend/app/constants.js, which the clear
+// dialog uses to bound its date input before the request is made.
 export const MAX_BACKDATE_DAYS = 30;
 export const LOCK_AFTER_DAYS = 30;
 

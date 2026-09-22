@@ -6,6 +6,7 @@ import {
   todayInZone,
 } from 'land/utils/local-date';
 import { MAX_BACKDATE_DAYS } from 'land/constants';
+import { formatDate } from 'land/helpers/format-date';
 
 module('Unit | Controller | cheques', function (hooks) {
   setupTest(hooks);
@@ -68,7 +69,7 @@ module('Unit | Controller | cheques', function (hooks) {
       controller.clearChequeItem = { dueDate, depositDate: null };
 
       assert.true(controller.clearWindowUnusable);
-      assert.true(controller.clearBlockedMessage.includes(dueDate));
+      assert.true(controller.clearBlockedMessage.includes(formatDate(dueDate)));
     });
 
     test('openClear leaves the date empty when the window is unusable', function (assert) {
@@ -215,7 +216,32 @@ module('Unit | Controller | cheques', function (hooks) {
       await controller.confirmClear();
 
       assert.strictEqual(calls.length, 0);
-      assert.strictEqual(controller.clearError, controller.clearBlockedMessage);
+      // Pinned to the literal, not to the getter that produced it: comparing the
+      // two holds for either arm and for any text the getter ever returns.
+      assert.strictEqual(
+        controller.clearError,
+        `This cheque is not due until ${formatDate(addCalendarDays(localDateString(), 20))}, so it cannot be cleared yet.`,
+      );
+    });
+
+    test('names the other blocked reason when the due date is not what blocks it', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      // Due long ago, but deposited in the future: the window is unusable and
+      // the due-date arm cannot explain it, so the fallback must.
+      controller.openClear({
+        id: 'c1',
+        dueDate: '2020-01-01',
+        depositDate: addCalendarDays(localDateString(), 5),
+      });
+
+      await controller.confirmClear();
+
+      assert.strictEqual(calls.length, 0);
+      assert.strictEqual(
+        controller.clearError,
+        'This cheque has no date that can be recorded as its clearing day.',
+      );
     });
 
     test('posts the cleared date to the clear endpoint', async function (assert) {
@@ -275,6 +301,107 @@ module('Unit | Controller | cheques', function (hooks) {
       });
     });
 
+    test('refuses a deposit date after the clearing date', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.openClear(cheque);
+      // Both inside the clear window, so the range check passes and the
+      // deposit-after-clearing branch is the one that fires.
+      const { earliest, latest } = controller.clearDateWindow;
+      controller.clearedDate = earliest;
+      controller.clearDepositDate = latest;
+
+      await controller.confirmClear();
+
+      assert.strictEqual(
+        controller.clearError,
+        'The deposit date cannot be after the clearing date.',
+      );
+      assert.strictEqual(calls.length, 0);
+    });
+
+    test('surfaces the server message and releases the in-flight flag', async function (assert) {
+      const controller = makeController(this);
+      controller.auth.fetchJson = () =>
+        Promise.reject(new Error('Cheque is already cleared'));
+      controller.openClear(cheque);
+
+      await controller.confirmClear();
+
+      assert.strictEqual(controller.clearError, 'Cheque is already cleared');
+      assert.false(controller.isClearing);
+    });
+
+    test('falls back to a generic message when the error carries none', async function (assert) {
+      const controller = makeController(this);
+      controller.auth.fetchJson = () => Promise.reject(new Error(''));
+      controller.openClear(cheque);
+
+      await controller.confirmClear();
+
+      assert.strictEqual(controller.clearError, 'Failed to clear cheque');
+      assert.false(controller.isClearing);
+    });
+
+    test('a second confirm while one is in flight sends nothing', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.router.refresh = () => {};
+      controller.openClear(cheque);
+      controller.isClearing = true;
+
+      await controller.confirmClear();
+
+      assert.strictEqual(calls.length, 0);
+    });
+
+    test('does nothing when no cheque is open', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+
+      await controller.confirmClear();
+
+      assert.strictEqual(calls.length, 0);
+      assert.strictEqual(controller.clearError, '');
+    });
+
+    test('refuses a date BEFORE the window opens, not only after it closes', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.openClear(cheque);
+      const { earliest, latest } = controller.clearDateWindow;
+      // One day before earliest takes the `< earliest` arm of the same ||.
+      controller.clearedDate = '2019-12-31';
+
+      await controller.confirmClear();
+
+      assert.strictEqual(
+        controller.clearError,
+        `Pick a date between ${formatDate(earliest)} and ${formatDate(latest)}.`,
+      );
+      assert.strictEqual(calls.length, 0);
+    });
+
+    test('never re-posts a deposit date that is already settled', async function (assert) {
+      const controller = makeController(this);
+      const calls = stubFetch(controller);
+      controller.router.refresh = () => {};
+      // A DEPOSITED cheque: the field is read-only and must stay out of the body.
+      controller.openClear({ ...cheque, depositDate: '2026-08-05' });
+      assert.false(controller.depositDateEditable, 'field is read-only');
+      assert.strictEqual(
+        controller.clearDepositDate,
+        '2026-08-05',
+        'still shown',
+      );
+
+      await controller.confirmClear();
+
+      assert.deepEqual(Object.keys(JSON.parse(calls[0].options.body)), [
+        'clearedDate',
+      ]);
+    });
+
     test('refuses a deposit date before the cheque was added', async function (assert) {
       const controller = makeController(this);
       const calls = stubFetch(controller);
@@ -284,7 +411,7 @@ module('Unit | Controller | cheques', function (hooks) {
       await controller.confirmClear();
 
       assert.strictEqual(calls.length, 0);
-      assert.true(controller.clearError.includes('2026-08-01'));
+      assert.true(controller.clearError.includes(formatDate('2026-08-01')));
     });
   });
 

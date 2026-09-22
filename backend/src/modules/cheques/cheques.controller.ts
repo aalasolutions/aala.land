@@ -167,7 +167,7 @@ export class ChequesController {
   @ApiOperation({
     summary: 'Mark a cheque as cleared and record the payment (ADMIN+)',
     description:
-      'Writes one COMPLETED income transaction dated the day the cheque cleared. 400 when that date is outside the backdating window, in the future, before the due date or before the deposit date. 409 when the cheque is already cleared.',
+      'Writes one COMPLETED income transaction dated the day the cheque cleared. 400 when the cleared date is outside the backdating window, in the future, before the due date or before the deposit date; also 400 when a deposit date is supplied for a cheque that already has one, or when it falls before the cheque was added. 404 when the cheque does not exist. 409 when the cheque is in a status that cannot be cleared (already cleared, bounced, cancelled or replaced), or when its unit or lease is archived.',
   })
   clear(
     @Param('id', ParseUUIDPipe) id: string,
@@ -188,7 +188,7 @@ export class ChequesController {
   @ApiOperation({
     summary: 'Reverse a cheque clearing with a reason (COMPANY_ADMIN+)',
     description:
-      'Cancels the transaction the clearing wrote, so the money stops counting while the row stays on the books.',
+      'Cancels the transaction the clearing wrote, so the money stops counting while the row stays on the books. 400 when the cheque is not cleared. 404 when it does not exist. 409 when its unit or lease is archived.',
   })
   unclear(
     @Param('id', ParseUUIDPipe) id: string,
@@ -231,7 +231,8 @@ export class ChequesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete a cheque with a reason (COMPANY_ADMIN+)',
-    description: '409 when the cheque is CLEARED.',
+    description:
+      '409 when the cheque is CLEARED, or when a transaction still references it, which happens after a clear followed by an unclear.',
   })
   remove(
     @Param('id', ParseUUIDPipe) id: string,

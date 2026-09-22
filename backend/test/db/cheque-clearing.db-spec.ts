@@ -1,6 +1,6 @@
 import { DataSource, EntityManager } from 'typeorm';
 import { connectTestDatabase } from './test-data-source';
-import { Company } from '../../src/modules/companies/entities/company.entity';
+import { seedCompany, seeded as sharedSeeded } from './harness';
 import {
   Cheque,
   ChequeStatus,
@@ -28,31 +28,11 @@ describe('cheque clearing constraints against a real database', () => {
     await dataSource?.destroy();
   });
 
-  class Rollback extends Error {}
+  const seeded = <T>(run: (manager: EntityManager) => Promise<T>) =>
+    sharedSeeded(dataSource, run);
 
-  // Every case seeds, asserts and rolls back, so the database is unchanged either way.
-  async function seeded(run: (manager: EntityManager) => Promise<void>) {
-    try {
-      await dataSource.transaction(async (manager) => {
-        await run(manager);
-        throw new Rollback();
-      });
-    } catch (error) {
-      if (!(error instanceof Rollback)) throw error;
-    }
-  }
-
-  async function company(manager: EntityManager) {
-    const suffix = Math.random().toString(36).slice(2, 10);
-    return manager.getRepository(Company).save(
-      manager.getRepository(Company).create({
-        name: `Cheque Co ${suffix}`,
-        slug: `cheque-co-${suffix}`,
-        activeRegions: [DUBAI],
-        defaultRegionCode: DUBAI,
-      }),
-    );
-  }
+  const company = (manager: EntityManager) =>
+    seedCompany(manager, 'Cheque Co', [DUBAI]);
 
   async function cheque(manager: EntityManager, companyId: string) {
     return manager.getRepository(Cheque).save(

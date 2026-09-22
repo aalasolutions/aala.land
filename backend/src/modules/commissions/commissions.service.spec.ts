@@ -17,6 +17,7 @@ import {
 } from './entities/commission.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { formatMoney } from '@shared/utils/money.util';
 
 describe('CommissionsService', () => {
   let service: CommissionsService;
@@ -37,7 +38,7 @@ describe('CommissionsService', () => {
     status: CommissionStatus.PENDING,
     grossAmount: 500000,
     commissionRate: 2,
-    commissionAmount: 10000,
+    commissionAmount: '10000.00' as unknown as number,
     currency: 'AED',
     paidAt: null,
   };
@@ -177,7 +178,7 @@ describe('CommissionsService', () => {
       });
 
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ regionCode: 'makkah' }),
+        expect.objectContaining({ regionCode: 'makkah', currency: 'SAR' }),
       );
     });
 
@@ -408,7 +409,7 @@ describe('CommissionsService', () => {
           action: RecordHistoryAction.CANCEL,
           entityType: 'Commission',
           entityId: 'commission-uuid-1',
-          entityTitle: 'Commission 10000 AED',
+          entityTitle: `Commission ${formatMoney(10000, 'AED')}`,
           contextTitle: 'Agent Name',
           reason: 'Deal fell through',
           actorId: 'user-1',
@@ -514,7 +515,7 @@ describe('CommissionsService', () => {
         action: RecordHistoryAction.STATUS_CHANGE,
         entityType: 'Commission',
         entityId: 'commission-uuid-1',
-        entityTitle: 'Commission 10000 AED',
+        entityTitle: `Commission ${formatMoney(10000, 'AED')}`,
         contextTitle: 'Agent Name',
         reason: null,
         actorId: 'user-1',
@@ -963,10 +964,17 @@ describe('CommissionsService', () => {
     it('lists nothing when the caller has no assigned region', async () => {
       seedCommissionsInRegions(['makkah', 'punjab']);
 
-      const result = await service.findAll(companyId, 1, 20, undefined, undefined, {
-        role: 'manager',
-        regionCodes: [],
-      });
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        {
+          role: 'manager',
+          regionCodes: [],
+        },
+      );
 
       expect(result.data).toEqual([]);
       expect(repo.findAndCount).not.toHaveBeenCalled();

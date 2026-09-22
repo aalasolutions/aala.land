@@ -1,4 +1,7 @@
-// Resolves a unit's region via the Unit > Asset > Locality > City FK chain.
+// A unit has no region_code of its own, so its region comes from its city.
+// This resolves that for ONE unit, which is how cheques, transactions and work
+// orders derive the region they then store. Callers that FILTER by region do it
+// through the relation instead; this is not the only walk of the chain.
 
 import { Repository } from 'typeorm';
 import { Unit } from '../../modules/properties/entities/unit.entity';

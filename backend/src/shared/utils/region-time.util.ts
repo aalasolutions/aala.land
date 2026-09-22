@@ -94,13 +94,26 @@ export function startOfDayInZone(
   return inZone(timeZone, at).startOf('day').toJSDate();
 }
 
-/** Long calendar date such as "August 20, 2026". */
-// Mirrors the frontend format-date helper's default (medium): "Sep 18, 2026".
+/** Mirrors the frontend format-date helper's default (medium): "Sep 18, 2026". */
 export function formatDateMedium(value: string, locale = 'en-US'): string {
   const date = parseDateOnly(value);
   return date ? date.setLocale(locale).toLocaleString(DateTime.DATE_MED) : '';
 }
 
+/** Calendar date named with the region whose calendar it belongs to: "Sep 25, 2026 (Dubai)". */
+export function formatRegionDate(
+  value: string | null | undefined,
+  regionCode?: string | null,
+  locale = 'en-US',
+): string {
+  if (!value) return '';
+  const date = formatDateMedium(value, locale);
+  if (!date) return '';
+  const region = regionCode ? getRegionByCode(regionCode) : undefined;
+  return region ? `${date} (${region.name})` : date;
+}
+
+/** Long calendar date such as "August 20, 2026". */
 export function formatDateLong(
   at: Date,
   timeZone = 'UTC',
@@ -149,7 +162,7 @@ export function regionTimezoneSql(column: string): string {
   return `(CASE ${branches} ELSE ${sqlLiteral(FALLBACK_TIMEZONE)} END)`;
 }
 
-/** SQL date expression for "today" in the row's region. */
+/** SQL expression for the currency of the row's region; unknown codes fall back to `fallback`. */
 export function regionCurrencySql(column: string, fallback = 'USD'): string {
   const byCurrency = new Map<string, string[]>();
   for (const region of REGIONS) {
@@ -166,6 +179,7 @@ export function regionCurrencySql(column: string, fallback = 'USD'): string {
   return `(CASE ${branches} ELSE ${sqlLiteral(fallback)} END)`;
 }
 
+/** SQL date expression for "today" in the row's region. */
 export function regionTodaySql(column: string): string {
   return `((now() AT TIME ZONE ${regionTimezoneSql(column)})::date)`;
 }
@@ -190,4 +204,8 @@ export function regionCodesAtLocalHour(
     }
     return hit;
   }).map((region) => region.code);
+}
+
+export function pluralDays(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

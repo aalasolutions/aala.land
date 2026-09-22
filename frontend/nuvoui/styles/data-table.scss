@@ -43,11 +43,6 @@
   cursor: pointer;
 }
 
-// Caller-marked inactive row.
-.data-table tbody tr.is-muted td {
-  color: var(--text-muted);
-}
-
 // Selected tint layered over the solid pinned fill.
 .data-table tbody tr.is-selected td.is-fixed-left,
 .data-table tbody tr.is-selected td.is-fixed-right {

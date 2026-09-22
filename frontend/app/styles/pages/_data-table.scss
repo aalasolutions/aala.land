@@ -1,0 +1,6 @@
+// Shared DataTable row states. The kit renders whatever class @getRowClass
+// returns and styles none of them, so every caller's row state is defined here.
+
+.data-table tbody tr.is-muted td {
+  color: var(--text-muted);
+}

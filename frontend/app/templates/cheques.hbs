@@ -6,7 +6,10 @@
     @subtitle="Track post-dated cheques and payment schedules."
   >
     <:meta>
-      <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
+      <p class="text-muted">{{format-number
+          @model.total
+          unit="cheque record"
+        }}</p>
     </:meta>
     <:actions>
       {{#if this.canWriteCheques}}
@@ -73,10 +76,11 @@
                   @variant="secondary"
                   @size="xs"
                   @icon="pencil-simple"
+                  data-test-edit-cheque
+                  aria-label="Edit"
+                  data-tooltip="Edit"
                   {{on "click" (fn this.openEdit cell.row)}}
-                >
-                  Edit
-                </Nuvo::Button>
+                />
                 {{#if
                   (or
                     (eq cell.row.status "PENDING")
@@ -88,39 +92,41 @@
                       @variant="success"
                       @size="xs"
                       @icon="bank"
+                      data-test-deposit-cheque
+                      aria-label="Deposit"
+                      data-tooltip="Deposit"
                       {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
-                    >
-                      Deposit
-                    </Nuvo::Button>
+                    />
                   {{/if}}
                   <Nuvo::Button
                     @variant="success"
                     @size="xs"
                     @icon="check-circle"
                     data-test-clear-cheque
+                    aria-label="Clear"
+                    data-tooltip="Clear"
                     {{on "click" (fn this.openClear cell.row)}}
-                  >
-                    Clear
-                  </Nuvo::Button>
+                  />
                   <Nuvo::Button
                     @variant="danger"
                     @size="xs"
                     data-test-bounce
+                    aria-label="Bounce"
+                    data-tooltip="Bounce"
                     @icon="x-circle"
                     {{on "click" (fn this.openBounceModal cell.row)}}
-                  >
-                    Bounce
-                  </Nuvo::Button>
+                  />
                 {{/if}}
                 {{#if (eq cell.row.status "BOUNCED")}}
                   <Nuvo::Button
                     @variant="secondary"
                     @size="xs"
                     @icon="arrows-clockwise"
+                    data-test-replace-cheque
+                    aria-label="Replace"
+                    data-tooltip="Replace"
                     {{on "click" (fn this.updateStatus cell.row "REPLACED")}}
-                  >
-                    Replace
-                  </Nuvo::Button>
+                  />
                 {{/if}}
                 {{#if
                   (and (eq cell.row.status "CLEARED") this.canDeleteCheque)
@@ -130,10 +136,10 @@
                     @size="xs"
                     @icon="arrow-counter-clockwise"
                     data-test-unclear-cheque
+                    aria-label="Un-clear"
+                    data-tooltip="Un-clear"
                     {{on "click" (fn this.openUnclear cell.row)}}
-                  >
-                    Un-clear
-                  </Nuvo::Button>
+                  />
                 {{/if}}
                 {{#if
                   (or
@@ -147,10 +153,10 @@
                     @size="xs"
                     @icon="prohibit"
                     data-test-cancel-cheque
+                    aria-label="Cancel cheque"
+                    data-tooltip="Cancel cheque"
                     {{on "click" (fn this.openCancel cell.row)}}
-                  >
-                    Cancel cheque
-                  </Nuvo::Button>
+                  />
                 {{/if}}
               {{/if}}
               {{#if
@@ -161,10 +167,10 @@
                   @size="xs"
                   @icon="trash"
                   data-test-delete-cheque
+                  aria-label="Delete"
+                  data-tooltip="Delete"
                   {{on "click" (fn this.openDelete cell.row)}}
-                >
-                  Delete
-                </Nuvo::Button>
+                />
               {{/if}}
             </div>
           {{else}}
@@ -346,6 +352,7 @@
   <:footer>
     <Nuvo::Button
       @variant="secondary"
+      data-test-cancel-edit
       @onClick={{this.closeModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
@@ -379,6 +386,7 @@
   <Nuvo::FormActions @align="end">
     <Nuvo::Button
       @variant="secondary"
+      data-test-cancel-bounce
       @onClick={{this.closeBounceModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
@@ -450,6 +458,7 @@
   <Nuvo::FormActions @align="end">
     <Nuvo::Button
       @variant="secondary"
+      data-test-cancel-clear
       @onClick={{this.closeClearModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
@@ -504,7 +513,12 @@
   @onClose={{this.closeCancelModal}}
   @onConfirm={{this.confirmCancel}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Nuvo::Textarea
       id="cheque-cancel-reason"
       rows="2"
@@ -530,7 +544,12 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Nuvo::Textarea
       id="cheque-delete-reason"
       rows="2"

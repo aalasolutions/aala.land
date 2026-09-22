@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CronExpression } from '@nestjs/schedule';
-import { formatMoney } from '../../shared/utils/money.util';
+import { formatMoney } from '@shared/utils/money.util';
 import { NotificationsService } from './notifications.service';
 import { Notification, NotificationType } from './entities/notification.entity';
 import {
@@ -38,9 +38,10 @@ import {
 } from '../leads/entities/lead.entity';
 import { NotificationsGateway } from './notifications.gateway';
 import {
+  formatRegionDate,
+  hourInZone,
   regionCodesAtLocalHour,
   regionTimezone,
-  hourInZone,
   regionTodaySql,
 } from '../../shared/utils/region-time.util';
 
@@ -813,11 +814,14 @@ describe('NotificationsService', () => {
       password: 'hashed',
     };
 
+    const UPCOMING_PG_AMOUNT = '10000.00' as unknown as number;
+
     const mockUpcomingCheque: Partial<Cheque> = {
       id: 'upcoming-uuid-1',
       companyId,
       chequeNumber: 'CHQ-UPCOMING',
-      amount: 10000,
+      regionCode: 'dubai',
+      amount: UPCOMING_PG_AMOUNT,
       currency: 'AED',
       dueDate: '2026-09-19',
       accountHolder: 'Test Holder',
@@ -858,6 +862,7 @@ describe('NotificationsService', () => {
           type: NotificationType.CHEQUE_DUE,
           entityType: 'cheque',
           entityId: 'upcoming-uuid-1',
+          message: `Cheque #CHQ-UPCOMING for ${formatMoney(UPCOMING_PG_AMOUNT, 'AED')} is due in 3 days, on ${formatRegionDate('2026-09-19', 'dubai')}.`,
         }),
       );
     });
@@ -1079,11 +1084,14 @@ describe('NotificationsService', () => {
 
     const yesterday = '2026-09-15';
 
+    const PG_AMOUNT = '20000.00' as unknown as number;
+
     const mockOverdueCheque: Partial<Cheque> = {
       id: 'overdue-uuid-1',
       companyId,
       chequeNumber: 'CHQ-Overdue',
-      amount: 20000,
+      regionCode: 'dubai',
+      amount: PG_AMOUNT,
       currency: 'AED',
       dueDate: yesterday,
       accountHolder: 'Test Holder',
@@ -1131,7 +1139,7 @@ describe('NotificationsService', () => {
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           // Built with the same formatter: Intl uses a non-breaking space, as the page does.
-          message: `Cheque #CHQ-Overdue for ${formatMoney(20000, 'AED')} was due Sep 15, 2026, 1 day ago. Clear it or update the due date.`,
+          message: `Cheque #CHQ-Overdue for ${formatMoney(PG_AMOUNT, 'AED')} was due ${formatRegionDate('2026-09-15', 'dubai')}, 1 day ago. Clear it or update the due date.`,
         }),
       );
     });

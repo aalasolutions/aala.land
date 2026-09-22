@@ -1,4 +1,4 @@
-import { formatMoney, pluralDays } from './money.util';
+import { formatMoney } from './money.util';
 
 describe('formatMoney', () => {
   // Intl separates the code from the number with a non-breaking space, U+00A0.
@@ -25,10 +25,18 @@ describe('formatMoney', () => {
   });
 });
 
-describe('pluralDays', () => {
-  it('uses the singular for one day only', () => {
-    expect(pluralDays(1)).toBe('1 day');
-    expect(pluralDays(0)).toBe('0 days');
-    expect(pluralDays(24)).toBe('24 days');
+describe('formatMoney type guard', () => {
+  it('returns the empty string for a value that is not a usable number', () => {
+    for (const value of [null, undefined, '', '   ', false, []]) {
+      expect(formatMoney(value as never, 'AED')).toBe('');
+    }
+  });
+
+  // Literals, not formatMoney compared to itself: that passes for any
+  // implementation, including one that returns the empty string throughout.
+  it('still formats zero and a decimal string from the driver', () => {
+    expect(formatMoney(0, 'AED')).toBe('AED\u00a00.00');
+    expect(formatMoney('0', 'AED')).toBe('AED\u00a00.00');
+    expect(formatMoney('15000.00', 'AED')).toBe('AED\u00a015,000.00');
   });
 });

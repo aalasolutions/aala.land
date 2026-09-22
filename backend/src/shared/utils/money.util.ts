@@ -1,9 +1,12 @@
-// Mirrors the frontend format-currency helper so a notification reads like the page.
 export function formatMoney(
   amount: number | string,
   currency: string,
   locale = 'en-US',
 ): string {
+  const isNumeric =
+    typeof amount === 'number' ||
+    (typeof amount === 'string' && amount.trim() !== '');
+  if (!isNumeric) return '';
   const value = Number(amount);
   if (!Number.isFinite(value)) return '';
   try {
@@ -14,8 +17,4 @@ export function formatMoney(
   } catch {
     return `${currency} ${value.toFixed(2)}`;
   }
-}
-
-export function pluralDays(days: number): string {
-  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

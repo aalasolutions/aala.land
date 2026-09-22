@@ -66,12 +66,6 @@ export class UpdateVendorDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  @MaxLength(3)
-  currency?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 

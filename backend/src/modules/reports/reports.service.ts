@@ -206,11 +206,10 @@ export class ReportsService {
     const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
     const inRegionMonth = `(${moneyDate} >= ${monthStart} AND ${moneyDate} < (${monthStart} + INTERVAL '1 month'))`;
 
-    // Leads and Commissions have direct regionCode
+    // Leads and Commissions have direct regionCode; Units still walk the FK chain.
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
-    // Units, Transactions, Leases, Cheques need FK chain filtering
     let totalUnitsPromise: Promise<number>;
     let revenuePromise: Promise<any>;
     let activeLeasesPromise: Promise<number>;

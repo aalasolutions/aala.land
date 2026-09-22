@@ -31,7 +31,6 @@ import { Contact } from '../contacts/entities/contact.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
-import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import { regionCurrency } from '../../shared/constants/regions';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import {
@@ -124,7 +123,6 @@ export class LeasesService {
     await this.contactsService.findOneEntity(contactId, companyId, caller);
   }
 
-  // Filters on the lease's own region_code, not its unit's.
   private regionScopedWhere(caller?: RegionScope): FindOptionsWhere<Lease> {
     const scopedCodes = scopedRegionCodes(caller);
     // No assignment means no access, and an empty IN () is invalid SQL.
@@ -134,31 +132,15 @@ export class LeasesService {
     return scopedCodes ? { regionCode: In(scopedCodes) } : {};
   }
 
-  // A unit never changes region, so this is fixed at write time.
-  private async leaseRegionOf(
-    unitId: string,
-    companyId: string,
-  ): Promise<string> {
-    const regionCode = await regionOfUnit(
-      this.unitRepository,
-      unitId,
-      companyId,
-    );
-    if (!regionCode) {
-      throw new BadRequestException('Invalid unit selected');
-    }
-    return regionCode;
-  }
-
   // Lease's region is its unit's; a unit the caller can't read must not be boundable or listed.
   private async assertUnitInCallerRegions(
     unitId: string | null | undefined,
     companyId: string,
     caller?: RegionScope,
     rejectArchived = false,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     if (!unitId) {
-      return;
+      return undefined;
     }
 
     const scopedCodes = scopedRegionCodes(caller);
@@ -174,7 +156,12 @@ export class LeasesService {
 
     const unit = await this.unitRepository.findOne({
       where,
-      select: { id: true, deletedAt: true },
+      select: {
+        id: true,
+        deletedAt: true,
+        asset: { id: true, locality: { id: true, city: { regionCode: true } } },
+      },
+      relations: { asset: { locality: { city: true } } },
     });
     if (!unit) {
       throw new NotFoundException('Unit not found');
@@ -184,6 +171,14 @@ export class LeasesService {
         'This unit is archived. Unarchive it before adding a lease.',
       );
     }
+    return unit.asset?.locality?.city?.regionCode;
+  }
+
+  private requireUnitRegion(regionCode: string | undefined): string {
+    if (!regionCode) {
+      throw new BadRequestException('Invalid unit selected');
+    }
+    return regionCode;
   }
 
   // FOR SHARE so archiveUnit (FOR UPDATE on the unit) cannot commit in between.
@@ -225,8 +220,9 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<Lease> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
-    const regionCode = await this.leaseRegionOf(dto.unitId, companyId);
+    const regionCode = this.requireUnitRegion(
+      await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
     const lease = this.leaseRepository.create({
       ...dto,
       companyId,
@@ -388,11 +384,13 @@ export class LeasesService {
             'Only a draft lease can move to another unit.',
           );
         }
-        await this.assertUnitInCallerRegions(
-          dto.unitId,
-          companyId,
-          caller,
-          true,
+        movedRegion = this.requireUnitRegion(
+          await this.assertUnitInCallerRegions(
+            dto.unitId,
+            companyId,
+            caller,
+            true,
+          ),
         );
         await this.assertUnitNotArchivedLocked(
           manager,
@@ -400,7 +398,6 @@ export class LeasesService {
           companyId,
           ARCHIVED_UNIT_MESSAGE,
         );
-        movedRegion = await this.leaseRegionOf(dto.unitId, companyId);
       } else {
         await this.assertUnitNotArchivedLocked(
           manager,
@@ -468,8 +465,9 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
-    const regionCode = await this.leaseRegionOf(dto.unitId, companyId);
+    const regionCode = this.requireUnitRegion(
+      await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
     const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const oldLease = await manager.findOne(Lease, {

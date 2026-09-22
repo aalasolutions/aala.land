@@ -9,6 +9,7 @@ import {
   confirmDeleteModal,
 } from '../utils/delete-modal';
 import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
+import { formatDate } from '../helpers/format-date';
 import {
   CHEQUE_TYPE_OPTIONS,
   EMPTY_UNIT_OPTION,
@@ -85,7 +86,8 @@ export default class ChequesController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 480,
+      // Sized for the icon action row, whose widest status renders six buttons.
+      width: 260,
       isFixed: 'right',
       isSortable: false,
     },
@@ -264,6 +266,9 @@ export default class ChequesController extends PaginatedController {
   }
 
   // Mirrors the server window, resolved in the cheque's own region, not the viewed one.
+  // The same window the server enforces in
+  // backend/src/modules/financial/transaction-date-window.util.ts, applied here
+  // so the input is bounded before a request is made. The server decides.
   get clearDateWindow() {
     const cheque = this.clearChequeItem;
     const zone =
@@ -289,7 +294,7 @@ export default class ChequesController extends PaginatedController {
     const dueDate = toDateOnly(this.clearChequeItem?.dueDate);
     const { latest } = this.clearDateWindow;
     if (dueDate && latest && dueDate > latest) {
-      return `This cheque is not due until ${dueDate}, so it cannot be cleared yet.`;
+      return `This cheque is not due until ${formatDate(dueDate)}, so it cannot be cleared yet.`;
     }
     return 'This cheque has no date that can be recorded as its clearing day.';
   }
@@ -355,7 +360,7 @@ export default class ChequesController extends PaginatedController {
       return;
     }
     if (this.clearedDate < earliest || this.clearedDate > latest) {
-      this.clearError = `Pick a date between ${earliest} and ${latest}.`;
+      this.clearError = `Pick a date between ${formatDate(earliest)} and ${formatDate(latest)}.`;
       return;
     }
     // Optional, and range-checked here as well as on the server.
@@ -363,7 +368,7 @@ export default class ChequesController extends PaginatedController {
     if (depositDate) {
       const { earliest: depositFloor } = this.depositDateWindow;
       if (depositFloor && depositDate < depositFloor) {
-        this.clearError = `The deposit date cannot be before the cheque was added on ${depositFloor}.`;
+        this.clearError = `The deposit date cannot be before the cheque was added on ${formatDate(depositFloor)}.`;
         return;
       }
       if (depositDate > this.clearedDate) {

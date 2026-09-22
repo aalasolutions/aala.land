@@ -3,22 +3,29 @@
   @title={{@title}}
   @size="sm"
   @onClose={{this.close}}
+  data-test-confirm-modal
+  ...attributes
 >
   <:body>
     {{#if @message}}
-      <p class="text-muted">{{@message}}</p>
+      <p class="text-muted" data-test-confirm-modal-message>{{@message}}</p>
     {{/if}}
     {{yield}}
   </:body>
 
   <:footer>
-    <Nuvo::Button @variant="secondary" {{on "click" this.close}}>
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-confirm-modal-cancel
+      {{on "click" this.close}}
+    >
       {{this.cancelText}}
     </Nuvo::Button>
     <Nuvo::Button
       @variant={{if @confirmVariant @confirmVariant "primary"}}
       @disabled={{@isConfirming}}
       @loading={{@isConfirming}}
+      data-test-confirm-modal-confirm
       {{on "click" this.confirm}}
     >
       {{#if @isConfirming}}

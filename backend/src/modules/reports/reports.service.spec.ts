@@ -961,6 +961,19 @@ describe('ReportsService', () => {
 
         expect(leaseQb.andWhere).toHaveBeenCalledWith('l.deleted_at IS NULL');
       });
+
+      it('counts active leases by their own region column, not the unit chain', async () => {
+        seed();
+        const leaseQb = leaseRepo.createQueryBuilder();
+
+        await service.getDashboardKpis(companyId, undefined, makkahManager);
+
+        expect(leaseQb.andWhere).toHaveBeenCalledWith(
+          'l.region_code IN (:...regionCodes)',
+          { regionCodes: ['makkah'] },
+        );
+        expect(leaseQb.innerJoin).not.toHaveBeenCalled();
+      });
     });
 
     describe('getBottlenecks', () => {

@@ -36,13 +36,14 @@ import { NotificationsGateway } from './notifications.gateway';
 import {
   addDays,
   daysBetween,
-  formatDateMedium,
+  formatRegionDate,
+  pluralDays,
   regionCodesAtLocalHour,
   regionToday,
   regionTodaySql,
   startOfDayInZone,
 } from '../../shared/utils/region-time.util';
-import { formatMoney, pluralDays } from '../../shared/utils/money.util';
+import { formatMoney } from '@shared/utils/money.util';
 
 // Reminders reach each region at this local hour.
 const REMINDER_LOCAL_HOUR = 9;
@@ -289,7 +290,7 @@ export class NotificationsService {
       (cheque, admin) => ({
         userId: admin.id,
         title: 'Upcoming Cheque',
-        message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
+        message: `Cheque #${cheque.chequeNumber} for ${formatMoney(cheque.amount, cheque.currency)} is due in 3 days, on ${formatRegionDate(cheque.dueDate, cheque.regionCode)}.`,
         type: NotificationType.CHEQUE_DUE,
         entityType: 'cheque',
         entityId: cheque.id,
@@ -316,7 +317,7 @@ export class NotificationsService {
       (cheque, admin) => ({
         userId: admin.id,
         title: 'Overdue Cheque!',
-        message: `Cheque #${cheque.chequeNumber} for ${formatMoney(cheque.amount, cheque.currency)} was due ${formatDateMedium(cheque.dueDate)}, ${pluralDays(daysBetween(cheque.dueDate, regionToday(cheque.regionCode, at)))} ago. Clear it or update the due date.`,
+        message: `Cheque #${cheque.chequeNumber} for ${formatMoney(cheque.amount, cheque.currency)} was due ${formatRegionDate(cheque.dueDate, cheque.regionCode)}, ${pluralDays(daysBetween(cheque.dueDate, regionToday(cheque.regionCode, at)))} ago. Clear it or update the due date.`,
         type: NotificationType.CHEQUE_OVERDUE,
         entityType: 'cheque',
         entityId: cheque.id,
@@ -342,7 +343,7 @@ export class NotificationsService {
       (cheque, admin) => ({
         userId: admin.id,
         title: 'Delayed Cheque Clearing',
-        message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
+        message: `Cheque #${cheque.chequeNumber} was deposited on ${formatRegionDate(cheque.depositDate, cheque.regionCode)} but hasn't cleared yet.`,
         type: NotificationType.CHEQUE_DELAYED,
         entityType: 'cheque',
         entityId: cheque.id,
