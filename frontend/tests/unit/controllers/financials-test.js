@@ -473,4 +473,137 @@ module('Unit | Controller | financials', function (hooks) {
     assert.strictEqual(controller.getRowClass({ status: 'PENDING' }), '');
     assert.strictEqual(controller.getRowClass(undefined), '');
   });
+
+  test('a cheque payment forces the type to expense and locks it', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    controller.setPaymentMethod('CHEQUE');
+
+    assert.strictEqual(controller.formType, 'EXPENSE');
+    assert.true(controller.typeLocked);
+  });
+
+  test('rental income and sale categories force income and lock it', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    controller.setCategory('RENT');
+    assert.strictEqual(controller.formType, 'INCOME');
+    assert.true(controller.typeLocked);
+
+    controller.setCategory('SALE');
+    assert.strictEqual(controller.formType, 'INCOME');
+    assert.true(controller.typeLocked);
+  });
+
+  test('payment method outranks category: rent paid by cheque is an expense', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    controller.setCategory('RENT');
+    controller.setPaymentMethod('CHEQUE');
+
+    assert.strictEqual(controller.formType, 'EXPENSE');
+    assert.true(controller.typeLocked);
+  });
+
+  test('two-way categories leave the type editable', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    for (const category of ['DEPOSIT', 'MAINTENANCE', 'COMMISSION', 'OTHER']) {
+      controller.setCategory(category);
+      assert.false(controller.typeLocked, `${category} leaves type unlocked`);
+    }
+
+    controller.formType = 'EXPENSE';
+    assert.strictEqual(controller.formType, 'EXPENSE');
+  });
+
+  test('the date label follows the direction of the money', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    controller.setCategory('RENT');
+    assert.strictEqual(controller.dateLabel, 'Date money arrived');
+
+    controller.setPaymentMethod('CHEQUE');
+    assert.strictEqual(controller.dateLabel, 'Date money was paid');
+  });
+
+  test('a cheque payment hides the incoming-only categories', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    const all = controller.categoryOptions.map((o) => o.value);
+    assert.true(all.includes('RENT'), 'rent is offered by default');
+    assert.true(all.includes('SALE'), 'sale is offered by default');
+
+    controller.setPaymentMethod('CHEQUE');
+
+    const offered = controller.categoryOptions.map((o) => o.value);
+    assert.deepEqual(offered, [
+      'DEPOSIT',
+      'MAINTENANCE',
+      'COMMISSION',
+      'OTHER',
+    ]);
+  });
+
+  test('switching to cheque clears a category it no longer offers', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+
+    controller.setCategory('RENT');
+    controller.setPaymentMethod('CHEQUE');
+    assert.strictEqual(controller.formCategory, '', 're-pick is forced');
+
+    controller.setCategory('MAINTENANCE');
+    controller.setPaymentMethod('CASH');
+    assert.strictEqual(
+      controller.formCategory,
+      'MAINTENANCE',
+      'a still-valid category survives the switch',
+    );
+  });
+
+  test('unlocking gives back the type the user had chosen', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+    assert.strictEqual(controller.formType, 'INCOME', 'starts on income');
+
+    controller.setPaymentMethod('CHEQUE');
+    assert.strictEqual(controller.formType, 'EXPENSE');
+    assert.true(controller.typeLocked);
+
+    controller.setPaymentMethod('CASH');
+    assert.false(controller.typeLocked, 'the control unlocks');
+    assert.strictEqual(
+      controller.formType,
+      'INCOME',
+      'and the old choice returns',
+    );
+  });
+
+  test('a second lock does not overwrite the remembered choice', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    controller.openCreate();
+    controller.formType = 'EXPENSE';
+
+    controller.setCategory('RENT');
+    assert.strictEqual(controller.formType, 'INCOME', 'rent pins income');
+
+    controller.setPaymentMethod('CHEQUE');
+    assert.strictEqual(controller.formType, 'EXPENSE', 'cheque outranks it');
+
+    controller.setPaymentMethod('CASH');
+    controller.setCategory('OTHER');
+    assert.false(controller.typeLocked);
+    assert.strictEqual(
+      controller.formType,
+      'EXPENSE',
+      'the original choice survives',
+    );
+  });
 });

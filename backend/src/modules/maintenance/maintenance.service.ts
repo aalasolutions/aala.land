@@ -286,6 +286,7 @@ export class MaintenanceService {
       Object.assign(locked, changes);
       if (regionCode) {
         locked.regionCode = regionCode;
+        locked.currency = regionCurrency(regionCode);
       }
       if (changes.status === WorkOrderStatus.COMPLETED && !locked.completedAt) {
         locked.completedAt = new Date();

@@ -428,6 +428,7 @@ export class ChequesService {
         undefined,
         caller,
       );
+      cheque.currency = regionCurrency(cheque.regionCode);
     }
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {

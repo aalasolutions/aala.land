@@ -267,14 +267,20 @@
       {{on "submit" this.saveTx}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field @label="Type" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Payment Method"
+          @required={{true}}
+          @tooltip="A cheque here is one you paid out. Cheques you receive are recorded on the Cheques Received page."
+          class="grow"
+        >
           <Nuvo::Dropdown
-            id="tx-type"
+            id="tx-payment"
             @align="start"
-            @value={{this.formType}}
-            @onSelect={{fn this.setFieldValue "formType"}}
-            @options={{this.transactionTypeOptions}}
-            @placeholder="Select type..."
+            @value={{this.formPaymentMethod}}
+            @onSelect={{this.setPaymentMethod}}
+            @options={{this.paymentMethodOptions}}
+            @placeholder="Select payment method..."
+            data-test-tx-payment
           />
         </Nuvo::Field>
         <Nuvo::Field @label="Category" @required={{true}} class="grow">
@@ -282,13 +288,27 @@
             id="tx-category"
             @align="start"
             @value={{this.formCategory}}
-            @onSelect={{fn this.setFieldValue "formCategory"}}
+            @onSelect={{this.setCategory}}
             @options={{this.categoryOptions}}
             @placeholder="Select category..."
+            data-test-tx-category
           />
         </Nuvo::Field>
       </div>
       <div class="flex gap-4">
+        <Nuvo::Field @label="Payment Type" @required={{true}} class="grow">
+          {{! Readonly when the category or the payment method already decides it. }}
+          <Nuvo::Dropdown
+            id="tx-type"
+            @align="start"
+            @value={{this.formType}}
+            @onSelect={{fn this.setFieldValue "formType"}}
+            @options={{this.transactionTypeOptions}}
+            @placeholder="Select type..."
+            @disabled={{this.typeLocked}}
+            data-test-tx-type
+          />
+        </Nuvo::Field>
         <Nuvo::Field @label="Amount" @required={{true}} class="grow">
           <Nuvo::Input
             id="tx-amount"
@@ -299,16 +319,7 @@
             @value={{this.formAmount}}
             @onInput={{fn this.setFieldValue "formAmount"}}
             required={{true}}
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Payment Method" @required={{true}} class="grow">
-          <Nuvo::Dropdown
-            id="tx-payment"
-            @align="start"
-            @value={{this.formPaymentMethod}}
-            @onSelect={{fn this.setFieldValue "formPaymentMethod"}}
-            @options={{this.paymentMethodOptions}}
-            @placeholder="Select payment method..."
+            data-test-tx-amount
           />
         </Nuvo::Field>
       </div>
@@ -323,7 +334,7 @@
       </Nuvo::Field>
       <div class="flex gap-4">
         <Nuvo::Field
-          @label="Date money arrived"
+          @label={{this.dateLabel}}
           @required={{this.dateRequired}}
           class="grow"
         >
