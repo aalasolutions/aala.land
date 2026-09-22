@@ -17,8 +17,7 @@ export function chequeTransactionCategory(
   return CHEQUE_TYPE_CATEGORY[type];
 }
 
-// The 30-day window and the no-future rule come from the finance module; these are
-// the two limits only a cheque has.
+// The two limits only a cheque has; the window and no-future rule live in finance.
 export function assertChequeClearedDate(
   clearedDate: string,
   dueDate: string,

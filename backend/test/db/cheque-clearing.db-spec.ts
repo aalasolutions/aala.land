@@ -14,8 +14,7 @@ import {
   PaymentMethod,
 } from '../../src/modules/financial/entities/transaction.entity';
 
-// The double-count guard is a partial unique index and a RESTRICT foreign key.
-// Neither exists in TypeScript, so only a real database can prove them.
+// A partial unique index and a RESTRICT FK; only a real database can prove them.
 describe('cheque clearing constraints against a real database', () => {
   let dataSource: DataSource;
 

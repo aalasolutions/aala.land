@@ -263,10 +263,7 @@ export default class ChequesController extends PaginatedController {
     }
   }
 
-  // The backend refuses anything outside this, so the picker offers nothing else.
-  // The cheque's OWN region decides its business day, matching
-  // assertTransactionDateInWindow(dto.clearedDate, cheque.regionCode) on the server.
-  // Reading the viewed region instead shifts the boundary for a cross-zone company.
+  // Mirrors the server window, resolved in the cheque's own region, not the viewed one.
   get clearDateWindow() {
     const cheque = this.clearChequeItem;
     const zone =
@@ -276,15 +273,13 @@ export default class ChequesController extends PaginatedController {
     const floors = [
       today && addCalendarDays(today, -MAX_BACKDATE_DAYS),
       toDateOnly(cheque?.dueDate),
-      // Only a deposit date the cheque ALREADY holds floors the clearing day. One
-      // typed in this dialog gets pulled down instead, see setClearedDate.
+      // Only a stored deposit date floors this; a typed one gets pulled, see setClearedDate.
       toDateOnly(cheque?.depositDate),
     ].filter(Boolean);
     return { earliest: floors.sort().at(-1) ?? null, latest: today ?? null };
   }
 
-  // A cheque that is not due yet has no clearable date at all: its due-date floor
-  // sits past today. Binding that pair to min/max makes every value invalid.
+  // A cheque not yet due has no clearable day: its floor sits past today.
   get clearWindowUnusable() {
     const { earliest, latest } = this.clearDateWindow;
     return !earliest || !latest || earliest > latest;
@@ -327,9 +322,7 @@ export default class ChequesController extends PaginatedController {
     this.clearDepositDate = toDateOnly(cheque?.depositDate);
   }
 
-  // A deposit cannot outlive the clearing. Moving the clearing day back drags the
-  // deposit with it, and that correction sticks: moving the clearing day forward
-  // again leaves the deposit where it landed.
+  // Moving the clearing day back drags the deposit with it, and that correction sticks.
   @action setClearedDate(value) {
     this.clearedDate = value;
     if (
@@ -365,8 +358,7 @@ export default class ChequesController extends PaginatedController {
       this.clearError = `Pick a date between ${earliest} and ${latest}.`;
       return;
     }
-    // The deposit date is optional; when typed it must sit inside its own range.
-    // The server checks this too, so neither layer is the only guard.
+    // Optional, and range-checked here as well as on the server.
     const depositDate = this.depositDateEditable ? this.clearDepositDate : '';
     if (depositDate) {
       const { earliest: depositFloor } = this.depositDateWindow;

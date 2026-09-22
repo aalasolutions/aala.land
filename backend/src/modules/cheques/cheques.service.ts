@@ -57,8 +57,7 @@ import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
-// A cheque in one of these has finished moving. BOUNCED is not here: a bounced
-// cheque may be bounced again, which is what bounce_count counts.
+// Terminal statuses. BOUNCED is excluded: a bounced cheque may bounce again.
 const BOUNCE_BLOCKED_STATUSES = [
   ChequeStatus.CLEARED,
   ChequeStatus.CANCELLED,
@@ -352,15 +351,12 @@ export class ChequesService {
       );
     }
 
-    // Every field clear() copies onto the transaction. unitId covers regionCode,
-    // which is recomputed from the unit further down.
+    // Fields clear() copies onto the transaction; unitId covers regionCode.
     if (cheque.status === ChequeStatus.CLEARED) {
       const amountChanged =
         changes.amount !== undefined &&
         Number(changes.amount) !== Number(cheque.amount);
-      // dueDate is here because clear() copies it onto the transaction AND because
-      // assertChequeClearedDate checked clearedDate against it; moving it breaks
-      // that invariant retroactively.
+      // dueDate: copied onto the transaction, and clearedDate was validated against it.
       const copied: (keyof typeof changes)[] = [
         'type',
         'unitId',
@@ -599,15 +595,13 @@ export class ChequesService {
         })
         .where('id = :id', { id })
         .andWhere('company_id = :companyId', { companyId })
-        // The predicate, not just the check above: a concurrent clear must not be
-        // overwritten, or its income row outlives the cheque that produced it.
+        // Predicate as well as the precheck, so a concurrent clear is not overwritten.
         .andWhere('status NOT IN (:...terminal)', {
           terminal: BOUNCE_BLOCKED_STATUSES,
         })
         .execute();
 
-      // Two causes now that the UPDATE carries a status predicate: the row is gone,
-      // or it went terminal mid-flight. Only the failure path pays for telling them apart.
+      // Zero rows means gone or terminal mid-flight; only this path pays to tell them apart.
       if (!result.affected) {
         const current = await manager.findOne(Cheque, {
           where: { id, companyId },
@@ -676,8 +670,7 @@ export class ChequesService {
     const cheque = await this.findOne(id, companyId, caller);
     this.assertClearable(cheque.status);
 
-    // A deposited cheque's date is settled; the dialog shows it read-only. Only a
-    // cheque clearing straight from PENDING may supply one.
+    // Only a cheque clearing straight from PENDING may supply a deposit date.
     if (
       cheque.depositDate &&
       dto.depositDate &&
@@ -801,9 +794,7 @@ export class ChequesService {
         throw new BadRequestException('This cheque is not cleared.');
       }
 
-      // Cancelled, not deleted, so the reversal stays on the books. Zero rows is
-      // legitimate for a cheque cleared before this feature shipped, so it is
-      // recorded rather than raised, and nobody is told money moved that did not.
+      // Cancelled not deleted; zero rows is legitimate for a pre-feature cheque.
       const reversal = await manager.getRepository(Transaction).update(
         {
           chequeId: locked.id,

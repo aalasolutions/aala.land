@@ -23,8 +23,7 @@ export class ChequeClearingWritesMoney1779700000013 implements MigrationInterfac
          END IF;
        END $$`,
     );
-    // The double-clear guard. CANCELLED rows are excluded so a cheque can be
-    // un-cleared and cleared again without the reversed row blocking it.
+    // Double-clear guard; CANCELLED excluded so a re-clear is not blocked.
     await queryRunner.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_TRANSACTIONS_ACTIVE_CHEQUE" ON "transactions" ("cheque_id") WHERE "cheque_id" IS NOT NULL AND "status" <> 'CANCELLED'`,
     );
