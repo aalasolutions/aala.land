@@ -1,3 +1,4 @@
+import { regionCurrency } from '../../shared/constants/regions';
 import {
   Injectable,
   NotFoundException,
@@ -108,6 +109,7 @@ export class ChequesService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     const saved = await this.dataSource.transaction(async (manager) => {
       await this.assertChequeEditable(

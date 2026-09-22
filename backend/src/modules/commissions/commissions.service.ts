@@ -1,3 +1,4 @@
+import { regionCurrency } from '../../shared/constants/regions';
 import {
   Injectable,
   NotFoundException,
@@ -68,6 +69,7 @@ export class CommissionsService {
       companyId,
       commissionAmount,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     return this.commissionRepository.save(commission);
   }

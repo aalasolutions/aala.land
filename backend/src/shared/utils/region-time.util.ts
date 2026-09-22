@@ -150,6 +150,22 @@ export function regionTimezoneSql(column: string): string {
 }
 
 /** SQL date expression for "today" in the row's region. */
+export function regionCurrencySql(column: string, fallback = 'USD'): string {
+  const byCurrency = new Map<string, string[]>();
+  for (const region of REGIONS) {
+    const codes = byCurrency.get(region.currency) ?? [];
+    codes.push(region.code);
+    byCurrency.set(region.currency, codes);
+  }
+  const branches = [...byCurrency.entries()]
+    .map(
+      ([currency, codes]) =>
+        `WHEN ${column} IN (${codes.map(sqlLiteral).join(', ')}) THEN ${sqlLiteral(currency)}`,
+    )
+    .join(' ');
+  return `(CASE ${branches} ELSE ${sqlLiteral(fallback)} END)`;
+}
+
 export function regionTodaySql(column: string): string {
   return `((now() AT TIME ZONE ${regionTimezoneSql(column)})::date)`;
 }

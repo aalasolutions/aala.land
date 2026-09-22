@@ -279,6 +279,7 @@ describe('FinancialService', () => {
         ...dto,
         companyId,
         regionCode: null,
+        currency: 'USD',
       });
       expect(result).toEqual(mockTransaction);
     });
@@ -309,6 +310,7 @@ describe('FinancialService', () => {
         ...dto,
         companyId,
         regionCode: 'makkah',
+        currency: 'SAR',
       });
     });
   });

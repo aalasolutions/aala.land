@@ -236,6 +236,7 @@ describe('ChequesService', () => {
         ...dto,
         companyId,
         regionCode: 'dubai',
+        currency: 'AED',
       });
       expect(result).toEqual(mockCheque);
     });

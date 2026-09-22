@@ -1122,6 +1122,13 @@ export function getRegionByCode(code: string): Region | undefined {
   return REGIONS.find((r) => r.code === code);
 }
 
+export function regionCurrency(
+  regionCode?: string | null,
+  fallback = 'USD',
+): string {
+  return (regionCode && getRegionByCode(regionCode)?.currency) || fallback;
+}
+
 export function resolveRegions(codes: string[] | null | undefined): Region[] {
   if (!codes || !Array.isArray(codes)) {
     return [];
