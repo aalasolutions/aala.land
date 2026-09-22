@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CronExpression } from '@nestjs/schedule';
+import { formatMoney } from '../../shared/utils/money.util';
 import { NotificationsService } from './notifications.service';
 import { Notification, NotificationType } from './entities/notification.entity';
 import {
@@ -734,7 +735,8 @@ describe('NotificationsService', () => {
 
       const groups = [{ today: '2026-09-16', regionCodes: REGIONS_AT_NINE }];
       expect(spies[0]).toHaveBeenCalledWith(groups);
-      expect(spies[1]).toHaveBeenCalledWith(groups);
+      // Overdue also takes the instant, so its day count pivots on the same run.
+      expect(spies[1]).toHaveBeenCalledWith(groups, FIXED_NOW);
       expect(spies[2]).toHaveBeenCalledWith(groups);
       expect(spies[3]).toHaveBeenCalledWith(REGIONS_AT_NINE);
     });
@@ -1111,6 +1113,27 @@ describe('NotificationsService', () => {
           },
         ],
       });
+    });
+
+    it('formats the money, the date and the day count the way the app shows them', async () => {
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        { ...mockOverdueCheque, regionCode: 'dubai' } as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
+
+      await service.runDailyReminders(FIXED_NOW);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // Built with the same formatter: Intl uses a non-breaking space, as the page does.
+          message: `Cheque #CHQ-Overdue for ${formatMoney(20000, 'AED')} was due Sep 15, 2026, 1 day ago. Clear it or update the due date.`,
+        }),
+      );
     });
 
     it('does NOT include cheques due today', async () => {

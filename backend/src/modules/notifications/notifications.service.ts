@@ -36,11 +36,13 @@ import { NotificationsGateway } from './notifications.gateway';
 import {
   addDays,
   daysBetween,
+  formatDateMedium,
   regionCodesAtLocalHour,
   regionToday,
   regionTodaySql,
   startOfDayInZone,
 } from '../../shared/utils/region-time.util';
+import { formatMoney, pluralDays } from '../../shared/utils/money.util';
 
 // Reminders reach each region at this local hour.
 const REMINDER_LOCAL_HOUR = 9;
@@ -249,7 +251,7 @@ export class NotificationsService {
     );
     const groups = this.groupRegionsByToday(regionCodes, now);
     await this.notifyUpcomingCheques(groups);
-    await this.notifyOverdueCheques(groups);
+    await this.notifyOverdueCheques(groups, now);
     await this.notifyDelayedCheques(groups);
     await this.notifyUnassignedLeads(regionCodes);
   }
@@ -298,6 +300,7 @@ export class NotificationsService {
 
   private async notifyOverdueCheques(
     groups: Array<{ today: string; regionCodes: string[] }>,
+    at: Date,
   ) {
     const overdueCheques = await this.chequeRepository.find({
       where: groups.map((g) => ({
@@ -313,7 +316,7 @@ export class NotificationsService {
       (cheque, admin) => ({
         userId: admin.id,
         title: 'Overdue Cheque!',
-        message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
+        message: `Cheque #${cheque.chequeNumber} for ${formatMoney(cheque.amount, cheque.currency)} was due ${formatDateMedium(cheque.dueDate)}, ${pluralDays(daysBetween(cheque.dueDate, regionToday(cheque.regionCode, at)))} ago. Clear it or update the due date.`,
         type: NotificationType.CHEQUE_OVERDUE,
         entityType: 'cheque',
         entityId: cheque.id,

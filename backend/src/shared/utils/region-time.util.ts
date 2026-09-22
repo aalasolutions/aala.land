@@ -95,6 +95,12 @@ export function startOfDayInZone(
 }
 
 /** Long calendar date such as "August 20, 2026". */
+// Mirrors the frontend format-date helper's default (medium): "Sep 18, 2026".
+export function formatDateMedium(value: string, locale = 'en-US'): string {
+  const date = parseDateOnly(value);
+  return date ? date.setLocale(locale).toLocaleString(DateTime.DATE_MED) : '';
+}
+
 export function formatDateLong(
   at: Date,
   timeZone = 'UTC',
