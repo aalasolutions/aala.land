@@ -85,6 +85,7 @@ describe('VendorsService', () => {
         ...dto,
         companyId,
         regionCode: 'dubai',
+        currency: 'AED',
       });
       expect(repo.save).toHaveBeenCalledWith(mockVendor);
       expect(result).toEqual(mockVendor);

@@ -1,3 +1,4 @@
+import { regionCurrency } from '../../shared/constants/regions';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, FindOptionsWhere, In, Raw } from 'typeorm';
@@ -39,6 +40,7 @@ export class VendorsService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     return this.vendorRepository.save(vendor);
   }

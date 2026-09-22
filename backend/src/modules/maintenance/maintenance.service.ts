@@ -1,3 +1,4 @@
+import { regionCurrency } from '../../shared/constants/regions';
 import {
   BadRequestException,
   ConflictException,
@@ -71,6 +72,7 @@ export class MaintenanceService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     return this.dataSource.transaction(async (manager) => {
       await this.assertUnitNotArchivedLocked(

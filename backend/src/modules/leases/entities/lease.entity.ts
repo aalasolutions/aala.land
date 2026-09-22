@@ -87,7 +87,7 @@ export class Lease {
   @Column({ name: 'monthly_rent', type: 'decimal', precision: 12, scale: 2 })
   monthlyRent: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({

@@ -167,6 +167,7 @@ describe('MaintenanceService', () => {
         ...dto,
         companyId,
         regionCode: 'dubai',
+        currency: 'AED',
       });
       expect(result).toEqual(mockOrder);
     });
@@ -863,7 +864,9 @@ describe('MaintenanceService', () => {
     function seedOrders(
       seeds: Array<{ id: string; regionCode: string; unitId: string | null }>,
     ) {
-      const rows = seeds.map((seed) => ({ ...mockOrder, ...seed }) as WorkOrder);
+      const rows = seeds.map(
+        (seed) => ({ ...mockOrder, ...seed }) as WorkOrder,
+      );
       let codes: string[] | undefined;
       const matched = () =>
         codes ? rows.filter((row) => codes!.includes(row.regionCode)) : rows;
