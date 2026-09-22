@@ -1,4 +1,5 @@
 import { regionCurrency } from '../../shared/constants/regions';
+import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import {
   ConflictException,
   Injectable,
@@ -265,7 +266,11 @@ export class FinancialService {
     regionCode: string | undefined,
     caller?: RegionScope,
   ): Promise<string | null> {
-    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    const unitRegion = await regionOfUnit(
+      this.unitRepository,
+      unitId,
+      companyId,
+    );
     if (unitRegion) {
       return unitRegion;
     }
@@ -278,26 +283,6 @@ export class FinancialService {
       regionCode,
       caller,
     );
-  }
-
-  // Transaction takes its unit's region, same chain cheque/work-order columns were backfilled from.
-  private async regionOfUnit(
-    unitId: string | null | undefined,
-    companyId: string,
-  ): Promise<string | undefined> {
-    if (!unitId) {
-      return undefined;
-    }
-    const row = await this.unitRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.asset', 'a')
-      .innerJoin('a.locality', 'loc')
-      .innerJoin('loc.city', 'ci')
-      .select('ci.regionCode', 'regionCode')
-      .where('u.id = :unitId', { unitId })
-      .andWhere('u.companyId = :companyId', { companyId })
-      .getRawOne<{ regionCode: string }>();
-    return row?.regionCode ?? undefined;
   }
 
   // FOR SHARE so archiveUnit cannot commit in between.

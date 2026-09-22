@@ -1,4 +1,5 @@
 import { regionCurrency } from '../../shared/constants/regions';
+import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import {
   Injectable,
   NotFoundException,
@@ -261,7 +262,11 @@ export class ChequesService {
     regionCode: string | undefined,
     caller?: RegionScope,
   ): Promise<string> {
-    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    const unitRegion = await regionOfUnit(
+      this.unitRepository,
+      unitId,
+      companyId,
+    );
     if (unitRegion) {
       return unitRegion;
     }
@@ -271,25 +276,6 @@ export class ChequesService {
       regionCode,
       caller,
     );
-  }
-
-  private async regionOfUnit(
-    unitId: string | null | undefined,
-    companyId: string,
-  ): Promise<string | undefined> {
-    if (!unitId) {
-      return undefined;
-    }
-    const row = await this.unitRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.asset', 'a')
-      .innerJoin('a.locality', 'loc')
-      .innerJoin('loc.city', 'ci')
-      .select('ci.regionCode', 'regionCode')
-      .where('u.id = :unitId', { unitId })
-      .andWhere('u.companyId = :companyId', { companyId })
-      .getRawOne<{ regionCode: string }>();
-    return row?.regionCode ?? undefined;
   }
 
   async findOne(

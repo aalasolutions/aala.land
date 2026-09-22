@@ -238,16 +238,13 @@ export class ReportsService {
         .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes })
         .getRawOne();
 
+      // Leases carry their own region, like cheques.
       activeLeasesPromise = this.leaseRepository
         .createQueryBuilder('l')
-        .innerJoin('units', 'u', 'l.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
-        .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
-        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
         .andWhere('l.deleted_at IS NULL')
-        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
+        .andWhere('l.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
       // Cheques carry their own region, so a cheque with no unit still counts.

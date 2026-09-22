@@ -38,6 +38,8 @@ describe('LeasesService', () => {
   let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   // The count re-check inside the locked transaction resolves through this.
   let activeLeaseCount: number;
+  // The region the unit join resolves to.
+  let unitRegionCode: string | undefined;
 
   const companyId = 'company-uuid-1';
   const actorId = 'user-uuid-1';
@@ -79,6 +81,7 @@ describe('LeasesService', () => {
 
   beforeEach(async () => {
     activeLeaseCount = 0;
+    unitRegionCode = 'dubai';
 
     // A QueryBuilder chain whose getCount() reports how many OTHER active leases
     // exist on the unit. Used by assertNoOtherActiveLease.
@@ -86,6 +89,19 @@ describe('LeasesService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getCount: jest.fn().mockImplementation(async () => activeLeaseCount),
+    };
+
+    // The join that resolves a lease's region.
+    const unitRegionQb: any = {
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest
+        .fn()
+        .mockImplementation(async () =>
+          unitRegionCode ? { regionCode: unitRegionCode } : undefined,
+        ),
     };
 
     manager = {
@@ -129,6 +145,7 @@ describe('LeasesService', () => {
           provide: getRepositoryToken(Unit),
           useValue: {
             findOne: jest.fn(),
+            createQueryBuilder: jest.fn().mockReturnValue(unitRegionQb),
           },
         },
         {
@@ -176,7 +193,12 @@ describe('LeasesService', () => {
       };
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'dubai',
+        currency: 'AED',
+      });
       expect(manager.findOne).toHaveBeenCalledWith(Unit, {
         where: { id: 'unit-uuid-1', companyId },
         select: { id: true, deletedAt: true },
@@ -188,6 +210,39 @@ describe('LeasesService', () => {
         relations: ['contact'],
       });
       expect(result).toEqual(mockLease);
+    });
+
+    it('derives the lease region and currency from its unit', async () => {
+      unitRegionCode = 'makkah';
+      repo.create.mockReturnValue(mockLease as Lease);
+      manager.findOne.mockResolvedValue({ id: 'unit-uuid-1', deletedAt: null });
+      manager.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+
+      await service.create(companyId, {
+        unitId: 'unit-uuid-1',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        monthlyRent: 5000,
+      } as any);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ regionCode: 'makkah', currency: 'SAR' }),
+      );
+    });
+
+    it('rejects a unit whose region cannot be resolved', async () => {
+      unitRegionCode = undefined;
+
+      await expect(
+        service.create(companyId, {
+          unitId: 'unit-uuid-1',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          monthlyRent: 5000,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.create).not.toHaveBeenCalled();
     });
   });
 
@@ -639,6 +694,35 @@ describe('LeasesService', () => {
       );
     });
 
+    it('takes the new unit region and currency when a draft lease moves', async () => {
+      manager.findOne.mockResolvedValue({
+        ...mockLease,
+        status: LeaseStatus.DRAFT,
+      } as Lease);
+      manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-uuid-2',
+        deletedAt: null,
+      } as Unit);
+      unitRegionCode = 'punjab';
+
+      await service.update(
+        'lease-uuid-1',
+        companyId,
+        { unitId: 'unit-uuid-2' },
+        actorId,
+      );
+
+      expect(manager.save).toHaveBeenCalledWith(
+        Lease,
+        expect.objectContaining({
+          unitId: 'unit-uuid-2',
+          regionCode: 'punjab',
+          currency: 'PKR',
+        }),
+      );
+    });
+
     it('refuses a draft move when the target unit is archived under the lock', async () => {
       manager.findOne.mockImplementation((entity: unknown) =>
         Promise.resolve(
@@ -892,7 +976,9 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(renewedLease);
 
       await expect(
-        service.renew('lease-uuid-1', companyId, {} as any),
+        service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
+        } as any),
       ).rejects.toThrow(BadRequestException);
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -926,6 +1012,7 @@ describe('LeasesService', () => {
 
       await expect(
         service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
           status: LeaseStatus.ACTIVE,
         } as any),
       ).rejects.toThrow(BadRequestException);
@@ -961,6 +1048,7 @@ describe('LeasesService', () => {
 
       await expect(
         service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
           status: LeaseStatus.ACTIVE,
         } as any),
       ).rejects.toThrow(BadRequestException);
@@ -990,6 +1078,7 @@ describe('LeasesService', () => {
 
       await expect(
         service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
           status: LeaseStatus.ACTIVE,
         } as any),
       ).rejects.toBe(other);
@@ -1035,7 +1124,9 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(terminated);
 
       await expect(
-        service.renew('lease-uuid-1', companyId, {} as any),
+        service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -1044,15 +1135,40 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(draft);
 
       await expect(
-        service.renew('lease-uuid-1', companyId, {} as any),
+        service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
+        } as any),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('gives the successor lease its unit region and currency', async () => {
+      unitRegionCode = 'punjab';
+      manager.findOne.mockResolvedValue({
+        ...mockLease,
+        status: LeaseStatus.ACTIVE,
+      } as Lease);
+      manager.create.mockImplementation((_e: unknown, l: Lease) => l);
+      manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+
+      await service.renew('lease-uuid-1', companyId, {
+        unitId: 'unit-uuid-1',
+        startDate: '2027-01-01',
+        endDate: '2027-12-31',
+        monthlyRent: 5000,
+      } as any);
+
+      expect(manager.create).toHaveBeenCalledWith(
+        Lease,
+        expect.objectContaining({ regionCode: 'punjab', currency: 'PKR' }),
+      );
     });
 
     it('throws NotFoundException when lease not found', async () => {
       manager.findOne.mockResolvedValue(null);
 
       await expect(
-        service.renew('bad-id', companyId, {} as any),
+        service.renew('bad-id', companyId, { unitId: 'unit-uuid-1' } as any),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -1453,16 +1569,18 @@ describe('LeasesService', () => {
       'unit-punjab': 'punjab',
     };
 
-    // Stands in for Postgres: a lease has no region column, so the fake
-    // resolves the unitId subquery predicate through a unit -> region map. The
-    // locked read inside the transaction goes through the same rule.
+    // Stands in for Postgres: matches region_code against the caller's IN list.
     function seedLeaseOnUnit(unitId: string) {
-      const row = { ...mockLease, unitId } as Lease;
+      const row = {
+        ...mockLease,
+        unitId,
+        regionCode: unitRegions[unitId],
+      } as Lease;
       const read = (opts: any) => {
-        const filter = opts?.where?.unitId;
+        const filter = opts?.where?.regionCode;
         if (filter) {
-          const codes = filter.objectLiteralParameters?.regionCodes as string[];
-          if (!codes.includes(unitRegions[unitId])) {
+          const codes = filter.value as string[];
+          if (!codes.includes(row.regionCode)) {
             return Promise.resolve(null);
           }
         }
