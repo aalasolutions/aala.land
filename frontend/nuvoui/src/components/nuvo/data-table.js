@@ -30,6 +30,10 @@ export default class DataTableComponent extends Component {
   // ember-table math is LTR only; RTL mirrors columns instead. A getter, not a
   // field: as a field it froze at construction and stayed stale when the
   // direction changed after mount.
+  get isRtl() {
+    return (this.args.dir ?? document.documentElement.dir) === 'rtl';
+  }
+
   // Resolves @getRowClass for one row: a function is called per row, a string
   // applies to every row, anything else is ignored rather than breaking render.
   rowClassFor = (row) => {
@@ -37,10 +41,6 @@ export default class DataTableComponent extends Component {
     if (typeof arg === 'function') return arg(row) ?? '';
     return typeof arg === 'string' ? arg : '';
   };
-
-  get isRtl() {
-    return (this.args.dir ?? document.documentElement.dir) === 'rtl';
-  }
 
   // One stable copy per column: ember-table writes widths onto it.
   copies = new Map();
