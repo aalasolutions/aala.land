@@ -439,6 +439,7 @@ export default class ChequesController extends PaginatedController {
   @action closeCancelModal() {
     this.showCancelModal = false;
     this.chequeToCancel = null;
+    this.reasonError = '';
   }
 
   @action async confirmCancel() {

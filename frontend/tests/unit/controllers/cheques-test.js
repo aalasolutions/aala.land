@@ -314,6 +314,19 @@ module('Unit | Controller | cheques', function (hooks) {
       assert.strictEqual(controller.reasonError, '');
     });
 
+    test('closing the cancel dialog clears the reason error too', async function (assert) {
+      const controller = makeController(this);
+      stubFetch(controller);
+      controller.openCancel({ id: 'c1' });
+      controller.cancelReason = '';
+      await controller.confirmCancel();
+      assert.strictEqual(controller.reasonError, 'Reason is required.');
+
+      controller.closeCancelModal();
+
+      assert.strictEqual(controller.reasonError, '');
+    });
+
     test('posts the trimmed reason to the unclear endpoint', async function (assert) {
       const controller = makeController(this);
       const calls = stubFetch(controller);
