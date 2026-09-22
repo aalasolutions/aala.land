@@ -428,6 +428,32 @@ describe('FinancialService', () => {
     // The row carries no region, so its window pivots on the UTC day.
     const todayForRegion = () => new Date().toISOString().slice(0, 10);
 
+    it('refuses to edit a payment that a cleared cheque recorded', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockTransaction,
+        chequeId: 'cheque-uuid-1',
+      } as Transaction);
+
+      await expect(
+        service.update('txn-uuid-1', companyId, { amount: 999 }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to cancel a payment that a cleared cheque recorded', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockTransaction,
+        chequeId: 'cheque-uuid-1',
+      } as Transaction);
+
+      await expect(
+        service.update('txn-uuid-1', companyId, {
+          status: TransactionStatus.CANCELLED,
+        }),
+      ).rejects.toThrow(/Un-clear the cheque/);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
     it('updates transaction status', async () => {
       repo.findOne.mockResolvedValue({ ...mockTransaction } as Transaction);
       repo.save.mockResolvedValue({

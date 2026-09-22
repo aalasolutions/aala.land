@@ -11,7 +11,7 @@ import {
   In,
   FindOptionsWhere,
 } from 'typeorm';
-import { Transaction, TransactionStatus } from './entities/transaction.entity';
+import { Transaction } from './entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -225,6 +225,12 @@ export class FinancialService {
       });
       if (!transaction) {
         throw new NotFoundException('Transaction not found');
+      }
+      // The cheque owns every editable field on this row.
+      if (transaction.chequeId) {
+        throw new ConflictException(
+          'This payment was recorded by clearing a cheque and cannot be edited here. Un-clear the cheque to change it.',
+        );
       }
       // The 30-day record lock is PARKED: it froze PENDING rent-due rows before their due date.
       assertTransactionDateInWindow(
