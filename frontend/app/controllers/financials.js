@@ -54,6 +54,9 @@ export default class FinancialsController extends PaginatedController {
     return this.model?.transactions ?? [];
   }
 
+  // Cancelled rows are un-cleared cheque reversals, kept for the trail.
+  rowClass = (row) => (row?.status === 'CANCELLED' ? 'is-muted' : '');
+
   columns = [
     {
       name: 'Description',

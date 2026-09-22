@@ -30,6 +30,9 @@ export default class DataTableComponent extends Component {
   // ember-table math is LTR only; RTL mirrors columns instead. A getter, not a
   // field: as a field it froze at construction and stayed stale when the
   // direction changed after mount.
+  // Opt-in per-row class from the caller.
+  rowClassFor = (row) => this.args.rowClass?.(row) ?? '';
+
   get isRtl() {
     return (this.args.dir ?? document.documentElement.dir) === 'rtl';
   }
@@ -120,7 +123,8 @@ export default class DataTableComponent extends Component {
     const previous = this.sorts;
     const changed = (sort) =>
       !previous.some(
-        (p) => p.valuePath === sort.valuePath && p.isAscending === sort.isAscending,
+        (p) =>
+          p.valuePath === sort.valuePath && p.isAscending === sort.isAscending,
       );
     const dropped = (sort) =>
       !incoming.some((s) => s.valuePath === sort.valuePath);
@@ -317,7 +321,9 @@ export default class DataTableComponent extends Component {
       if (Number.isNaN(value)) return;
     }
     this.editing = null;
-    const same = (before == null ? '' : String(before)) === (value == null ? '' : String(value));
+    const same =
+      (before == null ? '' : String(before)) ===
+      (value == null ? '' : String(value));
     if (same) return;
     this.args.onCellEdit(row, key, value);
   }
