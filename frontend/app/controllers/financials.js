@@ -185,7 +185,7 @@ export default class FinancialsController extends PaginatedController {
     this.page = 1;
   }
 
-  // The server rejects a half-supplied or reversed range, so a bad entry reverts here.
+  // The server rejects a half-supplied range but silently swaps a reversed one, so both revert here.
   @action setRangeBound(field, value, event) {
     const current = field === 'from' ? this.from : this.to;
     const revert = () => {
