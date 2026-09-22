@@ -199,14 +199,19 @@
         {{else if (eq cell.key "transactionDate")}}
           <span class="text-xs">{{format-date cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
-            @variant="secondary"
-            @size="xs"
-            @icon="pencil-simple"
-            {{on "click" (fn this.openEdit cell.row)}}
-          >
-            Edit
-          </Nuvo::Button>
+          {{#if cell.row.chequeId}}
+            {{! The cheque owns this row; editing it is refused with a 409. }}
+            <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
+          {{else}}
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              @icon="pencil-simple"
+              {{on "click" (fn this.openEdit cell.row)}}
+            >
+              Edit
+            </Nuvo::Button>
+          {{/if}}
         {{else}}
           {{cell.value}}
         {{/if}}
