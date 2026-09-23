@@ -20,8 +20,12 @@ describe('ReportsController', () => {
 
   const mockKpis = {
     totalLeads: 10,
+    openLeads: 6,
     wonLeads: 5,
+    totalContacts: 42,
     totalUnits: 20,
+    rentalUnits: 8,
+    occupiedUnits: 3,
     monthlyRevenue: 15000,
     activeLeases: 3,
     pendingCheques: 2,

@@ -12,6 +12,7 @@ import {
   TransactionType,
 } from '../financial/entities/transaction.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
+import { PropertyType } from '../properties/entities/property-type.enum';
 import {
   Commission,
   CommissionStatus,
@@ -20,6 +21,7 @@ import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import {
   effectiveRegionCodes,
@@ -40,6 +42,7 @@ import {
 import {
   AgentLoadRow,
   CensusRow,
+  OPEN_LEAD_STAGES,
   agentLoadQuery,
   closedWindowStart,
   emptyLeadOwnership,
@@ -49,8 +52,12 @@ import {
 
 export interface DashboardKpis {
   totalLeads: number;
+  openLeads: number;
   wonLeads: number;
+  totalContacts: number;
   totalUnits: number;
+  rentalUnits: number;
+  occupiedUnits: number;
   monthlyRevenue: number;
   activeLeases: number;
   pendingCheques: number;
@@ -180,6 +187,9 @@ export class ReportsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(Contact)
+    private readonly contactRepository: Repository<Contact>,
   ) {}
 
   async getDashboardKpis(
@@ -192,8 +202,12 @@ export class ReportsService {
     if (regionCodes?.length === 0) {
       return {
         totalLeads: 0,
+        openLeads: 0,
         wonLeads: 0,
+        totalContacts: 0,
         totalUnits: 0,
+        rentalUnits: 0,
+        occupiedUnits: 0,
         monthlyRevenue: 0,
         activeLeases: 0,
         pendingCheques: 0,
@@ -206,9 +220,36 @@ export class ReportsService {
     const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
     const inRegionMonth = `(${moneyDate} >= ${monthStart} AND ${moneyDate} < (${monthStart} + INTERVAL '1 month'))`;
 
-    // Leads have a direct regionCode.
+    // Leads and contacts have a direct regionCode.
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
+    const contactWhere: FindOptionsWhere<Contact> = { companyId };
+    if (regionCodes) contactWhere.regionCode = In(regionCodes);
+
+    // Occupancy covers For Rent units only; rented status OR an active lease counts as occupied.
+    const occupancyQb = this.unitRepository
+      .createQueryBuilder('u')
+      .select('COUNT(*)::int', 'rentalUnits')
+      .addSelect(
+        `COUNT(*) FILTER (WHERE u.status = :rented OR EXISTS (
+          SELECT 1 FROM leases le
+          WHERE le.unit_id = u.id AND le.company_id = :companyId
+            AND le.status = :activeLease AND le.deleted_at IS NULL
+        ))::int`,
+        'occupiedUnits',
+      )
+      .where('u.company_id = :companyId', { companyId })
+      .andWhere('u.deleted_at IS NULL')
+      .andWhere('u.property_type = :rental', { rental: PropertyType.RENTAL })
+      .setParameter('rented', UnitStatus.RENTED)
+      .setParameter('activeLease', LeaseStatus.ACTIVE);
+    if (regionCodes) {
+      occupancyQb
+        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes });
+    }
 
     let totalUnitsPromise: Promise<number>;
     let revenuePromise: Promise<any>;
@@ -276,17 +317,25 @@ export class ReportsService {
 
     const [
       totalLeads,
+      openLeads,
       wonLeads,
+      totalContacts,
       totalUnits,
+      occupancyResult,
       revenueResult,
       activeLeases,
       pendingCheques,
     ] = await Promise.all([
       this.leadRepository.count({ where: leadWhere }),
       this.leadRepository.count({
+        where: { ...leadWhere, status: In(OPEN_LEAD_STAGES) },
+      }),
+      this.leadRepository.count({
         where: { ...leadWhere, status: LeadStatus.WON },
       }),
+      this.contactRepository.count({ where: contactWhere }),
       totalUnitsPromise,
+      occupancyQb.getRawOne<{ rentalUnits: number; occupiedUnits: number }>(),
       revenuePromise,
       activeLeasesPromise,
       pendingChequesPromise,
@@ -294,8 +343,12 @@ export class ReportsService {
 
     return {
       totalLeads,
+      openLeads,
       wonLeads,
+      totalContacts,
       totalUnits,
+      rentalUnits: Number(occupancyResult?.rentalUnits ?? 0),
+      occupiedUnits: Number(occupancyResult?.occupiedUnits ?? 0),
       monthlyRevenue: Number(revenueResult?.total ?? 0),
       activeLeases,
       pendingCheques,

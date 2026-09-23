@@ -11,6 +11,7 @@ import { Lease } from '../leases/entities/lease.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { User } from '../users/entities/user.entity';
       Cheque,
       AuditLog,
       User,
+      Contact,
     ]),
   ],
   controllers: [ReportsController],

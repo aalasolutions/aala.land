@@ -36,10 +36,8 @@ export default class DashboardController extends Controller {
 
   get occupancyRate() {
     const kpis = this.model?.kpis;
-    if (!kpis || !kpis.totalUnits) return 0;
-    const leased = kpis.activeLeases || 0;
-    const total = kpis.totalUnits;
-    return Math.round((leased / total) * 100);
+    if (!kpis || !kpis.rentalUnits) return 0;
+    return Math.round(((kpis.occupiedUnits || 0) / kpis.rentalUnits) * 100);
   }
 
   get pipelineStages() {

@@ -73,16 +73,20 @@ module('Unit | Controller | dashboard', function (hooks) {
     ]);
   });
 
-  test('occupancy is leased units over total units', function (assert) {
+  test('occupancy is occupied rental units over rental units', function (assert) {
     const controller = makeController(
       this,
       {},
-      { kpis: { totalUnits: 8, activeLeases: 3 } },
+      { kpis: { totalUnits: 20, rentalUnits: 8, occupiedUnits: 3 } },
     );
     assert.strictEqual(controller.occupancyRate, 38, 'rounded');
 
-    controller.model = { kpis: { totalUnits: 0, activeLeases: 4 } };
-    assert.strictEqual(controller.occupancyRate, 0, 'no units, no division');
+    controller.model = { kpis: { totalUnits: 5, rentalUnits: 0 } };
+    assert.strictEqual(
+      controller.occupancyRate,
+      0,
+      'no rental units, no division',
+    );
   });
 
   module('assignment split', function () {

@@ -18,6 +18,7 @@ import {
   regionTimezoneSql,
 } from '../../shared/utils/region-time.util';
 import { User } from '../users/entities/user.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 function createMockQueryBuilder(result: any = []) {
   const qb: any = {
@@ -53,6 +54,7 @@ describe('ReportsService', () => {
   let chequeRepo: any;
   let auditLogRepo: any;
   let userRepo: any;
+  let contactRepo: any;
 
   const companyId = 'company-uuid-1';
 
@@ -120,6 +122,12 @@ describe('ReportsService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Contact),
+          useValue: {
+            count: jest.fn().mockResolvedValue(0),
+          },
+        },
       ],
     }).compile();
 
@@ -133,7 +141,11 @@ describe('ReportsService', () => {
     chequeRepo = module.get(getRepositoryToken(Cheque));
     auditLogRepo = module.get(getRepositoryToken(AuditLog));
     userRepo = module.get(getRepositoryToken(User));
+    contactRepo = module.get(getRepositoryToken(Contact));
     userRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+    unitRepo.createQueryBuilder.mockReturnValue(
+      createMockQueryBuilder({ rentalUnits: 0, occupiedUnits: 0 }),
+    );
   });
 
   it('should be defined', () => {
@@ -142,7 +154,14 @@ describe('ReportsService', () => {
 
   describe('getDashboardKpis', () => {
     it('returns correct flat KPIs', async () => {
-      leadRepo.count.mockResolvedValueOnce(10).mockResolvedValueOnce(3);
+      leadRepo.count
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(6)
+        .mockResolvedValueOnce(3);
+      contactRepo.count.mockResolvedValue(42);
+      unitRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({ rentalUnits: 8, occupiedUnits: 3 }),
+      );
 
       const txnQb = createMockQueryBuilder({ total: '15000' });
       transactionRepo.createQueryBuilder.mockReturnValue(txnQb);
@@ -154,11 +173,45 @@ describe('ReportsService', () => {
       const result = await service.getDashboardKpis(companyId);
 
       expect(result.totalLeads).toBe(10);
+      expect(result.openLeads).toBe(6);
       expect(result.wonLeads).toBe(3);
+      expect(result.totalContacts).toBe(42);
       expect(result.totalUnits).toBe(20);
+      expect(result.rentalUnits).toBe(8);
+      expect(result.occupiedUnits).toBe(3);
       expect(result.monthlyRevenue).toBe(15000);
       expect(result.activeLeases).toBe(5);
       expect(result.pendingCheques).toBe(2);
+    });
+
+    it('counts occupancy over For Rent units, rented status or an active lease', async () => {
+      leadRepo.count.mockResolvedValue(0);
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({ total: '0' }),
+      );
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chequeRepo.count.mockResolvedValue(0);
+      const occupancyQb = createMockQueryBuilder({
+        rentalUnits: 4,
+        occupiedUnits: 2,
+      });
+      unitRepo.createQueryBuilder.mockReturnValue(occupancyQb);
+
+      await service.getDashboardKpis(companyId);
+
+      expect(occupancyQb.andWhere).toHaveBeenCalledWith(
+        'u.property_type = :rental',
+        { rental: 'RENTAL' },
+      );
+      const occupied = occupancyQb.addSelect.mock.calls[0][0] as string;
+      expect(occupied).toContain('u.status = :rented OR EXISTS');
+      expect(occupied).toContain('le.deleted_at IS NULL');
+      expect(occupancyQb.setParameter).toHaveBeenCalledWith('rented', 'rented');
+      expect(occupancyQb.setParameter).toHaveBeenCalledWith(
+        'activeLease',
+        LeaseStatus.ACTIVE,
+      );
     });
 
     it('windows monthly revenue on the business date, not on created_at', async () => {
@@ -645,8 +698,11 @@ describe('ReportsService', () => {
       const byRegion = codes
         ? rows.filter((r) => codes.includes(r.regionCode))
         : rows;
-      return where?.status
-        ? byRegion.filter((r) => r.status === where.status)
+      const status = where?.status;
+      const statuses: string[] | undefined =
+        status?.value ?? (status ? [status] : undefined);
+      return statuses
+        ? byRegion.filter((r) => statuses.includes(r.status))
         : byRegion;
     }
 
@@ -868,6 +924,17 @@ describe('ReportsService', () => {
         { id: 'lead-makkah', status: LeadStatus.WON, regionCode: 'makkah' },
         { id: 'lead-punjab', status: LeadStatus.WON, regionCode: 'punjab' },
         { id: 'lead-punjab-2', status: LeadStatus.NEW, regionCode: 'punjab' },
+        { id: 'lead-makkah-2', status: LeadStatus.LOST, regionCode: 'makkah' },
+        {
+          id: 'lead-makkah-3',
+          status: LeadStatus.VIEWING,
+          regionCode: 'makkah',
+        },
+      ];
+      const contactRows = [
+        { id: 'contact-makkah', regionCode: 'makkah' },
+        { id: 'contact-punjab', regionCode: 'punjab' },
+        { id: 'contact-punjab-2', regionCode: 'punjab' },
       ];
       const unitRows = [
         { id: 'unit-makkah', regionCode: 'makkah' },
@@ -877,6 +944,9 @@ describe('ReportsService', () => {
       function seed() {
         leadRepo.count.mockImplementation((opts: any) =>
           Promise.resolve(rowsMatchingWhere(leadRows, opts?.where).length),
+        );
+        contactRepo.count.mockImplementation((opts: any) =>
+          Promise.resolve(rowsMatchingWhere(contactRows, opts?.where).length),
         );
         unitRepo.count.mockResolvedValue(unitRows.length);
         unitRepo.createQueryBuilder.mockReturnValue(
@@ -900,8 +970,10 @@ describe('ReportsService', () => {
           makkahManager,
         );
 
-        expect(result.totalLeads).toBe(1);
+        expect(result.totalLeads).toBe(3);
+        expect(result.openLeads).toBe(1);
         expect(result.wonLeads).toBe(1);
+        expect(result.totalContacts).toBe(1);
         expect(result.totalUnits).toBe(1);
       });
 
@@ -915,6 +987,8 @@ describe('ReportsService', () => {
         );
 
         expect(result.totalLeads).toBe(0);
+        expect(result.openLeads).toBe(0);
+        expect(result.totalContacts).toBe(0);
         expect(result.totalUnits).toBe(0);
       });
 
@@ -927,7 +1001,9 @@ describe('ReportsService', () => {
           admin,
         );
 
-        expect(result.totalLeads).toBe(3);
+        expect(result.totalLeads).toBe(5);
+        expect(result.openLeads).toBe(2);
+        expect(result.totalContacts).toBe(3);
         expect(result.totalUnits).toBe(2);
       });
 
@@ -942,13 +1018,18 @@ describe('ReportsService', () => {
 
         expect(result).toEqual({
           totalLeads: 0,
+          openLeads: 0,
           wonLeads: 0,
+          totalContacts: 0,
           totalUnits: 0,
+          rentalUnits: 0,
+          occupiedUnits: 0,
           monthlyRevenue: 0,
           activeLeases: 0,
           pendingCheques: 0,
         });
         expect(leadRepo.count).not.toHaveBeenCalled();
+        expect(contactRepo.count).not.toHaveBeenCalled();
         expect(unitRepo.count).not.toHaveBeenCalled();
         expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
       });

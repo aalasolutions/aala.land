@@ -24,12 +24,12 @@
           @delta="Needs action"
         />
         <Nuvo::Stat
-          data-test-kpi="total-leads"
+          data-test-kpi="open-leads"
           @route="leads"
           @variant="secondary"
           @size="lg"
           @label="Active Leads"
-          @value={{format-number @model.kpis.totalLeads}}
+          @value={{format-number @model.kpis.openLeads}}
           @delta="In pipeline"
         />
       </div>
@@ -51,10 +51,10 @@
       </Nuvo::Stat>
 
       <div class="kpi-status">
-        <Nuvo::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
-        <Nuvo::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{if @model.kpis.totalUnits this.occupancyRate 0}}%" />
-        <Nuvo::Stat data-test-kpi="won-leads" @row={{true}} @label="Deals Won" @value={{format-number @model.kpis.wonLeads}} />
         <Nuvo::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
+        <Nuvo::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
+        <Nuvo::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{this.occupancyRate}}%" />
+        <Nuvo::Stat data-test-kpi="total-contacts" @row={{true}} @label="CRM Contacts" @value={{format-number @model.kpis.totalContacts}} />
       </div>
     </div>
   {{else if this.loadFailed}}
