@@ -370,7 +370,7 @@ module('Unit | Controller | cheques', function (hooks) {
       const calls = stubFetch(controller);
       controller.openClear(cheque);
       const { earliest, latest } = controller.clearDateWindow;
-      // One day before earliest takes the `< earliest` arm of the same ||.
+      // A date before earliest takes the `< earliest` arm of the same ||.
       controller.clearedDate = '2019-12-31';
 
       await controller.confirmClear();

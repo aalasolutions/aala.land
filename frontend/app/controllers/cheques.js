@@ -265,10 +265,9 @@ export default class ChequesController extends PaginatedController {
     }
   }
 
-  // Mirrors the server window, resolved in the cheque's own region, not the viewed one.
-  // The same window the server enforces in
-  // backend/src/modules/financial/transaction-date-window.util.ts, applied here
-  // so the input is bounded before a request is made. The server decides.
+  // Mirrors the server window, resolved in the cheque's own region, not the viewed
+  // one: the 30-day limit from transaction-date-window.util.ts and the due and
+  // deposit date floors from cheque-transaction.util.ts. The server decides.
   get clearDateWindow() {
     const cheque = this.clearChequeItem;
     const zone =
@@ -299,7 +298,7 @@ export default class ChequesController extends PaginatedController {
     return 'This cheque has no date that can be recorded as its clearing day.';
   }
 
-  // Read-only context: the day the record was added, and the floor for a deposit date.
+  // Read-only context: the UTC day the record was added, used as the deposit date floor.
   get chequeAddedDate() {
     return toDateOnly(this.clearChequeItem?.createdAt);
   }

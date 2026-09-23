@@ -9,8 +9,9 @@ const CURRENCY_TABLES = [
   'work_orders',
 ];
 
-// A money row's currency comes from its region, decided on create. USD is the
-// column default and the fallback for a region the map does not know.
+// A money row's currency comes from its region, decided on create and again when
+// a cheque, lease or work order moves to another region. USD is the column
+// default and the fallback for a region the map does not know.
 export class MoneyCurrencyAndLeaseRegion1779700000014 implements MigrationInterface {
   name = 'MoneyCurrencyAndLeaseRegion1779700000014';
 

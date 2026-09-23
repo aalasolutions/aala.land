@@ -374,7 +374,8 @@ export class ChequesService {
       );
     }
 
-    // Fields clear() copies onto the transaction; unitId covers regionCode.
+    // Fields clear() copies onto the transaction or checks clearedDate against;
+    // unitId covers regionCode.
     if (cheque.status === ChequeStatus.CLEARED) {
       const amountChanged =
         changes.amount !== undefined &&
@@ -612,7 +613,7 @@ export class ChequesService {
     });
 
     // Re-read of a row this caller just wrote, so it stays unscoped. The fallback
-    // mirrors the SET clause above, which is what the committed row now holds.
+    // carries only the status and reason; the bounce counters stay one read behind.
     const saved = await this.reloadAfterCommit(id, companyId, {
       ...cheque,
       status: ChequeStatus.BOUNCED,
@@ -879,11 +880,8 @@ export class ChequesService {
     await this.notifyAdmins(saved, userId, type, title, message);
   }
 
-  // Past the commit nothing may throw: the caller would read a 500 for a write
-  // that succeeded, and the retry would answer 409. The committed row is the
-  // fallback, one re-read behind but true.
-  // The region predicate remove() applies to its locked read, so every locked
-  // read re-checks the caller's scope rather than trusting the pre-lock one.
+  // Same region predicate remove() builds inline; clear() and unclear() apply it
+  // to their locked read so the caller's scope is re-checked under the lock.
   private lockedRegionWhere(caller?: RegionScope): FindOptionsWhere<Cheque> {
     const scopedCodes = scopedRegionCodes(caller);
     if (scopedCodes?.length === 0) {
@@ -905,6 +903,9 @@ export class ChequesService {
     }
   }
 
+  // Past the commit nothing may throw: the caller would read a 500 for a write
+  // that succeeded, and the retry would answer 409. The committed row is the
+  // fallback, one re-read behind but true.
   private async reloadAfterCommit(
     id: string,
     companyId: string,

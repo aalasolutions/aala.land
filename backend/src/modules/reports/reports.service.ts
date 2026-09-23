@@ -206,7 +206,7 @@ export class ReportsService {
     const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
     const inRegionMonth = `(${moneyDate} >= ${monthStart} AND ${moneyDate} < (${monthStart} + INTERVAL '1 month'))`;
 
-    // Leads and Commissions have direct regionCode; Units still walk the FK chain.
+    // Leads have a direct regionCode.
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
@@ -216,6 +216,7 @@ export class ReportsService {
     let pendingChequesPromise: Promise<number>;
 
     if (regionCodes) {
+      // Units have no region column, so they walk the FK chain to the city.
       totalUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
