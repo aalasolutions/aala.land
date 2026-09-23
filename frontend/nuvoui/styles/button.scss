@@ -182,6 +182,19 @@
     }
   }
 
+  // ---- subtle variants: borderless and muted, the variant colour shows on hover ----
+
+  @each $variant in $nu-variants {
+    &.m-subtle.m-#{$variant} {
+      --nu-btn--Color: var(--text-muted);
+      --nu-btn--BackgroundColor: transparent;
+      --nu-btn--BorderColor: transparent;
+      --nu-btn--hover--Color: var(--#{$variant});
+      --nu-btn--hover--BackgroundColor: #{nu-tint($variant, 12%)};
+      --nu-btn--hover--BorderColor: transparent;
+    }
+  }
+
   // ---- sizes: uniform, so looped ----
 
   $nu-btn-sizes: (

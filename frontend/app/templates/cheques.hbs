@@ -70,9 +70,10 @@
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
-            <div class="flex gap-2">
+            <div class="flex">
               {{#if this.canWriteCheques}}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
                   @icon="pencil-simple"
@@ -89,6 +90,7 @@
                 }}
                   {{#if (eq cell.row.status "PENDING")}}
                     <Nuvo::Button
+                      @subtle={{true}}
                       @variant="success"
                       @size="xs"
                       @icon="bank"
@@ -99,6 +101,7 @@
                     />
                   {{/if}}
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="success"
                     @size="xs"
                     @icon="check-circle"
@@ -108,6 +111,7 @@
                     {{on "click" (fn this.openClear cell.row)}}
                   />
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="danger"
                     @size="xs"
                     data-test-bounce
@@ -119,6 +123,7 @@
                 {{/if}}
                 {{#if (eq cell.row.status "BOUNCED")}}
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
                     @icon="arrows-clockwise"
@@ -132,6 +137,7 @@
                   (and (eq cell.row.status "CLEARED") this.canDeleteCheque)
                 }}
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
                     @icon="arrow-counter-clockwise"
@@ -149,6 +155,7 @@
                   )
                 }}
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
                     @icon="prohibit"
@@ -163,6 +170,7 @@
                 (and this.canDeleteCheque (not (eq cell.row.status "CLEARED")))
               }}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="danger"
                   @size="xs"
                   @icon="trash"

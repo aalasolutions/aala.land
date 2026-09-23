@@ -13,7 +13,7 @@
           >Options</Nuvo::Button>
         </:trigger>
         <:body>
-          <div class="flex col gap-2" data-test-data-table-columns>
+          <div class="flex col" data-test-data-table-columns>
             {{#each this.optionColumns key="key" as |option|}}
               <Nuvo::Checkbox
                 @label={{option.name}}

@@ -41,6 +41,16 @@
       <Nuvo::Button @variant="danger" @outline={{true}} @text="Outline" />
       <Nuvo::Button @variant="success" @outline={{true}} @text="Outline" />
     </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Subtle"
+      @note="No border or fill and a muted colour at rest; the variant colour and a light tint appear on hover. Use it for dense rows of icon actions, such as table-row actions."
+      @code={{this.code.subtle}}
+    >
+      <Nuvo::Button @variant="secondary" @subtle={{true}} @icon="pencil-simple" aria-label="Edit" />
+      <Nuvo::Button @variant="success" @subtle={{true}} @icon="check" aria-label="Approve" />
+      <Nuvo::Button @variant="danger" @subtle={{true}} @icon="trash" aria-label="Delete" />
+    </NuvoDocs::Example>
   </NuvoDocs::Section>
 
   <NuvoDocs::Section @title="Sizes" @id="sizes">

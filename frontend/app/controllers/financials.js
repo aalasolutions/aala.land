@@ -84,6 +84,7 @@ export default class FinancialsController extends PaginatedController {
       width: 110,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

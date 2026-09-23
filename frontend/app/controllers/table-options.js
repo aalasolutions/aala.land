@@ -82,7 +82,7 @@ export default class TableOptionsController extends PaginatedController {
     { name: 'Email', valuePath: 'email', width: 240, editable: 'text' },
     { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
     { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'text' },
-    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false, isResizable: false },
   ];
 
   // TEMP demo columns: every editor type in one table, remove after review.
@@ -92,7 +92,7 @@ export default class TableOptionsController extends PaginatedController {
     { name: 'Email', valuePath: 'email', width: 240, editable: 'search', onSearch: (term) => this.searchContacts(term), labelKey: 'displayName' },
     { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
     { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'select', options: ['شركة الرشيدي للعقارات', 'مؤسسة النور', 'مجموعة العتيبي القابضة للاستثمار'] },
-    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false, isResizable: false },
   ];
 
   @action saveDemoCell(row, key, value) {

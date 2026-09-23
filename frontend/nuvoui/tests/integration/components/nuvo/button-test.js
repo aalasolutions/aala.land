@@ -20,6 +20,15 @@ module('Integration | Component | nuvo/button', function (hooks) {
     assert.dom('.nu-btn__label').hasText('Send');
   });
 
+  test('@subtle adds m-subtle alongside the variant class', async function (assert) {
+    await render(
+      hbs`<Nuvo::Button @variant="danger" @subtle={{true}} @icon="trash" />`,
+    );
+
+    assert.dom('.nu-btn').hasClass('m-danger');
+    assert.dom('.nu-btn').hasClass('m-subtle');
+  });
+
   test('an icon-only self-closing button renders NO label span', async function (assert) {
     await render(hbs`<Nuvo::Button @variant="secondary" @icon="trash" />`);
 

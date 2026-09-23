@@ -116,6 +116,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       width: 150,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

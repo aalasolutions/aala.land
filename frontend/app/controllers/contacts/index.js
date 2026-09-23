@@ -53,7 +53,7 @@ export default class ContactsIndexController extends PaginatedController {
     { name: 'Email', valuePath: 'email', width: 240 },
     { name: 'Phone', valuePath: 'phone', width: 190 },
     { name: 'Company', valuePath: 'contactCompany', width: 170 },
-    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+    { name: 'Actions', valuePath: 'id', width: 100, isFixed: 'right', isSortable: false, isResizable: false },
   ];
 
   resetState() {

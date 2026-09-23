@@ -46,6 +46,7 @@ export default class ContactsDetailController extends Controller {
       width: 120,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

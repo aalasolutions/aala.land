@@ -128,6 +128,7 @@ export default class PropertiesDetailController extends Controller {
       width: 170,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

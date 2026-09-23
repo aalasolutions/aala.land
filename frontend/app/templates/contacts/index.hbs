@@ -173,14 +173,15 @@
           {{/if}}
         {{else if (eq cell.key "id")}}
           <Nuvo::Button
+            @subtle={{true}}
             @variant="secondary"
             @size="xs"
             @icon="pencil-simple"
+            aria-label="Edit {{cell.row.displayName}}"
+            data-tooltip="Edit"
             data-test-edit-contact
             {{on "click" (fn this.openEdit cell.row)}}
-          >
-            Edit
-          </Nuvo::Button>
+          />
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}

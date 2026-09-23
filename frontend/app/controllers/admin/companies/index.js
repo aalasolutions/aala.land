@@ -47,9 +47,10 @@ export default class AdminCompaniesIndexController extends Controller {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 110,
+      width: 100,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

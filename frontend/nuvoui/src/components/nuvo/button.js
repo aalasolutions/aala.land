@@ -30,6 +30,9 @@ export default class NuButtonComponent extends Component {
     if (this.args.outline) {
       parts.push('m-outline');
     }
+    if (this.args.subtle) {
+      parts.push('m-subtle');
+    }
     if (this.args.block) {
       parts.push('is-block');
     }

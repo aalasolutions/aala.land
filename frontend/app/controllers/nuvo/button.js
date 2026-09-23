@@ -53,6 +53,8 @@ export default class NuvoButtonController extends Controller {
     outline: `<Nuvo::Button @variant="primary" @outline={{true}} @text="Outline" />
 <Nuvo::Button @variant="danger" @outline={{true}} @text="Outline" />
 <Nuvo::Button @variant="success" @outline={{true}} @text="Outline" />`,
+    subtle: `<Nuvo::Button @variant="secondary" @subtle={{true}} @icon="pencil-simple" aria-label="Edit" />
+<Nuvo::Button @variant="danger" @subtle={{true}} @icon="trash" aria-label="Delete" />`,
     square: `<Nuvo::Button @variant="primary" @shape="square" @icon="plus" aria-label="Add" />`,
     circle: `<Nuvo::Button @variant="secondary" @shape="circle" @icon="x" aria-label="Close" />`,
     iconStart: `<Nuvo::Button @variant="primary" @icon="plus" @text="Add unit" />`,
@@ -104,6 +106,7 @@ export default class NuvoButtonController extends Controller {
     { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height and padding step. Omit for the default size.' },
     { name: '@shape', type: '"square" | "circle"', default: '', description: 'Icon-only shape. The label is dropped, so pass aria-label.' },
     { name: '@outline', type: 'boolean', default: 'false', description: 'Transparent fill with a variant-coloured border.' },
+    { name: '@subtle', type: 'boolean', default: 'false', description: 'No border or fill, muted at rest; the variant colour and a light tint appear on hover.' },
     { name: '@block', type: 'boolean', default: 'false', description: 'Full-width display (is-block). The docs demo passes the class instead because the project template-lint reserves the argument name.' },
     { name: '@active', type: 'boolean', default: 'false', description: 'Pressed appearance for toggles and selected group members.' },
     { name: '@loading', type: 'boolean', default: 'false', description: 'Swaps the icon for a spinning loading icon and disables the button.' },

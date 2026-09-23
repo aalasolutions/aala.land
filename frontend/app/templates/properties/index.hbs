@@ -76,11 +76,15 @@
         {{else if (eq cell.key "id")}}
           <Nuvo::Button
             data-test-view-locality
+            @subtle={{true}}
             @variant="primary"
             @size="xs"
+            @icon="eye"
             @route="properties.detail"
             @model={{cell.value}}
-          >View</Nuvo::Button>
+            aria-label="View {{cell.row.name}}"
+            data-tooltip="View"
+          />
         {{else}}
           {{cell.value}}
         {{/if}}

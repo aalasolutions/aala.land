@@ -42,21 +42,25 @@
             / 5
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <div class="flex gap-2">
+          <div class="flex">
             <Nuvo::Button
               data-test-edit-vendor
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
               @icon="pencil-simple"
+              aria-label="Edit {{cell.row.name}}"
+              data-tooltip="Edit"
               {{on "click" (fn this.openEdit cell.row)}}
-            >
-              Edit
-            </Nuvo::Button>
+            />
             <Nuvo::Button
               data-test-delete-vendor
+              @subtle={{true}}
               @variant="danger"
               @size="xs"
               @icon="trash"
+              aria-label="Delete {{cell.row.name}}"
+              data-tooltip="Delete"
               {{on "click" (fn this.openDelete cell.row)}}
             />
           </div>

@@ -55,9 +55,10 @@ export default class DocumentsController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 240,
+      width: 130,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

@@ -79,6 +79,7 @@ export default class PropertiesUnitController extends Controller {
       width: 240,
       isFixed: 'right',
       isSortable: false,
+      isResizable: false,
     },
   ];
 

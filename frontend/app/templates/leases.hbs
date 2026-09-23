@@ -152,9 +152,10 @@
         {{else if (eq cell.key "tenancyRegistrationRef")}}
           <span class="text-muted">{{or cell.value "-"}}</span>
         {{else if (eq cell.key "id")}}
-          <div class="flex gap-2 wrap">
+          <div class="flex">
             {{#if this.canViewHistory}}
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
                 @icon="clock-counter-clockwise"
@@ -162,6 +163,7 @@
                   cell.row.contact.displayName
                   'Unknown tenant'
                 }}"
+                data-tooltip="History"
                 data-test-lease-history
                 {{on "click" (fn this.openHistory cell.row)}}
               />
@@ -170,62 +172,69 @@
               {{#if this.canArchiveLease}}
                 <Nuvo::Button
                   data-test-unarchive-lease
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
                   @icon="arrow-counter-clockwise"
+                  aria-label="Unarchive lease for {{cell.row.contact.displayName}}"
+                  data-tooltip="Unarchive"
                   {{on "click" (fn this.openArchive cell.row "unarchive")}}
-                >
-                  Unarchive
-                </Nuvo::Button>
+                />
               {{/if}}
             {{else}}
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
                 @icon="pencil-simple"
+                aria-label="Edit lease for {{cell.row.contact.displayName}}"
+                data-tooltip="Edit"
                 data-test-edit-lease
                 {{on "click" (fn this.openEdit cell.row)}}
-              >
-                Edit
-              </Nuvo::Button>
+              />
               {{#if (eq cell.row.status "ACTIVE")}}
                 <Nuvo::Button
                   data-test-renew-lease
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
                   @icon="arrows-clockwise"
+                  aria-label="Renew lease for {{cell.row.contact.displayName}}"
+                  data-tooltip="Renew"
                   {{on "click" (fn this.renewLease cell.row)}}
-                >
-                  Renew
-                </Nuvo::Button>
+                />
                 <Nuvo::Button
                   data-test-terminate-lease
+                  @subtle={{true}}
                   @variant="danger"
                   @size="xs"
                   @icon="x-circle"
+                  aria-label="Terminate lease for {{cell.row.contact.displayName}}"
+                  data-tooltip="Terminate"
                   {{on "click" (fn this.openTerminate cell.row)}}
-                >
-                  Terminate
-                </Nuvo::Button>
+                />
               {{/if}}
               {{#if (eq cell.row.status "EXPIRED")}}
                 <Nuvo::Button
                   data-test-renew-lease
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
                   @icon="arrows-clockwise"
+                  aria-label="Renew lease for {{cell.row.contact.displayName}}"
+                  data-tooltip="Renew"
                   {{on "click" (fn this.renewLease cell.row)}}
-                >
-                  Renew
-                </Nuvo::Button>
+                />
               {{/if}}
               {{#if (eq cell.row.status "DRAFT")}}
                 {{#if this.canDeleteLease}}
                   <Nuvo::Button
+                    @subtle={{true}}
                     @variant="danger"
                     @size="xs"
                     @icon="trash"
                     aria-label="Delete lease for {{cell.row.contact.displayName}}"
+                    data-tooltip="Delete"
                     data-test-delete-lease
                     {{on "click" (fn this.openDelete cell.row)}}
                   />
@@ -234,13 +243,14 @@
                 {{#unless (eq cell.row.status "ACTIVE")}}
                   <Nuvo::Button
                     data-test-archive-lease
+                    @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
                     @icon="archive"
+                    aria-label="Archive lease for {{cell.row.contact.displayName}}"
+                    data-tooltip="Archive"
                     {{on "click" (fn this.openArchive cell.row "archive")}}
-                  >
-                    Archive
-                  </Nuvo::Button>
+                  />
                 {{/unless}}
               {{/if}}
             {{/if}}

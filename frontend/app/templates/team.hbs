@@ -76,79 +76,73 @@
             <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <div class="flex gap-2">
+          <div class="flex">
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
               @icon="pencil-simple"
+              aria-label="Edit {{cell.row.name}}"
+              data-tooltip="Edit"
               data-test-edit-user
               {{on "click" (fn this.openEdit cell.row)}}
-            >
-              Edit
-            </Nuvo::Button>
+            />
             {{! Removal needs a company context; backend rejects users with no companyId. }}
             {{#if cell.row.companyId}}
               {{#if cell.row.isActive}}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="danger"
                   @size="xs"
                   @icon="user-minus"
+                  aria-label="Remove {{cell.row.name}}"
+                  data-tooltip="Remove"
                   data-test-remove-user
                   {{on "click" (fn this.openRemove cell.row)}}
-                >
-                  Remove
-                </Nuvo::Button>
+                />
               {{else}}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
                   @icon="user-plus"
+                  @loading={{eq this.reactivatingUserId cell.row.id}}
                   @disabled={{this.isReactivating}}
+                  aria-label="Reactivate {{cell.row.name}}"
+                  data-tooltip="Reactivate"
                   data-test-reactivate-user
                   {{on "click" (fn this.openReactivate cell.row)}}
-                >
-                  {{if
-                    (eq this.reactivatingUserId cell.row.id)
-                    "Reactivating..."
-                    "Reactivate"
-                  }}
-                </Nuvo::Button>
+                />
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="danger"
                   @size="xs"
                   @icon="trash"
+                  aria-label="Delete {{cell.row.name}}"
+                  data-tooltip="Delete"
                   data-test-delete-user
                   {{on "click" (fn this.openRemove cell.row)}}
-                >
-                  Delete
-                </Nuvo::Button>
+                />
               {{/if}}
             {{/if}}
             {{#if this.isSuperAdmin}}
               {{#unless (eq cell.row.role "super_admin")}}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
-                  @icon={{if
-                    (eq this.impersonatingUserId cell.row.id)
-                    "↻"
-                    "⇄"
-                  }}
+                  @icon="user-switch"
                   @loading={{eq this.impersonatingUserId cell.row.id}}
                   @disabled={{or
                     (eq cell.row.isActive false)
                     this.isImpersonating
                     (eq this.impersonatingUserId cell.row.id)
                   }}
+                  aria-label="Impersonate {{cell.row.name}}"
+                  data-tooltip="Impersonate"
                   data-test-impersonate-user
                   {{on "click" (fn this.impersonateUser cell.row)}}
-                >
-                  {{if
-                    (eq this.impersonatingUserId cell.row.id)
-                    "Impersonating..."
-                    "Impersonate"
-                  }}
-                </Nuvo::Button>
+                />
               {{/unless}}
             {{/if}}
           </div>

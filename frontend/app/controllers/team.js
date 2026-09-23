@@ -76,9 +76,10 @@ export default class TeamController extends PaginatedController {
       {
         name: 'Actions',
         valuePath: 'id',
-        width: 400,
+        width: 160,
         isFixed: 'right',
         isSortable: false,
+        isResizable: false,
       },
     ];
   }

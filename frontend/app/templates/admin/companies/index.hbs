@@ -96,12 +96,15 @@
         </span>
       {{else if (eq cell.key "id")}}
         <Nuvo::Button
+          @subtle={{true}}
           @variant="secondary"
           @size="xs"
           @icon="caret-right"
+          aria-label="Open {{cell.row.name}}"
+          data-tooltip="Open"
           data-test-companies-open={{cell.row.id}}
           {{on "click" (fn this.openCompany cell.row)}}
-        >Open</Nuvo::Button>
+        />
       {{else}}
         {{cell.value}}
       {{/if}}

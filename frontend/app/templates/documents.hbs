@@ -160,8 +160,9 @@
         {{else if (eq cell.key "createdAt")}}
           <span class="text-sm text-muted">{{format-date cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <div class="flex gap-2">
+          <div class="flex">
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
               aria-label="Download {{cell.row.name}}"
@@ -171,6 +172,7 @@
               {{on "click" (fn this.downloadDocument cell.row)}}
             />
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
               aria-label="Edit {{cell.row.name}}"
@@ -180,6 +182,7 @@
               {{on "click" (fn this.openEdit cell.row)}}
             />
             <Nuvo::Button
+              @subtle={{true}}
               @variant="danger"
               @size="xs"
               aria-label="Delete {{cell.row.name}}"

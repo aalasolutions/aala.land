@@ -119,26 +119,28 @@
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
-            <div class="flex gap-2">
+            <div class="flex">
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
                 @icon="pencil-simple"
+                aria-label="Edit {{cell.row.title}}"
+                data-tooltip="Edit"
                 data-test-edit-work-order
                 {{on "click" (fn this.openEdit cell.row)}}
-              >
-                Edit
-              </Nuvo::Button>
+              />
               {{#if (this.canDeleteWorkOrder cell.row)}}
                 <Nuvo::Button
+                  @subtle={{true}}
                   @variant="danger"
                   @size="xs"
                   @icon="trash"
+                  aria-label="Delete {{cell.row.title}}"
+                  data-tooltip="Delete"
                   data-test-delete-work-order
                   {{on "click" (fn this.openDelete cell.row)}}
-                >
-                  Delete
-                </Nuvo::Button>
+                />
               {{/if}}
             </div>
           {{else}}

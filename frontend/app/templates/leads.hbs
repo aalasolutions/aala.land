@@ -386,22 +386,28 @@
         {{else if (eq cell.key "createdAt")}}
           <span class="text-xs text-muted">{{format-date cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <Nuvo::BtnGroup @attached={{true}}>
+          <div class="flex">
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
+              @icon="pencil-simple"
+              aria-label="Edit lead {{cell.row.contact.displayName}}"
+              data-tooltip="Edit"
+              data-test-edit-lead
               {{on "click" (fn this.openEdit cell.row)}}
-            >
-              Edit
-            </Nuvo::Button>
+            />
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
+              @icon="user-switch"
+              aria-label="Assign lead {{cell.row.contact.displayName}}"
+              data-tooltip="Assign"
+              data-test-assign-lead
               {{on "click" (fn this.openAssignModal cell.row)}}
-            >
-              Assign
-            </Nuvo::Button>
-          </Nuvo::BtnGroup>
+            />
+          </div>
         {{else}}
           {{cell.value}}
         {{/if}}

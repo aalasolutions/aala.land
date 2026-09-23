@@ -205,13 +205,15 @@
             <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
           {{else}}
             <Nuvo::Button
+              @subtle={{true}}
               @variant="secondary"
               @size="xs"
               @icon="pencil-simple"
+              aria-label="Edit {{cell.row.description}}"
+              data-tooltip="Edit"
+              data-test-edit-transaction
               {{on "click" (fn this.openEdit cell.row)}}
-            >
-              Edit
-            </Nuvo::Button>
+            />
           {{/if}}
         {{else}}
           {{cell.value}}

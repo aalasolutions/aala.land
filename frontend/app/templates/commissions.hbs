@@ -69,46 +69,50 @@
           />
         {{else if (eq cell.key "id")}}
           {{#if (eq cell.row.status "PENDING")}}
-            <div class="flex gap-2">
+            <div class="flex">
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="primary"
                 @size="xs"
                 data-test-approve-btn
                 @icon="check"
+                aria-label="Approve commission"
+                data-tooltip="Approve"
                 {{on "click" (fn this.approveCommission cell.row)}}
-              >
-                Approve
-              </Nuvo::Button>
+              />
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
                 @icon="prohibit"
+                aria-label="Cancel commission"
+                data-tooltip="Cancel commission"
                 data-test-cancel-commission
                 {{on "click" (fn this.openCancel cell.row)}}
-              >
-                Cancel commission
-              </Nuvo::Button>
+              />
             </div>
           {{else if (eq cell.row.status "APPROVED")}}
-            <div class="flex gap-2">
+            <div class="flex">
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="primary"
                 @size="xs"
                 data-test-pay-btn
                 @icon="currency-dollar"
+                aria-label="Mark commission paid"
+                data-tooltip="Mark Paid"
                 {{on "click" (fn this.payCommission cell.row)}}
-              >
-                Mark Paid
-              </Nuvo::Button>
+              />
               <Nuvo::Button
+                @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
                 @icon="prohibit"
+                aria-label="Cancel commission"
+                data-tooltip="Cancel commission"
                 data-test-cancel-commission
                 {{on "click" (fn this.openCancel cell.row)}}
-              >
-                Cancel commission
-              </Nuvo::Button>
+              />
             </div>
           {{else if (eq cell.row.status "PAID")}}
             <span class="text-xs text-muted">
