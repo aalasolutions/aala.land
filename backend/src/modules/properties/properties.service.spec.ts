@@ -38,6 +38,7 @@ import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
+import { RedisService } from '../redis/redis.service';
 
 // A conditional object spread widens past FindOptionsWhere<Asset>, so only
 // the entity metadata can catch a wrong `where` key.
@@ -91,6 +92,7 @@ describe('PropertiesService', () => {
   let dataSource: { transaction: jest.Mock };
   let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
+  let redis: { getOrSetJson: jest.Mock; forget: jest.Mock };
   let events: string[];
 
   // A query-builder chain mock matching findAllUnits' fluent calls.
@@ -187,12 +189,18 @@ describe('PropertiesService', () => {
       }),
     };
 
+    redis = {
+      getOrSetJson: jest.fn((_key, _ttl, load: () => unknown) => load()),
+      forget: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PropertiesService,
         { provide: DataSource, useValue: dataSource },
         { provide: RecordHistoryService, useValue: recordHistory },
         { provide: StoragePurgeService, useValue: storagePurge },
+        { provide: RedisService, useValue: redis },
         {
           provide: getRepositoryToken(Asset),
           useValue: createRepositoryMock<Asset>(),
@@ -295,6 +303,92 @@ describe('PropertiesService', () => {
       });
 
       expect(result).toEqual(duplicate);
+    });
+  });
+
+  describe('asset picker cache', () => {
+    const regionRow = [{ regionCode: 'makkah' }];
+
+    it('lists a locality through the cache with only picker fields', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue(regionRow);
+      assetRepo.find.mockResolvedValue([
+        { id: 'a1', name: 'Bay', address: null },
+      ] as Asset[]);
+
+      const result = await service.listLocalityAssets('loc-1', {
+        role: Role.AGENT,
+        regionCodes: ['makkah'],
+      });
+
+      expect(redis.getOrSetJson.mock.calls[0][0]).toBe('ref:assets:loc-1');
+      expect(assetRepo.find).toHaveBeenCalledWith({
+        where: { localityId: 'loc-1' },
+        select: { id: true, name: true, address: true },
+        order: { name: 'ASC' },
+      });
+      expect(result).toEqual([{ id: 'a1', name: 'Bay', address: null }]);
+    });
+
+    it('returns nothing to a caller outside the locality region', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue(regionRow);
+      assetRepo.find.mockResolvedValue([{ id: 'a1', name: 'Bay' }] as Asset[]);
+
+      const result = await service.listLocalityAssets('loc-1', {
+        role: Role.AGENT,
+        regionCodes: ['punjab'],
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns nothing for an unknown locality', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue([]);
+      assetRepo.find.mockResolvedValue([]);
+
+      const result = await service.listLocalityAssets('loc-x', {
+        role: Role.COMPANY_ADMIN,
+        regionCodes: [],
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('clears the locality list when an asset is created', async () => {
+      assetRepo.findOne.mockResolvedValueOnce(null);
+      assetRepo.create.mockReturnValue(mockAsset as Asset);
+      assetRepo.save.mockResolvedValue(mockAsset as Asset);
+
+      await service.createAsset(companyId, {
+        name: 'Bay Tower',
+        localityId: 'locality-uuid-1',
+      });
+
+      expect(redis.forget).toHaveBeenCalledWith('ref:assets:locality-uuid-1');
+    });
+
+    it('does not clear the list when the asset already exists', async () => {
+      assetRepo.findOne.mockResolvedValue(mockAsset as Asset);
+
+      await service.createAsset(companyId, {
+        name: 'Bay Tower',
+        localityId: 'locality-uuid-1',
+      });
+
+      expect(redis.forget).not.toHaveBeenCalled();
+    });
+
+    it('clears the locality list when an asset is renamed', async () => {
+      assetRepo.findOne
+        .mockResolvedValueOnce({
+          ...mockAsset,
+          localityId: 'locality-uuid-1',
+        } as Asset)
+        .mockResolvedValueOnce(null);
+      assetRepo.save.mockImplementation(async (v) => v as Asset);
+
+      await service.updateAsset('asset-uuid-1', { name: 'New Name' });
+
+      expect(redis.forget).toHaveBeenCalledWith('ref:assets:locality-uuid-1');
     });
   });
 
@@ -1587,6 +1681,15 @@ describe('PropertiesService', () => {
         });
         expect(storagePurge.purge).not.toHaveBeenCalled();
         expect(manager.delete).not.toHaveBeenCalled();
+      });
+
+      it('clears the locality list after the asset is deleted', async () => {
+        manager.findOne.mockResolvedValue({ ...asset, localityId: 'loc-9' });
+        manager.find.mockResolvedValue([]);
+
+        await service.removeAsset('asset-uuid-1', 'Duplicate', actorId);
+
+        expect(redis.forget).toHaveBeenCalledWith('ref:assets:loc-9');
       });
 
       it('purges files across companies, records global history, removes the asset', async () => {

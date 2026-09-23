@@ -9,12 +9,14 @@ import { SearchCityDto } from './dto/search-city.dto';
 import { SearchLocalityDto } from './dto/search-locality.dto';
 import { CreateCityDto } from './dto/create-city.dto';
 import { CreateLocalityDto } from './dto/create-locality.dto';
+import { RedisService } from '../redis/redis.service';
 
 describe('LocationsService', () => {
   let service: LocationsService;
   let cityRepo: jest.Mocked<Repository<City>>;
   let localityRepo: jest.Mocked<Repository<Locality>>;
   let dataSource: { query: jest.Mock };
+  let redis: { getOrSetJson: jest.Mock; forget: jest.Mock };
 
   const mockCity: City = {
     id: 'city-uuid-1',
@@ -63,6 +65,13 @@ describe('LocationsService', () => {
             query: jest.fn(),
           },
         },
+        {
+          provide: RedisService,
+          useValue: {
+            getOrSetJson: jest.fn((_key, _ttl, load: () => unknown) => load()),
+            forget: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -70,6 +79,61 @@ describe('LocationsService', () => {
     cityRepo = module.get(getRepositoryToken(City));
     localityRepo = module.get(getRepositoryToken(Locality));
     dataSource = module.get(DataSource);
+    redis = module.get(RedisService);
+  });
+
+  describe('reference list cache', () => {
+    it('serves cities per region through the cache', async () => {
+      cityRepo.find.mockResolvedValue([]);
+
+      await service.getCitiesByRegion('makkah');
+
+      expect(redis.getOrSetJson.mock.calls[0][0]).toBe('ref:cities:makkah');
+      expect(cityRepo.find).toHaveBeenCalledWith({
+        where: { regionCode: 'makkah' },
+        order: { name: 'ASC' },
+      });
+    });
+
+    it('serves localities per city through the cache', async () => {
+      localityRepo.find.mockResolvedValue([]);
+
+      await service.getLocalitiesByCity('city-1');
+
+      expect(redis.getOrSetJson.mock.calls[0][0]).toBe('ref:localities:city-1');
+    });
+
+    it('clears the region list when a city is created', async () => {
+      cityRepo.findOne.mockResolvedValue(null);
+      cityRepo.create.mockImplementation((v) => v as City);
+      cityRepo.save.mockImplementation(async (v) => v as City);
+
+      await service.createCity({ name: 'Taif', regionCode: 'makkah' }, 'co-1');
+
+      expect(redis.forget).toHaveBeenCalledWith('ref:cities:makkah');
+    });
+
+    it('clears the city list when a locality is created', async () => {
+      cityRepo.findOne.mockResolvedValue({ id: 'city-1' } as City);
+      localityRepo.findOne.mockResolvedValue(null);
+      localityRepo.create.mockImplementation((v) => v as Locality);
+      localityRepo.save.mockImplementation(async (v) => v as Locality);
+
+      await service.createLocality(
+        { name: 'Aziziyah', cityId: 'city-1' },
+        'co-1',
+      );
+
+      expect(redis.forget).toHaveBeenCalledWith('ref:localities:city-1');
+    });
+
+    it('does not clear anything when the city already exists', async () => {
+      cityRepo.findOne.mockResolvedValue({ id: 'c1' } as City);
+
+      await service.createCity({ name: 'Taif', regionCode: 'makkah' }, 'co-1');
+
+      expect(redis.forget).not.toHaveBeenCalled();
+    });
   });
 
   it('should be defined', () => {

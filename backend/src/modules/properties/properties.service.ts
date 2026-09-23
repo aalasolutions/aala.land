@@ -42,6 +42,8 @@ import {
 } from '../../shared/utils/contact.util';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
+import { RedisService } from '../redis/redis.service';
+import { REFERENCE_CACHE_TTL_MS } from '../locations/locations.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import {
@@ -83,6 +85,14 @@ function parseOptionalInt(value: string | undefined): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+export const assetsCacheKey = (localityId: string) =>
+  `ref:assets:${localityId}`;
+
+interface LocalityAssetList {
+  regionCode: string | null;
+  assets: Pick<Asset, 'id' | 'name' | 'address'>[];
+}
+
 // Whitelist: nothing user-supplied ever reaches ORDER BY.
 const UNIT_SORT_COLUMNS: Record<string, string[]> = {
   name: ['a.name', 'u.unitNumber'],
@@ -106,6 +116,7 @@ export class PropertiesService {
     private readonly dataSource: DataSource,
     private readonly recordHistory: RecordHistoryService,
     private readonly storagePurge: StoragePurgeService,
+    private readonly redis: RedisService,
   ) {}
 
   async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
@@ -128,7 +139,9 @@ export class PropertiesService {
       createdByCompanyId: companyId,
     });
     try {
-      return await this.assetRepository.save(asset);
+      const saved = await this.assetRepository.save(asset);
+      await this.redis.forget(assetsCacheKey(dto.localityId));
+      return saved;
     } catch (error) {
       if (isUniqueViolation(error)) {
         const duplicate = await this.findAssetByNormalizedName(
@@ -216,6 +229,39 @@ export class PropertiesService {
     }));
 
     return { data: filtered, total, page, limit };
+  }
+
+  // Shared picker list, cached per locality; the region check reads the cached region, not the DB.
+  async listLocalityAssets(
+    localityId: string,
+    user?: { role: string; regionCodes: string[] },
+  ): Promise<LocalityAssetList['assets']> {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0) return [];
+
+    const list = await this.redis.getOrSetJson<LocalityAssetList>(
+      assetsCacheKey(localityId),
+      REFERENCE_CACHE_TTL_MS,
+      async () => {
+        const [region] = await this.assetRepository.query(
+          `SELECT ci.region_code AS "regionCode"
+             FROM localities loc
+             INNER JOIN cities ci ON ci.id = loc.city_id
+            WHERE loc.id = $1`,
+          [localityId],
+        );
+        const assets = await this.assetRepository.find({
+          where: { localityId },
+          select: { id: true, name: true, address: true },
+          order: { name: 'ASC' },
+        });
+        return { regionCode: region?.regionCode ?? null, assets };
+      },
+    );
+
+    if (!list.regionCode) return [];
+    if (scopedCodes && !scopedCodes.includes(list.regionCode)) return [];
+    return list.assets;
   }
 
   // Assets are shared across companies, so search is not company-scoped.
@@ -327,7 +373,9 @@ export class PropertiesService {
     }
 
     try {
-      return await this.assetRepository.save(asset);
+      const saved = await this.assetRepository.save(asset);
+      await this.redis.forget(assetsCacheKey(asset.localityId));
+      return saved;
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new ConflictException('Asset already exists in this locality');
@@ -343,12 +391,14 @@ export class PropertiesService {
     reason: string,
     actorId: string,
   ): Promise<void> {
+    let localityId: string | undefined;
     const purgeIds = await this.dataSource.transaction(async (manager) => {
       const asset = await manager.findOne(Asset, {
         where: { id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!asset) throw new NotFoundException(`Asset not found`);
+      localityId = asset.localityId;
 
       const unitCount = await manager.count(Unit, { where: { assetId: id } });
       if (unitCount > 0) {
@@ -378,6 +428,7 @@ export class PropertiesService {
       await manager.delete(Asset, { id });
       return ids;
     });
+    if (localityId) await this.redis.forget(assetsCacheKey(localityId));
     void this.storagePurge.dispatch(purgeIds);
   }
 

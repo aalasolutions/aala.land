@@ -20,6 +20,13 @@ import {
 } from '../../shared/utils/name-normalization.util';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
+import { RedisService } from '../redis/redis.service';
+
+export const REFERENCE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+export const citiesCacheKey = (regionCode: string) =>
+  `ref:cities:${regionCode}`;
+export const localitiesCacheKey = (cityId: string) =>
+  `ref:localities:${cityId}`;
 
 export interface CitySearchResult {
   id: string;
@@ -44,6 +51,7 @@ export class LocationsService {
     @InjectRepository(Locality)
     private readonly localityRepository: Repository<Locality>,
     private readonly dataSource: DataSource,
+    private readonly redis: RedisService,
   ) {}
 
   async searchCities(dto: SearchCityDto): Promise<CitySearchResult[]> {
@@ -126,7 +134,9 @@ export class LocationsService {
       createdByCompanyId: companyId,
     });
     try {
-      return await this.cityRepository.save(city);
+      const saved = await this.cityRepository.save(city);
+      await this.redis.forget(citiesCacheKey(dto.regionCode));
+      return saved;
     } catch (error) {
       if (isUniqueViolation(error)) {
         const duplicate = await this.cityRepository.findOne({
@@ -175,7 +185,9 @@ export class LocationsService {
       createdByCompanyId: companyId,
     });
     try {
-      return await this.localityRepository.save(locality);
+      const saved = await this.localityRepository.save(locality);
+      await this.redis.forget(localitiesCacheKey(dto.cityId));
+      return saved;
     } catch (error) {
       if (isUniqueViolation(error)) {
         const duplicate = await this.localityRepository.findOne({
@@ -194,17 +206,27 @@ export class LocationsService {
   }
 
   async getCitiesByRegion(regionCode: string): Promise<City[]> {
-    return this.cityRepository.find({
-      where: { regionCode },
-      order: { name: 'ASC' },
-    });
+    return this.redis.getOrSetJson(
+      citiesCacheKey(regionCode),
+      REFERENCE_CACHE_TTL_MS,
+      () =>
+        this.cityRepository.find({
+          where: { regionCode },
+          order: { name: 'ASC' },
+        }),
+    );
   }
 
   async getLocalitiesByCity(cityId: string): Promise<Locality[]> {
-    return this.localityRepository.find({
-      where: { cityId },
-      order: { name: 'ASC' },
-    });
+    return this.redis.getOrSetJson(
+      localitiesCacheKey(cityId),
+      REFERENCE_CACHE_TTL_MS,
+      () =>
+        this.localityRepository.find({
+          where: { cityId },
+          order: { name: 'ASC' },
+        }),
+    );
   }
 
   async getCompanyLocalities(

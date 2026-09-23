@@ -1,10 +1,47 @@
 import Component from '@glimmer/component';
+import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { modifier } from 'ember-modifier';
+import { fuzzyFilter } from '../utils/fuzzy-match';
 
 // URL transport for Nuvo::Autocomplete: the kit owns the UI, the app owns fetching.
+// @listUrl preloads the whole list and filters it locally; @searchUrl queries per keystroke.
 export default class RemoteAutocompleteComponent extends Component {
   @service auth;
+
+  @tracked listItems = null;
+  @tracked listFailed = false;
+  listUrl = null;
+
+  filter = fuzzyFilter;
+
+  loadList = modifier((element, [url]) => {
+    this.fetchList(url);
+  });
+
+  async fetchList(url) {
+    this.listUrl = url;
+    if (!url) {
+      this.listItems = null;
+      return;
+    }
+    try {
+      const result = await this.auth.fetchJson(url);
+      if (this.listUrl !== url) return;
+      const payload = result?.data ?? result ?? [];
+      this.listItems = Array.isArray(payload) ? payload : [];
+      this.listFailed = false;
+    } catch {
+      // A failed preload falls back to per-keystroke @searchUrl.
+      if (this.listUrl === url) this.listFailed = true;
+    }
+  }
+
+  get options() {
+    if (!this.args.listUrl || this.listFailed) return undefined;
+    return this.listItems ?? [];
+  }
 
   get searchParam() {
     return this.args.searchParam ?? 'q';
@@ -32,6 +69,14 @@ export default class RemoteAutocompleteComponent extends Component {
       method: 'POST',
       body: JSON.stringify({ name: term, ...this.args.createPayload }),
     });
-    return result.data ?? result;
+    const created = result.data ?? result;
+    if (
+      created &&
+      this.listItems &&
+      !this.listItems.some((i) => i.id === created.id)
+    ) {
+      this.listItems = [...this.listItems, created];
+    }
+    return created;
   }
 }

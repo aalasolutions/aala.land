@@ -43,6 +43,41 @@ describe('RedisService', () => {
     service = new RedisService();
   });
 
+  describe('getOrSetJson', () => {
+    it('returns a cache hit without loading', async () => {
+      mockClient.get.mockResolvedValueOnce(JSON.stringify([1]));
+      const load = jest.fn();
+
+      expect(await service.getOrSetJson('k', 1000, load)).toEqual([1]);
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it('loads and stores on a miss', async () => {
+      mockClient.get.mockResolvedValueOnce(null);
+      mockClient.set.mockResolvedValueOnce('OK');
+
+      expect(await service.getOrSetJson('k', 1000, async () => [2])).toEqual([
+        2,
+      ]);
+      expect(mockClient.set).toHaveBeenCalledWith('k', '[2]', 'PX', 1000);
+    });
+
+    it('falls back to the loader when the cache is down', async () => {
+      mockClient.get.mockRejectedValueOnce(new Error('down'));
+      mockClient.set.mockRejectedValueOnce(new Error('down'));
+
+      expect(await service.getOrSetJson('k', 1000, async () => [3])).toEqual([
+        3,
+      ]);
+    });
+
+    it('forget swallows a cache outage', async () => {
+      mockClient.del.mockRejectedValueOnce(new Error('down'));
+
+      await expect(service.forget('k')).resolves.toBeUndefined();
+    });
+  });
+
   describe('lock primitives', () => {
     it('tryLock takes the key only when it does not exist', async () => {
       mockClient.set.mockResolvedValueOnce('OK');

@@ -176,6 +176,12 @@ export default class PropertiesDetailController extends Controller {
     return this.region.regionCode ? '/locations/cities/search' : null;
   }
 
+  get cityListUrl() {
+    return this.region.regionCode
+      ? `/locations/cities/${this.region.regionCode}`
+      : null;
+  }
+
   get cityCreatePayload() {
     return { regionCode: this.region.regionCode };
   }
@@ -183,6 +189,12 @@ export default class PropertiesDetailController extends Controller {
   get localitySearchUrl() {
     return this.selectedCity
       ? `/locations/localities/search?cityId=${this.selectedCity.id}`
+      : null;
+  }
+
+  get localityListUrl() {
+    return this.selectedCity
+      ? `/locations/localities/${this.selectedCity.id}`
       : null;
   }
 

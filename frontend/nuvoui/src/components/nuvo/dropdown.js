@@ -127,16 +127,19 @@ export default class NuDropdownComponent extends Component {
   get matchedOptions() {
     const term = this.searchText.trim().toLowerCase();
     const all = this.normalizedOptions.filter((o) => !o.separator);
-    const matched =
-      term && !this.args.remote
-        ? all.filter(
+    // @filter(options, term) replaces the built-in substring match for local options.
+    let matched = all.slice();
+    if (term && !this.args.remote) {
+      matched = this.args.filter
+        ? this.args.filter(all, term)
+        : all.filter(
             (o) =>
               String(o.label).toLowerCase().includes(term) ||
               String(o.group ?? '')
                 .toLowerCase()
                 .includes(term),
-          )
-        : all.slice();
+          );
+    }
 
     if (!matched.some((o) => o.group)) {
       return matched;

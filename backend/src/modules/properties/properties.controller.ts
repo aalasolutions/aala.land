@@ -34,6 +34,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateAssetDto } from './dto/create-asset.dto';
+import { ListLocalityAssetsDto } from './dto/list-locality-assets.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
@@ -182,6 +183,23 @@ export class PropertiesController {
       csv,
       req.user,
     );
+  }
+
+  @Get('assets/list')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'All assets in a locality, for pickers (shared)' })
+  listLocalityAssets(
+    @Request() req: AuthenticatedRequest,
+    @Query() dto: ListLocalityAssetsDto,
+  ) {
+    return this.propertiesService.listLocalityAssets(dto.localityId, req.user);
   }
 
   @Get('assets/search')
