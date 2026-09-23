@@ -201,12 +201,7 @@ export class PropertiesController {
     @Query('q') q: string,
     @Query('localityId') localityId: string,
   ) {
-    return this.propertiesService.searchAssets(
-      scopedCompanyId(req.user),
-      localityId,
-      q,
-      req.user,
-    );
+    return this.propertiesService.searchAssets(localityId, q, req.user);
   }
 
   @Post('assets')

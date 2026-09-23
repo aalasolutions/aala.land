@@ -807,47 +807,18 @@ describe('PropertiesService', () => {
   describe('asset tenant confinement', () => {
     const companyId = 'company-uuid-1';
 
-    it('searchAssets omits the company predicate for SUPER_ADMIN', async () => {
+    it('searchAssets is shared across companies: no company predicate', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
 
-      await service.searchAssets(undefined, 'locality-1', 'tower', {
+      await service.searchAssets('locality-1', 'tower', {
         userId: 'u1',
-        role: Role.SUPER_ADMIN,
-        regionCodes: [],
+        role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
       expect(sql).not.toContain('company_id');
-      expect(params).toEqual(['tower', 'locality-1']);
-    });
-
-    it('searchAssets binds the company as a parameter, never inlines it', async () => {
-      (assetRepo.query as jest.Mock).mockResolvedValue([]);
-
-      await service.searchAssets(companyId, 'locality-1', 'tower', {
-        userId: 'u1',
-        role: Role.AGENT,
-        regionCodes: ['punjab'],
-      });
-
-      const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
-      expect(sql).toContain('company_id = $3');
-      expect(sql).not.toContain(companyId);
-      expect(params[2]).toBe(companyId);
-    });
-
-    it('searchAssets filters by company in the SQL, not just by locality', async () => {
-      (assetRepo.query as jest.Mock).mockResolvedValue([]);
-
-      await service.searchAssets(companyId, 'locality-1', 'tower', {
-        userId: 'u1',
-        role: Role.AGENT,
-        regionCodes: ['punjab'],
-      });
-
-      const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
-      expect(sql).toContain('company_id');
-      expect(params).toContain(companyId);
+      expect(params).not.toContain(companyId);
     });
 
     it('findOneAsset filters only on properties that exist on the Asset entity', async () => {
@@ -879,7 +850,7 @@ describe('PropertiesService', () => {
     it('searchAssets confines a region-scoped caller to their assigned regions', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
 
-      await service.searchAssets(companyId, 'locality-1', 'tower', {
+      await service.searchAssets('locality-1', 'tower', {
         userId: 'u1',
         role: Role.AGENT,
         regionCodes: ['punjab'],
@@ -887,15 +858,15 @@ describe('PropertiesService', () => {
 
       const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
       expect(sql).toContain('INNER JOIN cities ci');
-      expect(sql).toContain('ci.region_code = ANY($4::varchar[])');
+      expect(sql).toContain('ci.region_code = ANY($3::varchar[])');
       expect(sql).not.toContain('punjab');
-      expect(params[3]).toEqual(['punjab']);
+      expect(params[2]).toEqual(['punjab']);
     });
 
     it('searchAssets leaves an admin unconfined by region', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
 
-      await service.searchAssets(companyId, 'locality-1', 'tower', {
+      await service.searchAssets('locality-1', 'tower', {
         userId: 'u1',
         role: Role.COMPANY_ADMIN,
         regionCodes: [],
@@ -908,12 +879,11 @@ describe('PropertiesService', () => {
     it('searchAssets returns nothing for a scoped caller with no assignments', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
 
-      const result = await service.searchAssets(
-        companyId,
-        'locality-1',
-        'tower',
-        { userId: 'u1', role: Role.AGENT, regionCodes: [] },
-      );
+      const result = await service.searchAssets('locality-1', 'tower', {
+        userId: 'u1',
+        role: Role.AGENT,
+        regionCodes: [],
+      });
 
       expect(result).toEqual([]);
       expect(assetRepo.query).not.toHaveBeenCalled();

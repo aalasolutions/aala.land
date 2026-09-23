@@ -218,8 +218,8 @@ export class PropertiesService {
     return { data: filtered, total, page, limit };
   }
 
+  // Assets are shared across companies, so search is not company-scoped.
   async searchAssets(
-    companyId: string | undefined,
     localityId: string,
     q: string,
     user?: { userId: string; role: string; regionCodes: string[] },
@@ -239,14 +239,7 @@ export class PropertiesService {
       return [];
     }
 
-    // Still a bound parameter, just conditionally present.
     const params: unknown[] = [query, localityId];
-    let companyPredicate = '';
-    if (companyId) {
-      params.push(companyId);
-      companyPredicate = `AND a.company_id = $${params.length}`;
-    }
-
     let regionPredicate = '';
     if (scopedCodes) {
       params.push(scopedCodes);
@@ -265,7 +258,6 @@ export class PropertiesService {
                  INNER JOIN localities loc ON loc.id = a.locality_id
                  INNER JOIN cities ci ON ci.id = loc.city_id
                  WHERE a.locality_id = $2
-                   ${companyPredicate}
                    ${regionPredicate}
                    AND similarity(a.name, $1) > 0.2
                  ORDER BY ${normalizedNameSql('a.name')}, score DESC, a.name ASC
