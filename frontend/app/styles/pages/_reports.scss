@@ -1,4 +1,4 @@
-// Reports: pipeline funnel, red-flag alerts, activity feed.
+// Reports: pipeline funnel and red-flag alert rows.
 @use "@nuvoui/ember/styles/common/var" as *;
 
 .funnel-grid {
@@ -17,17 +17,7 @@
   border-radius: nu-radius(lg);
 }
 
-.red-flag-high {
-  background: var(--danger-50);
-  border: 1px solid var(--danger-200);
-}
-
-.red-flag-medium {
-  background: var(--warning-50);
-  border: 1px solid var(--warning-200);
-}
-
-.red-flag-low {
+.red-flag-row {
   background: var(--bg-alternate);
   border: 1px solid var(--border-base);
 }

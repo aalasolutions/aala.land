@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In, IsNull, FindOptionsWhere } from 'typeorm';
+import {
+  Repository,
+  LessThan,
+  In,
+  IsNull,
+  Not,
+  FindOptionsWhere,
+} from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
   LeadActivity,
@@ -20,6 +27,9 @@ import {
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
+import { AuditAction } from '../audit/dto/query-audit-logs.dto';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
+import { clampLimit, pageSkip } from '../../shared/utils/pagination.util';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
@@ -84,7 +94,16 @@ export interface RedFlag {
   message: string;
   entityType: string;
   entityId: string;
+  // Locality id for Unit flags; the unit page route needs it.
+  areaId?: string | null;
   createdAt: Date;
+}
+
+interface VacantUnitRow {
+  id: string;
+  unitNumber: string;
+  areaId: string;
+  vacantSince: Date | string;
 }
 
 export interface ActivityFeedItem {
@@ -93,7 +112,15 @@ export interface ActivityFeedItem {
   entityType: string;
   entityId: string | null;
   userId: string | null;
+  userName: string | null;
   createdAt: Date;
+}
+
+export interface ActivityFeedPage {
+  data: ActivityFeedItem[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface PipelineFunnel {
@@ -227,6 +254,7 @@ export class ReportsService {
     if (regionCodes) contactWhere.regionCode = In(regionCodes);
 
     // Occupancy covers For Rent units only; rented status OR an active lease counts as occupied.
+    // Maintenance and sold units without an active lease are neither occupied nor vacant.
     const occupancyQb = this.unitRepository
       .createQueryBuilder('u')
       .select('COUNT(*)::int', 'rentalUnits')
@@ -241,6 +269,14 @@ export class ReportsService {
       .where('u.company_id = :companyId', { companyId })
       .andWhere('u.deleted_at IS NULL')
       .andWhere('u.property_type = :rental', { rental: PropertyType.RENTAL })
+      .andWhere(
+        `(u.status IN (:...rentableStatuses) OR EXISTS (
+          SELECT 1 FROM leases le
+          WHERE le.unit_id = u.id AND le.company_id = :companyId
+            AND le.status = :activeLease AND le.deleted_at IS NULL
+        ))`,
+        { rentableStatuses: [UnitStatus.AVAILABLE, UnitStatus.RENTED] },
+      )
       .setParameter('rented', UnitStatus.RENTED)
       .setParameter('activeLease', LeaseStatus.ACTIVE);
     if (regionCodes) {
@@ -540,33 +576,59 @@ export class ReportsService {
       overdueQb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
     overdueQb.take(20);
 
-    // Vacant units (inherit region through FK)
-    let vacantUnitsPromise: Promise<any[]>;
+    // Vacant matches dashboard occupancy: For Rent, not rented, no active lease.
+    // Vacant since = the latest lease ending, else the unit's creation.
+    const vacantSinceSql = `COALESCE((
+      SELECT MAX(CASE WHEN le.status = :terminatedLease
+        THEN COALESCE((
+          SELECT MAX(rh.created_at) FROM record_history rh
+          WHERE rh.company_id = le.company_id AND rh.entity_type = :leaseEntity
+            AND rh.entity_id = le.id
+            AND (rh.action = :terminateAction OR (rh.action = :statusChangeAction
+              AND rh.metadata->>'to' = :terminatedStatus))
+        ), le.updated_at)
+        ELSE le.end_date::timestamptz END)
+      FROM leases le
+      WHERE le.unit_id = u.id AND le.company_id = u.company_id
+        AND le.deleted_at IS NULL AND le.status IN (:...endedLeaseStatuses)
+    ), u.created_at)`;
+    const vacantQb = this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'ast')
+      .select('u.id', 'id')
+      .addSelect('u.unit_number', 'unitNumber')
+      .addSelect('ast.locality_id', 'areaId')
+      .addSelect(vacantSinceSql, 'vacantSince')
+      .where('u.company_id = :companyId', { companyId })
+      .andWhere('u.deleted_at IS NULL')
+      .andWhere('u.status = :available', { available: UnitStatus.AVAILABLE })
+      .andWhere('u.property_type = :rental', { rental: PropertyType.RENTAL })
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM leases al WHERE al.unit_id = u.id
+          AND al.company_id = u.company_id AND al.status = :activeLease
+          AND al.deleted_at IS NULL)`,
+      )
+      .andWhere(`${vacantSinceSql} < :days30Ago`, { days30Ago })
+      .setParameters({
+        activeLease: LeaseStatus.ACTIVE,
+        terminatedLease: LeaseStatus.TERMINATED,
+        endedLeaseStatuses: [
+          LeaseStatus.EXPIRED,
+          LeaseStatus.TERMINATED,
+          LeaseStatus.RENEWED,
+        ],
+        leaseEntity: 'Lease',
+        terminateAction: RecordHistoryAction.TERMINATE,
+        statusChangeAction: RecordHistoryAction.STATUS_CHANGE,
+        terminatedStatus: LeaseStatus.TERMINATED as string,
+      })
+      .orderBy(vacantSinceSql, 'ASC')
+      .limit(20);
     if (regionCodes) {
-      vacantUnitsPromise = this.unitRepository
-        .createQueryBuilder('u')
-        .select(['u.id', 'u.unitNumber', 'u.updatedAt'])
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+      vacantQb
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
-        .where('u.company_id = :companyId', { companyId })
-        .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
-        .andWhere('u.deleted_at IS NULL')
-        .andWhere('u.updated_at < :days30Ago', { days30Ago })
-        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
-        .take(20)
-        .getMany();
-    } else {
-      vacantUnitsPromise = this.unitRepository.find({
-        where: {
-          companyId,
-          status: UnitStatus.AVAILABLE,
-          updatedAt: LessThan(days30Ago),
-          deletedAt: IsNull(),
-        },
-        select: ['id', 'unitNumber', 'updatedAt'],
-        take: 20,
-      });
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes });
     }
 
     const [
@@ -607,7 +669,7 @@ export class ReportsService {
         take: 20,
       }),
       overdueQb.getMany(),
-      vacantUnitsPromise,
+      vacantQb.getRawMany<VacantUnitRow>(),
     ]);
 
     const flags: RedFlag[] = [];
@@ -660,13 +722,18 @@ export class ReportsService {
     }
 
     for (const unit of vacantUnits) {
+      const vacantSince = new Date(unit.vacantSince);
+      const days = Math.floor(
+        (now.getTime() - vacantSince.getTime()) / (24 * 60 * 60 * 1000),
+      );
       flags.push({
         type: 'LONG_VACANT',
         severity: 'LOW',
-        message: `Property ${unit.unitNumber} vacant for 30+ days`,
+        message: `Property ${unit.unitNumber} vacant for ${days} days`,
         entityType: 'Unit',
         entityId: unit.id,
-        createdAt: unit.updatedAt,
+        areaId: unit.areaId,
+        createdAt: vacantSince,
       });
     }
 
@@ -685,37 +752,55 @@ export class ReportsService {
     companyId: string,
     regionCode?: string,
     caller?: RegionScope,
-  ): Promise<ActivityFeedItem[]> {
+    page = 1,
+    limit = 20,
+  ): Promise<ActivityFeedPage> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     if (regionCodes?.length === 0) {
-      return [];
+      return { data: [], total: 0, page, limit };
     }
+
+    // Logins drown out record changes on a boss-level feed.
+    const action = Not(AuditAction.LOGIN);
 
     // A NULL region marks a global row such as billing, which stays admin-only.
     const regionWhere: FindOptionsWhere<AuditLog>[] | undefined = regionCodes
       ? [
-          { companyId, regionCode: In(regionCodes) },
+          { companyId, action, regionCode: In(regionCodes) },
           ...(caller && isAdminRole(caller.role)
-            ? [{ companyId, regionCode: IsNull() }]
+            ? [{ companyId, action, regionCode: IsNull() }]
             : []),
         ]
       : undefined;
 
-    const logs = await this.auditLogRepository.find({
-      where: regionWhere ?? { companyId },
+    const [logs, total] = await this.auditLogRepository.findAndCount({
+      where: regionWhere ?? { companyId, action },
       order: { createdAt: 'DESC' },
-      take: 25,
-      select: ['id', 'action', 'entityType', 'entityId', 'userId', 'createdAt'],
+      skip: pageSkip(page, limit),
+      take: clampLimit(limit),
+      relations: { user: true },
+      select: {
+        id: true,
+        action: true,
+        entityType: true,
+        entityId: true,
+        userId: true,
+        createdAt: true,
+        user: { id: true, name: true },
+      },
     });
 
-    return logs.map((log) => ({
+    const data = logs.map((log) => ({
       id: log.id,
       action: log.action,
       entityType: log.entityType,
       entityId: log.entityId,
       userId: log.userId,
+      userName: log.user?.name ?? null,
       createdAt: log.createdAt,
     }));
+
+    return { data, total, page, limit };
   }
 
   async getPipelineFunnel(

@@ -6,6 +6,7 @@ import {
   canManageRegions,
   canManageUsers,
   canUpdateUser,
+  canViewReports,
   getVisibleGroups,
   isAdminRole,
   isSuperAdmin,
@@ -27,6 +28,7 @@ module('Unit | Utility | roles', function () {
       canAccessWhatsapp,
       canManageFinancials,
       canManageRegions,
+      canViewReports,
     ]) {
       assert.false(predicate(undefined), `${predicate.name} on nothing`);
       assert.false(predicate('not-a-role'), `${predicate.name} on a stranger`);
@@ -40,6 +42,16 @@ module('Unit | Utility | roles', function () {
       ROLES.COMPANY_ADMIN,
     ]);
     assert.false(canManageRegions(ROLES.ADMIN));
+  });
+
+  // Company-wide figures and colleagues' performance stay above agent level.
+  test('reports stop at manager, for the route and the sidebar', function (assert) {
+    const viewers = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
+    assert.deepEqual(allowed(canViewReports), viewers);
+    assert.deepEqual(
+      allowed((role) => getVisibleGroups(role).reports),
+      viewers,
+    );
   });
 
   test('isAdminRole and canManageUsers cover the same three roles', function (assert) {

@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('ReportsController', () => {
   let controller: ReportsController;
@@ -155,17 +158,54 @@ describe('ReportsController', () => {
 
   describe('getActivityFeed', () => {
     it('delegates to service with companyId', async () => {
-      service.getActivityFeed.mockResolvedValue([]);
+      const page = { data: [], total: 0, page: 2, limit: 10 };
+      service.getActivityFeed.mockResolvedValue(page);
 
-      const result = await controller.getActivityFeed(mockReq, {});
+      const result = await controller.getActivityFeed(mockReq, {
+        page: 2,
+        limit: 10,
+      });
 
       expect(service.getActivityFeed).toHaveBeenCalledWith(
         companyId,
         undefined,
         mockReq.user,
+        2,
+        10,
       );
-      expect(result).toEqual([]);
+      expect(result).toEqual(page);
     });
+  });
+
+  describe('role access', () => {
+    const rolesOf = (handler: (...args: any[]) => unknown) =>
+      new Reflector().get<Role[]>(ROLES_KEY, handler);
+
+    it.each([
+      ['getAgentPerformance'],
+      ['getRedFlags'],
+      ['getActivityFeed'],
+      ['getPipelineFunnel'],
+    ] as const)('limits %s to admins and managers', (name) => {
+      expect(rolesOf(ReportsController.prototype[name])).toEqual([
+        Role.COMPANY_ADMIN,
+        Role.ADMIN,
+        Role.MANAGER,
+      ]);
+    });
+
+    it.each([
+      ['getDashboard'],
+      ['getRevenueTrend'],
+      ['getLeadOwnership'],
+    ] as const)(
+      'keeps %s open to agents and accountants for the home dashboard',
+      (name) => {
+        const roles = rolesOf(ReportsController.prototype[name]);
+        expect(roles).toContain(Role.AGENT);
+        expect(roles).toContain(Role.ACCOUNTANT);
+      },
+    );
   });
 
   describe('getPipelineFunnel', () => {

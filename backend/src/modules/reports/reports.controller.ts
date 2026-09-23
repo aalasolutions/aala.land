@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
   ReportsService,
   Achievement,
-  ActivityFeedItem,
+  ActivityFeedPage,
   AgentComparison,
   AgentPerformance,
   AgentResponseTime,
@@ -15,6 +15,7 @@ import {
   StageBottleneck,
 } from './reports.service';
 import { QueryReportsDto } from './dto/query-reports.dto';
+import { QueryActivityFeedDto } from './dto/query-activity-feed.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -73,14 +74,7 @@ export class ReportsController {
   }
 
   @Get('agent-performance')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Agent performance report' })
   getAgentPerformance(
     @Request() req: AuthenticatedRequest,
@@ -94,14 +88,7 @@ export class ReportsController {
   }
 
   @Get('red-flags')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Red flag alerts for boss' })
   getRedFlags(
     @Request() req: AuthenticatedRequest,
@@ -115,35 +102,23 @@ export class ReportsController {
   }
 
   @Get('activity-feed')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Recent activity feed' })
   getActivityFeed(
     @Request() req: AuthenticatedRequest,
-    @Query() query: QueryReportsDto,
-  ): Promise<ActivityFeedItem[]> {
+    @Query() query: QueryActivityFeedDto,
+  ): Promise<ActivityFeedPage> {
     return this.reportsService.getActivityFeed(
       requireCompanyId(req.user),
       query.regionCode,
       req.user,
+      query.page,
+      query.limit,
     );
   }
 
   @Get('pipeline-funnel')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Lead pipeline funnel counts' })
   getPipelineFunnel(
     @Request() req: AuthenticatedRequest,
