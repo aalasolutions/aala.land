@@ -232,27 +232,73 @@
   --nu-kanban__column--BorderColor: var(--primary);
 }
 
-// Insertion line drawn in the gap above a card, so it never shifts the cards it measures.
-.nu-kanban__column [data-lead-id].is-drop-before {
-  position: relative;
+// `--kanban-drag-height` is the dragged card's height, set on the board at dragstart.
+$kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "column", "Gap")});
 
-  &::before {
-    position: absolute;
-    inset-inline: 0;
-    inset-block-start: calc(#{nu-var-el("kanban", "column", "Gap")} / -2 - 1px);
-    block-size: 2px;
-    content: "";
-    background-color: var(--primary);
-    border-radius: nu-radius(full);
+.nu-kanban__column [draggable="true"] {
+  transition:
+    box-shadow nu-duration(fast) $nu-ease,
+    border-color nu-duration(fast) $nu-ease,
+    transform nu-duration(fast) $nu-ease,
+    margin-block nu-duration(normal) $nu-ease,
+    opacity nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+}
+
+.nu-kanban__column [data-lead-id].is-drop-before {
+  margin-block-start: $kanban-drag-gap;
+}
+
+.nu-kanban__column [draggable="true"].is-drag-source {
+  background-color: transparent;
+  border-style: dashed;
+  border-color: #{nu-tint(primary, 45%)};
+  box-shadow: none;
+  transform: none;
+
+  > * {
+    visibility: hidden;
+  }
+}
+
+// Once the gap opens elsewhere the origin slot folds away; later cards slide up over it.
+.nu-kanban__column [draggable="true"].is-drag-source.is-collapsed {
+  margin-block-end: calc(-1 * #{$kanban-drag-gap});
+  opacity: 0;
+  pointer-events: none;
+}
+
+// Always present at zero size, so the end-of-column gap can animate open.
+.nu-kanban__column::after {
+  flex-shrink: 0;
+  block-size: 0;
+  margin-block-start: calc(-1 * #{nu-var-el("kanban", "column", "Gap")});
+  content: "";
+  transition:
+    block-size nu-duration(normal) $nu-ease,
+    margin-block-start nu-duration(normal) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
   }
 }
 
 .nu-kanban__column.is-drop-end::after {
-  flex-shrink: 0;
-  block-size: 2px;
-  content: "";
-  background-color: var(--primary);
-  border-radius: nu-radius(full);
+  block-size: var(--kanban-drag-height, 4rem);
+  margin-block-start: 0;
+}
+
+.nu-kanban.is-dragging,
+.nu-kanban.is-hover-suppressed {
+  .nu-panel.m-interactive:hover {
+    --nu-panel--BoxShadow: #{nu-shadow(none)};
+    --nu-panel--BorderColor: var(--border-base);
+
+    transform: none;
+  }
 }
 
 .nu-kanban__column.is-empty {

@@ -126,7 +126,6 @@ type RedFlagType = keyof typeof RED_FLAG_CHECKS;
 
 const RED_FLAG_TYPES = Object.keys(RED_FLAG_CHECKS) as RedFlagType[];
 
-// Each check lists at most this many rows; `total` carries the real count.
 const RED_FLAG_CAP = 20;
 
 export interface RedFlagCheck {
@@ -730,9 +729,7 @@ export class ReportsService {
     );
   }
 
-  // Vacant matches dashboard occupancy: For Rent, available, no active lease.
-  // Vacant since = the latest lease ending, else the unit's creation. A lease
-  // ended by hand dates from its status change, never from a future end date.
+  // Vacant since the latest lease end (a hand-ended lease from its status change), else unit creation.
   private async longVacantUnitsCheck(
     companyId: string,
     regionCodes: string[] | null,
@@ -833,7 +830,6 @@ export class ReportsService {
       return { data: [], total: 0, page, limit };
     }
 
-    // Logins and logouts drown out record changes on a boss-level feed.
     const action = Not(In([AuditAction.LOGIN, AuditAction.LOGOUT]));
 
     // A NULL region marks a global row such as billing, which stays admin-only.

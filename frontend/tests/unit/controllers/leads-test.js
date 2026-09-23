@@ -242,4 +242,72 @@ module('Unit | Controller | leads', function (hooks) {
       assert.deepEqual(saved, { 'leads-filter': 'all' });
     });
   });
+
+  module('make-room drag', function () {
+    function dragging(ctx, origin) {
+      const controller = ctx.owner.lookup('controller:leads');
+      controller.draggedLead = { id: 'l2', status: 'NEW' };
+      controller.dragOrigin = origin;
+      return controller;
+    }
+
+    test('no gap until the pointer is over a column', function (assert) {
+      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      assert.strictEqual(controller.dropGap, null);
+    });
+
+    test("no gap over the card's own slot", function (assert) {
+      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      controller.dropTargetStatus = 'NEW';
+      controller.dropBeforeId = 'l3';
+      assert.strictEqual(controller.dropGap, null);
+    });
+
+    test('a gap opens anywhere else, including another column end', function (assert) {
+      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      controller.dropTargetStatus = 'NEW';
+      controller.dropBeforeId = 'l1';
+      assert.deepEqual(controller.dropGap, { status: 'NEW', anchor: 'l1' });
+      controller.dropTargetStatus = 'CONTACTED';
+      controller.dropBeforeId = 'end';
+      assert.deepEqual(controller.dropGap, {
+        status: 'CONTACTED',
+        anchor: 'end',
+      });
+    });
+
+    test('the card becomes the empty slot only after the drag image is taken', function (assert) {
+      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      assert.strictEqual(controller.dragSourceId, null);
+      controller._sourceShown = true;
+      assert.strictEqual(controller.dragSourceId, 'l2');
+      controller.draggedLead = null;
+      assert.strictEqual(controller.dragSourceId, null);
+    });
+
+    test('hover stays off until the pointer moves', function (assert) {
+      const controller = this.owner.lookup('controller:leads');
+      controller.suppressHover = true;
+      controller.releaseHover();
+      assert.false(controller.suppressHover);
+    });
+
+    test('dragleave onto a child of the column keeps the target', function (assert) {
+      const controller = this.owner.lookup('controller:leads');
+      const column = document.createElement('div');
+      const card = document.createElement('div');
+      column.appendChild(card);
+      controller.dropTargetStatus = 'NEW';
+      controller.clearDropTarget('dropTargetStatus', {
+        currentTarget: column,
+        relatedTarget: card,
+      });
+      assert.strictEqual(controller.dropTargetStatus, 'NEW');
+      controller.clearDropTarget('dropTargetStatus', {
+        currentTarget: column,
+        relatedTarget: document.body,
+      });
+      assert.strictEqual(controller.dropTargetStatus, null);
+    });
+  });
 });

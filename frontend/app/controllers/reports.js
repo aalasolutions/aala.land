@@ -99,7 +99,6 @@ export default class ReportsController extends PaginatedController {
     return Math.round(((kpis.wonLeads || 0) / kpis.totalLeads) * 100);
   }
 
-  // The backend sends every check, empty or not, with its real total.
   get flagGroups() {
     return (this.model?.redFlags ?? []).map((check) => {
       const expanded = this.expandedFlagGroups.has(check.type);

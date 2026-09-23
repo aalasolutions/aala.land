@@ -114,8 +114,10 @@
 
   @include e(per-page) {
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
     gap: nu-space(2);
+    white-space: nowrap;
     font-size: nu-font-size(sm);
     color: var(--text-muted);
   }

@@ -20,12 +20,10 @@ const FILTER_PREF_KEY = 'leads-filter';
 const DEFAULT_FILTER = 'mine';
 export const DROP_AT_END = 'end';
 
-// Cards whose vertical midpoint sits above the pointer come before the drop.
 export function insertionIndex(midpoints, pointerY) {
   return midpoints.filter((midpoint) => pointerY > midpoint).length;
 }
 
-// Returns a new list with the lead in `status`, placed before `beforeId` or after that column's last lead.
 export function moveLead(leads, leadId, status, beforeId) {
   const moving = leads.find((l) => l.id === leadId);
   if (!moving) return leads;
@@ -143,6 +141,11 @@ export default class LeadsController extends Controller {
   @tracked _optimistic = null;
   @tracked agents = [];
   @tracked draggedLead = null;
+  @tracked dragOrigin = null;
+  // Card hover stays off after a drop until the pointer moves, so it never sticks to the wrong card.
+  @tracked suppressHover = false;
+  // Set a frame after dragstart: the browser snapshots the drag image first, so it shows the full card.
+  @tracked _sourceShown = false;
   @tracked dropTargetStatus = null;
   @tracked dropTargetTemp = null;
   @tracked dropTargetAgent = null;
@@ -472,19 +475,50 @@ export default class LeadsController extends Controller {
   @action async handleDragStart(lead, event) {
     event.dataTransfer.setData('text/plain', lead.id);
     event.dataTransfer.effectAllowed = 'move';
+    const card = event.currentTarget;
+    card
+      .closest('.nu-kanban')
+      ?.style.setProperty('--kanban-drag-height', `${card.offsetHeight}px`);
+    this.dragOrigin = {
+      status: lead.status,
+      anchor: card.nextElementSibling?.dataset?.leadId ?? DROP_AT_END,
+    };
+    this.suppressHover = true;
+    this._sourceShown = false;
     this.draggedLead = lead;
+    requestAnimationFrame(() => {
+      if (this.draggedLead === lead) this._sourceShown = true;
+    });
+  }
+
+  get dragSourceId() {
+    return this._sourceShown ? (this.draggedLead?.id ?? null) : null;
+  }
+
+  // Where the make-room gap opens; null over no column or over the card's own slot.
+  get dropGap() {
+    const status = this.dropTargetStatus;
+    const anchor = this.dropBeforeId;
+    if (!this.draggedLead || !status || !anchor) return null;
+    const origin = this.dragOrigin;
+    if (origin?.status === status && origin.anchor === anchor) return null;
+    return { status, anchor };
+  }
+
+  @action releaseHover() {
+    if (this.suppressHover) this.suppressHover = false;
   }
 
   // `drop` never fires on a cancelled drag; this does.
   @action handleDragEnd() {
     this.draggedLead = null;
+    this.dragOrigin = null;
     this.dropTargetStatus = null;
     this.dropTargetTemp = null;
     this.dropTargetAgent = null;
     this.dropBeforeId = null;
   }
 
-  // Id of the visible card the pointer sits above in this column, or DROP_AT_END.
   dropAnchorFor(event) {
     const draggedId = this.draggedLead?.id;
     const cards = [
@@ -506,12 +540,12 @@ export default class LeadsController extends Controller {
     if (this.dropBeforeId !== anchor) this.dropBeforeId = anchor;
   }
 
-  // Places the lead at the drop point, saves a status change first, then the column order.
   @action async handleDrop(newStatus, event) {
     event.preventDefault();
     const lead = this.draggedLead;
     const anchor = lead ? this.dropAnchorFor(event) : null;
     this.draggedLead = null;
+    this.dragOrigin = null;
     this.dropTargetStatus = null;
     this.dropBeforeId = null;
     if (!lead) return;
@@ -553,7 +587,9 @@ export default class LeadsController extends Controller {
     }
   }
 
-  @action clearDropTarget(key) {
+  // Moving onto a card inside the column also fires dragleave; only a real exit clears.
+  @action clearDropTarget(key, event) {
+    if (event?.currentTarget?.contains(event.relatedTarget)) return;
     this[key] = null;
   }
 

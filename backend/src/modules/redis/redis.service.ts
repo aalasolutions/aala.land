@@ -67,7 +67,6 @@ export class RedisService implements OnModuleDestroy {
     await this.client.set(key, JSON.stringify(value), 'PX', ttlMs);
   }
 
-  // Read-through cache; a cache outage falls back to the loader instead of failing the request.
   async getOrSetJson<T>(
     key: string,
     ttlMs: number,

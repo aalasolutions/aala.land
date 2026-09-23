@@ -166,7 +166,6 @@ export class Lead {
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
   previousAgent: string | null;
 
-  // Manual order within a status column; null sorts first so new leads stay on top.
   @Column({ type: 'integer', nullable: true })
   position: number | null;
 
