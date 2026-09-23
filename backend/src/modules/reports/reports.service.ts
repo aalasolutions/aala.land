@@ -2,10 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
+  And,
   LessThan,
+  MoreThanOrEqual,
   In,
   IsNull,
   Not,
+  FindOperator,
   FindOptionsWhere,
 } from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
@@ -99,11 +102,47 @@ export interface RedFlag {
   createdAt: Date;
 }
 
+const RED_FLAG_CHECKS = {
+  UNTOUCHED_LEAD_48H: {
+    label: 'Leads untouched for 48+ hours',
+    severity: 'HIGH',
+  },
+  UNTOUCHED_LEAD_24H: {
+    label: 'Leads untouched for 24+ hours',
+    severity: 'MEDIUM',
+  },
+  STALLED_PIPELINE: {
+    label: 'Leads stalled in negotiation for 14+ days',
+    severity: 'MEDIUM',
+  },
+  OVERDUE_FOLLOWUP: {
+    label: 'Leads with no follow-up for 7+ days',
+    severity: 'MEDIUM',
+  },
+  LONG_VACANT: { label: 'Properties vacant for 30+ days', severity: 'LOW' },
+} as const;
+
+type RedFlagType = keyof typeof RED_FLAG_CHECKS;
+
+const RED_FLAG_TYPES = Object.keys(RED_FLAG_CHECKS) as RedFlagType[];
+
+// Each check lists at most this many rows; `total` carries the real count.
+const RED_FLAG_CAP = 20;
+
+export interface RedFlagCheck {
+  type: RedFlagType;
+  label: string;
+  severity: string;
+  total: number;
+  flags: RedFlag[];
+}
+
 interface VacantUnitRow {
   id: string;
   unitNumber: string;
   areaId: string;
   vacantSince: Date | string;
+  total: string;
 }
 
 export interface ActivityFeedItem {
@@ -537,23 +576,123 @@ export class ReportsService {
     companyId: string,
     regionCode?: string,
     caller?: RegionScope,
-  ): Promise<RedFlag[]> {
+  ): Promise<RedFlagCheck[]> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     // No readable region means no rows, and an empty IN () is invalid SQL.
     if (regionCodes?.length === 0) {
-      return [];
+      return RED_FLAG_TYPES.map((type) => this.redFlagCheck(type, 0, []));
     }
 
     const now = new Date();
     const hours24Ago = subtractDaysFromInstant(now, 1);
     const hours48Ago = subtractDaysFromInstant(now, 2);
-    const days7Ago = subtractDaysFromInstant(now, 7);
-    const days14Ago = subtractDaysFromInstant(now, 14);
-    const days30Ago = subtractDaysFromInstant(now, 30);
 
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
+    return Promise.all([
+      this.untouchedLeadsCheck(
+        'UNTOUCHED_LEAD_48H',
+        '48+ hours',
+        leadWhere,
+        LessThan(hours48Ago),
+      ),
+      this.untouchedLeadsCheck(
+        'UNTOUCHED_LEAD_24H',
+        '24+ hours',
+        leadWhere,
+        And(MoreThanOrEqual(hours48Ago), LessThan(hours24Ago)),
+      ),
+      this.stalledLeadsCheck(leadWhere, subtractDaysFromInstant(now, 14)),
+      this.overdueFollowupsCheck(
+        companyId,
+        regionCodes,
+        subtractDaysFromInstant(now, 7),
+      ),
+      this.longVacantUnitsCheck(companyId, regionCodes, now),
+    ]);
+  }
+
+  private redFlagCheck(
+    type: RedFlagType,
+    total: number,
+    flags: RedFlag[],
+  ): RedFlagCheck {
+    return { type, ...RED_FLAG_CHECKS[type], total, flags };
+  }
+
+  private leadFlag(
+    type: RedFlagType,
+    lead: Lead,
+    message: string,
+    createdAt: Date,
+  ): RedFlag {
+    return {
+      type,
+      severity: RED_FLAG_CHECKS[type].severity,
+      message: `${this.leadFlagName(lead)} ${message}`,
+      entityType: 'Lead',
+      entityId: lead.id,
+      createdAt,
+    };
+  }
+
+  private async untouchedLeadsCheck(
+    type: RedFlagType,
+    age: string,
+    leadWhere: FindOptionsWhere<Lead>,
+    createdAt: FindOperator<Date>,
+  ): Promise<RedFlagCheck> {
+    const [leads, total] = await this.leadRepository.findAndCount({
+      where: { ...leadWhere, status: LeadStatus.NEW, createdAt },
+      select: ['id', 'contactId', 'createdAt'],
+      relations: ['contact'],
+      order: { createdAt: 'ASC' },
+      take: RED_FLAG_CAP,
+    });
+    return this.redFlagCheck(
+      type,
+      total,
+      leads.map((lead) =>
+        this.leadFlag(type, lead, `untouched for ${age}`, lead.createdAt),
+      ),
+    );
+  }
+
+  private async stalledLeadsCheck(
+    leadWhere: FindOptionsWhere<Lead>,
+    days14Ago: Date,
+  ): Promise<RedFlagCheck> {
+    const [leads, total] = await this.leadRepository.findAndCount({
+      where: {
+        ...leadWhere,
+        status: LeadStatus.NEGOTIATING,
+        updatedAt: LessThan(days14Ago),
+      },
+      select: ['id', 'contactId', 'status', 'updatedAt'],
+      relations: ['contact'],
+      order: { updatedAt: 'ASC' },
+      take: RED_FLAG_CAP,
+    });
+    return this.redFlagCheck(
+      'STALLED_PIPELINE',
+      total,
+      leads.map((lead) =>
+        this.leadFlag(
+          'STALLED_PIPELINE',
+          lead,
+          `stuck in ${lead.status} for 14+ days`,
+          lead.updatedAt,
+        ),
+      ),
+    );
+  }
+
+  private async overdueFollowupsCheck(
+    companyId: string,
+    regionCodes: string[] | null,
+    days7Ago: Date,
+  ): Promise<RedFlagCheck> {
     const overdueQb = this.leadRepository
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.contact', 'c')
@@ -574,31 +713,55 @@ export class ReportsService {
       .andWhere('l.updatedAt < :days7Ago', { days7Ago });
     if (regionCodes)
       overdueQb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
-    overdueQb.take(20);
+    overdueQb.orderBy('l.updatedAt', 'ASC').take(RED_FLAG_CAP);
 
-    // Vacant matches dashboard occupancy: For Rent, not rented, no active lease.
-    // Vacant since = the latest lease ending, else the unit's creation.
-    const vacantSinceSql = `COALESCE((
-      SELECT MAX(CASE WHEN le.status = :terminatedLease
-        THEN COALESCE((
-          SELECT MAX(rh.created_at) FROM record_history rh
-          WHERE rh.company_id = le.company_id AND rh.entity_type = :leaseEntity
-            AND rh.entity_id = le.id
-            AND (rh.action = :terminateAction OR (rh.action = :statusChangeAction
-              AND rh.metadata->>'to' = :terminatedStatus))
-        ), le.updated_at)
-        ELSE le.end_date::timestamptz END)
-      FROM leases le
-      WHERE le.unit_id = u.id AND le.company_id = u.company_id
-        AND le.deleted_at IS NULL AND le.status IN (:...endedLeaseStatuses)
-    ), u.created_at)`;
+    const [leads, total] = await overdueQb.getManyAndCount();
+    return this.redFlagCheck(
+      'OVERDUE_FOLLOWUP',
+      total,
+      leads.map((lead) =>
+        this.leadFlag(
+          'OVERDUE_FOLLOWUP',
+          lead,
+          `in ${lead.status}, no update for 7+ days`,
+          lead.updatedAt,
+        ),
+      ),
+    );
+  }
+
+  // Vacant matches dashboard occupancy: For Rent, available, no active lease.
+  // Vacant since = the latest lease ending, else the unit's creation. A lease
+  // ended by hand dates from its status change, never from a future end date.
+  private async longVacantUnitsCheck(
+    companyId: string,
+    regionCodes: string[] | null,
+    now: Date,
+  ): Promise<RedFlagCheck> {
+    const endedAtSql = `(SELECT MAX(rh.created_at) FROM record_history rh
+      WHERE rh.company_id = le.company_id AND rh.entity_type = :leaseEntity
+        AND rh.entity_id = le.id
+        AND (rh.action = :terminateAction OR (rh.action = :statusChangeAction
+          AND rh.metadata->>'to' = le.status::text)))`;
+    const vacantSinceSql = `COALESCE(MAX(CASE le.status
+      WHEN :terminatedLease THEN COALESCE(${endedAtSql}, le.updated_at)
+      WHEN :expiredLease THEN LEAST(le.end_date::timestamptz, ${endedAtSql})
+      ELSE le.end_date::timestamptz END), u.created_at)`;
+
     const vacantQb = this.unitRepository
       .createQueryBuilder('u')
       .innerJoin('u.asset', 'ast')
+      .leftJoin(
+        'leases',
+        'le',
+        `le.unit_id = u.id AND le.company_id = u.company_id
+          AND le.deleted_at IS NULL AND le.status IN (:...endedLeaseStatuses)`,
+      )
       .select('u.id', 'id')
       .addSelect('u.unit_number', 'unitNumber')
       .addSelect('ast.locality_id', 'areaId')
       .addSelect(vacantSinceSql, 'vacantSince')
+      .addSelect('COUNT(*) OVER ()', 'total')
       .where('u.company_id = :companyId', { companyId })
       .andWhere('u.deleted_at IS NULL')
       .andWhere('u.status = :available', { available: UnitStatus.AVAILABLE })
@@ -608,10 +771,15 @@ export class ReportsService {
           AND al.company_id = u.company_id AND al.status = :activeLease
           AND al.deleted_at IS NULL)`,
       )
-      .andWhere(`${vacantSinceSql} < :days30Ago`, { days30Ago })
+      .groupBy('u.id')
+      .addGroupBy('ast.locality_id')
+      .having(`${vacantSinceSql} < :days30Ago`, {
+        days30Ago: subtractDaysFromInstant(now, 30),
+      })
       .setParameters({
         activeLease: LeaseStatus.ACTIVE,
         terminatedLease: LeaseStatus.TERMINATED,
+        expiredLease: LeaseStatus.EXPIRED,
         endedLeaseStatuses: [
           LeaseStatus.EXPIRED,
           LeaseStatus.TERMINATED,
@@ -620,10 +788,9 @@ export class ReportsService {
         leaseEntity: 'Lease',
         terminateAction: RecordHistoryAction.TERMINATE,
         statusChangeAction: RecordHistoryAction.STATUS_CHANGE,
-        terminatedStatus: LeaseStatus.TERMINATED as string,
       })
       .orderBy(vacantSinceSql, 'ASC')
-      .limit(20);
+      .limit(RED_FLAG_CAP);
     if (regionCodes) {
       vacantQb
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
@@ -631,121 +798,27 @@ export class ReportsService {
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes });
     }
 
-    const [
-      untouchedLeads48h,
-      untouchedLeads24h,
-      stalledLeads,
-      overdueFollowups,
-      vacantUnits,
-    ] = await Promise.all([
-      this.leadRepository.find({
-        where: {
-          ...leadWhere,
-          status: LeadStatus.NEW,
-          createdAt: LessThan(hours48Ago),
-        },
-        select: ['id', 'contactId', 'createdAt'],
-        relations: ['contact'],
-        take: 20,
-      }),
-      this.leadRepository.find({
-        where: {
-          ...leadWhere,
-          status: LeadStatus.NEW,
-          createdAt: LessThan(hours24Ago),
-        },
-        select: ['id', 'contactId', 'createdAt'],
-        relations: ['contact'],
-        take: 20,
-      }),
-      this.leadRepository.find({
-        where: {
-          ...leadWhere,
-          status: LeadStatus.NEGOTIATING,
-          updatedAt: LessThan(days14Ago),
-        },
-        select: ['id', 'contactId', 'status', 'updatedAt'],
-        relations: ['contact'],
-        take: 20,
-      }),
-      overdueQb.getMany(),
-      vacantQb.getRawMany<VacantUnitRow>(),
-    ]);
-
-    const flags: RedFlag[] = [];
-
-    for (const lead of untouchedLeads48h) {
-      flags.push({
-        type: 'UNTOUCHED_LEAD_48H',
-        severity: 'HIGH',
-        message: `${this.leadFlagName(lead)} untouched for 48+ hours`,
-        entityType: 'Lead',
-        entityId: lead.id,
-        createdAt: lead.createdAt,
-      });
-    }
-
-    // Only add 24h leads that aren't already in 48h list
-    const ids48h = new Set(untouchedLeads48h.map((l) => l.id));
-    for (const lead of untouchedLeads24h) {
-      if (ids48h.has(lead.id)) continue;
-      flags.push({
-        type: 'UNTOUCHED_LEAD_24H',
-        severity: 'MEDIUM',
-        message: `${this.leadFlagName(lead)} untouched for 24+ hours`,
-        entityType: 'Lead',
-        entityId: lead.id,
-        createdAt: lead.createdAt,
-      });
-    }
-
-    for (const lead of stalledLeads) {
-      flags.push({
-        type: 'STALLED_PIPELINE',
-        severity: 'MEDIUM',
-        message: `${this.leadFlagName(lead)} stuck in ${lead.status} for 14+ days`,
-        entityType: 'Lead',
-        entityId: lead.id,
-        createdAt: lead.updatedAt,
-      });
-    }
-
-    for (const lead of overdueFollowups) {
-      flags.push({
-        type: 'OVERDUE_FOLLOWUP',
-        severity: 'MEDIUM',
-        message: `${this.leadFlagName(lead)} in ${lead.status}, no update for 7+ days`,
-        entityType: 'Lead',
-        entityId: lead.id,
-        createdAt: lead.updatedAt,
-      });
-    }
-
-    for (const unit of vacantUnits) {
+    const units = await vacantQb.getRawMany<VacantUnitRow>();
+    const flags = units.map((unit): RedFlag => {
       const vacantSince = new Date(unit.vacantSince);
       const days = Math.floor(
         (now.getTime() - vacantSince.getTime()) / (24 * 60 * 60 * 1000),
       );
-      flags.push({
+      return {
         type: 'LONG_VACANT',
-        severity: 'LOW',
+        severity: RED_FLAG_CHECKS.LONG_VACANT.severity,
         message: `Property ${unit.unitNumber} vacant for ${days} days`,
         entityType: 'Unit',
         entityId: unit.id,
         areaId: unit.areaId,
         createdAt: vacantSince,
-      });
-    }
-
-    const severityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-    flags.sort((a, b) => {
-      const sevDiff =
-        (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3);
-      if (sevDiff !== 0) return sevDiff;
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      };
     });
-
-    return flags;
+    return this.redFlagCheck(
+      'LONG_VACANT',
+      Number(units[0]?.total ?? 0),
+      flags,
+    );
   }
 
   async getActivityFeed(
@@ -760,8 +833,8 @@ export class ReportsService {
       return { data: [], total: 0, page, limit };
     }
 
-    // Logins drown out record changes on a boss-level feed.
-    const action = Not(AuditAction.LOGIN);
+    // Logins and logouts drown out record changes on a boss-level feed.
+    const action = Not(In([AuditAction.LOGIN, AuditAction.LOGOUT]));
 
     // A NULL region marks a global row such as billing, which stays admin-only.
     const regionWhere: FindOptionsWhere<AuditLog>[] | undefined = regionCodes

@@ -87,12 +87,15 @@
                 @text={{group.severityLabel}}
               />
               <h4 class="nu-panel__title">{{group.label}}</h4>
-              <span class="text-muted text-sm">{{group.count}}</span>
+              <span
+                class="text-muted text-sm"
+                data-test-flag-group-total={{group.type}}
+              >{{format-number group.total}}</span>
             </div>
           </:header>
           <:body>
             <div class="flex col gap-2">
-              {{#unless group.count}}
+              {{#unless group.total}}
                 <p
                   class="flex x-center gap-2 text-sm text-success"
                   data-test-flag-group-clear={{group.type}}
@@ -129,9 +132,18 @@
                   {{on "click" (fn this.showAllFlags group.type)}}
                   data-test-flag-show-all={{group.type}}
                 >
-                  Show all
-                  {{group.count}}
+                  Show
+                  {{group.hiddenCount}}
+                  more
                 </Nuvo::Button>
+              {{else if group.isTruncated}}
+                <p
+                  class="text-xs text-muted"
+                  data-test-flag-group-truncated={{group.type}}
+                >Showing the oldest
+                  {{group.listedCount}}
+                  of
+                  {{format-number group.total}}</p>
               {{/if}}
             </div>
           </:body>

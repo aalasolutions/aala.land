@@ -186,6 +186,8 @@ describe('ReportsController', () => {
       ['getRedFlags'],
       ['getActivityFeed'],
       ['getPipelineFunnel'],
+      ['getAchievements'],
+      ['getAgentComparison'],
     ] as const)('limits %s to admins and managers', (name) => {
       expect(rolesOf(ReportsController.prototype[name])).toEqual([
         Role.COMPANY_ADMIN,

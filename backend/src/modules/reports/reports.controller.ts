@@ -10,7 +10,7 @@ import {
   DashboardKpis,
   LeadOwnership,
   PipelineFunnel,
-  RedFlag,
+  RedFlagCheck,
   RevenueTrendPoint,
   StageBottleneck,
 } from './reports.service';
@@ -93,7 +93,7 @@ export class ReportsController {
   getRedFlags(
     @Request() req: AuthenticatedRequest,
     @Query() query: QueryReportsDto,
-  ): Promise<RedFlag[]> {
+  ): Promise<RedFlagCheck[]> {
     return this.reportsService.getRedFlags(
       requireCompanyId(req.user),
       query.regionCode,
@@ -202,14 +202,7 @@ export class ReportsController {
   }
 
   @Get('achievements')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({
     summary: 'Team achievements: best converter, most wins, top earner',
   })
@@ -225,14 +218,7 @@ export class ReportsController {
   }
 
   @Get('agent-comparison')
-  @Roles(
-    Role.SUPER_ADMIN,
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Agent comparison with ranking' })
   getAgentComparison(
     @Request() req: AuthenticatedRequest,

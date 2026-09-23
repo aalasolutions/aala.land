@@ -6,35 +6,6 @@ const VISIBLE_FLAGS_PER_GROUP = 10;
 
 const TAB_IDS = ['pipeline', 'alerts', 'activity'];
 
-// Every check always renders, so an empty one reads as passed rather than missing.
-const FLAG_TYPES = [
-  {
-    type: 'UNTOUCHED_LEAD_48H',
-    label: 'Leads untouched for 48+ hours',
-    severity: 'HIGH',
-  },
-  {
-    type: 'UNTOUCHED_LEAD_24H',
-    label: 'Leads untouched for 24+ hours',
-    severity: 'MEDIUM',
-  },
-  {
-    type: 'STALLED_PIPELINE',
-    label: 'Leads stalled in negotiation for 14+ days',
-    severity: 'MEDIUM',
-  },
-  {
-    type: 'OVERDUE_FOLLOWUP',
-    label: 'Leads with no follow-up for 7+ days',
-    severity: 'MEDIUM',
-  },
-  {
-    type: 'LONG_VACANT',
-    label: 'Properties vacant for 30+ days',
-    severity: 'LOW',
-  },
-];
-
 const SEVERITY_VARIANTS = {
   HIGH: 'danger',
   MEDIUM: 'warning',
@@ -87,7 +58,14 @@ export default class ReportsController extends PaginatedController {
   get tabs() {
     return [
       { id: 'pipeline', label: 'Pipeline & Agents' },
-      { id: 'alerts', label: 'Alerts', count: this.model?.redFlags?.length },
+      {
+        id: 'alerts',
+        label: 'Alerts',
+        count: (this.model?.redFlags ?? []).reduce(
+          (sum, check) => sum + check.total,
+          0,
+        ),
+      },
       { id: 'activity', label: 'Activity Logs', count: this.model?.total },
     ];
   }
@@ -105,37 +83,23 @@ export default class ReportsController extends PaginatedController {
     return Math.round(((kpis.wonLeads || 0) / kpis.totalLeads) * 100);
   }
 
+  // The backend sends every check, empty or not, with its real total.
   get flagGroups() {
-    const group = (type, label, severity) => ({
-      type,
-      label,
-      variant: SEVERITY_VARIANTS[severity] ?? 'secondary',
-      severityLabel: titleCase(severity),
-      flags: [],
-    });
-    const groups = new Map(
-      FLAG_TYPES.map((t) => [t.type, group(t.type, t.label, t.severity)]),
-    );
-    for (const flag of this.model?.redFlags ?? []) {
-      if (!groups.has(flag.type)) {
-        groups.set(
-          flag.type,
-          group(flag.type, titleCase(flag.type), flag.severity),
-        );
-      }
-      groups.get(flag.type).flags.push(flag);
-    }
-    return [...groups.values()].map((group) => {
-      const expanded = this.expandedFlagGroups.has(group.type);
+    return (this.model?.redFlags ?? []).map((check) => {
+      const expanded = this.expandedFlagGroups.has(check.type);
+      const visible = expanded
+        ? check.flags
+        : check.flags.slice(0, VISIBLE_FLAGS_PER_GROUP);
       return {
-        ...group,
-        count: group.flags.length,
-        visible: expanded
-          ? group.flags
-          : group.flags.slice(0, VISIBLE_FLAGS_PER_GROUP),
-        hiddenCount: expanded
-          ? 0
-          : Math.max(group.flags.length - VISIBLE_FLAGS_PER_GROUP, 0),
+        type: check.type,
+        label: check.label,
+        variant: SEVERITY_VARIANTS[check.severity] ?? 'secondary',
+        severityLabel: titleCase(check.severity),
+        total: check.total,
+        listedCount: check.flags.length,
+        visible,
+        hiddenCount: check.flags.length - visible.length,
+        isTruncated: check.total > check.flags.length,
       };
     });
   }
