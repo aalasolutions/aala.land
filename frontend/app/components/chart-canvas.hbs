@@ -3,12 +3,16 @@
     <canvas {{this.draw}} data-test-chart-canvas-el></canvas>
   </div>
 
-  <div
-    class="chart-canvas__tip"
-    role="presentation"
-    data-test-chart-canvas-tip
-    hidden
-  ></div>
+  {{! Hosted on .nu-layer so no ancestor can clip it. }}
+  {{#in-element this.layer.element insertBefore=null}}
+    <div
+      class="chart-canvas__tip"
+      role="presentation"
+      data-test-chart-canvas-tip
+      hidden
+      {{this.registerTip}}
+    ></div>
+  {{/in-element}}
 
   <div class="chart-canvas__a11y">
     <table data-test-chart-canvas-table>

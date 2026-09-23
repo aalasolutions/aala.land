@@ -1,7 +1,7 @@
 // Shared Chart.js shell: frame, HTML tooltip and screen-reader table. Sizing lives with the page.
 @use "@nuvoui/ember/styles/common/var" as *;
 
-// Above the plot, below the kit's layers (dropdown, modal, toast).
+// Inside .nu-layer, so it only orders against other layer children.
 $chart-tip-layer: 2;
 
 .chart-canvas {
@@ -20,9 +20,9 @@ $chart-tip-layer: 2;
   }
 }
 
-// Sits outside the frame so it can float above the plot.
+// Hosted on .nu-layer: viewport-fixed, so no ancestor can clip it.
 .chart-canvas__tip {
-  position: absolute;
+  position: fixed;
   z-index: $chart-tip-layer;
   padding: nu-space(1) nu-space(2);
   font-size: nu-font-size(xs);
@@ -32,7 +32,6 @@ $chart-tip-layer: 2;
   pointer-events: none;
   background-color: var(--text-color);
   border-radius: nu-radius(md);
-  transform: translate(-50%, -100%);
 }
 
 // The canvas exposes nothing, so the same numbers ship as a table; the wrapper carries the clip.

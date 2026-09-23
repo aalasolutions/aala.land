@@ -1,5 +1,6 @@
 import Component from '@glimmer/component';
 import { registerDestructor } from '@ember/destroyable';
+import { service } from '@ember/service';
 import { modifier } from 'ember-modifier';
 import {
   BarController,
@@ -29,6 +30,7 @@ Chart.register(
 );
 
 const TIP_GAP = 10;
+const EDGE = 8;
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -36,13 +38,18 @@ function clamp(value, min, max) {
 
 // Owns the Chart.js lifecycle, the HTML tooltip and the screen-reader table.
 export default class ChartCanvasComponent extends Component {
+  @service layer;
+
   chart = null;
+  tip = null;
   signature = null;
   optionsSignature = null;
+  dismissArmed = false;
 
   constructor() {
     super(...arguments);
     registerDestructor(this, () => {
+      this.disarmDismiss();
       this.chart?.destroy();
       this.chart = null;
     });
@@ -60,14 +67,21 @@ export default class ChartCanvasComponent extends Component {
     return this.args.valueLabel ?? 'Value';
   }
 
+  registerTip = modifier((element) => {
+    this.tip = element;
+    // Identity check: the tip is re-inserted when the layer host registers.
+    return () => {
+      if (this.tip === element) this.tip = null;
+    };
+  });
+
   // An element, not a canvas-painted tooltip: those are trapped inside the canvas box.
   positionTip = ({ chart, tooltip }) => {
-    const host = chart.canvas.closest('.chart-canvas');
-    const tip = host?.querySelector('.chart-canvas__tip');
+    const tip = this.tip;
     if (!tip) return;
 
     if (!tooltip.opacity) {
-      tip.hidden = true;
+      this.hideTip();
       return;
     }
 
@@ -77,19 +91,49 @@ export default class ChartCanvasComponent extends Component {
     ].filter(Boolean);
     tip.textContent = lines.join('\n');
     tip.hidden = false;
+    this.armDismiss();
 
+    // Measured with the tip on screen: a hidden element reports no size.
+    const { offsetWidth: width, offsetHeight: height } = tip;
     const canvasBox = chart.canvas.getBoundingClientRect();
-    const hostBox = host.getBoundingClientRect();
-    const offsetX = canvasBox.left - hostBox.left;
-    const half = tip.offsetWidth / 2;
+    const caretX = canvasBox.left + tooltip.caretX;
+    const caretY = canvasBox.top + tooltip.caretY;
+    const above = caretY - TIP_GAP - height;
 
     tip.style.left = `${clamp(
-      offsetX + tooltip.caretX,
-      offsetX + half,
-      offsetX + canvasBox.width - half,
+      caretX - width / 2,
+      EDGE,
+      Math.max(EDGE, window.innerWidth - EDGE - width),
     )}px`;
-    tip.style.top = `${canvasBox.top - hostBox.top + tooltip.caretY - TIP_GAP}px`;
+    tip.style.top = `${clamp(
+      above >= EDGE ? above : caretY + TIP_GAP,
+      EDGE,
+      Math.max(EDGE, window.innerHeight - EDGE - height),
+    )}px`;
   };
+
+  // Fixed coordinates go stale on scroll; the next pointer move paints it again.
+  hideTip = () => {
+    if (this.tip) this.tip.hidden = true;
+    this.disarmDismiss();
+  };
+
+  armDismiss() {
+    if (this.dismissArmed) return;
+    this.dismissArmed = true;
+    window.addEventListener('scroll', this.hideTip, {
+      capture: true,
+      passive: true,
+    });
+    window.addEventListener('resize', this.hideTip, { passive: true });
+  }
+
+  disarmDismiss() {
+    if (!this.dismissArmed) return;
+    this.dismissArmed = false;
+    window.removeEventListener('scroll', this.hideTip, true);
+    window.removeEventListener('resize', this.hideTip);
+  }
 
   // Never mutates the caller's config.
   withTooltip(config = {}) {

@@ -1,4 +1,4 @@
-import { token, withAlpha } from '../utils/chart-style';
+import { token } from '../utils/chart-style';
 import ChartBase from './chart-base';
 
 // Bare line for a stat card foot (no scales/grid/legend); `@variant` is a kit variant name.
@@ -42,8 +42,8 @@ export default class StatSparklineComponent extends ChartBase {
             data: this.values,
             borderColor: line,
             borderWidth: 2,
-            backgroundColor: withAlpha(line, 0.14),
-            fill: true,
+            // Line only: an area fill has to be clipped to the card's rounded corners.
+            fill: false,
             // Straight segments: curve interpolation invents values between the buckets.
             tension: 0,
             pointRadius: 3,

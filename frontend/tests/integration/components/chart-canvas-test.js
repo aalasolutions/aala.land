@@ -10,6 +10,10 @@ import {
 import { hbs } from 'ember-cli-htmlbars';
 import { Chart } from 'chart.js';
 
+// Mirrors chart-canvas.js: the gap above the caret and the viewport margin.
+const TIP_GAP = 10;
+const EDGE = 8;
+
 // Animation and responsiveness are off so assertions test the component, not the viewport.
 function lineConfig(values) {
   return {
@@ -161,7 +165,8 @@ module('Integration | Component | chart-canvas', function (hooks) {
       const chart = Chart.getChart(find('[data-test-chart-canvas-el]'));
       return {
         chart,
-        tip: find('[data-test-chart-canvas-tip]'),
+        // Hosted on .nu-layer, which sits outside the test container.
+        tip: document.querySelector('[data-test-chart-canvas-tip]'),
         host: find('[data-test-chart-canvas]'),
         external: chart.options.plugins.tooltip.external,
       };
@@ -190,45 +195,55 @@ module('Integration | Component | chart-canvas', function (hooks) {
       assert.strictEqual(tip.textContent, '10');
     });
 
-    test('clamps the tip to the canvas instead of letting it run off the edge', async function (assert) {
-      const { chart, tip, host, external } = await setup();
+    test('hosts the tip on .nu-layer, out of every clipping ancestor', async function (assert) {
+      const { tip, host } = await setup();
+
+      assert.ok(tip, 'the tip is mounted');
+      assert.ok(tip.closest('.nu-layer'), 'hosted on .nu-layer');
+      assert.notOk(host.contains(tip), 'not a descendant of the chart box');
+    });
+
+    test('keeps the tip inside the viewport instead of letting it run off the edge', async function (assert) {
+      const { chart, tip, external } = await setup();
 
       // Measured with the tip on screen and populated: its width is its content.
       external({ chart, tooltip: TIP });
-      const canvasBox = chart.canvas.getBoundingClientRect();
-      const hostBox = host.getBoundingClientRect();
-      const offsetX = canvasBox.left - hostBox.left;
-      const half = tip.offsetWidth / 2;
-      const min = offsetX + half;
-      const max = offsetX + canvasBox.width - half;
+      const max = Math.max(EDGE, window.innerWidth - EDGE - tip.offsetWidth);
 
-      external({ chart, tooltip: { ...TIP, caretX: -500 } });
+      external({ chart, tooltip: { ...TIP, caretX: -5000 } });
       assert.strictEqual(
         parseFloat(tip.style.left),
-        Math.min(min, max),
-        'pinned to the left bound, not to the caret',
+        EDGE,
+        'pinned to the left edge, not to the caret',
       );
 
-      external({ chart, tooltip: { ...TIP, caretX: canvasBox.width + 500 } });
+      external({ chart, tooltip: { ...TIP, caretX: 5000 } });
       assert.strictEqual(
         parseFloat(tip.style.left),
         max,
-        'pinned to the right bound',
+        'pinned to the right edge',
       );
     });
 
-    test('positions the tip above the caret', async function (assert) {
-      const { chart, tip, host, external } = await setup();
+    test('sits above the point, and flips below it with no room above', async function (assert) {
+      const { chart, tip, external } = await setup();
 
-      external({ chart, tooltip: TIP });
-
+      external({ chart, tooltip: { ...TIP, caretY: 300 } });
       const canvasBox = chart.canvas.getBoundingClientRect();
-      const hostBox = host.getBoundingClientRect();
       assert.strictEqual(
         parseFloat(tip.style.top),
-        canvasBox.top - hostBox.top + TIP.caretY - 10,
+        canvasBox.top + 300 - TIP_GAP - tip.offsetHeight,
         'a fixed gap above the point',
       );
+
+      // Caret on the viewport's top edge: the tip cannot fit above it.
+      external({ chart, tooltip: { ...TIP, caretY: -canvasBox.top } });
+      assert.strictEqual(
+        parseFloat(tip.style.top),
+        TIP_GAP,
+        'flipped below the point',
+      );
     });
+
   });
 });
