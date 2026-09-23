@@ -59,7 +59,10 @@
       as |h|
     >
       <h.row as |r|>
-        <r.cell as |column columnMeta|>
+        <r.cell
+          class={{if r.columnValue.numeric "m-numeric"}}
+          as |column columnMeta|
+        >
           {{#if (eq column.valuePath "__select__")}}
             <div class="data-table__select">
               <Nuvo::Checkbox
@@ -109,7 +112,10 @@
         data-test-data-table-row={{b.rowValue.id}}
         as |r|
       >
-        <r.cell as |value column row cellMeta columnMeta rowMeta|>
+        <r.cell
+          class={{if r.columnValue.numeric "m-numeric"}}
+          as |value column row cellMeta columnMeta rowMeta|
+        >
           {{#if (eq column.valuePath "__select__")}}
             <div class="data-table__select">
               <Nuvo::Checkbox

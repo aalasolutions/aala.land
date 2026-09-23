@@ -19,6 +19,7 @@ import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
+import { ReorderLeadsDto } from './dto/reorder-leads.dto';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Locality } from '../locations/entities/locality.entity';
@@ -205,7 +206,10 @@ export class LeadsService {
       where,
       relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
       ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
+      order: {
+        position: { direction: 'ASC', nulls: 'FIRST' },
+        createdAt: 'DESC',
+      },
     });
     return {
       data: data.map((lead) => this.serializeLead(lead)),
@@ -299,8 +303,10 @@ export class LeadsService {
       }
     }
 
+    // A new column starts the lead unpositioned, on top, like a new lead.
     if (statusChanged) {
       lead.stageEnteredAt = new Date();
+      lead.position = null;
     }
 
     await this.dataSource.transaction(async (manager) => {
@@ -475,6 +481,7 @@ export class LeadsService {
   ): Promise<Lead> {
     const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     const previousStatus = lead.status;
+    if (previousStatus !== LeadStatus.WON) lead.position = null;
     lead.status = LeadStatus.WON;
     const updated = await this.dataSource.transaction(async (manager) => {
       await this.lockLeadUnitNotArchived(
@@ -550,6 +557,56 @@ export class LeadsService {
       ...activity,
       performedByName: performer?.name ?? null,
     }));
+  }
+
+  // Ids outside the company or caller regions 404 as a whole; ids now in another status are skipped.
+  async reorder(
+    companyId: string,
+    dto: ReorderLeadsDto,
+    userId?: string,
+    caller?: RegionScope,
+  ): Promise<{ updated: number }> {
+    const scopedCodes = scopedRegionCodes(caller);
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Lead not found');
+    }
+
+    const updated = await this.dataSource.transaction(async (manager) => {
+      const rows = await manager.find(Lead, {
+        where: {
+          id: In(dto.orderedIds),
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
+        select: { id: true, status: true },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (rows.length !== dto.orderedIds.length) {
+        throw new NotFoundException('Lead not found');
+      }
+
+      const inStatus = new Set(
+        rows.filter((row) => row.status === dto.status).map((row) => row.id),
+      );
+      const ids = dto.orderedIds.filter((id) => inStatus.has(id));
+      if (ids.length === 0) return 0;
+
+      const positions = ids.map((id) => dto.orderedIds.indexOf(id));
+      await manager.query(
+        `UPDATE "leads" l SET "position" = o."position"
+         FROM unnest($1::uuid[], $2::int[]) AS o("id", "position")
+         WHERE l."id" = o."id" AND l."company_id" = $3 AND l."status" = $4`,
+        [ids, positions, companyId, dto.status],
+      );
+      return ids.length;
+    });
+
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      status: dto.status,
+      updatedBy: userId,
+    });
+
+    return { updated };
   }
 
   private async findLeadEntityOrThrow(

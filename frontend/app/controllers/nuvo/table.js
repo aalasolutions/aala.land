@@ -38,7 +38,7 @@ export default class NuvoTableController extends Controller {
     { name: 'Role', valuePath: 'role', width: 120 },
     { name: 'Email', valuePath: 'email', width: 220 },
     { name: 'Company', valuePath: 'company.name', width: 180 },
-    { name: 'Units', valuePath: 'units', width: 90 },
+    { name: 'Units', valuePath: 'units', width: 90, numeric: true },
   ];
 
   // Pinned first and last columns, an unsortable actions column, a minimum width.
@@ -48,14 +48,14 @@ export default class NuvoTableController extends Controller {
     { name: 'Email', valuePath: 'email', width: 260 },
     { name: 'Phone', valuePath: 'phone', width: 200 },
     { name: 'Company', valuePath: 'company.name', width: 220 },
-    { name: 'Units', valuePath: 'units', width: 100 },
+    { name: 'Units', valuePath: 'units', width: 100, numeric: true },
     { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
   ];
 
   // Every editor type in one table.
   editableColumns = [
     { name: 'Name', valuePath: 'displayName', width: 200, editable: 'text' },
-    { name: 'Units', valuePath: 'units', width: 100, editable: 'number' },
+    { name: 'Units', valuePath: 'units', width: 100, editable: 'number', numeric: true },
     { name: 'Company', valuePath: 'companyName', width: 200, editable: 'select', options: COMPANIES },
     { name: 'Owner', valuePath: 'owner', width: 220, editable: 'search', onSearch: (term) => this.searchOwners(term), labelKey: 'displayName' },
   ];
@@ -69,7 +69,7 @@ export default class NuvoTableController extends Controller {
   treeColumns = [
     { name: 'Property', valuePath: 'name', width: 260 },
     { name: 'Type', valuePath: 'type', width: 140 },
-    { name: 'Rent (AED)', valuePath: 'rent', width: 140 },
+    { name: 'Rent (AED)', valuePath: 'rent', width: 140, numeric: true },
   ];
 
   treeRows = [
@@ -165,7 +165,7 @@ export default class NuvoTableController extends Controller {
   {{/if}}
 </DataTable>
 
-// basicColumns: [{ name: 'Name', valuePath: 'displayName', width: 200 }, ..., { name: 'Company', valuePath: 'company.name', width: 180 }]
+// basicColumns: [{ name: 'Name', valuePath: 'displayName', width: 200 }, ..., { name: 'Units', valuePath: 'units', width: 90, numeric: true }]
 // rows: [{ id: 'c-1', displayName: 'Ahmed Khalid', role: 'owner', company: { name: 'Emaar Properties' }, ... }]`,
     yieldBlock: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} as |cell|>
   {{#if (eq cell.key "displayName")}}
@@ -255,7 +255,7 @@ export default class NuvoTableController extends Controller {
 
 // editableColumns:
 //   { name: 'Name',    valuePath: 'displayName', editable: 'text' }
-//   { name: 'Units',   valuePath: 'units',       editable: 'number' }
+//   { name: 'Units',   valuePath: 'units',       editable: 'number', numeric: true }
 //   { name: 'Company', valuePath: 'companyName', editable: 'select', options: ['Emaar Properties', 'Damac', ...] }
 //   { name: 'Owner',   valuePath: 'owner',       editable: 'search', onSearch: searchOwners, labelKey: 'displayName' }
 // saveCell(row, key, value): value is a string, a number (or null), an option value, or the picked record`,
@@ -321,6 +321,7 @@ export default class NuvoTableController extends Controller {
     { name: 'isFixed', type: '"left" | "right"', default: '', description: 'Pins the column, only when @pinColumns is set. Pinned columns cannot be reordered or hidden; the sides swap under RTL.' },
     { name: 'isSortable', type: 'boolean', default: 'true', description: 'Set false to keep a column out of sorting (actions columns).' },
     { name: 'isResizable', type: 'boolean', default: 'true', description: 'Set false to lock the width.' },
+    { name: 'numeric', type: 'boolean', default: 'false', description: 'Money, counts, percentages and dates. Header, cells and the number editor align to the logical end with tabular figures (m-numeric on th and td).' },
     { name: 'editable', type: '"text" | "number" | "select" | "search"', default: '', description: 'Editor opened by double-click when @onCellEdit is set.' },
     { name: 'options', type: 'array', default: '', description: 'Choices for a select editor; strings or value/label objects.' },
     { name: 'onSearch', type: 'function', default: '', description: 'async (term) => items, for a search editor (Nuvo::Autocomplete). The host owns transport.' },
@@ -359,6 +360,7 @@ export default class NuvoTableController extends Controller {
     { name: 'data-table.nu-table-wrapper', description: 'The ember-table element, styled as the kit wrapper; its table extends nu-table.' },
     { name: 'data-table--rtl / --tree / --row-click', description: 'State classes for the mirrored layout, tree indent and pointer cursor.' },
     { name: 'tr.is-selected / tr.is-child', description: 'Selected row tint; nested row background in a tree.' },
+    { name: 'th.m-numeric / td.m-numeric', description: 'Set from the numeric column option: end alignment and tabular figures.' },
   ];
 
   rawRows = [
@@ -368,6 +370,7 @@ export default class NuvoTableController extends Controller {
     { name: 'nu-table.m-striped / m-bordered / m-compact / m-comfortable / m-sticky-head', description: 'Row stripes, vertical borders, density steps and a sticky header.' },
     { name: 'th.is-sortable / th.is-sorted', description: 'Sortable affordance and the sorted column highlight.' },
     { name: 'th.m-align-start / center / end, td.m-align-*', description: 'Logical cell alignment.' },
+    { name: 'th.m-numeric, td.m-numeric', description: 'End alignment plus tabular figures for money, counts, percentages and dates.' },
     { name: 'tr.is-hoverable / is-clickable / is-selected', description: 'Row hover, pointer cursor and the selected tint with an inline-start bar.' },
     { name: 'tr.nu-table__empty-row', description: 'Tall centred muted cell for the empty message.' },
   ];

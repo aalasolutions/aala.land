@@ -16,7 +16,7 @@ export default class AdminSystemController extends Controller {
 
   columns = [
     { name: 'Price', valuePath: 'label', width: 240, isFixed: 'left' },
-    { name: 'Amount', valuePath: 'unitAmount', width: 140 },
+    { name: 'Amount', valuePath: 'unitAmount', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 260 },
   ];
 

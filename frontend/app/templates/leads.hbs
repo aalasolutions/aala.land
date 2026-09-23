@@ -40,7 +40,15 @@
         <div
           data-test-kanban-column
           data-test-column-status={{column.status}}
-          class="nu-kanban__column {{if (eq this.dropTargetStatus column.status) 'is-drag-over'}}"
+          class="nu-kanban__column
+            {{if (eq this.dropTargetStatus column.status) 'is-drag-over'}}
+            {{if
+              (and
+                (eq this.dropTargetStatus column.status)
+                (eq this.dropBeforeId 'end')
+              )
+              'is-drop-end'
+            }}"
           role="button"
           draggable="true"
           {{on "dragover" (fn this.handleDragOver column.status)}}
@@ -56,9 +64,17 @@
             <Nuvo::Panel
               @compact={{true}}
               @interactive={{true}}
-              class="flex col gap-2"
+              class="flex col gap-2
+                {{if
+                  (and
+                    (eq this.dropTargetStatus column.status)
+                    (eq this.dropBeforeId lead.id)
+                  )
+                  'is-drop-before'
+                }}"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
+              data-lead-id={{lead.id}}
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "dragend" this.handleDragEnd}}

@@ -39,13 +39,13 @@
       "Color": var(--text-color),
       "BackgroundColor": transparent,
       "BorderColor": transparent,
-      "BorderRadius": nu-radius(md),
+      "BorderRadius": nu-radius(full),
       "TransitionDuration": nu-duration(fast),
-      "hover--BackgroundColor": var(--bg-alternate),
-      "hover--BorderColor": var(--border-base),
+      "hover--BackgroundColor": #{nu-tint(primary, 6%)},
+      "hover--BorderColor": transparent,
       "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
-      "active--Color": var(--text-inverted),
-      "active--BackgroundColor": var(--primary),
+      "active--Color": var(--primary),
+      "active--BackgroundColor": #{nu-tint(primary, 12%)},
       "disabled--Opacity": 0.5,
     ));
 
@@ -148,12 +148,16 @@
 
   // ---- item states ----
 
+  // The current page is a light primary tint, not a solid fill. Hover keeps the
+  // same tint so the current page never lightens under the pointer.
   @include e(item) {
     &.is-active {
       .nu-pagination__link {
         --nu-pagination__link--Color: #{nu-var-el("pagination", "link", "active--Color")};
         --nu-pagination__link--BackgroundColor: #{nu-var-el("pagination", "link", "active--BackgroundColor")};
         --nu-pagination__link--BorderColor: transparent;
+        --nu-pagination__link--hover--BackgroundColor: #{nu-var-el("pagination", "link", "active--BackgroundColor")};
+        --nu-pagination__link--FontWeight: #{nu-font-weight(semibold)};
       }
     }
 

@@ -61,6 +61,7 @@ describe('LeadsController', () => {
             convert: jest.fn(),
             addActivity: jest.fn(),
             findActivities: jest.fn(),
+            reorder: jest.fn(),
           },
         },
       ],
@@ -245,6 +246,31 @@ describe('LeadsController', () => {
         companyId,
         caller,
       );
+    });
+  });
+  describe('reorder', () => {
+    it('passes companyId, dto, userId and the caller scope', async () => {
+      service.reorder.mockResolvedValue({ updated: 1 });
+      const dto = {
+        status: LeadStatus.NEW,
+        orderedIds: ['11111111-1111-4111-8111-111111111111'],
+      };
+
+      const result = await controller.reorder(dto, mockReq);
+
+      expect(service.reorder).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        'user-uuid-1',
+        caller,
+      );
+      expect(result).toEqual({ updated: 1 });
+    });
+
+    it('is declared before the :id routes', () => {
+      const names = Object.getOwnPropertyNames(LeadsController.prototype);
+      expect(names.indexOf('reorder')).toBeLessThan(names.indexOf('findOne'));
+      expect(names.indexOf('reorder')).toBeLessThan(names.indexOf('update'));
     });
   });
 });

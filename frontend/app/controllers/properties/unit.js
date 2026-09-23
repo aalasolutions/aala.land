@@ -70,7 +70,7 @@ export default class PropertiesUnitController extends Controller {
 
   documentColumns = [
     { name: 'Title', valuePath: 'name', width: 250, isFixed: 'left' },
-    { name: 'Size', valuePath: 'fileSize', width: 120 },
+    { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
     { name: 'Document Type', valuePath: 'category', width: 160 },
     { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
     {
@@ -90,9 +90,9 @@ export default class PropertiesUnitController extends Controller {
       width: 220,
       isFixed: 'left',
     },
-    { name: 'Start', valuePath: 'startDate', width: 140 },
-    { name: 'End', valuePath: 'endDate', width: 140 },
-    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
+    { name: 'Start', valuePath: 'startDate', width: 140, numeric: true },
+    { name: 'End', valuePath: 'endDate', width: 140, numeric: true },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 160 },
   ];
 

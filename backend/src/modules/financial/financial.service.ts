@@ -51,6 +51,7 @@ export type {
   CashflowTrendQuery,
   CategoryTotal,
   DateRangeQuery,
+  DepositReminder,
   DepositReminders,
   RegionQuery,
   TransactionSummary,

@@ -243,9 +243,9 @@ export default class CompanyController extends Controller {
 
   creditAgentColumns = [
     { name: 'Agent', valuePath: 'name', width: 220, isFixed: 'left' },
-    { name: 'Credits', valuePath: 'credits', width: 120 },
-    { name: 'Leads', valuePath: 'leads', width: 120 },
-    { name: 'AI turns', valuePath: 'aiTurns', width: 130 },
+    { name: 'Credits', valuePath: 'credits', width: 120, numeric: true },
+    { name: 'Leads', valuePath: 'leads', width: 120, numeric: true },
+    { name: 'AI turns', valuePath: 'aiTurns', width: 130, numeric: true },
   ];
 
   // Credit rows carry `userId`, not the `id` DataTable keys rows by.
@@ -257,8 +257,14 @@ export default class CompanyController extends Controller {
   }
 
   billingHistoryColumns = [
-    { name: 'Date', valuePath: 'occurredAt', width: 140, isFixed: 'left' },
-    { name: 'Amount', valuePath: 'amount', width: 140 },
+    {
+      name: 'Date',
+      valuePath: 'occurredAt',
+      width: 140,
+      isFixed: 'left',
+      numeric: true,
+    },
+    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
     { name: 'Status', valuePath: 'type', width: 140 },
     { name: 'Invoice', valuePath: 'hostedInvoiceUrl', width: 160 },
   ];

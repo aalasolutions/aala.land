@@ -27,6 +27,18 @@
       Roboto,
       sans-serif
     ),
+  // Only Inter 400 and 600 are loaded, so every weight key resolves to one of them.
+  $font-weights: (
+      "thin": 400,
+      "extralight": 400,
+      "light": 400,
+      "normal": 400,
+      "medium": 400,
+      "semibold": 600,
+      "bold": 600,
+      "extrabold": 600,
+      "black": 600
+    ),
   $breakpoints: (
       "xs": 480px,
       "sm": 640px,

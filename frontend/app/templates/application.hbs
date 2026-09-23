@@ -125,18 +125,6 @@
                   <Ui::Ph @icon="users" />
                   <span class="nu-sidebar__link-label">Contacts</span>
                 </LinkTo>
-                {{#if this.isDevelopment}}
-                  <LinkTo
-                    @route="table-options"
-                    class="nu-sidebar__sublink"
-                    data-tooltip={{if this.desktopCollapsed "Table Options"}}
-                    data-tooltip-position="end"
-                    data-test-nav-table-options
-                  >
-                    <Ui::Ph @icon="table" />
-                    <span class="nu-sidebar__link-label">Table Options</span>
-                  </LinkTo>
-                {{/if}}
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"

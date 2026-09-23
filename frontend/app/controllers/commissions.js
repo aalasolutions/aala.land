@@ -35,8 +35,13 @@ export default class CommissionsController extends PaginatedController {
     { name: 'Agent', valuePath: 'agentId', width: 200, isFixed: 'left' },
     { name: 'Deal ID', valuePath: 'leadId', width: 180 },
     { name: 'Type', valuePath: 'type', width: 140 },
-    { name: 'Amount', valuePath: 'commissionAmount', width: 220 },
-    { name: 'Rate', valuePath: 'commissionRate', width: 120 },
+    {
+      name: 'Amount',
+      valuePath: 'commissionAmount',
+      width: 220,
+      numeric: true,
+    },
+    { name: 'Rate', valuePath: 'commissionRate', width: 120, numeric: true },
     { name: 'Status', valuePath: 'status', width: 140 },
     {
       name: 'Actions',

@@ -6,6 +6,11 @@ import {
   TransactionType,
   TransactionStatus,
 } from './entities/transaction.entity';
+import { Unit } from '../properties/entities/unit.entity';
+import { Asset } from '../properties/entities/asset.entity';
+import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { contactDisplayName } from '../../shared/utils/contact.util';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 import {
@@ -64,11 +69,28 @@ export interface CashflowTrendQuery extends DateRangeQuery {
   periods?: number;
 }
 
+export interface DepositReminder extends Transaction {
+  unitNumber: string | null;
+  areaId: string | null;
+  tenantContactId: string | null;
+  tenantName: string | null;
+}
+
 export interface DepositReminders {
-  overdue: Transaction[];
-  dueToday: Transaction[];
-  dueThisWeek: Transaction[];
-  dueThisMonth: Transaction[];
+  overdue: DepositReminder[];
+  dueToday: DepositReminder[];
+  dueThisWeek: DepositReminder[];
+  dueThisMonth: DepositReminder[];
+}
+
+interface DepositReminderRaw {
+  t_id: string;
+  unit_number: string | null;
+  area_id: string | null;
+  tenant_contact_id: string | null;
+  tenant_first_name: string | null;
+  tenant_last_name: string | null;
+  tenant_phone: string | null;
 }
 
 // One definition of the range clause, so a bound or a cast changes in one place.
@@ -329,19 +351,64 @@ export class FinancialAnalyticsService {
     const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
     const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
 
-    const bucket = (condition: string) => {
+    const bucket = async (condition: string): Promise<DepositReminder[]> => {
+      // Every join is to-one: UQ_leases_active_unit allows one ACTIVE lease per unit.
       const qb = this.transactionRepository
         .createQueryBuilder('t')
+        .leftJoin(
+          Unit,
+          'u',
+          'u.id = t.unit_id AND u.company_id = t.company_id AND u.deleted_at IS NULL',
+        )
+        .leftJoin(
+          Asset,
+          'a',
+          'a.id = u.asset_id AND a.company_id = t.company_id',
+        )
+        .leftJoin(
+          Lease,
+          'l',
+          'l.unit_id = u.id AND l.company_id = t.company_id AND l.status = :activeLease AND l.deleted_at IS NULL',
+          { activeLease: LeaseStatus.ACTIVE },
+        )
+        .leftJoin(
+          Contact,
+          'c',
+          'c.id = l.contact_id AND c.company_id = t.company_id',
+        )
+        .addSelect('u.unit_number', 'unit_number')
+        .addSelect('a.locality_id', 'area_id')
+        .addSelect('c.id', 'tenant_contact_id')
+        .addSelect('c.first_name', 'tenant_first_name')
+        .addSelect('c.last_name', 'tenant_last_name')
+        .addSelect('c.phone', 'tenant_phone')
         .where('t.company_id = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.PENDING })
         .andWhere(condition)
         .orderBy('t.due_date', 'ASC')
-        .take(100);
+        .limit(100);
       if (regionCodes) {
         qb.andWhere('t.region_code IN (:...regionCodes)', { regionCodes });
       }
-      return qb.getMany();
+      const { entities, raw } =
+        await qb.getRawAndEntities<DepositReminderRaw>();
+      const rawById = new Map(raw.map((r) => [r.t_id, r]));
+      return entities.map((t) => {
+        const r = rawById.get(t.id);
+        return Object.assign(t, {
+          unitNumber: r?.unit_number ?? null,
+          areaId: r?.area_id ?? null,
+          tenantContactId: r?.tenant_contact_id ?? null,
+          tenantName: r?.tenant_contact_id
+            ? contactDisplayName({
+                firstName: r.tenant_first_name,
+                lastName: r.tenant_last_name,
+                phone: r.tenant_phone,
+              })
+            : null,
+        });
+      });
     };
 
     const [overdue, dueToday, dueThisWeek, dueThisMonth] = await Promise.all([

@@ -16,6 +16,7 @@ import {
 } from './entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Company } from '../companies/entities/company.entity';
+import { LeaseStatus } from '../leases/entities/lease.entity';
 import { regionTodaySql } from '../../shared/utils/region-time.util';
 
 describe('FinancialService', () => {
@@ -554,16 +555,24 @@ describe('FinancialService', () => {
     ];
 
     // One builder per bucket, resolved in call order.
-    function seedBuckets(results: Transaction[][]) {
+    function seedBuckets(
+      results: Transaction[][],
+      raws: Record<string, unknown>[][] = [],
+    ) {
       const builders: any[] = [];
       repo.createQueryBuilder.mockImplementation((() => {
         const rows = results[builders.length] ?? [];
+        const raw = raws[builders.length] ?? rows.map((r) => ({ t_id: r.id }));
         const qb: any = {
+          leftJoin: jest.fn().mockReturnThis(),
+          addSelect: jest.fn().mockReturnThis(),
           where: jest.fn().mockReturnThis(),
           andWhere: jest.fn().mockReturnThis(),
           orderBy: jest.fn().mockReturnThis(),
-          take: jest.fn().mockReturnThis(),
-          getMany: jest.fn().mockResolvedValue(rows),
+          limit: jest.fn().mockReturnThis(),
+          getRawAndEntities: jest
+            .fn()
+            .mockResolvedValue({ entities: rows, raw }),
         };
         builders.push(qb);
         return qb;
@@ -650,7 +659,7 @@ describe('FinancialService', () => {
           status: TransactionStatus.PENDING,
         });
         expect(qb.orderBy).toHaveBeenCalledWith('t.due_date', 'ASC');
-        expect(qb.take).toHaveBeenCalledWith(100);
+        expect(qb.limit).toHaveBeenCalledWith(100);
         expect(qb.andWhere).not.toHaveBeenCalledWith(
           't.region_code IN (:...regionCodes)',
           expect.anything(),
@@ -684,6 +693,108 @@ describe('FinancialService', () => {
           't.region_code IN (:...regionCodes)',
           { regionCodes: ['makkah', 'punjab'] },
         );
+      }
+    });
+
+    it('attaches unit, area and tenant from the joined rows', async () => {
+      const txn = { ...mockTransaction, id: 'txn-unit' } as Transaction;
+      seedBuckets(
+        [[txn]],
+        [
+          [
+            {
+              t_id: 'txn-unit',
+              unit_number: '1204',
+              area_id: 'area-1',
+              tenant_contact_id: 'contact-1',
+              tenant_first_name: 'Test',
+              tenant_last_name: 'User',
+              tenant_phone: '+971500000000',
+            },
+          ],
+        ],
+      );
+
+      const result = await service.getDepositReminders(companyId);
+
+      expect(result.overdue[0]).toMatchObject({
+        id: 'txn-unit',
+        unitNumber: '1204',
+        areaId: 'area-1',
+        tenantContactId: 'contact-1',
+        tenantName: 'Test User',
+      });
+    });
+
+    it('falls back to the tenant phone when the contact has no name', async () => {
+      const txn = { ...mockTransaction, id: 'txn-phone' } as Transaction;
+      seedBuckets(
+        [[txn]],
+        [
+          [
+            {
+              t_id: 'txn-phone',
+              unit_number: '7',
+              area_id: 'area-1',
+              tenant_contact_id: 'contact-2',
+              tenant_first_name: null,
+              tenant_last_name: null,
+              tenant_phone: '+971500000000',
+            },
+          ],
+        ],
+      );
+
+      const result = await service.getDepositReminders(companyId);
+
+      expect(result.overdue[0].tenantName).toBe('+971500000000');
+    });
+
+    it('returns null unit and tenant fields when nothing is linked', async () => {
+      const txn = { ...mockTransaction, id: 'txn-bare' } as Transaction;
+      seedBuckets(
+        [[txn]],
+        [
+          [
+            {
+              t_id: 'txn-bare',
+              unit_number: null,
+              area_id: null,
+              tenant_contact_id: null,
+              tenant_first_name: null,
+              tenant_last_name: null,
+              tenant_phone: null,
+            },
+          ],
+        ],
+      );
+
+      const result = await service.getDepositReminders(companyId);
+
+      expect(result.overdue[0]).toMatchObject({
+        unitNumber: null,
+        areaId: null,
+        tenantContactId: null,
+        tenantName: null,
+      });
+    });
+
+    it('joins only the active, non-deleted lease of a live company unit', async () => {
+      const builders = seedBuckets([]);
+
+      await service.getDepositReminders(companyId);
+
+      for (const qb of builders) {
+        const joins = qb.leftJoin.mock.calls.map((c: any[]) => c[2]);
+        expect(joins).toEqual([
+          'u.id = t.unit_id AND u.company_id = t.company_id AND u.deleted_at IS NULL',
+          'a.id = u.asset_id AND a.company_id = t.company_id',
+          'l.unit_id = u.id AND l.company_id = t.company_id AND l.status = :activeLease AND l.deleted_at IS NULL',
+          'c.id = l.contact_id AND c.company_id = t.company_id',
+        ]);
+        expect(qb.leftJoin.mock.calls[2][3]).toEqual({
+          activeLease: LeaseStatus.ACTIVE,
+        });
       }
     });
 

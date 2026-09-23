@@ -80,6 +80,26 @@
                   {{format-date reminder.dueDate}}
                   -
                   {{reminder.category}}</p>
+                {{#if (or reminder.areaId reminder.tenantContactId)}}
+                  <p class="flex x-center gap-2 text-xs">
+                    {{#if reminder.areaId}}
+                      <LinkTo
+                        @route="properties.unit"
+                        @models={{array reminder.areaId reminder.unitId}}
+                        class="text-primary"
+                        data-test-reminder-unit-link={{reminder.unitId}}
+                      >Unit {{reminder.unitNumber}}</LinkTo>
+                    {{/if}}
+                    {{#if reminder.tenantContactId}}
+                      <LinkTo
+                        @route="contacts.detail"
+                        @model={{reminder.tenantContactId}}
+                        class="text-primary"
+                        data-test-reminder-tenant-link={{reminder.tenantContactId}}
+                      >{{or reminder.tenantName "Tenant"}}</LinkTo>
+                    {{/if}}
+                  </p>
+                {{/if}}
               </div>
             </:main>
             <:actions>

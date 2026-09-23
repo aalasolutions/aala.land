@@ -10,8 +10,9 @@
     "PaddingBlockEnd": nu-space(4),
   ));
 
+  // Stretch so every column is as tall as the board and its full height takes a drop.
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: nu-var("kanban", "Gap");
   padding-block-end: nu-var("kanban", "PaddingBlockEnd");
   overflow-x: auto;
@@ -229,6 +230,29 @@
 // Later than the rule above at equal specificity, so hover stays strongest.
 .nu-kanban.is-dragging .nu-kanban__column.is-drag-over {
   --nu-kanban__column--BorderColor: var(--primary);
+}
+
+// Insertion line drawn in the gap above a card, so it never shifts the cards it measures.
+.nu-kanban__column [data-lead-id].is-drop-before {
+  position: relative;
+
+  &::before {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(#{nu-var-el("kanban", "column", "Gap")} / -2 - 1px);
+    block-size: 2px;
+    content: "";
+    background-color: var(--primary);
+    border-radius: nu-radius(full);
+  }
+}
+
+.nu-kanban__column.is-drop-end::after {
+  flex-shrink: 0;
+  block-size: 2px;
+  content: "";
+  background-color: var(--primary);
+  border-radius: nu-radius(full);
 }
 
 .nu-kanban__column.is-empty {

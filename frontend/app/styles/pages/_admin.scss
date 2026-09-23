@@ -43,6 +43,11 @@
   gap: nu-space(2);
 }
 
+// A chip row inside a numeric table column follows the column's end alignment.
+.m-numeric .console-chip-row {
+  justify-content: flex-end;
+}
+
 .console-chip {
   display: inline-flex;
   align-items: center;
