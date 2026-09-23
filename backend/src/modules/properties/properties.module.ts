@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { RedisModule } from '../redis/redis.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
@@ -28,6 +29,7 @@ import { RecordHistoryModule } from '../record-history/record-history.module';
     ContactsModule,
     StoragePurgeModule,
     RecordHistoryModule,
+    RedisModule,
   ],
   controllers: [PropertiesController],
   providers: [PropertiesService, MediaService],

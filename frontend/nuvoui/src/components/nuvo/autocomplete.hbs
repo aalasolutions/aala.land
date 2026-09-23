@@ -1,6 +1,8 @@
 <Nuvo::Dropdown
   @filterable={{true}}
-  @remote={{true}}
+  @remote={{not this.isLocal}}
+  @options={{this.options}}
+  @filter={{@filter}}
   @align="start"
   @size={{@size}}
   @disabled={{@disabled}}

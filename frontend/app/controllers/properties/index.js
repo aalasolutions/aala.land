@@ -253,6 +253,12 @@ export default class PropertiesIndexController extends Controller {
     return this.region.regionCode ? '/locations/cities/search' : null;
   }
 
+  get cityListUrl() {
+    return this.region.regionCode
+      ? `/locations/cities/${this.region.regionCode}`
+      : null;
+  }
+
   get cityCreatePayload() {
     return { regionCode: this.region.regionCode };
   }
@@ -263,6 +269,12 @@ export default class PropertiesIndexController extends Controller {
       : null;
   }
 
+  get localityListUrl() {
+    return this.selectedCity
+      ? `/locations/localities/${this.selectedCity.id}`
+      : null;
+  }
+
   get localityCreatePayload() {
     return this.selectedCity ? { cityId: this.selectedCity.id } : {};
   }
@@ -270,6 +282,12 @@ export default class PropertiesIndexController extends Controller {
   get assetSearchUrl() {
     return this.selectedLocality
       ? `/properties/assets/search?localityId=${this.selectedLocality.id}`
+      : null;
+  }
+
+  get assetListUrl() {
+    return this.selectedLocality
+      ? `/properties/assets/list?localityId=${this.selectedLocality.id}`
       : null;
   }
 

@@ -67,6 +67,37 @@ export class RedisService implements OnModuleDestroy {
     await this.client.set(key, JSON.stringify(value), 'PX', ttlMs);
   }
 
+  // Read-through cache; a cache outage falls back to the loader instead of failing the request.
+  async getOrSetJson<T>(
+    key: string,
+    ttlMs: number,
+    load: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      const hit = await this.getJson<T>(key);
+      if (hit !== null) return hit;
+    } catch (err) {
+      this.logger.warn(`Cache read failed for ${key}: ${errorMessage(err)}`);
+    }
+    const value = await load();
+    try {
+      await this.setJson(key, value, ttlMs);
+    } catch (err) {
+      this.logger.warn(`Cache write failed for ${key}: ${errorMessage(err)}`);
+    }
+    return value;
+  }
+
+  async forget(...keys: string[]): Promise<void> {
+    try {
+      await this.del(...keys);
+    } catch (err) {
+      this.logger.warn(
+        `Cache delete failed for ${keys.join(', ')}: ${errorMessage(err)}`,
+      );
+    }
+  }
+
   async getNumber(key: string): Promise<number | null> {
     const raw = await this.client.get(key);
     if (raw === null) return null;

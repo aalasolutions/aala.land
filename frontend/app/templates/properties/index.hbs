@@ -417,6 +417,7 @@
     >
       <Nuvo::Field @label="City" @required={{true}}>
         <RemoteAutocomplete
+          @listUrl={{this.cityListUrl}}
           @searchUrl={{this.citySearchUrl}}
           @createUrl="/locations/cities"
           @createPayload={{this.cityCreatePayload}}
@@ -429,6 +430,7 @@
       {{#if this.selectedCity}}
         <Nuvo::Field @label="Location / Area" @required={{true}}>
           <RemoteAutocomplete
+            @listUrl={{this.localityListUrl}}
             @searchUrl={{this.localitySearchUrl}}
             @createUrl="/locations/localities"
             @createPayload={{this.localityCreatePayload}}
@@ -442,6 +444,7 @@
       {{#if this.selectedLocality}}
         <Nuvo::Field @label="Asset" @required={{true}}>
           <RemoteAutocomplete
+            @listUrl={{this.assetListUrl}}
             @searchUrl={{this.assetSearchUrl}}
             @createUrl="/properties/assets"
             @createPayload={{this.assetCreatePayload}}

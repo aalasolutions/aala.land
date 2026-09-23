@@ -9,10 +9,13 @@
   @minChars={{@minChars}}
   @selectedName={{@selectedName}}
   @value={{@value}}
+  @options={{this.options}}
+  @filter={{if @listUrl this.filter}}
   @onSearch={{this.search}}
   @onCreate={{if @createUrl this.create}}
   @onSelect={{@onSelect}}
   @onClear={{@onClear}}
   data-test-remote-autocomplete
+  {{this.loadList @listUrl}}
   ...attributes
 />
