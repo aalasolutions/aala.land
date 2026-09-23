@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
+import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 import { ReportsService } from './reports.service';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
@@ -36,9 +37,13 @@ function createMockQueryBuilder(result: any = []) {
     leftJoin: jest.fn().mockReturnThis(),
     leftJoinAndSelect: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue(result),
     getRawOne: jest.fn().mockResolvedValue(result),
     getMany: jest.fn().mockResolvedValue(result),
+    getManyAndCount: jest
+      .fn()
+      .mockResolvedValue([result, Array.isArray(result) ? result.length : 0]),
   };
   return qb;
 }
@@ -67,6 +72,7 @@ describe('ReportsService', () => {
           useValue: {
             count: jest.fn(),
             find: jest.fn(),
+            findAndCount: jest.fn(),
             createQueryBuilder: jest.fn(),
           },
         },
@@ -114,6 +120,7 @@ describe('ReportsService', () => {
           provide: getRepositoryToken(AuditLog),
           useValue: {
             find: jest.fn(),
+            findAndCount: jest.fn(),
           },
         },
         {
@@ -203,6 +210,10 @@ describe('ReportsService', () => {
       expect(occupancyQb.andWhere).toHaveBeenCalledWith(
         'u.property_type = :rental',
         { rental: 'RENTAL' },
+      );
+      expect(occupancyQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('u.status IN (:...rentableStatuses) OR EXISTS'),
+        { rentableStatuses: ['available', 'rented'] },
       );
       const occupied = occupancyQb.addSelect.mock.calls[0][0] as string;
       expect(occupied).toContain('u.status = :rented OR EXISTS');
@@ -431,70 +442,144 @@ describe('ReportsService', () => {
   });
 
   describe('getRedFlags', () => {
-    it('returns red flags sorted by severity', async () => {
-      const now = new Date();
-      const hours49Ago = new Date(now.getTime() - 49 * 60 * 60 * 1000);
+    const lead = {
+      id: 'l1',
+      status: LeadStatus.NEW,
+      contactId: 'c1',
+      contact: { firstName: 'Ahmed', lastName: 'Ali' },
+      createdAt: new Date(Date.now() - 49 * 60 * 60 * 1000),
+    };
 
-      leadRepo.find
-        .mockResolvedValueOnce([
-          {
-            id: 'l1',
-            firstName: 'Ahmed',
-            lastName: 'Ali',
-            createdAt: hours49Ago,
-          },
-        ])
-        .mockResolvedValueOnce([
-          {
-            id: 'l1',
-            firstName: 'Ahmed',
-            lastName: 'Ali',
-            createdAt: hours49Ago,
-          },
-        ])
-        .mockResolvedValueOnce([]);
+    function seedEmpty() {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+      const unitQb = createMockQueryBuilder([]);
+      unitRepo.createQueryBuilder.mockReturnValue(unitQb);
+      return unitQb;
+    }
 
-      const overdueQb = createMockQueryBuilder([]);
-      leadRepo.createQueryBuilder.mockReturnValue(overdueQb);
-
-      unitRepo.find.mockResolvedValue([]);
+    it('returns every check in fixed order with its label and real total', async () => {
+      seedEmpty();
+      leadRepo.findAndCount.mockResolvedValueOnce([[lead], 57]);
 
       const result = await service.getRedFlags(companyId);
 
-      expect(result.length).toBeGreaterThanOrEqual(1);
-      expect(result[0].type).toBe('UNTOUCHED_LEAD_48H');
-      expect(result[0].severity).toBe('HIGH');
+      expect(result.map((check) => check.type)).toEqual([
+        'UNTOUCHED_LEAD_48H',
+        'UNTOUCHED_LEAD_24H',
+        'STALLED_PIPELINE',
+        'OVERDUE_FOLLOWUP',
+        'LONG_VACANT',
+      ]);
+      expect(result[0]).toMatchObject({
+        label: 'Leads untouched for 48+ hours',
+        severity: 'HIGH',
+        total: 57,
+      });
+      expect(result[0].flags[0].message).toBe(
+        'Ahmed Ali untouched for 48+ hours',
+      );
+      expect(result[1]).toMatchObject({ total: 0, flags: [] });
     });
 
-    it('excludes archived units from vacant units', async () => {
-      leadRepo.find.mockResolvedValue([]);
-      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
-      unitRepo.find.mockResolvedValue([]);
+    it('bounds the 24h window at 48h and keeps the oldest leads under the cap', async () => {
+      seedEmpty();
 
       await service.getRedFlags(companyId);
 
-      expect(unitRepo.find).toHaveBeenCalledWith(
+      const [first, second, stalled] = leadRepo.findAndCount.mock.calls.map(
+        (call: any[]) => call[0],
+      );
+      expect(first.where.createdAt.type).toBe('lessThan');
+      expect(second.where.createdAt.type).toBe('and');
+      expect(first).toMatchObject({ order: { createdAt: 'ASC' }, take: 20 });
+      expect(second).toMatchObject({ order: { createdAt: 'ASC' }, take: 20 });
+      expect(stalled).toMatchObject({ order: { updatedAt: 'ASC' }, take: 20 });
+    });
+
+    it('reports a vacant unit with its locality id, real vacant days and total', async () => {
+      seedEmpty();
+      const vacantSince = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+      unitRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([
+          {
+            id: 'u1',
+            unitNumber: '101',
+            areaId: 'loc-1',
+            vacantSince,
+            total: '3',
+          },
+        ]),
+      );
+
+      const result = await service.getRedFlags(companyId);
+      const vacant = result.find((check) => check.type === 'LONG_VACANT')!;
+
+      expect(vacant.total).toBe(3);
+      expect(vacant.flags[0]).toMatchObject({
+        entityId: 'u1',
+        areaId: 'loc-1',
+        message: 'Property 101 vacant for 45 days',
+      });
+      expect(vacant.flags[0].createdAt).toEqual(vacantSince);
+    });
+
+    it('counts only For Rent, available, non-archived units without an active lease', async () => {
+      const unitQb = seedEmpty();
+
+      await service.getRedFlags(companyId);
+
+      const clauses = unitQb.andWhere.mock.calls.map((call: any[]) => call[0]);
+      expect(clauses).toContain('u.deleted_at IS NULL');
+      expect(clauses).toContain('u.status = :available');
+      expect(clauses).toContain('u.property_type = :rental');
+      expect(
+        clauses.some(
+          (sql: string) =>
+            sql.includes('NOT EXISTS') && sql.includes(':activeLease'),
+        ),
+      ).toBe(true);
+      expect(unitQb.setParameters).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ deletedAt: IsNull() }),
+          activeLease: LeaseStatus.ACTIVE,
+          terminatedLease: LeaseStatus.TERMINATED,
+          expiredLease: LeaseStatus.EXPIRED,
+          terminateAction: 'TERMINATE',
+          statusChangeAction: 'STATUS_CHANGE',
+          endedLeaseStatuses: [
+            LeaseStatus.EXPIRED,
+            LeaseStatus.TERMINATED,
+            LeaseStatus.RENEWED,
+          ],
         }),
       );
     });
 
-    it('excludes archived units from region-scoped vacant units', async () => {
-      leadRepo.find.mockResolvedValue([]);
-      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
-      const unitQb = createMockQueryBuilder([]);
-      unitRepo.createQueryBuilder.mockReturnValue(unitQb);
+    it('dates a hand-expired lease from its status change, not its end date', async () => {
+      const unitQb = seedEmpty();
+
+      await service.getRedFlags(companyId);
+
+      const [havingSql] = unitQb.having.mock.calls[0];
+      expect(havingSql).toContain('WHEN :expiredLease THEN LEAST(');
+      expect(havingSql).toContain("rh.metadata->>'to' = le.status::text");
+      expect(havingSql).toContain('< :days30Ago');
+    });
+
+    it('confines region-scoped vacant units through the city region', async () => {
+      const unitQb = seedEmpty();
 
       await service.getRedFlags(companyId, undefined, {
         role: 'manager',
         regionCodes: ['makkah'],
       } as any);
 
-      expect(unitQb.andWhere).toHaveBeenCalledWith('u.deleted_at IS NULL');
+      expect(unitQb.andWhere).toHaveBeenCalledWith(
+        'ci.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
     });
   });
-
   describe('getDashboardKpis archived units', () => {
     it('counts only non-archived units', async () => {
       leadRepo.count.mockResolvedValue(0);
@@ -530,7 +615,7 @@ describe('ReportsService', () => {
   });
 
   describe('getActivityFeed', () => {
-    it('returns recent activity feed', async () => {
+    it('returns a page of activity with the actor name', async () => {
       const mockLogs = [
         {
           id: 'a1',
@@ -538,18 +623,61 @@ describe('ReportsService', () => {
           entityType: 'Lead',
           entityId: 'l1',
           userId: 'u1',
+          user: { id: 'u1', name: 'Test User' },
           createdAt: new Date(),
         },
       ];
-      auditLogRepo.find.mockResolvedValue(mockLogs);
+      auditLogRepo.findAndCount.mockResolvedValue([mockLogs, 41]);
 
-      const result = await service.getActivityFeed(companyId);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].action).toBe('CREATE');
-      expect(auditLogRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { companyId }, take: 25 }),
+      const result = await service.getActivityFeed(
+        companyId,
+        undefined,
+        undefined,
+        3,
+        20,
       );
+
+      expect(result.total).toBe(41);
+      expect(result.page).toBe(3);
+      expect(result.data[0].action).toBe('CREATE');
+      expect(result.data[0].userName).toBe('Test User');
+      expect(auditLogRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            companyId,
+            action: Not(In([AuditAction.LOGIN, AuditAction.LOGOUT])),
+          },
+          skip: 40,
+          take: 20,
+        }),
+      );
+    });
+
+    it('excludes logins and logouts on every region branch', async () => {
+      auditLogRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.getActivityFeed(companyId, undefined, {
+        role: 'admin',
+        regionCodes: ['makkah'],
+      } as any);
+
+      const where = auditLogRepo.findAndCount.mock.calls[0][0].where;
+      expect(where).toHaveLength(2);
+      for (const branch of where) {
+        expect(branch.action).toEqual(
+          Not(In([AuditAction.LOGIN, AuditAction.LOGOUT])),
+        );
+      }
+    });
+
+    it('returns an empty page when the caller has no region', async () => {
+      const result = await service.getActivityFeed(companyId, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      } as any);
+
+      expect(result).toEqual({ data: [], total: 0, page: 1, limit: 20 });
+      expect(auditLogRepo.findAndCount).not.toHaveBeenCalled();
     });
   });
 
@@ -670,16 +798,23 @@ describe('ReportsService', () => {
         select: jest.fn().mockReturnThis(),
         addSelect: jest.fn().mockReturnThis(),
         groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        having: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         setParameter: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
         innerJoin: jest.fn().mockReturnThis(),
         leftJoin: jest.fn().mockReturnThis(),
         leftJoinAndSelect: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
         where: jest.fn(capture),
         andWhere: jest.fn(capture),
         getRawMany: jest.fn(() => Promise.resolve(visible())),
         getMany: jest.fn(() => Promise.resolve(visible())),
+        getManyAndCount: jest.fn(() =>
+          Promise.resolve([visible(), visible().length]),
+        ),
         getCount: jest.fn(() => Promise.resolve(visible().length)),
         getRawOne: jest.fn(() =>
           Promise.resolve({
@@ -1142,27 +1277,33 @@ describe('ReportsService', () => {
         {
           id: 'unit-makkah',
           unitNumber: '101',
+          areaId: 'loc-makkah',
           regionCode: 'makkah',
-          updatedAt: new Date(0),
+          vacantSince: new Date(0),
         },
         {
           id: 'unit-punjab',
           unitNumber: '201',
+          areaId: 'loc-punjab',
           regionCode: 'punjab',
-          updatedAt: new Date(0),
+          vacantSince: new Date(0),
         },
       ];
 
       function seed() {
-        leadRepo.find.mockImplementation((opts: any) =>
-          Promise.resolve(rowsMatchingWhere(staleLeads, opts?.where)),
-        );
+        leadRepo.findAndCount.mockImplementation((opts: any) => {
+          const rows = rowsMatchingWhere(staleLeads, opts?.where);
+          return Promise.resolve([rows, rows.length]);
+        });
         leadRepo.createQueryBuilder.mockReturnValue(createRegionAwareQb([]));
-        unitRepo.find.mockResolvedValue(vacantUnits);
         unitRepo.createQueryBuilder.mockReturnValue(
           createRegionAwareQb(vacantUnits),
         );
       }
+
+      const flaggedIds = (checks: { flags: { entityId: string }[] }[]) => [
+        ...new Set(checks.flatMap((c) => c.flags.map((f) => f.entityId))),
+      ];
 
       it('confines flags to the caller regions with no regionCode argument', async () => {
         seed();
@@ -1173,7 +1314,7 @@ describe('ReportsService', () => {
           makkahManager,
         );
 
-        expect(result.map((f) => f.entityId).sort()).toEqual([
+        expect(flaggedIds(result).sort()).toEqual([
           'lead-makkah',
           'unit-makkah',
         ]);
@@ -1184,7 +1325,7 @@ describe('ReportsService', () => {
 
         const result = await service.getRedFlags(companyId, undefined, admin);
 
-        expect(result.map((f) => f.entityId).sort()).toEqual([
+        expect(flaggedIds(result).sort()).toEqual([
           'lead-makkah',
           'lead-punjab',
           'unit-makkah',
@@ -1201,8 +1342,11 @@ describe('ReportsService', () => {
           unassignedManager,
         );
 
-        expect(result).toEqual([]);
-        expect(leadRepo.find).not.toHaveBeenCalled();
+        expect(result).toHaveLength(5);
+        expect(
+          result.every((check) => check.total === 0 && !check.flags.length),
+        ).toBe(true);
+        expect(leadRepo.findAndCount).not.toHaveBeenCalled();
         expect(unitRepo.find).not.toHaveBeenCalled();
         expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
       });

@@ -19,6 +19,10 @@ export function canManageUsers(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }
 
+export function canViewReports(role) {
+  return [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER].includes(role);
+}
+
 export function canAccessWhatsapp(role) {
   return [
     ROLES.COMPANY_ADMIN,
@@ -68,13 +72,7 @@ export const SIDEBAR_ROLES = {
     ROLES.MANAGER,
     ROLES.ACCOUNTANT,
   ],
-  reports: [
-    ROLES.COMPANY_ADMIN,
-    ROLES.ADMIN,
-    ROLES.MANAGER,
-    ROLES.AGENT,
-    ROLES.ACCOUNTANT,
-  ],
+  reports: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
   team: [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN],
   history: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
   admin: [ROLES.SUPER_ADMIN],

@@ -8,189 +8,295 @@
   />
 
   {{#if @model.kpis}}
-    <div class="kpi-grid">
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Total Leads</p>
-        <p class="text-3xl font-bold mt-1">{{format-number
-            @model.kpis.totalLeads
-          }}</p>
-      </Nuvo::Panel>
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Won Leads</p>
-        <p class="text-3xl font-bold mt-1 text-success">{{format-number
-            @model.kpis.wonLeads
-          }}</p>
-      </Nuvo::Panel>
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Total Properties</p>
-        <p class="text-3xl font-bold mt-1">{{format-number
-            @model.kpis.totalUnits
-          }}</p>
-      </Nuvo::Panel>
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Monthly Revenue</p>
-        <p class="text-3xl font-bold mt-1">{{format-currency
-            @model.kpis.monthlyRevenue
-          }}</p>
-      </Nuvo::Panel>
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Active Leases</p>
-        <p class="text-3xl font-bold mt-1">{{format-number
-            @model.kpis.activeLeases
-          }}</p>
-      </Nuvo::Panel>
-      <Nuvo::Panel class="text-center">
-        <p class="text-xs text-muted uppercase">Pending Cheques</p>
-        <p class="text-3xl font-bold mt-1">{{format-number
-            @model.kpis.pendingCheques
-          }}</p>
-      </Nuvo::Panel>
+    <div class="grid cols-3 gap-4" data-test-reports-kpis>
+      <Nuvo::Stat
+        data-test-kpi="monthly-revenue"
+        @route="financials"
+        @contentBleed={{true}}
+        @label="Monthly Revenue"
+        @value={{format-currency @model.kpis.monthlyRevenue}}
+      >
+        <:content>
+          <StatSparkline
+            @points={{this.revenuePoints}}
+            @variant="primary"
+            @caption="Completed revenue by month"
+          />
+        </:content>
+      </Nuvo::Stat>
+      <Nuvo::Stat
+        data-test-kpi="pending-cheques"
+        @route="cheques"
+        @variant="warning"
+        @size="lg"
+        @label="Pending Cheques"
+        @value={{format-number @model.kpis.pendingCheques}}
+        @delta="Needs action"
+      />
+      <Nuvo::Stat
+        data-test-kpi="won-leads"
+        @route="leads"
+        @variant="success"
+        @size="lg"
+        @label="Won Leads"
+        @value={{format-number @model.kpis.wonLeads}}
+        @delta="{{this.winRate}}% of {{format-number
+          @model.kpis.totalLeads
+        }} leads"
+      />
+      <Nuvo::Stat
+        data-test-kpi="total-leads"
+        @route="leads"
+        @variant="secondary"
+        @label="Total Leads"
+        @value={{format-number @model.kpis.totalLeads}}
+        @delta="All stages"
+      />
+      <Nuvo::Stat
+        data-test-kpi="active-leases"
+        @route="leases"
+        @label="Active Leases"
+        @value={{format-number @model.kpis.activeLeases}}
+        @delta="Currently running"
+      />
+      <Nuvo::Stat
+        data-test-kpi="total-units"
+        @route="properties"
+        @label="Total Properties"
+        @value={{format-number @model.kpis.totalUnits}}
+        @delta="Units on record"
+      />
     </div>
   {{/if}}
 
-  {{#if @model.redFlags.length}}
-    <Nuvo::Panel>
-      <:header>
-        <h4 class="nu-panel__title"><Ui::Ph @icon="warning" @size="20px" />
-          Red Flag Alerts</h4>
-      </:header>
-      <:body>
-      <div class="flex col gap-2">
-        {{#each @model.redFlags as |flag|}}
-          <div
-            class="flex between x-center p-3 rounded-lg red-flag-{{lowercase
-                flag.severity
-              }}"
-          >
+  <Nuvo::Tabs
+    @tabs={{this.tabs}}
+    @activeTab={{this.currentTab}}
+    @onChange={{this.setTab}}
+    data-test-reports-tabs
+  />
+
+  {{#if (eq this.currentTab "alerts")}}
+    <div class="grid gap-4 cols-2@lg align-start" data-test-flag-groups>
+      {{#each this.flagGroups as |group|}}
+        <Nuvo::Panel data-test-flag-group={{group.type}}>
+          <:header>
             <div class="flex x-center gap-3">
-              {{#if (eq flag.severity "HIGH")}}
-                <span class="flag-dot flag-dot-high"></span>
-              {{else if (eq flag.severity "MEDIUM")}}
-                <span class="flag-dot flag-dot-medium"></span>
-              {{else}}
-                <span class="flag-dot flag-dot-low"></span>
-              {{/if}}
-              <span class="text-sm">{{flag.message}}</span>
+              <Nuvo::Tag
+                @variant={{group.variant}}
+                @text={{group.severityLabel}}
+              />
+              <h4 class="nu-panel__title">{{group.label}}</h4>
+              <span
+                class="text-muted text-sm"
+                data-test-flag-group-total={{group.type}}
+              >{{format-number group.total}}</span>
             </div>
-            <span
-              class="type-badge type-{{lowercase flag.type}}"
-            >{{flag.type}}</span>
-          </div>
-        {{/each}}
-      </div>
-      </:body>
-    </Nuvo::Panel>
+          </:header>
+          <:body>
+            <div class="flex col gap-2">
+              {{#unless group.total}}
+                <p
+                  class="flex x-center gap-2 text-sm text-success"
+                  data-test-flag-group-clear={{group.type}}
+                ><Ui::Ph @icon="check-circle" @size="18px" />
+                  All good</p>
+              {{/unless}}
+              {{#each group.visible as |flag|}}
+                <div
+                  class="flex between x-center p-3 rounded-lg red-flag-row"
+                  data-test-flag-row={{flag.entityId}}
+                >
+                  <span class="text-sm">{{flag.message}}</span>
+                  <div class="flex x-center gap-3">
+                    <span
+                      class="text-xs text-muted whitespace-nowrap"
+                    >{{format-date flag.createdAt}}</span>
+                    {{#if flag.areaId}}
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
+                        @route="properties.unit"
+                        @models={{array flag.areaId flag.entityId}}
+                        @text="View unit"
+                        data-test-flag-unit-link
+                      />
+                    {{/if}}
+                  </div>
+                </div>
+              {{/each}}
+              {{#if group.hiddenCount}}
+                <Nuvo::Button
+                  @variant="ghost"
+                  @size="sm"
+                  {{on "click" (fn this.showAllFlags group.type)}}
+                  data-test-flag-show-all={{group.type}}
+                >
+                  Show
+                  {{group.hiddenCount}}
+                  more
+                </Nuvo::Button>
+              {{else if group.isTruncated}}
+                <p
+                  class="text-xs text-muted"
+                  data-test-flag-group-truncated={{group.type}}
+                >Showing the oldest
+                  {{group.listedCount}}
+                  of
+                  {{format-number group.total}}</p>
+              {{/if}}
+            </div>
+          </:body>
+        </Nuvo::Panel>
+      {{/each}}
+    </div>
   {{/if}}
 
-  {{#if @model.funnel.length}}
-    <Nuvo::Panel>
-      <:header>
-        <h4 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
-          Pipeline Funnel</h4>
-      </:header>
-      <:body>
-      <div class="funnel-grid">
-        {{#each @model.funnel as |stage|}}
-          <div class="funnel-stage text-center">
-            <p class="text-2xl font-bold">{{format-number stage.count}}</p>
-            <p class="text-xs text-muted uppercase mt-1">{{stage.stage}}</p>
+  {{#if (eq this.currentTab "pipeline")}}
+    {{#if @model.funnel.length}}
+      <Nuvo::Panel>
+        <:header>
+          <h4 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
+            Pipeline Funnel</h4>
+        </:header>
+        <:body>
+          <div class="funnel-grid">
+            {{#each @model.funnel as |stage|}}
+              <div class="funnel-stage text-center">
+                <p class="text-2xl font-bold">{{format-number stage.count}}</p>
+                <p class="text-xs text-muted uppercase mt-1">{{stage.stage}}</p>
+              </div>
+            {{/each}}
           </div>
-        {{/each}}
-      </div>
-      </:body>
-    </Nuvo::Panel>
-  {{/if}}
+        </:body>
+      </Nuvo::Panel>
+    {{/if}}
 
-  {{#if @model.agents.length}}
-    <Nuvo::Panel>
-      <:header>
-        <h4 class="nu-panel__title"><Ui::Ph
-            @icon="users-three"
-            @size="20px"
-          />
-          Agent Performance</h4>
-      </:header>
-      <:body>
-      <Nuvo::DataTable
-        @columns={{this.columns}}
-        @rows={{this.agentRows}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="reports-agents"
-        as |cell|
-      >
-        {{#if (eq cell.key "agentName")}}
-          <div
-            class="flex x-center gap-2"
-            data-test-agent-row
-            data-test-agent-id={{cell.row.agentId}}
+    {{#if @model.agents.length}}
+      <Nuvo::Panel>
+        <:header>
+          <h4 class="nu-panel__title"><Ui::Ph
+              @icon="users-three"
+              @size="20px"
+            />
+            Agent Performance</h4>
+        </:header>
+        <:body>
+          <Nuvo::DataTable
+            @columns={{this.columns}}
+            @rows={{this.agentRows}}
+            @pinColumns={{true}}
+            @reorderable={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @tableId="reports-agents"
+            as |cell|
           >
-            <div class="agent-avatar">{{uc-first cell.value}}</div>
-            <span class="text-sm">{{if
-                cell.value
-                cell.value
-                (truncate-id cell.row.agentId)
-              }}</span>
-          </div>
-        {{else if (eq cell.key "leadsAssigned")}}
-          {{format-number cell.value}}
-        {{else if (eq cell.key "leadsWon")}}
-          <span class="text-success font-bold">{{format-number cell.value}}</span>
-        {{else if (eq cell.key "leadsLost")}}
-          <span class="text-danger">{{format-number cell.value}}</span>
-        {{else if (eq cell.key "conversionRate")}}
-          <span
-            class="font-bold
-              {{if
-                (gt cell.value 50)
-                'text-success'
-                (if (gt cell.value 25) 'text-warning' 'text-danger')
-              }}"
-          >
-            {{cell.value}}%
-          </span>
-        {{else if (eq cell.key "commissionsEarned")}}
-          <span class="font-bold">{{format-currency cell.value}}</span>
-        {{else}}
-          {{cell.value}}
-        {{/if}}
-      </Nuvo::DataTable>
-      </:body>
-    </Nuvo::Panel>
-  {{else}}
-    <Nuvo::Panel class="text-center">
-      <p class="text-muted">No agent data available.</p>
-    </Nuvo::Panel>
+            {{#if (eq cell.key "agentName")}}
+              <div
+                class="flex x-center gap-2"
+                data-test-agent-row
+                data-test-agent-id={{cell.row.agentId}}
+              >
+                <div class="agent-avatar">{{uc-first cell.value}}</div>
+                <span class="text-sm">{{if
+                    cell.value
+                    cell.value
+                    (truncate-id cell.row.agentId)
+                  }}</span>
+              </div>
+            {{else if (eq cell.key "leadsAssigned")}}
+              {{format-number cell.value}}
+            {{else if (eq cell.key "leadsWon")}}
+              <span class="text-success font-bold">{{format-number
+                  cell.value
+                }}</span>
+            {{else if (eq cell.key "leadsLost")}}
+              <span class="text-danger">{{format-number cell.value}}</span>
+            {{else if (eq cell.key "conversionRate")}}
+              <span
+                class="font-bold
+                  {{if
+                    (gt cell.value 50)
+                    'text-success'
+                    (if (gt cell.value 25) 'text-warning' 'text-danger')
+                  }}"
+              >
+                {{cell.value}}%
+              </span>
+            {{else if (eq cell.key "commissionsEarned")}}
+              <span class="font-bold">{{format-currency cell.value}}</span>
+            {{else}}
+              {{cell.value}}
+            {{/if}}
+          </Nuvo::DataTable>
+        </:body>
+      </Nuvo::Panel>
+    {{else}}
+      <Nuvo::Panel class="text-center">
+        <p class="text-muted">No agent data available.</p>
+      </Nuvo::Panel>
+    {{/if}}
   {{/if}}
 
-  {{#if @model.activity.length}}
+  {{#if (eq this.currentTab "activity")}}
     <Nuvo::Panel>
       <:header>
         <h4 class="nu-panel__title"><Ui::Ph
             @icon="clock-counter-clockwise"
             @size="20px"
           />
-          Recent Activity</h4>
+          Activity Logs</h4>
       </:header>
       <:body>
-      <div class="flex col gap-2">
-        {{#each @model.activity as |item|}}
-          <div class="flex between x-center p-3 rounded-lg activity-row">
-            <div class="flex x-center gap-3">
+        {{#if this.activityRows.length}}
+          <Nuvo::DataTable
+            @columns={{this.activityColumns}}
+            @rows={{this.activityRows}}
+            @tableId="reports-activity"
+            data-test-reports-activity
+            as |cell|
+          >
+            {{#if (eq cell.key "createdAt")}}
+              <span
+                class="text-sm text-muted"
+                data-test-activity-row={{cell.row.id}}
+              >{{format-date-time cell.value}}</span>
+            {{else if (eq cell.key "actionLabel")}}
               <Nuvo::Tag
-                class="tag-audit-{{lowercase item.action}}"
-                @text={{item.action}}
+                @variant={{cell.row.actionVariant}}
+                @text={{cell.value}}
               />
-              <span class="text-sm">{{item.entityType}}</span>
-            </div>
-            <span class="text-xs text-muted">{{format-date
-                item.createdAt
-              }}</span>
-          </div>
-        {{/each}}
-      </div>
+            {{else if (eq cell.key "userName")}}
+              <span class="text-sm">{{if cell.value cell.value "System"}}</span>
+            {{else}}
+              <span class="text-sm">{{cell.value}}</span>
+            {{/if}}
+          </Nuvo::DataTable>
+        {{else if @model.total}}
+          <Nuvo::EmptyState
+            @title="Nothing on this page"
+            data-test-reports-activity-page-empty
+          />
+        {{else}}
+          <Nuvo::EmptyState
+            @title="No activity yet"
+            data-test-reports-activity-empty
+          />
+        {{/if}}
+        {{#if @model.total}}
+          <Nuvo::Pagination
+            @selectId="reports-activity-limit"
+            @page={{this.page}}
+            @limit={{this.limit}}
+            @total={{@model.total}}
+            @onLimitChange={{this.setLimit}}
+            @onPageChange={{this.goToPage}}
+            @onPrevious={{this.goToPreviousPage}}
+            @onNext={{this.goToNextPage}}
+            data-test-reports-activity-pagination
+          />
+        {{/if}}
       </:body>
     </Nuvo::Panel>
   {{/if}}
