@@ -23,8 +23,7 @@ export default class ReportsRoute extends AuthenticatedRoute {
 
   staticReports = null;
 
-  // Paging the activity log refetches only the activity feed; a region
-  // switch also refreshes from `reports`, so the cache is keyed by region.
+  // A region switch also refreshes from `reports`, so the static-report cache is keyed by region.
   async model({ page = 1, limit = 50 }, transition) {
     const regionCode = this.region.regionCode;
     const pagingOnly =

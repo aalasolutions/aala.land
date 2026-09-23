@@ -52,8 +52,8 @@ export default class VendorsController extends PaginatedController {
     { name: 'Phone', valuePath: 'phone', width: 170 },
     { name: 'Email', valuePath: 'email', width: 240 },
     { name: 'Company', valuePath: 'companyName', width: 200 },
-    { name: 'Rate/hr', valuePath: 'hourlyRate', width: 140 },
-    { name: 'Rating', valuePath: 'rating', width: 120 },
+    { name: 'Rate/hr', valuePath: 'hourlyRate', width: 140, numeric: true },
+    { name: 'Rating', valuePath: 'rating', width: 120, numeric: true },
     {
       name: 'Actions',
       valuePath: 'id',

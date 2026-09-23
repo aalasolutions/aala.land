@@ -23,7 +23,6 @@ function trigrams(text) {
   return grams;
 }
 
-// Share of the term's trigrams found in the label, so a long label is not penalised.
 export function fuzzyScore(label, term) {
   const needle = normalizeForMatch(term);
   if (!needle) return 0;

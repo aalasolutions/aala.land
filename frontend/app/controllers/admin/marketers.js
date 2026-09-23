@@ -3,10 +3,21 @@ import Controller from '@ember/controller';
 export default class AdminMarketersController extends Controller {
   columns = [
     { name: 'Code', valuePath: 'code', width: 240, isFixed: 'left' },
-    { name: 'Companies', valuePath: 'companies', width: 130 },
-    { name: 'Paying', valuePath: 'paying', width: 120 },
-    { name: 'MRR', valuePath: 'mrr', width: 160, isSortable: false },
-    { name: 'Last signup', valuePath: 'lastSignupAt', width: 140 },
+    { name: 'Companies', valuePath: 'companies', width: 130, numeric: true },
+    { name: 'Paying', valuePath: 'paying', width: 120, numeric: true },
+    {
+      name: 'MRR',
+      valuePath: 'mrr',
+      width: 160,
+      isSortable: false,
+      numeric: true,
+    },
+    {
+      name: 'Last signup',
+      valuePath: 'lastSignupAt',
+      width: 140,
+      numeric: true,
+    },
   ];
 
   get rows() {

@@ -37,15 +37,31 @@ export default class ReportsController extends PaginatedController {
 
   columns = [
     { name: 'Agent', valuePath: 'agentName', width: 220, isFixed: 'left' },
-    { name: 'Leads', valuePath: 'leadsAssigned', width: 120 },
-    { name: 'Won', valuePath: 'leadsWon', width: 120 },
-    { name: 'Lost', valuePath: 'leadsLost', width: 120 },
-    { name: 'Conversion', valuePath: 'conversionRate', width: 140 },
-    { name: 'Commissions', valuePath: 'commissionsEarned', width: 160 },
+    { name: 'Leads', valuePath: 'leadsAssigned', width: 120, numeric: true },
+    { name: 'Won', valuePath: 'leadsWon', width: 120, numeric: true },
+    { name: 'Lost', valuePath: 'leadsLost', width: 120, numeric: true },
+    {
+      name: 'Conversion',
+      valuePath: 'conversionRate',
+      width: 140,
+      numeric: true,
+    },
+    {
+      name: 'Commissions',
+      valuePath: 'commissionsEarned',
+      width: 160,
+      numeric: true,
+    },
   ];
 
   activityColumns = [
-    { name: 'Date', valuePath: 'createdAt', width: 180, isFixed: 'left' },
+    {
+      name: 'Date',
+      valuePath: 'createdAt',
+      width: 180,
+      isFixed: 'left',
+      numeric: true,
+    },
     { name: 'Action', valuePath: 'actionLabel', width: 140 },
     { name: 'Record', valuePath: 'entityType', width: 200 },
     { name: 'By', valuePath: 'userName', width: 220 },
@@ -83,7 +99,6 @@ export default class ReportsController extends PaginatedController {
     return Math.round(((kpis.wonLeads || 0) / kpis.totalLeads) * 100);
   }
 
-  // The backend sends every check, empty or not, with its real total.
   get flagGroups() {
     return (this.model?.redFlags ?? []).map((check) => {
       const expanded = this.expandedFlagGroups.has(check.type);

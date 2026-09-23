@@ -99,8 +99,14 @@ export default class AdminCompaniesCompanyController extends Controller {
   basisOptions = BASIS_OPTIONS;
 
   paymentColumns = [
-    { name: 'Date', valuePath: 'date', width: 140, isFixed: 'left' },
-    { name: 'Amount', valuePath: 'amount', width: 140 },
+    {
+      name: 'Date',
+      valuePath: 'date',
+      width: 140,
+      isFixed: 'left',
+      numeric: true,
+    },
+    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
     { name: 'Covers', valuePath: 'coversLabel', width: 200 },
     { name: 'Source', valuePath: 'source', width: 120 },
     { name: 'Notes', valuePath: 'notes', width: 220 },
@@ -121,7 +127,13 @@ export default class AdminCompaniesCompanyController extends Controller {
   ];
 
   historyColumns = [
-    { name: 'When', valuePath: 'when', width: 180, isFixed: 'left' },
+    {
+      name: 'When',
+      valuePath: 'when',
+      width: 180,
+      isFixed: 'left',
+      numeric: true,
+    },
     { name: 'Who', valuePath: 'who', width: 200 },
     { name: 'What', valuePath: 'what', width: 240 },
   ];

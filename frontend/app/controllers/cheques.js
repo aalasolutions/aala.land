@@ -79,8 +79,8 @@ export default class ChequesController extends PaginatedController {
     { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
     { name: 'Bank', valuePath: 'bankName', width: 180 },
     { name: 'Account Holder', valuePath: 'accountHolder', width: 200 },
-    { name: 'Amount', valuePath: 'amount', width: 140 },
-    { name: 'Due Date', valuePath: 'dueDate', width: 140 },
+    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
+    { name: 'Due Date', valuePath: 'dueDate', width: 140, numeric: true },
     { name: 'Type', valuePath: 'type', width: 140 },
     { name: 'Status', valuePath: 'status', width: 140 },
     {

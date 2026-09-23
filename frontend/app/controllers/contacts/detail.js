@@ -39,7 +39,7 @@ export default class ContactsDetailController extends Controller {
     { name: 'Area', valuePath: 'areaName', width: 200 },
     { name: 'Type', valuePath: 'propertyType', width: 160 },
     { name: 'Status', valuePath: 'status', width: 140 },
-    { name: 'Price', valuePath: 'price', width: 140 },
+    { name: 'Price', valuePath: 'price', width: 140, numeric: true },
     {
       name: 'Actions',
       valuePath: 'id',
@@ -58,9 +58,9 @@ export default class ContactsDetailController extends Controller {
       isFixed: 'left',
     },
     { name: 'Status', valuePath: 'status', width: 160 },
-    { name: 'Start', valuePath: 'startDate', width: 140 },
-    { name: 'End', valuePath: 'endDate', width: 140 },
-    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
+    { name: 'Start', valuePath: 'startDate', width: 140, numeric: true },
+    { name: 'End', valuePath: 'endDate', width: 140, numeric: true },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
   ];
 
   resetEditState() {

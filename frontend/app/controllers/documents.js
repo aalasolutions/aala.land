@@ -49,9 +49,9 @@ export default class DocumentsController extends PaginatedController {
     { name: 'Category', valuePath: 'category', width: 140 },
     { name: 'Access', valuePath: 'accessLevel', width: 120 },
     { name: 'Property', valuePath: 'unit.assetName', width: 220 },
-    { name: 'Size', valuePath: 'fileSize', width: 120 },
+    { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
     { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
-    { name: 'Uploaded', valuePath: 'createdAt', width: 140 },
+    { name: 'Uploaded', valuePath: 'createdAt', width: 140, numeric: true },
     {
       name: 'Actions',
       valuePath: 'id',

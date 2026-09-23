@@ -246,6 +246,13 @@
   padding-block: nu-space(1);
 }
 
+// Form controls do not inherit text-align, so a numeric column's number
+// editor is aligned explicitly to match the cell it replaces.
+.data-table td.m-numeric .data-table__editor input {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
 // Tag or badge cells.
 .data-table__chips {
   display: flex;
@@ -254,6 +261,11 @@
 
 .data-table__chips > * {
   flex-shrink: 0;
+}
+
+// Chips are a flex row, so text-align cannot move them; follow the numeric column's end edge.
+.data-table td.m-numeric .data-table__chips {
+  justify-content: flex-end;
 }
 
 // Options toolbar above the table.

@@ -15,3 +15,17 @@
   --tooltip-border-radius: #{nu-radius(md)};
   --tooltip-transition-duration: #{nu-duration(fast)};
 }
+
+// Core's base layer hardcodes 700 on headings, and browsers default b/strong/th
+// to bold. All follow the kit's weight scale instead.
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+th {
+  font-weight: nu-font-weight(bold);
+}

@@ -37,7 +37,12 @@ describe('LeadsService', () => {
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let contactsService: { resolveOrCreate: jest.Mock; findOneEntity: jest.Mock };
   let module: TestingModule;
-  let manager: { getRepository: jest.Mock; findOne: jest.Mock };
+  let manager: {
+    getRepository: jest.Mock;
+    findOne: jest.Mock;
+    find: jest.Mock;
+    query: jest.Mock;
+  };
 
   const companyId = 'company-uuid-1';
 
@@ -80,6 +85,8 @@ describe('LeadsService', () => {
           entity === Lead ? { id: opts.where.id, unitId: null } : null,
         ),
       ),
+      find: jest.fn(),
+      query: jest.fn(),
     };
     module = await Test.createTestingModule({
       providers: [
@@ -555,7 +562,10 @@ describe('LeadsService', () => {
         relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
         skip: 0,
         take: 20,
-        order: { createdAt: 'DESC' },
+        order: {
+          position: { direction: 'ASC', nulls: 'FIRST' },
+          createdAt: 'DESC',
+        },
       });
       expect(result.data).toEqual([{ ...mockLead, assignedAgentName: null }]);
       expect(result.total).toBe(1);
@@ -570,7 +580,10 @@ describe('LeadsService', () => {
         where: { companyId },
         relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
         ...{ skip: 0, take: 20 },
-        order: { createdAt: 'DESC' },
+        order: {
+          position: { direction: 'ASC', nulls: 'FIRST' },
+          createdAt: 'DESC',
+        },
       });
       expect(result.data).toEqual([{ ...mockLead, assignedAgentName: null }]);
       expect(result.total).toBe(1);
@@ -660,6 +673,30 @@ describe('LeadsService', () => {
 
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
       expect(savedLead.stageEnteredAt).toBeInstanceOf(Date);
+    });
+
+    it('clears position when status changes, keeps it otherwise', async () => {
+      const positioned = {
+        ...mockLead,
+        status: LeadStatus.NEW,
+        position: 3,
+      } as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce({ ...positioned })
+        .mockResolvedValueOnce({ ...positioned })
+        .mockResolvedValueOnce({ ...positioned })
+        .mockResolvedValueOnce({ ...positioned });
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update('lead-uuid-1', companyId, { score: 80 } as any);
+      await service.update('lead-uuid-1', companyId, {
+        status: LeadStatus.CONTACTED,
+      } as any);
+
+      expect((leadRepo.save.mock.calls[0][0] as Lead).position).toBe(3);
+      expect((leadRepo.save.mock.calls[1][0] as Lead).position).toBeNull();
     });
 
     it('does not set stageEnteredAt when status does not change', async () => {
@@ -1249,6 +1286,103 @@ describe('LeadsService', () => {
       expect(result).toEqual([{ ...mockActivity, performedByName: null }]);
     });
   });
+  describe('reorder', () => {
+    const id1 = '11111111-1111-4111-8111-111111111111';
+    const id2 = '22222222-2222-4222-8222-222222222222';
+    const id3 = '33333333-3333-4333-8333-333333333333';
+    const dto = { status: LeadStatus.NEW, orderedIds: [id1, id2, id3] };
+    const row = (id: string, status = LeadStatus.NEW) => ({ id, status });
+
+    it('filters the lookup by companyId and locks the rows', async () => {
+      manager.find.mockResolvedValue([row(id1), row(id2), row(id3)]);
+
+      await service.reorder(companyId, dto, 'user-uuid-1');
+
+      const [entity, opts] = manager.find.mock.calls[0];
+      expect(entity).toBe(Lead);
+      expect(opts.where.companyId).toBe(companyId);
+      expect(opts.where.id.value).toEqual([id1, id2, id3]);
+      expect(opts.where.regionCode).toBeUndefined();
+      expect(opts.lock).toEqual({ mode: 'pessimistic_write' });
+    });
+
+    it('writes position = index in one company-scoped update', async () => {
+      manager.find.mockResolvedValue([row(id1), row(id2), row(id3)]);
+
+      const result = await service.reorder(companyId, dto, 'user-uuid-1');
+
+      expect(result).toEqual({ updated: 3 });
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain('"company_id" = $3');
+      expect(sql).toContain('"status" = $4');
+      expect(params).toEqual([
+        [id1, id2, id3],
+        [0, 1, 2],
+        companyId,
+        LeadStatus.NEW,
+      ]);
+    });
+
+    it('skips ids that are no longer in the target status', async () => {
+      manager.find.mockResolvedValue([
+        row(id1),
+        row(id2, LeadStatus.CONTACTED),
+        row(id3),
+      ]);
+
+      const result = await service.reorder(companyId, dto, 'user-uuid-1');
+
+      expect(result).toEqual({ updated: 2 });
+      expect(manager.query.mock.calls[0][1].slice(0, 2)).toEqual([
+        [id1, id3],
+        [0, 2],
+      ]);
+    });
+
+    it('404s the whole request when any id is outside the company', async () => {
+      manager.find.mockResolvedValue([row(id1), row(id3)]);
+
+      await expect(
+        service.reorder(companyId, dto, 'user-uuid-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.query).not.toHaveBeenCalled();
+    });
+
+    it('narrows the lookup to the caller assigned regions', async () => {
+      manager.find.mockResolvedValue([row(id1), row(id2), row(id3)]);
+
+      await service.reorder(companyId, dto, 'user-uuid-1', {
+        role: Role.AGENT,
+        regionCodes: ['makkah'],
+      });
+
+      expect(manager.find.mock.calls[0][1].where.regionCode.value).toEqual([
+        'makkah',
+      ]);
+    });
+
+    it('404s a caller with no region assignments without querying', async () => {
+      await expect(
+        service.reorder(companyId, dto, 'user-uuid-1', {
+          role: Role.AGENT,
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.find).not.toHaveBeenCalled();
+    });
+
+    it('ignores the caller regions for a company admin', async () => {
+      manager.find.mockResolvedValue([row(id1), row(id2), row(id3)]);
+
+      await service.reorder(companyId, dto, 'user-uuid-1', {
+        role: Role.COMPANY_ADMIN,
+        regionCodes: ['makkah'],
+      });
+
+      expect(manager.find.mock.calls[0][1].where.regionCode).toBeUndefined();
+    });
+  });
+
   describe('region scoping', () => {
     const makkahAgent = { role: Role.AGENT, regionCodes: ['makkah'] };
     const twoRegionAgent = {

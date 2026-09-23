@@ -101,7 +101,7 @@
     color: nu-var-el("sidebar", "link", "Color");
     background-color: nu-var-el("sidebar", "link", "BackgroundColor");
     font-size: nu-font-size(sm);
-    font-weight: nu-font-weight(medium);
+    font-weight: nu-font-weight(semibold);
     text-decoration: none;
     transition:
       background-color nu-var("sidebar", "TransitionDuration") $nu-ease,
@@ -181,7 +181,7 @@
     color: nu-var-el("sidebar", "group-toggle", "Color");
     background-color: nu-var-el("sidebar", "group-toggle", "BackgroundColor");
     font-size: nu-font-size(sm);
-    font-weight: nu-font-weight(medium);
+    font-weight: nu-font-weight(semibold);
     text-align: start;
     cursor: pointer;
     transition:
@@ -263,7 +263,7 @@
     border-radius: nu-radius(md);
     color: var(--text-subtle);
     font-size: nu-font-size(xs);
-    font-weight: nu-font-weight(medium);
+    font-weight: nu-font-weight(semibold);
     text-decoration: none;
     transition: background-color nu-var("sidebar", "TransitionDuration") $nu-ease,
       color nu-var("sidebar", "TransitionDuration") $nu-ease;

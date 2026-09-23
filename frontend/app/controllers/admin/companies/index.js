@@ -41,8 +41,8 @@ export default class AdminCompaniesIndexController extends Controller {
     { name: 'Company', valuePath: 'name', width: 240, isFixed: 'left' },
     { name: 'Plan', valuePath: 'tier', width: 120 },
     { name: 'Rail', valuePath: 'rail', width: 120 },
-    { name: 'Seats', valuePath: 'seatsUsed', width: 120 },
-    { name: 'MRR', valuePath: 'mrr.amountMinor', width: 140 },
+    { name: 'Seats', valuePath: 'seatsUsed', width: 120, numeric: true },
+    { name: 'MRR', valuePath: 'mrr.amountMinor', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 160 },
     {
       name: 'Actions',

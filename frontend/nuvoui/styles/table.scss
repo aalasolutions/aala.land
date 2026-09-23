@@ -203,6 +203,15 @@
     text-align: end;
   }
 
+  // Numeric column: money, counts, percentages and dates. Aligned to the
+  // logical end so digits line up by place value, with fixed-width figures.
+  // DataTable sets it from the column option `numeric: true`.
+  th.m-numeric,
+  td.m-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
   // ---- striped ----
 
   @include m(striped) {

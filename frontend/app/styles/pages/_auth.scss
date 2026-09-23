@@ -45,7 +45,7 @@
   border: 1px solid var(--primary-200);
   border-radius: 999px;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: nu-font-weight(semibold);
   line-height: 1;
 
   svg {
@@ -143,7 +143,7 @@ $google-neutral-border-hover: #c6cbd1;
     z-index: 2;
     color: $google-text-color;
     font-size: 0.96rem;
-    font-weight: 700;
+    font-weight: nu-font-weight(semibold);
     letter-spacing: 0;
     pointer-events: none;
   }
@@ -188,7 +188,7 @@ $google-neutral-border-hover: #c6cbd1;
   border: 1px solid $google-neutral-border;
   border-radius: 4px;
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: nu-font-weight(normal);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -219,7 +219,7 @@ $google-neutral-border-hover: #c6cbd1;
 
   &::after {
     content: "Continue with Google";
-    font-weight: 500;
+    font-weight: nu-font-weight(normal);
     font-size: 0.9375rem;
     color: var(--text-color);
     z-index: 2;
@@ -281,7 +281,7 @@ $google-neutral-border-hover: #c6cbd1;
   background: var(--success-50);
   border: 1px solid var(--success-200);
   border-radius: 0.5rem;
-  font-weight: 600;
+  font-weight: nu-font-weight(semibold);
 }
 
 .profile-connection-card {
@@ -323,7 +323,7 @@ $google-neutral-border-hover: #c6cbd1;
 
 .profile-connection-title {
   color: var(--text-color);
-  font-weight: 700;
+  font-weight: nu-font-weight(semibold);
   font-size: 0.95rem;
   line-height: 1.3;
   white-space: nowrap;
@@ -355,7 +355,7 @@ $google-neutral-border-hover: #c6cbd1;
   border: 1px solid var(--border-base);
   border-radius: 0.55rem;
   font-size: 0.875rem;
-  font-weight: 700;
+  font-weight: nu-font-weight(semibold);
   cursor: pointer;
   overflow: hidden;
 

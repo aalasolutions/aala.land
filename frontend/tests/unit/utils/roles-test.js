@@ -44,7 +44,6 @@ module('Unit | Utility | roles', function () {
     assert.false(canManageRegions(ROLES.ADMIN));
   });
 
-  // Company-wide figures and colleagues' performance stay above agent level.
   test('reports stop at manager, for the route and the sidebar', function (assert) {
     const viewers = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
     assert.deepEqual(allowed(canViewReports), viewers);

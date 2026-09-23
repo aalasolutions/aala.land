@@ -16,6 +16,32 @@ import {
 
 const HIGH_LOAD = 8;
 const MEDIUM_LOAD = 4;
+const FILTER_PREF_KEY = 'leads-filter';
+const DEFAULT_FILTER = 'mine';
+export const DROP_AT_END = 'end';
+
+export function insertionIndex(midpoints, pointerY) {
+  return midpoints.filter((midpoint) => pointerY > midpoint).length;
+}
+
+export function moveLead(leads, leadId, status, beforeId) {
+  const moving = leads.find((l) => l.id === leadId);
+  if (!moving) return leads;
+  const moved = moving.status === status ? moving : { ...moving, status };
+  const rest = leads.filter((l) => l.id !== leadId);
+
+  let at =
+    beforeId === DROP_AT_END ? -1 : rest.findIndex((l) => l.id === beforeId);
+  if (at === -1) {
+    const lastInColumn = rest.findLastIndex((l) => l.status === status);
+    at = lastInColumn === -1 ? rest.length : lastInColumn + 1;
+  }
+  return [...rest.slice(0, at), moved, ...rest.slice(at)];
+}
+
+export function columnIds(leads, status) {
+  return leads.filter((l) => l.status === status).map((l) => l.id);
+}
 
 export default class LeadsController extends Controller {
   @service auth;
@@ -97,9 +123,29 @@ export default class LeadsController extends Controller {
     { id: 'unassigned', label: 'Unassigned' },
   ];
 
-  @tracked filterType = 'all';
+  @tracked _filterType = null;
+
+  get filterType() {
+    if (this._filterType) return this._filterType;
+    const saved = this.preferences.get(FILTER_PREF_KEY, DEFAULT_FILTER);
+    return this.filterTabs.some((tab) => tab.id === saved)
+      ? saved
+      : DEFAULT_FILTER;
+  }
+  set filterType(val) {
+    this._filterType = val;
+  }
+
+  @tracked dropBeforeId = null;
+  // Drop-time order shown until the refreshed model replaces the one it was built from.
+  @tracked _optimistic = null;
   @tracked agents = [];
   @tracked draggedLead = null;
+  @tracked dragOrigin = null;
+  // Card hover stays off after a drop until the pointer moves, so it never sticks to the wrong card.
+  @tracked suppressHover = false;
+  // Set a frame after dragstart: the browser snapshots the drag image first, so it shows the full card.
+  @tracked _sourceShown = false;
   @tracked dropTargetStatus = null;
   @tracked dropTargetTemp = null;
   @tracked dropTargetAgent = null;
@@ -162,7 +208,7 @@ export default class LeadsController extends Controller {
     { name: 'Temperature', valuePath: 'temperature', width: 140 },
     { name: 'Property', valuePath: 'locality.name', width: 200 },
     { name: 'Assigned', valuePath: 'assignedAgentName', width: 180 },
-    { name: 'Created', valuePath: 'createdAt', width: 140 },
+    { name: 'Created', valuePath: 'createdAt', width: 140, numeric: true },
     {
       name: 'Actions',
       valuePath: 'id',
@@ -174,6 +220,9 @@ export default class LeadsController extends Controller {
   ];
 
   get allLeads() {
+    if (this._optimistic && this._optimistic.source === this.model) {
+      return this._optimistic.data;
+    }
     return this.model?.data ?? [];
   }
 
@@ -244,6 +293,7 @@ export default class LeadsController extends Controller {
 
   @action setFilter(filter) {
     this.filterType = filter;
+    this.preferences.set(FILTER_PREF_KEY, filter);
   }
 
   @action setViewMode(mode) {
@@ -425,48 +475,121 @@ export default class LeadsController extends Controller {
   @action async handleDragStart(lead, event) {
     event.dataTransfer.setData('text/plain', lead.id);
     event.dataTransfer.effectAllowed = 'move';
+    const card = event.currentTarget;
+    card
+      .closest('.nu-kanban')
+      ?.style.setProperty('--kanban-drag-height', `${card.offsetHeight}px`);
+    this.dragOrigin = {
+      status: lead.status,
+      anchor: card.nextElementSibling?.dataset?.leadId ?? DROP_AT_END,
+    };
+    this.suppressHover = true;
+    this._sourceShown = false;
     this.draggedLead = lead;
+    requestAnimationFrame(() => {
+      if (this.draggedLead === lead) this._sourceShown = true;
+    });
+  }
+
+  get dragSourceId() {
+    return this._sourceShown ? (this.draggedLead?.id ?? null) : null;
+  }
+
+  // Where the make-room gap opens; null over no column or over the card's own slot.
+  get dropGap() {
+    const status = this.dropTargetStatus;
+    const anchor = this.dropBeforeId;
+    if (!this.draggedLead || !status || !anchor) return null;
+    const origin = this.dragOrigin;
+    if (origin?.status === status && origin.anchor === anchor) return null;
+    return { status, anchor };
+  }
+
+  @action releaseHover() {
+    if (this.suppressHover) this.suppressHover = false;
   }
 
   // `drop` never fires on a cancelled drag; this does.
   @action handleDragEnd() {
     this.draggedLead = null;
+    this.dragOrigin = null;
     this.dropTargetStatus = null;
     this.dropTargetTemp = null;
     this.dropTargetAgent = null;
+    this.dropBeforeId = null;
+  }
+
+  dropAnchorFor(event) {
+    const draggedId = this.draggedLead?.id;
+    const cards = [
+      ...event.currentTarget.querySelectorAll('[data-lead-id]'),
+    ].filter((card) => card.dataset.leadId !== draggedId);
+    const midpoints = cards.map((card) => {
+      const rect = card.getBoundingClientRect();
+      return rect.top + rect.height / 2;
+    });
+    const index = insertionIndex(midpoints, event.clientY);
+    return cards[index]?.dataset.leadId ?? DROP_AT_END;
   }
 
   @action handleDragOver(status, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    this.dropTargetStatus = status;
+    if (this.dropTargetStatus !== status) this.dropTargetStatus = status;
+    const anchor = this.dropAnchorFor(event);
+    if (this.dropBeforeId !== anchor) this.dropBeforeId = anchor;
   }
 
   @action async handleDrop(newStatus, event) {
     event.preventDefault();
-    if (!this.draggedLead || this.draggedLead.status === newStatus) {
-      this.draggedLead = null;
-      this.dropTargetStatus = null;
+    const lead = this.draggedLead;
+    const anchor = lead ? this.dropAnchorFor(event) : null;
+    this.draggedLead = null;
+    this.dragOrigin = null;
+    this.dropTargetStatus = null;
+    this.dropBeforeId = null;
+    if (!lead) return;
+
+    const previous = this.allLeads;
+    const next = moveLead(previous, lead.id, newStatus, anchor);
+    const orderedIds = columnIds(next, newStatus);
+    const statusChanged = lead.status !== newStatus;
+    if (
+      !statusChanged &&
+      orderedIds.join() === columnIds(previous, newStatus).join()
+    ) {
       return;
     }
 
+    this._optimistic = { source: this.model, data: next };
+    let statusSaved = false;
     try {
-      await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
+      if (statusChanged) {
+        await this.auth.fetchJson(`/leads/${lead.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: newStatus }),
+        });
+        statusSaved = true;
+      }
+      await this.auth.fetchJson('/leads/reorder', {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, orderedIds }),
       });
 
-      this.notifications.success(`Lead moved to ${newStatus}`);
+      if (statusChanged) {
+        this.notifications.success(`Lead moved to ${newStatus}`);
+      }
       this.router.refresh('leads');
     } catch (e) {
+      this._optimistic = null;
       this.notifications.error(e.message);
-    } finally {
-      this.draggedLead = null;
-      this.dropTargetStatus = null;
+      if (statusSaved) this.router.refresh('leads');
     }
   }
 
-  @action clearDropTarget(key) {
+  // Moving onto a card inside the column also fires dragleave; only a real exit clears.
+  @action clearDropTarget(key, event) {
+    if (event?.currentTarget?.contains(event.relatedTarget)) return;
     this[key] = null;
   }
 

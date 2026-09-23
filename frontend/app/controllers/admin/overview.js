@@ -109,8 +109,8 @@ export default class AdminOverviewController extends Controller {
 
   upcomingColumns = [
     { name: 'Company', valuePath: 'companyName', width: 220, isFixed: 'left' },
-    { name: 'Amount', valuePath: 'amount', width: 140 },
-    { name: 'Due', valuePath: 'coversEnd', width: 140 },
+    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
+    { name: 'Due', valuePath: 'coversEnd', width: 140, numeric: true },
     {
       name: 'Actions',
       valuePath: 'companyId',

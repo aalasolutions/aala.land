@@ -33,7 +33,6 @@ export default class RemoteAutocompleteComponent extends Component {
       this.listItems = Array.isArray(payload) ? payload : [];
       this.listFailed = false;
     } catch {
-      // A failed preload falls back to per-keystroke @searchUrl.
       if (this.listUrl === url) this.listFailed = true;
     }
   }

@@ -23,7 +23,13 @@ export default class HistoryController extends PaginatedController {
   entityTypeOptions = HISTORY_ENTITY_TYPES;
 
   columns = [
-    { name: 'Date', valuePath: 'createdAt', width: 140, isFixed: 'left' },
+    {
+      name: 'Date',
+      valuePath: 'createdAt',
+      width: 140,
+      isFixed: 'left',
+      numeric: true,
+    },
     { name: 'Action', valuePath: 'actionLabel', width: 160 },
     { name: 'Type', valuePath: 'entityTypeLabel', width: 160 },
     { name: 'Record', valuePath: 'entityTitle', width: 220 },
@@ -31,6 +37,10 @@ export default class HistoryController extends PaginatedController {
     { name: 'Reason', valuePath: 'reason', width: 220 },
     { name: 'By', valuePath: 'actorName', width: 180 },
   ];
+
+  get hasActiveFilters() {
+    return Boolean(this.filterAction || this.filterEntityType);
+  }
 
   get rows() {
     return (this.model?.entries || []).map((entry) => ({

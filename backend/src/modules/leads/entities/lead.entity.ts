@@ -166,6 +166,9 @@ export class Lead {
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
   previousAgent: string | null;
 
+  @Column({ type: 'integer', nullable: true })
+  position: number | null;
+
   @Index('IDX_LEADS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;

@@ -1,53 +1,75 @@
 {{page-title "History"}}
-<Nuvo::PageHeader
-  @title="History"
-  @subtitle="Deletes, archives, cancellations and other lifecycle actions"
-/>
 
-<Nuvo::Card data-test-history-page>
-  <:header>
-    <Nuvo::Toolbar class="flex-wrap">
-      <Nuvo::Field @label="Action">
-        <Nuvo::Dropdown
-          @searchable={{true}}
-          @align="start"
-          @value={{this.filterAction}}
-          @onSelect={{this.setFilterAction}}
-          @options={{this.actionOptions}}
-          @placeholder="All Actions"
-          data-test-history-filter-action
-        />
-      </Nuvo::Field>
+<div data-test-history-page class="flex col gap-6">
+  <Nuvo::PageHeader
+    @icon="clock-counter-clockwise"
+    @title="History"
+    @subtitle="Deletes, archives, cancellations and other lifecycle actions"
+  >
+    <:meta>
+      <p class="text-muted">{{format-number
+          this.model.total
+          unit="entry"
+          plural="entries"
+        }}</p>
+    </:meta>
+  </Nuvo::PageHeader>
 
-      <Nuvo::Field @label="Record type">
-        <Nuvo::Dropdown
-          @searchable={{true}}
-          @align="start"
-          @value={{this.filterEntityType}}
-          @onSelect={{this.setFilterEntityType}}
-          @options={{this.entityTypeOptions}}
-          @placeholder="All Entities"
-          data-test-history-filter-entity
-        />
-      </Nuvo::Field>
+  <Nuvo::Accordion
+    @items={{array
+      (hash
+        id="filters"
+        title=(if this.hasActiveFilters "Filters · active" "Filters")
+      )
+    }}
+    data-test-filters-accordion
+  >
+    <div class="flex col gap-4">
+      <div class="flex gap-3 wrap x-end">
+        <Nuvo::Field class="grow" @label="Action">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.filterAction}}
+            @onSelect={{this.setFilterAction}}
+            @options={{this.actionOptions}}
+            @placeholder="All Actions"
+            data-test-history-filter-action
+          />
+        </Nuvo::Field>
 
-      {{#if (or this.filterAction this.filterEntityType)}}
-        <Nuvo::Button
-          @variant="secondary"
-          @text="Clear Filters"
-          data-test-history-clear-filters
-          {{on "click" this.clearFilters}}
-        />
+        <Nuvo::Field class="grow" @label="Record type">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.filterEntityType}}
+            @onSelect={{this.setFilterEntityType}}
+            @options={{this.entityTypeOptions}}
+            @placeholder="All Entities"
+            data-test-history-filter-entity
+          />
+        </Nuvo::Field>
+      </div>
+
+      {{#if this.hasActiveFilters}}
+        <div class="flex end">
+          <Nuvo::Button
+            @variant="danger"
+            @size="sm"
+            @icon="x"
+            {{on "click" this.clearFilters}}
+            data-test-history-clear-filters
+          >
+            Clear filters
+          </Nuvo::Button>
+        </div>
       {{/if}}
-    </Nuvo::Toolbar>
-  </:header>
+    </div>
+  </Nuvo::Accordion>
 
-  <:body>
+  <Nuvo::Card>
     {{#if this.model.forbidden}}
-      <Nuvo::Alert
-        @variant="danger"
-        data-test-history-forbidden
-      >
+      <Nuvo::Alert @variant="danger" data-test-history-forbidden>
         You don't have permission to view history.
       </Nuvo::Alert>
     {{else if this.model.error}}
@@ -84,7 +106,11 @@
         {{else if (eq cell.key "entityTitle")}}
           <span class="font-bold">{{cell.value}}</span>
         {{else if (eq cell.key "contextTitle")}}
-          <span class="text-sm text-muted">{{if cell.value cell.value "-"}}</span>
+          <span class="text-sm text-muted">{{if
+              cell.value
+              cell.value
+              "-"
+            }}</span>
         {{else if (eq cell.key "reason")}}
           <span class="text-sm">{{if cell.value cell.value "-"}}</span>
         {{else}}
@@ -106,5 +132,5 @@
     {{else}}
       <Nuvo::EmptyState @title="No history found" data-test-history-empty />
     {{/if}}
-  </:body>
-</Nuvo::Card>
+  </Nuvo::Card>
+</div>

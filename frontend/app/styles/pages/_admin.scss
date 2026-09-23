@@ -43,6 +43,10 @@
   gap: nu-space(2);
 }
 
+.m-numeric .console-chip-row {
+  justify-content: flex-end;
+}
+
 .console-chip {
   display: inline-flex;
   align-items: center;

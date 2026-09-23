@@ -75,9 +75,9 @@ export default class FinancialsController extends PaginatedController {
     },
     { name: 'Category', valuePath: 'category', width: 160 },
     { name: 'Payment', valuePath: 'paymentMethod', width: 160 },
-    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 140 },
-    { name: 'Date', valuePath: 'transactionDate', width: 140 },
+    { name: 'Date', valuePath: 'transactionDate', width: 140, numeric: true },
     {
       name: 'Actions',
       valuePath: 'id',

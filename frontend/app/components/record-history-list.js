@@ -29,7 +29,7 @@ export default class RecordHistoryListComponent extends Component {
     { name: 'Record', valuePath: 'entityTitle', width: 220 },
     { name: 'Reason', valuePath: 'reason', width: 220 },
     { name: 'By', valuePath: 'actorName', width: 180 },
-    { name: 'Date', valuePath: 'createdAt', width: 180 },
+    { name: 'Date', valuePath: 'createdAt', width: 180, numeric: true },
   ];
 
   constructor(owner, args) {

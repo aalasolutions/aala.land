@@ -27,6 +27,7 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AssignLeadDto } from './dto/assign-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
+import { ReorderLeadsDto } from './dto/reorder-leads.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 
@@ -91,6 +92,25 @@ export class LeadsController {
       limit,
       regionCode,
       contactId,
+    );
+  }
+
+  // Declared before the `:id` routes so `reorder` is never parsed as an id.
+  @Patch('reorder')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
+  @ApiOperation({ summary: 'Set the manual order of leads in a status column' })
+  reorder(@Body() dto: ReorderLeadsDto, @Request() req: AuthenticatedRequest) {
+    return this.leadsService.reorder(
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 

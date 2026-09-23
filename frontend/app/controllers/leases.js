@@ -87,8 +87,8 @@ export default class LeasesController extends PaginatedController {
     },
     { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
     { name: 'Type', valuePath: 'type', width: 140 },
-    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
-    { name: 'Period', valuePath: 'startDate', width: 220 },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
+    { name: 'Period', valuePath: 'startDate', width: 220, numeric: true },
     { name: 'Status', valuePath: 'status', width: 160 },
     {
       name: 'Tenancy Reg. Ref',
