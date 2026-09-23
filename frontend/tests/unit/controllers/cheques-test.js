@@ -83,6 +83,19 @@ module('Unit | Controller | cheques', function (hooks) {
       assert.true(controller.clearWindowUnusable);
     });
 
+    // 21:00 UTC on the 23rd is already the 24th in Dubai, which is the server's floor.
+    test('the added date is the day in the cheque region, not the UTC day', function (assert) {
+      const controller = makeController(this);
+      controller.region.regions = [{ code: 'dubai', timezone: 'Asia/Dubai' }];
+      controller.clearChequeItem = {
+        regionCode: 'dubai',
+        createdAt: '2026-09-23T21:00:00.000Z',
+      };
+
+      assert.strictEqual(controller.chequeAddedDate, '2026-09-24');
+      assert.strictEqual(controller.depositDateWindow.earliest, '2026-09-24');
+    });
+
     // The backend validates against the CHEQUE's region, not the one being viewed.
     test('the window follows the cheque region, not the active region', function (assert) {
       const controller = this.owner.lookup('controller:cheques');

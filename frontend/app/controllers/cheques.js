@@ -270,10 +270,7 @@ export default class ChequesController extends PaginatedController {
   // deposit date floors from cheque-transaction.util.ts. The server decides.
   get clearDateWindow() {
     const cheque = this.clearChequeItem;
-    const zone =
-      this.region.regions?.find((r) => r.code === cheque?.regionCode)
-        ?.timezone ?? this.region.activeRegion?.timezone;
-    const today = todayInZone(zone);
+    const today = todayInZone(this.clearChequeZone);
     const floors = [
       today && addCalendarDays(today, -MAX_BACKDATE_DAYS),
       toDateOnly(cheque?.dueDate),
@@ -298,9 +295,19 @@ export default class ChequesController extends PaginatedController {
     return 'This cheque has no date that can be recorded as its clearing day.';
   }
 
-  // Read-only context: the UTC day the record was added, used as the deposit date floor.
+  get clearChequeZone() {
+    const code = this.clearChequeItem?.regionCode;
+    return (
+      this.region.regions?.find((r) => r.code === code)?.timezone ??
+      this.region.activeRegion?.timezone
+    );
+  }
+
+  // Read-only context: the day the record was added in the cheque's region, the
+  // same floor the server applies to a deposit date.
   get chequeAddedDate() {
-    return toDateOnly(this.clearChequeItem?.createdAt);
+    const createdAt = this.clearChequeItem?.createdAt;
+    return createdAt ? todayInZone(this.clearChequeZone, createdAt) : null;
   }
 
   // Settled once the cheque was marked DEPOSITED; only a PENDING clear may set it.

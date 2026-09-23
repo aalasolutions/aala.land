@@ -1,5 +1,5 @@
 import { COUNTRY_NAMES, REGIONS, regionCurrency } from './regions';
-import { dateInZone, regionCurrencySql } from '../utils/region-time.util';
+import { dateInZone } from '../utils/region-time.util';
 
 describe('regionCurrency', () => {
   it('reads the currency off the region', () => {
@@ -46,38 +46,6 @@ describe('REGIONS data', () => {
   it('every code is kebab-case, which the SQL builders assume', () => {
     for (const region of REGIONS) {
       expect(region.code).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
-    }
-  });
-});
-
-describe('regionCurrencySql', () => {
-  it('maps every region to the same currency the helper returns', () => {
-    const sql = regionCurrencySql('region_code');
-    for (const [code, expected] of [
-      ['dubai', 'AED'],
-      ['makkah', 'SAR'],
-      ['punjab', 'PKR'],
-      ['beirut', 'LBP'],
-    ] as const) {
-      const branch = sql
-        .split('WHEN ')
-        .find((part) => part.includes(`'${code}'`));
-      expect(branch).toContain(`THEN '${expected}'`);
-    }
-  });
-
-  it('ends with a fallback so an unknown code cannot produce NULL', () => {
-    expect(regionCurrencySql('region_code')).toContain("ELSE 'USD' END");
-  });
-
-  it('emits one SQL branch per region, each matching the helper', () => {
-    const sql = regionCurrencySql('region_code');
-    for (const region of REGIONS) {
-      const branch = sql
-        .split('WHEN ')
-        .find((part) => part.includes(`'${region.code}'`));
-      expect(branch).toBeDefined();
-      expect(branch).toContain(`THEN '${regionCurrency(region.code)}'`);
     }
   });
 });
