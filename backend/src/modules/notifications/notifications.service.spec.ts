@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CronExpression } from '@nestjs/schedule';
+import { formatMoney } from '@shared/utils/money.util';
 import { NotificationsService } from './notifications.service';
 import { Notification, NotificationType } from './entities/notification.entity';
 import {
@@ -37,9 +38,10 @@ import {
 } from '../leads/entities/lead.entity';
 import { NotificationsGateway } from './notifications.gateway';
 import {
+  formatRegionDate,
+  hourInZone,
   regionCodesAtLocalHour,
   regionTimezone,
-  hourInZone,
   regionTodaySql,
 } from '../../shared/utils/region-time.util';
 
@@ -734,7 +736,8 @@ describe('NotificationsService', () => {
 
       const groups = [{ today: '2026-09-16', regionCodes: REGIONS_AT_NINE }];
       expect(spies[0]).toHaveBeenCalledWith(groups);
-      expect(spies[1]).toHaveBeenCalledWith(groups);
+      // Overdue also takes the instant, so its day count pivots on the same run.
+      expect(spies[1]).toHaveBeenCalledWith(groups, FIXED_NOW);
       expect(spies[2]).toHaveBeenCalledWith(groups);
       expect(spies[3]).toHaveBeenCalledWith(REGIONS_AT_NINE);
     });
@@ -811,11 +814,14 @@ describe('NotificationsService', () => {
       password: 'hashed',
     };
 
+    const UPCOMING_PG_AMOUNT = '10000.00' as unknown as number;
+
     const mockUpcomingCheque: Partial<Cheque> = {
       id: 'upcoming-uuid-1',
       companyId,
       chequeNumber: 'CHQ-UPCOMING',
-      amount: 10000,
+      regionCode: 'dubai',
+      amount: UPCOMING_PG_AMOUNT,
       currency: 'AED',
       dueDate: '2026-09-19',
       accountHolder: 'Test Holder',
@@ -856,6 +862,7 @@ describe('NotificationsService', () => {
           type: NotificationType.CHEQUE_DUE,
           entityType: 'cheque',
           entityId: 'upcoming-uuid-1',
+          message: `Cheque #CHQ-UPCOMING for ${formatMoney(UPCOMING_PG_AMOUNT, 'AED')} is due in 3 days, on ${formatRegionDate('2026-09-19', 'dubai')}.`,
         }),
       );
     });
@@ -1077,11 +1084,14 @@ describe('NotificationsService', () => {
 
     const yesterday = '2026-09-15';
 
+    const PG_AMOUNT = '20000.00' as unknown as number;
+
     const mockOverdueCheque: Partial<Cheque> = {
       id: 'overdue-uuid-1',
       companyId,
       chequeNumber: 'CHQ-Overdue',
-      amount: 20000,
+      regionCode: 'dubai',
+      amount: PG_AMOUNT,
       currency: 'AED',
       dueDate: yesterday,
       accountHolder: 'Test Holder',
@@ -1111,6 +1121,27 @@ describe('NotificationsService', () => {
           },
         ],
       });
+    });
+
+    it('formats the money, the date and the day count the way the app shows them', async () => {
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        { ...mockOverdueCheque, regionCode: 'dubai' } as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
+
+      await service.runDailyReminders(FIXED_NOW);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          // Built with the same formatter: Intl uses a non-breaking space, as the page does.
+          message: `Cheque #CHQ-Overdue for ${formatMoney(PG_AMOUNT, 'AED')} was due ${formatRegionDate('2026-09-15', 'dubai')}, 1 day ago. Clear it or update the due date.`,
+        }),
+      );
     });
 
     it('does NOT include cheques due today', async () => {

@@ -1,3 +1,5 @@
+import { regionCurrency } from '../../shared/constants/regions';
+import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import {
   Injectable,
   NotFoundException,
@@ -9,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
   In,
+  Not,
   FindOptionsWhere,
   DataSource,
   EntityManager,
@@ -19,6 +22,13 @@ import { Cheque, ChequeStatus } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
+import { ClearChequeDto } from './dto/clear-cheque.dto';
+import { UnclearChequeDto } from './dto/unclear-cheque.dto';
+import {
+  assertChequeClearedDate,
+  assertChequeDepositDate,
+  chequeTransactionCategory,
+} from './cheque-transaction.util';
 import {
   RegionScope,
   resolveRegionCode,
@@ -28,12 +38,21 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 import {
+  formatRegionDate,
   regionToday,
   regionTodaySql,
 } from '../../shared/utils/region-time.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { errorMessage } from '@shared/utils/error.util';
+import { formatMoney } from '@shared/utils/money.util';
 import { envString } from '@shared/utils/env.util';
+import {
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+  PaymentMethod,
+} from '../financial/entities/transaction.entity';
+import { assertTransactionDateInWindow } from '../financial/transaction-date-window.util';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -41,6 +60,51 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+
+// Terminal statuses. BOUNCED is excluded: a bounced cheque may bounce again.
+const TERMINAL_STATUSES = [
+  ChequeStatus.CLEARED,
+  ChequeStatus.CANCELLED,
+  ChequeStatus.REPLACED,
+];
+
+function money(cheque: Cheque): string {
+  return formatMoney(cheque.amount, cheque.currency);
+}
+
+function chequeStatusAnnouncement(saved: Cheque): {
+  type: NotificationType;
+  title: string;
+  message: string;
+} {
+  const amount = money(saved);
+  switch (saved.status) {
+    case ChequeStatus.DEPOSITED:
+      return {
+        type: NotificationType.CHEQUE_DEPOSITED,
+        title: 'Cheque Deposited',
+        message: `Cheque #${saved.chequeNumber} for ${amount} has been marked as DEPOSITED.`,
+      };
+    case ChequeStatus.CANCELLED:
+      return {
+        type: NotificationType.SYSTEM,
+        title: 'Cheque Cancelled',
+        message: `Cheque #${saved.chequeNumber} for ${amount} has been CANCELLED.`,
+      };
+    case ChequeStatus.BOUNCED:
+      return {
+        type: NotificationType.CHEQUE_BOUNCED,
+        title: 'Cheque Bounced',
+        message: `Cheque #${saved.chequeNumber} for ${amount} has been marked as BOUNCED.`,
+      };
+    default:
+      return {
+        type: NotificationType.SYSTEM,
+        title: 'Cheque Status Updated',
+        message: `Cheque #${saved.chequeNumber} for ${amount} status changed to ${saved.status}`,
+      };
+  }
+}
 
 const ARCHIVED_UNIT_LOCKED_MESSAGE =
   'This unit is archived. Its records can no longer be edited.';
@@ -86,6 +150,7 @@ export class ChequesService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     const saved = await this.dataSource.transaction(async (manager) => {
       await this.assertChequeEditable(
@@ -237,7 +302,11 @@ export class ChequesService {
     regionCode: string | undefined,
     caller?: RegionScope,
   ): Promise<string> {
-    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    const unitRegion = await regionOfUnit(
+      this.unitRepository,
+      unitId,
+      companyId,
+    );
     if (unitRegion) {
       return unitRegion;
     }
@@ -247,25 +316,6 @@ export class ChequesService {
       regionCode,
       caller,
     );
-  }
-
-  private async regionOfUnit(
-    unitId: string | null | undefined,
-    companyId: string,
-  ): Promise<string | undefined> {
-    if (!unitId) {
-      return undefined;
-    }
-    const row = await this.unitRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.asset', 'a')
-      .innerJoin('a.locality', 'loc')
-      .innerJoin('loc.city', 'ci')
-      .select('ci.regionCode', 'regionCode')
-      .where('u.id = :unitId', { unitId })
-      .andWhere('u.companyId = :companyId', { companyId })
-      .getRawOne<{ regionCode: string }>();
-    return row?.regionCode ?? undefined;
   }
 
   async findOne(
@@ -308,18 +358,45 @@ export class ChequesService {
       changes.unitId !== cheque.unitId,
     );
 
-    const terminalStatuses = [
-      ChequeStatus.CLEARED,
-      ChequeStatus.CANCELLED,
-      ChequeStatus.REPLACED,
-    ];
     const isStatusChange =
       changes.status !== undefined && changes.status !== cheque.status;
 
-    if (terminalStatuses.includes(cheque.status) && isStatusChange) {
+    if (TERMINAL_STATUSES.includes(cheque.status) && isStatusChange) {
       throw new BadRequestException(
         `Cannot change the status of a cheque that is already ${cheque.status}`,
       );
+    }
+
+    // Clearing writes a transaction, so it cannot happen through a generic field update.
+    if (isStatusChange && changes.status === ChequeStatus.CLEARED) {
+      throw new BadRequestException(
+        'Use the clear endpoint to mark a cheque as cleared, so the payment is recorded.',
+      );
+    }
+
+    // Fields clear() copies onto the transaction or checks clearedDate against;
+    // unitId covers regionCode.
+    if (cheque.status === ChequeStatus.CLEARED) {
+      const amountChanged =
+        changes.amount !== undefined &&
+        Number(changes.amount) !== Number(cheque.amount);
+      // dueDate: copied onto the transaction, and clearedDate was validated against it.
+      const copied: (keyof typeof changes)[] = [
+        'type',
+        'unitId',
+        'chequeNumber',
+        'dueDate',
+        'depositDate',
+      ];
+      const otherChanged = copied.some(
+        (field) =>
+          changes[field] !== undefined && changes[field] !== cheque[field],
+      );
+      if (amountChanged || otherChanged) {
+        throw new ConflictException(
+          'A cleared cheque records a payment. Its amount, type, unit, number and dates cannot be changed. Un-clear it first.',
+        );
+      }
     }
 
     if (
@@ -352,6 +429,7 @@ export class ChequesService {
         undefined,
         caller,
       );
+      cheque.currency = regionCurrency(cheque.regionCode);
     }
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
@@ -404,7 +482,7 @@ export class ChequesService {
       if (isStatusChange) {
         qb.andWhere('status = :oldStatus', { oldStatus }).andWhere(
           'status NOT IN (:...terminalStatuses)',
-          { terminalStatuses },
+          { terminalStatuses: TERMINAL_STATUSES },
         );
       }
 
@@ -430,60 +508,19 @@ export class ChequesService {
     });
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
-    const saved = await this.findOne(id, companyId);
+    const saved = await this.reloadAfterCommit(id, companyId, cheque);
 
-    this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
-      id: saved.id,
-      status: saved.status,
-      updatedBy: userId,
-    });
+    this.broadcastChequeUpdate(saved, userId);
 
     if (oldStatus !== saved.status) {
-      const admins = await this.usersService.findAdmins(companyId);
-      for (const admin of admins) {
-        if (admin.id === userId) {
-          continue;
-        }
-
-        let notificationType = NotificationType.SYSTEM;
-        let title = 'Cheque Status Updated';
-        let message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`;
-
-        if (saved.status === ChequeStatus.DEPOSITED) {
-          notificationType = NotificationType.CHEQUE_DEPOSITED;
-          title = 'Cheque Deposited';
-          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as DEPOSITED.`;
-        } else if (saved.status === ChequeStatus.CLEARED) {
-          notificationType = NotificationType.PAYMENT_RECEIVED;
-          title = 'Cheque Cleared';
-          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CLEARED. Payment received.`;
-        } else if (saved.status === ChequeStatus.CANCELLED) {
-          notificationType = NotificationType.SYSTEM;
-          title = 'Cheque Cancelled';
-          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CANCELLED.`;
-        } else if (saved.status === ChequeStatus.BOUNCED) {
-          notificationType = NotificationType.CHEQUE_BOUNCED;
-          title = 'Cheque Bounced';
-          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as BOUNCED.`;
-        }
-
-        try {
-          // These go to admins, who read every region.
-          await this.notificationsService.create(companyId, {
-            userId: admin.id,
-            title,
-            message,
-            type: notificationType,
-            entityType: 'cheque',
-            entityId: saved.id,
-          });
-        } catch (error) {
-          const messageText = errorMessage(error);
-          this.logger.error(
-            `Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`,
-          );
-        }
-      }
+      const announcement = chequeStatusAnnouncement(saved);
+      await this.notifyAdmins(
+        saved,
+        userId,
+        announcement.type,
+        announcement.title,
+        announcement.message,
+      );
     }
 
     return saved;
@@ -521,6 +558,7 @@ export class ChequesService {
   ): Promise<Cheque> {
     // Existence + tenant check.
     const cheque = await this.findOne(id, companyId, caller);
+    this.assertBounceable(cheque.status);
 
     await this.dataSource.transaction(async (manager) => {
       await this.assertChequeEditable(
@@ -545,10 +583,24 @@ export class ChequesService {
         })
         .where('id = :id', { id })
         .andWhere('company_id = :companyId', { companyId })
+        // Predicate as well as the precheck, so a concurrent clear is not overwritten.
+        .andWhere('status NOT IN (:...terminal)', {
+          terminal: TERMINAL_STATUSES,
+        })
         .execute();
 
+      // Zero rows means gone or terminal mid-flight; only this path pays to tell them apart.
       if (!result.affected) {
-        throw new NotFoundException('Cheque not found');
+        const current = await manager.findOne(Cheque, {
+          where: { id, companyId },
+          select: { id: true, status: true },
+        });
+        if (!current) {
+          throw new NotFoundException('Cheque not found');
+        }
+        throw new ConflictException(
+          `This cheque became ${current.status} while the bounce was being recorded.`,
+        );
       }
 
       await this.recordChequeHistory(
@@ -560,39 +612,351 @@ export class ChequesService {
       );
     });
 
-    // Re-read of a row this caller just wrote, so it stays unscoped.
-    const saved = await this.findOne(id, companyId);
+    // Re-read of a row this caller just wrote, so it stays unscoped. The fallback
+    // carries only the status and reason; the bounce counters stay one read behind.
+    const saved = await this.reloadAfterCommit(id, companyId, {
+      ...cheque,
+      status: ChequeStatus.BOUNCED,
+      bounceReason: dto.bounceReason || null,
+    } as Cheque);
 
-    this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
-      id: saved.id,
-      status: saved.status,
-      updatedBy: userId,
+    await this.announceChequeStatus(
+      saved,
+      userId,
+      NotificationType.CHEQUE_BOUNCED,
+      'Cheque Bounced!',
+      `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${money(saved)} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
+    );
+
+    return saved;
+  }
+
+  async clear(
+    id: string,
+    companyId: string,
+    dto: ClearChequeDto,
+    userId?: string,
+    caller?: RegionScope,
+  ): Promise<Cheque> {
+    // Existence, tenant and region check.
+    const cheque = await this.findOne(id, companyId, caller);
+    this.assertClearable(cheque.status);
+
+    // Rejected early for a clear error; re-run under the lock, where it decides.
+    this.assertClearDates(cheque, dto);
+
+    let committed: Cheque = cheque;
+    await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        cheque.unitId,
+        cheque.leaseId,
+        companyId,
+      );
+      // Re-read under a write lock: two concurrent clears must not both pass the
+      // check, and a concurrent unit move must not carry the row out of this
+      // caller's regions between the first read and the lock.
+      const locked = await manager.findOne(Cheque, {
+        where: { id, companyId, ...this.lockedRegionWhere(caller) },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('Cheque not found');
+      }
+      this.assertClearable(locked.status);
+      this.assertNotMoved(cheque, locked);
+      // dueDate, regionCode and depositDate are all editable while the cheque is
+      // PENDING or DEPOSITED, so the checks run again on the row being written.
+      const depositDate = this.assertClearDates(locked, dto);
+
+      const oldStatus = locked.status;
+      // UQ_TRANSACTIONS_ACTIVE_CHEQUE rejects a second non-cancelled row for this cheque.
+      await manager.getRepository(Transaction).insert({
+        companyId,
+        chequeId: locked.id,
+        type: TransactionType.INCOME,
+        category: chequeTransactionCategory(locked.type),
+        status: TransactionStatus.COMPLETED,
+        amount: locked.amount,
+        currency: locked.currency,
+        paymentMethod: PaymentMethod.CHEQUE,
+        description: `Cheque #${locked.chequeNumber} from ${locked.accountHolder}`,
+        referenceNumber: locked.chequeNumber,
+        regionCode: locked.regionCode,
+        unitId: locked.unitId ?? undefined,
+        transactionDate: dto.clearedDate,
+        dueDate: locked.dueDate,
+      });
+
+      locked.status = ChequeStatus.CLEARED;
+      locked.clearedDate = dto.clearedDate;
+      locked.depositDate = depositDate;
+      locked.version += 1;
+      committed = await manager.getRepository(Cheque).save(locked);
+
+      await this.recordChequeHistory(
+        manager,
+        locked,
+        RecordHistoryAction.STATUS_CHANGE,
+        userId,
+        null,
+        {
+          from: oldStatus,
+          to: ChequeStatus.CLEARED,
+          clearedDate: dto.clearedDate,
+          depositDate,
+        },
+      );
     });
 
-    const admins = await this.usersService.findAdmins(companyId);
+    // Re-read of a row this caller just wrote, so it stays unscoped.
+    const saved = await this.reloadAfterCommit(id, companyId, committed);
+    await this.announceChequeStatus(
+      saved,
+      userId,
+      NotificationType.PAYMENT_RECEIVED,
+      'Cheque Cleared',
+      `Cheque #${saved.chequeNumber} for ${money(saved)} has been CLEARED on ${formatRegionDate(saved.clearedDate, saved.regionCode)}. Payment received.`,
+    );
+    return saved;
+  }
+
+  async unclear(
+    id: string,
+    companyId: string,
+    dto: UnclearChequeDto,
+    userId?: string,
+    caller?: RegionScope,
+  ): Promise<Cheque> {
+    // Existence, tenant and region check.
+    const cheque = await this.findOne(id, companyId, caller);
+    if (cheque.status !== ChequeStatus.CLEARED) {
+      throw new BadRequestException('This cheque is not cleared.');
+    }
+
+    let committed: Cheque = cheque;
+
+    let cancelled = 0;
+    await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        cheque.unitId,
+        cheque.leaseId,
+        companyId,
+      );
+      const locked = await manager.findOne(Cheque, {
+        where: { id, companyId, ...this.lockedRegionWhere(caller) },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('Cheque not found');
+      }
+      if (locked.status !== ChequeStatus.CLEARED) {
+        throw new BadRequestException('This cheque is not cleared.');
+      }
+      this.assertNotMoved(cheque, locked);
+
+      // Cancelled not deleted; zero rows is legitimate for a pre-feature cheque.
+      const reversal = await manager.getRepository(Transaction).update(
+        {
+          chequeId: locked.id,
+          companyId,
+          status: Not(TransactionStatus.CANCELLED),
+        },
+        { status: TransactionStatus.CANCELLED },
+      );
+      cancelled = reversal.affected ?? 0;
+
+      locked.status = locked.depositDate
+        ? ChequeStatus.DEPOSITED
+        : ChequeStatus.PENDING;
+      locked.clearedDate = null;
+      locked.version += 1;
+      committed = await manager.getRepository(Cheque).save(locked);
+
+      await this.recordChequeHistory(
+        manager,
+        locked,
+        RecordHistoryAction.STATUS_CHANGE,
+        userId,
+        dto.reason,
+        {
+          from: ChequeStatus.CLEARED,
+          to: locked.status,
+          cancelledTransactions: cancelled,
+        },
+      );
+    });
+
+    // Re-read of a row this caller just wrote, so it stays unscoped.
+    const saved = await this.reloadAfterCommit(id, companyId, committed);
+    const moneyOutcome = cancelled
+      ? 'its payment was cancelled'
+      : 'it had no recorded payment to cancel';
+    await this.announceChequeStatus(
+      saved,
+      userId,
+      NotificationType.SYSTEM,
+      'Cheque Clearing Reversed',
+      `Cheque #${saved.chequeNumber} for ${money(saved)} is no longer cleared and ${moneyOutcome}. Reason: ${dto.reason}`,
+    );
+    return saved;
+  }
+
+  private assertBounceable(status: ChequeStatus): void {
+    if (TERMINAL_STATUSES.includes(status)) {
+      throw new ConflictException(
+        `A ${status.toLowerCase()} cheque cannot be bounced.`,
+      );
+    }
+  }
+
+  private assertClearDates(cheque: Cheque, dto: ClearChequeDto): string | null {
+    if (
+      cheque.depositDate &&
+      dto.depositDate &&
+      dto.depositDate !== cheque.depositDate
+    ) {
+      throw new BadRequestException(
+        'This cheque already has a deposit date, which cannot be changed while clearing it.',
+      );
+    }
+    const depositDate = cheque.depositDate ?? dto.depositDate ?? null;
+    if (!cheque.depositDate && dto.depositDate) {
+      assertChequeDepositDate(
+        dto.depositDate,
+        regionToday(cheque.regionCode, cheque.createdAt),
+        dto.clearedDate,
+      );
+    }
+    assertChequeClearedDate(dto.clearedDate, cheque.dueDate, depositDate);
+    // The same window finance enforces on every money date: 30 days back, never ahead.
+    assertTransactionDateInWindow(dto.clearedDate, cheque.regionCode);
+    return depositDate;
+  }
+
+  private assertClearable(status: ChequeStatus): void {
+    if (status === ChequeStatus.CLEARED) {
+      throw new ConflictException('This cheque is already cleared.');
+    }
+    if (status !== ChequeStatus.PENDING && status !== ChequeStatus.DEPOSITED) {
+      throw new ConflictException(
+        `A ${status.toLowerCase()} cheque cannot be cleared.`,
+      );
+    }
+  }
+
+  // Announcing a write is never a reason to fail it: the row is committed by the
+  // time either primitive runs, so the guard belongs here and not on one caller.
+  private broadcastChequeUpdate(
+    saved: Cheque,
+    userId: string | undefined,
+  ): void {
+    try {
+      this.notificationsGateway.broadcastToCompany(
+        saved.companyId,
+        'chequeUpdated',
+        {
+          id: saved.id,
+          status: saved.status,
+          updatedBy: userId,
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to broadcast cheque ${saved.id}: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  private async announceChequeStatus(
+    saved: Cheque,
+    userId: string | undefined,
+    type: NotificationType,
+    title: string,
+    message: string,
+  ): Promise<void> {
+    this.broadcastChequeUpdate(saved, userId);
+    await this.notifyAdmins(saved, userId, type, title, message);
+  }
+
+  // Same region predicate remove() builds inline; clear() and unclear() apply it
+  // to their locked read so the caller's scope is re-checked under the lock.
+  private lockedRegionWhere(caller?: RegionScope): FindOptionsWhere<Cheque> {
+    const scopedCodes = scopedRegionCodes(caller);
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Cheque not found');
+    }
+    return scopedCodes ? { regionCode: In(scopedCodes) } : {};
+  }
+
+  // assertChequeEditable takes its FOR SHARE locks on the unit and lease BEFORE
+  // the cheque row lock, and update() acquires them in that order too, so the
+  // order is not inverted here. Instead the locked row is checked against the one
+  // those locks were taken for: a move in between makes the guard moot, and the
+  // caller retries rather than writing money against an unchecked unit.
+  private assertNotMoved(seen: Cheque, locked: Cheque): void {
+    if (seen.unitId !== locked.unitId || seen.leaseId !== locked.leaseId) {
+      throw new ConflictException(
+        'This cheque moved to another unit or lease while it was being updated. Try again.',
+      );
+    }
+  }
+
+  // Past the commit nothing may throw: the caller would read a 500 for a write
+  // that succeeded, and the retry would answer 409. The committed row is the
+  // fallback, one re-read behind but true.
+  private async reloadAfterCommit(
+    id: string,
+    companyId: string,
+    committed: Cheque,
+  ): Promise<Cheque> {
+    try {
+      return await this.findOne(id, companyId);
+    } catch (error) {
+      this.logger.error(
+        `Re-read after commit failed for cheque ${id}: ${errorMessage(error)}`,
+      );
+      return committed;
+    }
+  }
+
+  private async notifyAdmins(
+    saved: Cheque,
+    userId: string | undefined,
+    type: NotificationType,
+    title: string,
+    message: string,
+  ): Promise<void> {
+    let admins: { id: string }[];
+    try {
+      admins = await this.usersService.findAdmins(saved.companyId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to list admins for cheque ${saved.id}: ${errorMessage(error)}`,
+      );
+      return;
+    }
     for (const admin of admins) {
       if (admin.id === userId) {
         continue;
       }
-
       try {
-        await this.notificationsService.create(companyId, {
+        // These go to admins, who read every region.
+        await this.notificationsService.create(saved.companyId, {
           userId: admin.id,
-          title: 'Cheque Bounced!',
-          message: `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${saved.amount} ${saved.currency} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
-          type: NotificationType.CHEQUE_BOUNCED,
+          title,
+          message,
+          type,
           entityType: 'cheque',
           entityId: saved.id,
         });
       } catch (error) {
-        const messageText = errorMessage(error);
         this.logger.error(
-          `Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`,
+          `Failed to create cheque notification for cheque ${saved.id}: ${errorMessage(error)}`,
         );
       }
     }
-
-    return saved;
   }
 
   async getCollectionSchedule(
@@ -670,6 +1034,17 @@ export class ChequesService {
       }
       if (cheque.status === ChequeStatus.CLEARED) {
         throw new ConflictException('Cleared cheques cannot be deleted.');
+      }
+
+      // FK_transactions_cheque is ON DELETE RESTRICT, so a surviving money row
+      // would fail the delete as a 23503 the caller cannot read.
+      const recorded = await manager.count(Transaction, {
+        where: { chequeId: cheque.id, companyId },
+      });
+      if (recorded > 0) {
+        throw new ConflictException(
+          'This cheque recorded a payment and cannot be deleted. Cancel it instead.',
+        );
       }
 
       await this.recordChequeHistory(

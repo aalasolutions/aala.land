@@ -1,3 +1,5 @@
+import { regionCurrency } from '../../shared/constants/regions';
+import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import {
   BadRequestException,
   ConflictException,
@@ -62,7 +64,11 @@ export class MaintenanceService {
       throw new BadRequestException('Property is required for work orders');
     }
     await this.validateUnitOwnership(dto.unitId, companyId, caller, true);
-    const regionCode = await this.regionOfUnit(dto.unitId, companyId);
+    const regionCode = await regionOfUnit(
+      this.unitRepository,
+      dto.unitId,
+      companyId,
+    );
     if (!regionCode) {
       throw new BadRequestException('Invalid unit selected');
     }
@@ -71,6 +77,7 @@ export class MaintenanceService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     return this.dataSource.transaction(async (manager) => {
       await this.assertUnitNotArchivedLocked(
@@ -237,7 +244,11 @@ export class MaintenanceService {
       );
       // The region follows the unit, so moving the work order moves the row.
       if (changes.unitId !== order.unitId) {
-        regionCode = await this.regionOfUnit(changes.unitId, companyId);
+        regionCode = await regionOfUnit(
+          this.unitRepository,
+          changes.unitId,
+          companyId,
+        );
         if (!regionCode) {
           throw new BadRequestException('Invalid unit selected');
         }
@@ -275,6 +286,7 @@ export class MaintenanceService {
       Object.assign(locked, changes);
       if (regionCode) {
         locked.regionCode = regionCode;
+        locked.currency = regionCurrency(regionCode);
       }
       if (changes.status === WorkOrderStatus.COMPLETED && !locked.completedAt) {
         locked.completedAt = new Date();
@@ -503,21 +515,5 @@ export class MaintenanceService {
     if (unit.deletedAt) {
       throw new ConflictException(message);
     }
-  }
-
-  private async regionOfUnit(
-    unitId: string,
-    companyId: string,
-  ): Promise<string | undefined> {
-    const row = await this.unitRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.asset', 'a')
-      .innerJoin('a.locality', 'loc')
-      .innerJoin('loc.city', 'ci')
-      .select('ci.regionCode', 'regionCode')
-      .where('u.id = :unitId', { unitId })
-      .andWhere('u.companyId = :companyId', { companyId })
-      .getRawOne<{ regionCode: string }>();
-    return row?.regionCode ?? undefined;
   }
 }

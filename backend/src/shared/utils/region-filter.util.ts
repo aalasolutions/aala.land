@@ -1,37 +1,27 @@
-// Filters by regionCode via the Unit > Asset > Locality > City FK chain.
+// A unit has no region_code of its own, so its region comes from its city.
+// This resolves that for ONE unit, which is how cheques, transactions and work
+// orders derive the region they then store. Callers that FILTER by region do it
+// through the relation instead; this is not the only walk of the chain.
 
-import { Raw, SelectQueryBuilder } from 'typeorm';
+import { Repository } from 'typeorm';
+import { Unit } from '../../modules/properties/entities/unit.entity';
 
-export const REGION_FILTER_SUBQUERY = `
-  SELECT u.id FROM units u
-  INNER JOIN assets ast ON u.asset_id = ast.id
-  INNER JOIN localities loc ON ast.locality_id = loc.id
-  INNER JOIN cities c ON loc.city_id = c.id
-  WHERE c.region_code = :regionCode
-`;
-
-export const REGION_FILTER_SUBQUERY_MULTI = `
-  SELECT u.id FROM units u
-  INNER JOIN assets ast ON u.asset_id = ast.id
-  INNER JOIN localities loc ON ast.locality_id = loc.id
-  INNER JOIN cities c ON loc.city_id = c.id
-  WHERE c.region_code IN (:...regionCodes)
-`;
-
-// For by-id reads using find options instead of a QueryBuilder; NULL unit doesn't match
-export function unitInRegionsWhere(regionCodes: string[]) {
-  return Raw((alias) => `${alias} IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
-    regionCodes,
-  });
-}
-
-export function appendRegionFilter(
-  qb: SelectQueryBuilder<any>,
-  entityIdColumn: string,
-  regionCode: string,
-): void {
-  qb.andWhere(
-    `${entityIdColumn} IS NULL OR ${entityIdColumn} IN (${REGION_FILTER_SUBQUERY})`,
-    { regionCode },
-  );
+export async function regionOfUnit(
+  unitRepository: Repository<Unit>,
+  unitId: string | null | undefined,
+  companyId: string,
+): Promise<string | undefined> {
+  if (!unitId) {
+    return undefined;
+  }
+  const row = await unitRepository
+    .createQueryBuilder('u')
+    .innerJoin('u.asset', 'a')
+    .innerJoin('a.locality', 'loc')
+    .innerJoin('loc.city', 'ci')
+    .select('ci.regionCode', 'regionCode')
+    .where('u.id = :unitId', { unitId })
+    .andWhere('u.companyId = :companyId', { companyId })
+    .getRawOne<{ regionCode: string }>();
+  return row?.regionCode ?? undefined;
 }

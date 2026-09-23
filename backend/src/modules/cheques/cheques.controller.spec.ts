@@ -48,6 +48,8 @@ describe('ChequesController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             bounce: jest.fn(),
+            clear: jest.fn(),
+            unclear: jest.fn(),
             getCollectionSchedule: jest.fn(),
             processOcr: jest.fn(),
             remove: jest.fn(),
@@ -158,6 +160,46 @@ describe('ChequesController', () => {
         'cheque-uuid-1',
         companyId,
         { status: ChequeStatus.DEPOSITED },
+        'user-uuid-1',
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('clear', () => {
+    it('passes the cleared date, the caller and the company through', async () => {
+      service.clear.mockResolvedValue({
+        ...mockCheque,
+        status: ChequeStatus.CLEARED,
+      } as any);
+
+      const dto = { clearedDate: '2026-09-21' };
+      await controller.clear('cheque-uuid-1', dto, mockReq);
+
+      expect(service.clear).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        dto,
+        'user-uuid-1',
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('unclear', () => {
+    it('passes the reason, the caller and the company through', async () => {
+      service.unclear.mockResolvedValue({
+        ...mockCheque,
+        status: ChequeStatus.DEPOSITED,
+      } as any);
+
+      const dto = { reason: 'Bank reversed the credit' };
+      await controller.unclear('cheque-uuid-1', dto, mockReq);
+
+      expect(service.unclear).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        dto,
         'user-uuid-1',
         mockReq.user,
       );

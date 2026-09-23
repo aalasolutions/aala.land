@@ -70,7 +70,11 @@ export class CreateVendorDto {
   @Min(0)
   hourlyRate?: number;
 
-  @ApiProperty({ required: false, default: 'AED' })
+  @ApiProperty({
+    required: false,
+    description:
+      "Accepted but IGNORED. The stored currency is derived from the record's region, so the response may carry a different code than the request.",
+  })
   @IsOptional()
   @IsString()
   @MaxLength(3)

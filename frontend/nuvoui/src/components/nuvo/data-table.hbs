@@ -103,7 +103,8 @@
     >
       <b.row
         class="{{if (this.isRowSelected b.rowValue) 'is-selected'}}
-          {{if b.rowMeta.depth 'is-child'}}"
+          {{if b.rowMeta.depth 'is-child'}}
+          {{this.rowClassFor b.rowValue}}"
         @onClick={{this.handleRowClick}}
         data-test-data-table-row={{b.rowValue.id}}
         as |r|

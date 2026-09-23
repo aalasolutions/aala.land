@@ -34,6 +34,14 @@ export default class DataTableComponent extends Component {
     return (this.args.dir ?? document.documentElement.dir) === 'rtl';
   }
 
+  // Resolves @getRowClass for one row: a function is called per row, a string
+  // applies to every row, anything else is ignored rather than breaking render.
+  rowClassFor = (row) => {
+    const arg = this.args.getRowClass;
+    if (typeof arg === 'function') return arg(row) ?? '';
+    return typeof arg === 'string' ? arg : '';
+  };
+
   // One stable copy per column: ember-table writes widths onto it.
   copies = new Map();
 
@@ -120,7 +128,8 @@ export default class DataTableComponent extends Component {
     const previous = this.sorts;
     const changed = (sort) =>
       !previous.some(
-        (p) => p.valuePath === sort.valuePath && p.isAscending === sort.isAscending,
+        (p) =>
+          p.valuePath === sort.valuePath && p.isAscending === sort.isAscending,
       );
     const dropped = (sort) =>
       !incoming.some((s) => s.valuePath === sort.valuePath);
@@ -317,7 +326,9 @@ export default class DataTableComponent extends Component {
       if (Number.isNaN(value)) return;
     }
     this.editing = null;
-    const same = (before == null ? '' : String(before)) === (value == null ? '' : String(value));
+    const same =
+      (before == null ? '' : String(before)) ===
+      (value == null ? '' : String(value));
     if (same) return;
     this.args.onCellEdit(row, key, value);
   }

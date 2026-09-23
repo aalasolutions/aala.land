@@ -31,10 +31,7 @@ import { Contact } from '../contacts/entities/contact.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
-import {
-  REGION_FILTER_SUBQUERY_MULTI,
-  unitInRegionsWhere,
-} from '../../shared/utils/region-filter.util';
+import { regionCurrency } from '../../shared/constants/regions';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import {
   effectiveRegionCodes,
@@ -126,14 +123,13 @@ export class LeasesService {
     await this.contactsService.findOneEntity(contactId, companyId, caller);
   }
 
-  // A lease carries no region column: its region is its unit's.
   private regionScopedWhere(caller?: RegionScope): FindOptionsWhere<Lease> {
     const scopedCodes = scopedRegionCodes(caller);
     // No assignment means no access, and an empty IN () is invalid SQL.
     if (scopedCodes?.length === 0) {
       throw new NotFoundException('Lease not found');
     }
-    return scopedCodes ? { unitId: unitInRegionsWhere(scopedCodes) } : {};
+    return scopedCodes ? { regionCode: In(scopedCodes) } : {};
   }
 
   // Lease's region is its unit's; a unit the caller can't read must not be boundable or listed.
@@ -142,9 +138,9 @@ export class LeasesService {
     companyId: string,
     caller?: RegionScope,
     rejectArchived = false,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     if (!unitId) {
-      return;
+      return undefined;
     }
 
     const scopedCodes = scopedRegionCodes(caller);
@@ -160,7 +156,12 @@ export class LeasesService {
 
     const unit = await this.unitRepository.findOne({
       where,
-      select: { id: true, deletedAt: true },
+      select: {
+        id: true,
+        deletedAt: true,
+        asset: { id: true, locality: { id: true, city: { regionCode: true } } },
+      },
+      relations: { asset: { locality: { city: true } } },
     });
     if (!unit) {
       throw new NotFoundException('Unit not found');
@@ -170,6 +171,14 @@ export class LeasesService {
         'This unit is archived. Unarchive it before adding a lease.',
       );
     }
+    return unit.asset?.locality?.city?.regionCode;
+  }
+
+  private requireUnitRegion(regionCode: string | undefined): string {
+    if (!regionCode) {
+      throw new BadRequestException('Invalid unit selected');
+    }
+    return regionCode;
   }
 
   // FOR SHARE so archiveUnit (FOR UPDATE on the unit) cannot commit in between.
@@ -211,8 +220,15 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<Lease> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
-    const lease = this.leaseRepository.create({ ...dto, companyId });
+    const regionCode = this.requireUnitRegion(
+      await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
+    const lease = this.leaseRepository.create({
+      ...dto,
+      companyId,
+      regionCode,
+      currency: regionCurrency(regionCode),
+    });
     const saved = await this.dataSource.transaction(async (manager) => {
       await this.assertUnitNotArchivedLocked(
         manager,
@@ -252,9 +268,7 @@ export class LeasesService {
       .take(clampLimit(limit))
       .orderBy('l.createdAt', 'DESC');
     if (regionCodes) {
-      qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
-        regionCodes,
-      });
+      qb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
     }
     const archived = filters?.archived ?? LeaseArchivedFilter.EXCLUDE;
     if (archived === LeaseArchivedFilter.EXCLUDE) {
@@ -363,17 +377,20 @@ export class LeasesService {
         throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
       }
 
+      let movedRegion: string | undefined;
       if (dto.unitId !== undefined && dto.unitId !== lease.unitId) {
         if (lease.status !== LeaseStatus.DRAFT) {
           throw new BadRequestException(
             'Only a draft lease can move to another unit.',
           );
         }
-        await this.assertUnitInCallerRegions(
-          dto.unitId,
-          companyId,
-          caller,
-          true,
+        movedRegion = this.requireUnitRegion(
+          await this.assertUnitInCallerRegions(
+            dto.unitId,
+            companyId,
+            caller,
+            true,
+          ),
         );
         await this.assertUnitNotArchivedLocked(
           manager,
@@ -408,6 +425,10 @@ export class LeasesService {
 
       const fromStatus = lease.status;
       Object.assign(lease, dto);
+      if (movedRegion) {
+        lease.regionCode = movedRegion;
+        lease.currency = regionCurrency(movedRegion);
+      }
 
       // Re-check under the row lock so two DRAFT->ACTIVE flips on the same unit cannot both land.
       if (lease.status === LeaseStatus.ACTIVE) {
@@ -444,7 +465,9 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
+    const regionCode = this.requireUnitRegion(
+      await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
     const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const oldLease = await manager.findOne(Lease, {
@@ -477,7 +500,12 @@ export class LeasesService {
       oldLease.status = LeaseStatus.RENEWED;
       const savedOldLease = await manager.save(Lease, oldLease);
 
-      const newLease = manager.create(Lease, { ...dto, companyId });
+      const newLease = manager.create(Lease, {
+        ...dto,
+        companyId,
+        regionCode,
+        currency: regionCurrency(regionCode),
+      });
       let savedNewLease: Lease;
       if (newLease.status === LeaseStatus.ACTIVE) {
         await this.assertNoOtherActiveLease(

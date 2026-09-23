@@ -1,3 +1,5 @@
+import { regionCurrency } from '../../shared/constants/regions';
+import { regionOfUnit } from '../../shared/utils/region-filter.util';
 import {
   ConflictException,
   Injectable,
@@ -11,7 +13,7 @@ import {
   In,
   FindOptionsWhere,
 } from 'typeorm';
-import { Transaction, TransactionStatus } from './entities/transaction.entity';
+import { Transaction } from './entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -114,6 +116,7 @@ export class FinancialService {
       ...dto,
       companyId,
       regionCode,
+      currency: regionCurrency(regionCode),
     });
     return this.dataSource.transaction(async (manager) => {
       await this.assertUnitNotArchivedLocked(
@@ -226,6 +229,12 @@ export class FinancialService {
       if (!transaction) {
         throw new NotFoundException('Transaction not found');
       }
+      // The cheque owns every editable field on this row.
+      if (transaction.chequeId) {
+        throw new ConflictException(
+          'This payment was recorded by clearing a cheque and cannot be edited here. Un-clear the cheque to change it.',
+        );
+      }
       // The 30-day record lock is PARKED: it froze PENDING rent-due rows before their due date.
       assertTransactionDateInWindow(
         dto.transactionDate,
@@ -257,7 +266,11 @@ export class FinancialService {
     regionCode: string | undefined,
     caller?: RegionScope,
   ): Promise<string | null> {
-    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    const unitRegion = await regionOfUnit(
+      this.unitRepository,
+      unitId,
+      companyId,
+    );
     if (unitRegion) {
       return unitRegion;
     }
@@ -270,26 +283,6 @@ export class FinancialService {
       regionCode,
       caller,
     );
-  }
-
-  // Transaction takes its unit's region, same chain cheque/work-order columns were backfilled from.
-  private async regionOfUnit(
-    unitId: string | null | undefined,
-    companyId: string,
-  ): Promise<string | undefined> {
-    if (!unitId) {
-      return undefined;
-    }
-    const row = await this.unitRepository
-      .createQueryBuilder('u')
-      .innerJoin('u.asset', 'a')
-      .innerJoin('a.locality', 'loc')
-      .innerJoin('loc.city', 'ci')
-      .select('ci.regionCode', 'regionCode')
-      .where('u.id = :unitId', { unitId })
-      .andWhere('u.companyId = :companyId', { companyId })
-      .getRawOne<{ regionCode: string }>();
-    return row?.regionCode ?? undefined;
   }
 
   // FOR SHARE so archiveUnit cannot commit in between.

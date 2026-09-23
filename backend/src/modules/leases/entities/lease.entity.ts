@@ -52,6 +52,11 @@ export class Lease {
   @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_leases_unit' })
   unit: Unit;
 
+  // Denormalised from the unit's city so reads filter without the four-table join.
+  @Index('IDX_LEASES_REGION_CODE')
+  @Column({ name: 'region_code', type: 'varchar', length: 50 })
+  regionCode: string;
+
   // The tenant is a contact; identity and national ID live there, not on the lease.
   @Index('IDX_LEASES_CONTACT_ID')
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
@@ -87,7 +92,7 @@ export class Lease {
   @Column({ name: 'monthly_rent', type: 'decimal', precision: 12, scale: 2 })
   monthlyRent: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({

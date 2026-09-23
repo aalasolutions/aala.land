@@ -76,7 +76,7 @@ export class Cheque {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({ name: 'due_date', type: 'date' })
@@ -84,6 +84,10 @@ export class Cheque {
 
   @Column({ name: 'deposit_date', type: 'date', nullable: true })
   depositDate: string | null;
+
+  // The day the bank honoured it, which is the money date on the transaction it writes.
+  @Column({ name: 'cleared_date', type: 'date', nullable: true })
+  clearedDate: string | null;
 
   @Column({
     type: 'enum',

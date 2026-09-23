@@ -142,7 +142,7 @@ export class WorkOrder {
   })
   actualCost: number | null;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({ name: 'scheduled_date', type: 'date', nullable: true })

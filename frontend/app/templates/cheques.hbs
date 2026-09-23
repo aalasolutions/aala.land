@@ -1,12 +1,15 @@
-{{page-title "Cheques"}}
+{{page-title "Cheques Received"}}
 
 <div data-test-cheques-page class="flex col gap-6">
   <Nuvo::PageHeader
-    @title="Cheque Management"
-    @subtitle="Track post-dated cheques and payment schedules."
+    @title="Cheques Received"
+    @subtitle="Track incoming post-dated cheques and their collection schedule."
   >
     <:meta>
-      <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
+      <p class="text-muted">{{format-number
+          @model.total
+          unit="cheque record"
+        }}</p>
     </:meta>
     <:actions>
       {{#if this.canWriteCheques}}
@@ -73,57 +76,70 @@
                   @variant="secondary"
                   @size="xs"
                   @icon="pencil-simple"
+                  data-test-edit-cheque
+                  aria-label="Edit"
+                  data-tooltip="Edit"
                   {{on "click" (fn this.openEdit cell.row)}}
-                >
-                  Edit
-                </Nuvo::Button>
-                {{#if (eq cell.row.status "PENDING")}}
-                  <Nuvo::Button
-                    @variant="success"
-                    @size="xs"
-                    @icon="bank"
-                    {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
-                  >
-                    Deposit
-                  </Nuvo::Button>
-                  <Nuvo::Button
-                    @variant="danger"
-                    @size="xs"
-                    data-test-bounce
-                    @icon="x-circle"
-                    {{on "click" (fn this.openBounceModal cell.row)}}
-                  >
-                    Bounce
-                  </Nuvo::Button>
-                {{/if}}
-                {{#if (eq cell.row.status "DEPOSITED")}}
+                />
+                {{#if
+                  (or
+                    (eq cell.row.status "PENDING")
+                    (eq cell.row.status "DEPOSITED")
+                  )
+                }}
+                  {{#if (eq cell.row.status "PENDING")}}
+                    <Nuvo::Button
+                      @variant="success"
+                      @size="xs"
+                      @icon="bank"
+                      data-test-deposit-cheque
+                      aria-label="Deposit"
+                      data-tooltip="Deposit"
+                      {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
+                    />
+                  {{/if}}
                   <Nuvo::Button
                     @variant="success"
                     @size="xs"
                     @icon="check-circle"
-                    {{on "click" (fn this.updateStatus cell.row "CLEARED")}}
-                  >
-                    Clear
-                  </Nuvo::Button>
+                    data-test-clear-cheque
+                    aria-label="Clear"
+                    data-tooltip="Clear"
+                    {{on "click" (fn this.openClear cell.row)}}
+                  />
                   <Nuvo::Button
                     @variant="danger"
                     @size="xs"
                     data-test-bounce
+                    aria-label="Bounce"
+                    data-tooltip="Bounce"
                     @icon="x-circle"
                     {{on "click" (fn this.openBounceModal cell.row)}}
-                  >
-                    Bounce
-                  </Nuvo::Button>
+                  />
                 {{/if}}
                 {{#if (eq cell.row.status "BOUNCED")}}
                   <Nuvo::Button
                     @variant="secondary"
                     @size="xs"
                     @icon="arrows-clockwise"
+                    data-test-replace-cheque
+                    aria-label="Replace"
+                    data-tooltip="Replace"
                     {{on "click" (fn this.updateStatus cell.row "REPLACED")}}
-                  >
-                    Replace
-                  </Nuvo::Button>
+                  />
+                {{/if}}
+                {{#if
+                  (and (eq cell.row.status "CLEARED") this.canDeleteCheque)
+                }}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
+                    @icon="arrow-counter-clockwise"
+                    data-test-unclear-cheque
+                    aria-label="Un-clear"
+                    data-tooltip="Un-clear"
+                    {{on "click" (fn this.openUnclear cell.row)}}
+                  />
                 {{/if}}
                 {{#if
                   (or
@@ -137,10 +153,10 @@
                     @size="xs"
                     @icon="prohibit"
                     data-test-cancel-cheque
+                    aria-label="Cancel cheque"
+                    data-tooltip="Cancel cheque"
                     {{on "click" (fn this.openCancel cell.row)}}
-                  >
-                    Cancel cheque
-                  </Nuvo::Button>
+                  />
                 {{/if}}
               {{/if}}
               {{#if
@@ -151,10 +167,10 @@
                   @size="xs"
                   @icon="trash"
                   data-test-delete-cheque
+                  aria-label="Delete"
+                  data-tooltip="Delete"
                   {{on "click" (fn this.openDelete cell.row)}}
-                >
-                  Delete
-                </Nuvo::Button>
+                />
               {{/if}}
             </div>
           {{else}}
@@ -336,6 +352,7 @@
   <:footer>
     <Nuvo::Button
       @variant="secondary"
+      data-test-cancel-edit
       @onClick={{this.closeModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
@@ -369,6 +386,7 @@
   <Nuvo::FormActions @align="end">
     <Nuvo::Button
       @variant="secondary"
+      data-test-cancel-bounce
       @onClick={{this.closeBounceModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
@@ -378,6 +396,111 @@
     >Confirm Bounce</Nuvo::Button>
   </Nuvo::FormActions>
 </Nuvo::Modal>
+
+<Nuvo::Modal
+  @open={{this.showClearModal}}
+  @title="Clear Cheque"
+  @onClose={{this.closeClearModal}}
+>
+  <p class="text-muted">Cheque
+    {{this.clearChequeItem.chequeNumber}}
+    for
+    {{this.clearChequeItem.amount}}
+    {{this.clearChequeItem.currency}}. This records the payment as income on the
+    day it cleared.</p>
+  {{#if this.clearWindowUnusable}}
+    <Nuvo::Alert
+      @variant="warning"
+      @description={{this.clearBlockedMessage}}
+      data-test-clear-blocked
+    />
+  {{else}}
+    <div class="flex gap-4">
+      <Nuvo::Field @label="Added" class="grow">
+        <Nuvo::Input
+          id="cheque-added-date"
+          type="date"
+          readonly={{true}}
+          @value={{this.chequeAddedDate}}
+          data-test-input-added-date
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Deposited" class="grow">
+        <Nuvo::Input
+          id="cheque-deposit-date"
+          type="date"
+          readonly={{this.depositDateReadonly}}
+          min={{this.depositDateWindow.earliest}}
+          max={{this.depositDateWindow.latest}}
+          @value={{this.clearDepositDate}}
+          @onInput={{fn this.setFieldValue "clearDepositDate"}}
+          data-test-input-deposit-date
+        />
+      </Nuvo::Field>
+    </div>
+    <Nuvo::Field
+      @label="Date it cleared"
+      @required={{true}}
+      @error={{this.clearError}}
+    >
+      <Nuvo::Input
+        id="cheque-cleared-date"
+        type="date"
+        min={{this.clearDateWindow.earliest}}
+        max={{this.clearDateWindow.latest}}
+        @value={{this.clearedDate}}
+        @onInput={{this.setClearedDate}}
+        @invalid={{if this.clearError true false}}
+        data-test-input-cleared-date
+      />
+    </Nuvo::Field>
+  {{/if}}
+  <Nuvo::FormActions @align="end">
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-cancel-clear
+      @onClick={{this.closeClearModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="success"
+      @loading={{this.isClearing}}
+      @disabled={{this.clearWindowUnusable}}
+      data-test-confirm-clear
+      {{on "click" this.confirmClear}}
+    >Clear and record payment</Nuvo::Button>
+  </Nuvo::FormActions>
+</Nuvo::Modal>
+
+<ConfirmModal
+  @open={{this.showUnclearModal}}
+  @title="Reverse Cheque Clearing"
+  @message="Reverse this clearing? The payment it recorded is cancelled and stops counting as income."
+  @confirmText="Reverse clearing"
+  @confirmVariant="danger"
+  @isConfirming={{this.isUnclearing}}
+  @confirmingText="Reversing..."
+  @onClose={{this.closeUnclearModal}}
+  @onConfirm={{this.confirmUnclear}}
+>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
+    <Nuvo::Textarea
+      id="cheque-unclear-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Bank reversed the credit"
+      @value={{this.unclearReason}}
+      @onInput={{fn this.setFieldValue "unclearReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-unclear-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>
 
 <ConfirmModal
   @open={{this.showCancelModal}}
@@ -390,7 +513,12 @@
   @onClose={{this.closeCancelModal}}
   @onConfirm={{this.confirmCancel}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Nuvo::Textarea
       id="cheque-cancel-reason"
       rows="2"
@@ -416,7 +544,12 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Nuvo::Textarea
       id="cheque-delete-reason"
       rows="2"

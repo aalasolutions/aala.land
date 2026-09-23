@@ -1,6 +1,6 @@
 import { DataSource, EntityManager } from 'typeorm';
 import { connectTestDatabase } from './test-data-source';
-import { Company } from '../../src/modules/companies/entities/company.entity';
+import { seedCompany, seeded as sharedSeeded } from './harness';
 import { User } from '../../src/modules/users/entities/user.entity';
 import { Lead, LeadStatus } from '../../src/modules/leads/entities/lead.entity';
 import { Role } from '../../src/shared/enums/roles.enum';
@@ -30,33 +30,11 @@ describe('lead ownership against a real database', () => {
     await dataSource?.destroy();
   });
 
-  class Rollback extends Error {}
+  const seeded = <T>(run: (manager: EntityManager) => Promise<T>) =>
+    sharedSeeded(dataSource, run);
 
-  // Every case seeds, queries and rolls back, so the database is unchanged either way.
-  async function seeded<T>(run: (manager: EntityManager) => Promise<T>) {
-    let captured: T;
-    try {
-      await dataSource.transaction(async (manager) => {
-        captured = await run(manager);
-        throw new Rollback();
-      });
-    } catch (error) {
-      if (!(error instanceof Rollback)) throw error;
-    }
-    return captured!;
-  }
-
-  async function company(manager: EntityManager) {
-    const suffix = Math.random().toString(36).slice(2, 10);
-    return manager.getRepository(Company).save(
-      manager.getRepository(Company).create({
-        name: `Ownership Co ${suffix}`,
-        slug: `ownership-co-${suffix}`,
-        activeRegions: [DUBAI, RIYADH],
-        defaultRegionCode: DUBAI,
-      }),
-    );
-  }
+  const company = (manager: EntityManager) =>
+    seedCompany(manager, 'Ownership Co', [DUBAI, RIYADH]);
 
   async function agent(
     manager: EntityManager,

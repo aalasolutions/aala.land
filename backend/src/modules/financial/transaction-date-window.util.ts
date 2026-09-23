@@ -9,6 +9,8 @@ import {
 } from '../../shared/utils/region-time.util';
 import { Transaction, TransactionStatus } from './entities/transaction.entity';
 
+// Mirrored by MAX_BACKDATE_DAYS in frontend/app/constants.js, which the cheque
+// clear dialog and the finance transaction form use to bound their date inputs.
 export const MAX_BACKDATE_DAYS = 30;
 export const LOCK_AFTER_DAYS = 30;
 

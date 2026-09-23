@@ -94,6 +94,25 @@ export function startOfDayInZone(
   return inZone(timeZone, at).startOf('day').toJSDate();
 }
 
+/** Mirrors the frontend format-date helper's default (medium): "Sep 18, 2026". */
+export function formatDateMedium(value: string, locale = 'en-US'): string {
+  const date = parseDateOnly(value);
+  return date ? date.setLocale(locale).toLocaleString(DateTime.DATE_MED) : '';
+}
+
+/** Calendar date named with the region whose calendar it belongs to: "Sep 25, 2026 (Dubai)". */
+export function formatRegionDate(
+  value: string | null | undefined,
+  regionCode?: string | null,
+  locale = 'en-US',
+): string {
+  if (!value) return '';
+  const date = formatDateMedium(value, locale);
+  if (!date) return '';
+  const region = regionCode ? getRegionByCode(regionCode) : undefined;
+  return region ? `${date} (${region.name})` : date;
+}
+
 /** Long calendar date such as "August 20, 2026". */
 export function formatDateLong(
   at: Date,
@@ -168,4 +187,8 @@ export function regionCodesAtLocalHour(
     }
     return hit;
   }).map((region) => region.code);
+}
+
+export function pluralDays(days: number): string {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
 }

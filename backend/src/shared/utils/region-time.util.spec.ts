@@ -9,7 +9,9 @@ import {
   hourInZone,
   isDateOnly,
   isWholeCalendarMonth,
+  formatRegionDate,
   monthBounds,
+  pluralDays,
   monthsBetweenInstants,
   regionCodesAtLocalHour,
   regionTimezone,
@@ -343,5 +345,37 @@ describe('region-time.util', () => {
     it('throws on a month that is not real', () => {
       expect(() => monthBounds('2026-13')).toThrow(RangeError);
     });
+  });
+});
+
+describe('pluralDays', () => {
+  it('uses the singular for one day only', () => {
+    expect(pluralDays(1)).toBe('1 day');
+    expect(pluralDays(0)).toBe('0 days');
+    expect(pluralDays(24)).toBe('24 days');
+  });
+});
+
+describe('formatRegionDate', () => {
+  it('names the region whose calendar the date belongs to', () => {
+    expect(formatRegionDate('2026-09-25', 'dubai')).toBe(
+      'Sep 25, 2026 (Dubai)',
+    );
+    expect(formatRegionDate('2026-09-25', 'makkah')).toBe(
+      'Sep 25, 2026 (Makkah)',
+    );
+  });
+
+  it('drops the label when the region is unknown or absent', () => {
+    expect(formatRegionDate('2026-09-25', 'not-a-region')).toBe('Sep 25, 2026');
+    expect(formatRegionDate('2026-09-25')).toBe('Sep 25, 2026');
+    expect(formatRegionDate('2026-09-25', null)).toBe('Sep 25, 2026');
+  });
+
+  it('returns the empty string for a missing or unusable date', () => {
+    expect(formatRegionDate(null, 'dubai')).toBe('');
+    expect(formatRegionDate(undefined, 'dubai')).toBe('');
+    expect(formatRegionDate('', 'dubai')).toBe('');
+    expect(formatRegionDate('not-a-date', 'dubai')).toBe('');
   });
 });

@@ -73,7 +73,7 @@ export class Vendor {
   })
   hourlyRate: number | null;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

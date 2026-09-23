@@ -1,11 +1,12 @@
 import {
-  IsString,
-  IsOptional,
-  IsUUID,
   IsEnum,
   IsNumber,
-  Min,
+  IsOptional,
+  IsString,
+  IsUUID,
   Max,
+  MaxLength,
+  Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CommissionType } from '../entities/commission.entity';
@@ -42,9 +43,14 @@ export class CreateCommissionDto {
   @Max(100)
   commissionRate: number;
 
-  @ApiProperty({ required: false, default: 'AED' })
+  @ApiProperty({
+    required: false,
+    description:
+      "Accepted but IGNORED. The stored currency is derived from the record's region, so the response may carry a different code than the request.",
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(3)
   currency?: string;
 
   @ApiProperty({ required: false })

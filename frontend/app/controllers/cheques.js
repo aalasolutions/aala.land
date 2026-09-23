@@ -8,12 +8,18 @@ import {
   closeDeleteModal,
   confirmDeleteModal,
 } from '../utils/delete-modal';
-import { toDateOnly } from '../utils/local-date';
-import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
+import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
+import { formatDate } from '../helpers/format-date';
+import {
+  CHEQUE_TYPE_OPTIONS,
+  EMPTY_UNIT_OPTION,
+  MAX_BACKDATE_DAYS,
+} from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
   @service auth;
   @service notifications;
+  @service region;
   @service router;
   @service socket;
   chequeUpdatedHandler = null;
@@ -80,7 +86,8 @@ export default class ChequesController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 480,
+      // Sized for the icon action row, whose widest status renders six buttons.
+      width: 260,
       isFixed: 'right',
       isSortable: false,
     },
@@ -98,6 +105,18 @@ export default class ChequesController extends PaginatedController {
   @tracked deleteReason = '';
   @tracked isDeleting = false;
   @tracked reasonError = '';
+
+  @tracked showClearModal = false;
+  @tracked clearChequeItem = null;
+  @tracked clearedDate = '';
+  @tracked clearDepositDate = '';
+  @tracked clearError = '';
+  @tracked isClearing = false;
+
+  @tracked showUnclearModal = false;
+  @tracked unclearChequeItem = null;
+  @tracked unclearReason = '';
+  @tracked isUnclearing = false;
 
   // Matches POST and PATCH /cheques roles; ACCOUNTANT is read-only.
   get canWriteCheques() {
@@ -246,6 +265,181 @@ export default class ChequesController extends PaginatedController {
     }
   }
 
+  // Mirrors the server window, resolved in the cheque's own region, not the viewed
+  // one: the 30-day limit from transaction-date-window.util.ts and the due and
+  // deposit date floors from cheque-transaction.util.ts. The server decides.
+  get clearDateWindow() {
+    const cheque = this.clearChequeItem;
+    const today = todayInZone(this.clearChequeZone);
+    const floors = [
+      today && addCalendarDays(today, -MAX_BACKDATE_DAYS),
+      toDateOnly(cheque?.dueDate),
+      // Only a stored deposit date floors this; a typed one gets pulled, see setClearedDate.
+      toDateOnly(cheque?.depositDate),
+    ].filter(Boolean);
+    return { earliest: floors.sort().at(-1) ?? null, latest: today ?? null };
+  }
+
+  // A cheque not yet due has no clearable day: its floor sits past today.
+  get clearWindowUnusable() {
+    const { earliest, latest } = this.clearDateWindow;
+    return !earliest || !latest || earliest > latest;
+  }
+
+  get clearBlockedMessage() {
+    const dueDate = toDateOnly(this.clearChequeItem?.dueDate);
+    const { latest } = this.clearDateWindow;
+    if (dueDate && latest && dueDate > latest) {
+      return `This cheque is not due until ${formatDate(dueDate)}, so it cannot be cleared yet.`;
+    }
+    return 'This cheque has no date that can be recorded as its clearing day.';
+  }
+
+  get clearChequeZone() {
+    const code = this.clearChequeItem?.regionCode;
+    return (
+      this.region.regions?.find((r) => r.code === code)?.timezone ??
+      this.region.activeRegion?.timezone
+    );
+  }
+
+  // Read-only context: the day the record was added in the cheque's region, the
+  // same floor the server applies to a deposit date.
+  get chequeAddedDate() {
+    const createdAt = this.clearChequeItem?.createdAt;
+    return createdAt ? todayInZone(this.clearChequeZone, createdAt) : null;
+  }
+
+  // Settled once the cheque was marked DEPOSITED; only a PENDING clear may set it.
+  get depositDateEditable() {
+    return Boolean(this.clearChequeItem) && !this.clearChequeItem.depositDate;
+  }
+
+  get depositDateReadonly() {
+    return !this.depositDateEditable;
+  }
+
+  get depositDateWindow() {
+    return { earliest: this.chequeAddedDate || null, latest: this.clearedDate };
+  }
+
+  @action openClear(cheque) {
+    this.clearChequeItem = cheque;
+    this.clearError = '';
+    this.showClearModal = true;
+    this.clearedDate = this.clearWindowUnusable
+      ? ''
+      : this.clearDateWindow.latest;
+    this.clearDepositDate = toDateOnly(cheque?.depositDate);
+  }
+
+  // Moving the clearing day back drags the deposit with it, and that correction sticks.
+  @action setClearedDate(value) {
+    this.clearedDate = value;
+    if (
+      this.depositDateEditable &&
+      this.clearDepositDate &&
+      value &&
+      this.clearDepositDate > value
+    ) {
+      this.clearDepositDate = value;
+    }
+  }
+
+  @action closeClearModal() {
+    this.showClearModal = false;
+    this.clearChequeItem = null;
+    this.clearedDate = '';
+    this.clearDepositDate = '';
+    this.clearError = '';
+  }
+
+  @action async confirmClear() {
+    if (!this.clearChequeItem || this.isClearing) return;
+    if (this.clearWindowUnusable) {
+      this.clearError = this.clearBlockedMessage;
+      return;
+    }
+    const { earliest, latest } = this.clearDateWindow;
+    if (!this.clearedDate) {
+      this.clearError = 'The date the cheque cleared is required.';
+      return;
+    }
+    if (this.clearedDate < earliest || this.clearedDate > latest) {
+      this.clearError = `Pick a date between ${formatDate(earliest)} and ${formatDate(latest)}.`;
+      return;
+    }
+    // Optional, and range-checked here as well as on the server.
+    const depositDate = this.depositDateEditable ? this.clearDepositDate : '';
+    if (depositDate) {
+      const { earliest: depositFloor } = this.depositDateWindow;
+      if (depositFloor && depositDate < depositFloor) {
+        this.clearError = `The deposit date cannot be before the cheque was added on ${formatDate(depositFloor)}.`;
+        return;
+      }
+      if (depositDate > this.clearedDate) {
+        this.clearError = 'The deposit date cannot be after the clearing date.';
+        return;
+      }
+    }
+
+    this.isClearing = true;
+    try {
+      await this.auth.fetchJson(`/cheques/${this.clearChequeItem.id}/clear`, {
+        method: 'POST',
+        body: JSON.stringify({
+          clearedDate: this.clearedDate,
+          ...(depositDate ? { depositDate } : {}),
+        }),
+      });
+      this.notifications.success('Cheque cleared and payment recorded');
+      this.closeClearModal();
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.clearError = e.message || 'Failed to clear cheque';
+    } finally {
+      this.isClearing = false;
+    }
+  }
+
+  @action openUnclear(cheque) {
+    this.unclearChequeItem = cheque;
+    this.unclearReason = '';
+    this.reasonError = '';
+    this.showUnclearModal = true;
+  }
+
+  @action closeUnclearModal() {
+    this.showUnclearModal = false;
+    this.unclearChequeItem = null;
+    this.unclearReason = '';
+    this.reasonError = '';
+  }
+
+  @action async confirmUnclear() {
+    if (!this.unclearChequeItem || this.isUnclearing) return;
+    const reason = this.unclearReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+
+    this.isUnclearing = true;
+    try {
+      await this.auth.fetchJson(
+        `/cheques/${this.unclearChequeItem.id}/unclear`,
+        { method: 'POST', body: JSON.stringify({ reason }) },
+      );
+      this.notifications.success('Cheque clearing reversed');
+      this.closeUnclearModal();
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to reverse the clearing');
+    } finally {
+      this.isUnclearing = false;
+    }
+  }
+
   @action openCancel(cheque) {
     this.chequeToCancel = cheque;
     this.cancelReason = '';
@@ -256,6 +450,7 @@ export default class ChequesController extends PaginatedController {
   @action closeCancelModal() {
     this.showCancelModal = false;
     this.chequeToCancel = null;
+    this.reasonError = '';
   }
 
   @action async confirmCancel() {

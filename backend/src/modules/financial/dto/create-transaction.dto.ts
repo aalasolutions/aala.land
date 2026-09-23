@@ -34,7 +34,10 @@ export class CreateTransactionDto {
   @Min(0)
   amount: number;
 
-  @ApiPropertyOptional({ example: 'AED', default: 'AED' })
+  @ApiPropertyOptional({
+    description:
+      "Accepted but IGNORED. The stored currency is derived from the record's region, so the response may carry a different code than the request.",
+  })
   @IsString()
   @MaxLength(3)
   @IsOptional()

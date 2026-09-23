@@ -84,7 +84,7 @@ export class Transaction {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({
@@ -121,6 +121,12 @@ export class Transaction {
     foreignKeyConstraintName: 'FK_transactions_unit',
   })
   unit: Unit;
+
+  // Set when a cleared cheque produced this row. FK and the partial unique index
+  // that blocks a second active row per cheque live in the migration, not here,
+  // because a relation to Cheque would make financial and cheques circular.
+  @Column({ name: 'cheque_id', type: 'uuid', nullable: true })
+  chequeId: string | null;
 
   // The day the money arrived. Required once the row is COMPLETED, empty while PENDING.
   @Column({ name: 'transaction_date', type: 'date', nullable: true })

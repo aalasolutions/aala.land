@@ -206,17 +206,17 @@ export class ReportsService {
     const monthStart = `date_trunc('month', now() AT TIME ZONE ${zone})::date`;
     const inRegionMonth = `(${moneyDate} >= ${monthStart} AND ${moneyDate} < (${monthStart} + INTERVAL '1 month'))`;
 
-    // Leads and Commissions have direct regionCode
+    // Leads have a direct regionCode.
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
-    // Units, Transactions, Leases, Cheques need FK chain filtering
     let totalUnitsPromise: Promise<number>;
     let revenuePromise: Promise<any>;
     let activeLeasesPromise: Promise<number>;
     let pendingChequesPromise: Promise<number>;
 
     if (regionCodes) {
+      // Units have no region column, so they walk the FK chain to the city.
       totalUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
@@ -238,16 +238,13 @@ export class ReportsService {
         .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes })
         .getRawOne();
 
+      // Leases carry their own region, like cheques.
       activeLeasesPromise = this.leaseRepository
         .createQueryBuilder('l')
-        .innerJoin('units', 'u', 'l.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
-        .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
-        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
         .andWhere('l.deleted_at IS NULL')
-        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
+        .andWhere('l.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
       // Cheques carry their own region, so a cheque with no unit still counts.

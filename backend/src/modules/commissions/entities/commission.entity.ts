@@ -115,7 +115,7 @@ export class Commission {
   })
   commissionAmount: number;
 
-  @Column({ type: 'varchar', length: 3, default: 'AED' })
+  @Column({ type: 'varchar', length: 3, default: 'USD' })
   currency: string;
 
   @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
