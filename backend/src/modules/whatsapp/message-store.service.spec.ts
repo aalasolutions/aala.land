@@ -321,7 +321,7 @@ describe('MessageStoreService', () => {
       const at = new Date(1761000200 * 1000);
 
       await expect(
-        service.applyEdit('co-1', 'user-a', 'wamid.1', 'new text', at),
+        service.applyEdit('co-1', 'user-a', 'wamid.1', 'new text', at, true),
       ).resolves.toBe(true);
       const [where, patch] = messagesRepo.update.mock.calls[0];
       expect(where).toMatchObject({
@@ -333,6 +333,17 @@ describe('MessageStoreService', () => {
       expect(where.deletedAt).toBeDefined();
       expect(where.editedAt).toBeDefined();
       expect(patch).toEqual({ body: 'new text', editedAt: at });
+    });
+
+    it('getMessage reads one message inside the caller company and agent', async () => {
+      messagesRepo.findOne.mockResolvedValue(makeRow({ waMessageId: 'msg-1' }));
+
+      const msg = await service.getMessage('co-1', 'user-a', 'msg-1');
+
+      expect(messagesRepo.findOne).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', userId: 'user-a', waMessageId: 'msg-1' },
+      });
+      expect(msg?.id).toBe('msg-1');
     });
 
     it('hasMessage checks inside the caller company and agent', async () => {
@@ -349,23 +360,76 @@ describe('MessageStoreService', () => {
     it('markDeleted stamps deleted_at once and keeps the row', async () => {
       const at = new Date(1761000200 * 1000);
 
-      await service.markDeleted('co-1', 'user-a', 'wamid.1', at);
+      await service.markDeleted('co-1', 'user-a', 'wamid.1', at, false);
 
       const [where, patch] = messagesRepo.update.mock.calls[0];
       expect(where).toMatchObject({
         companyId: 'co-1',
         userId: 'user-a',
         waMessageId: 'wamid.1',
+        fromMe: false,
       });
       expect(where.deletedAt).toBeDefined();
       expect(patch).toEqual({ deletedAt: at });
+    });
+
+    it('an applied delete refreshes the chat preview only if it was the latest message', async () => {
+      await service.markDeleted('co-1', 'user-a', 'wamid.1', new Date(), false);
+
+      const [sql, params] = chatsRepo.query.mock.calls[0];
+      expect(sql).toContain('c."last_ts" = m."timestamp"');
+      expect(params).toEqual([
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'This message was deleted',
+      ]);
+    });
+
+    it('an applied edit puts the new text in the chat preview', async () => {
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+        new Date(),
+        false,
+      );
+
+      expect(chatsRepo.query.mock.calls[0][1]).toEqual([
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+      ]);
+    });
+
+    it('a change that matched no row leaves the chat preview alone', async () => {
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+        new Date(),
+        false,
+      );
+
+      expect(chatsRepo.query).not.toHaveBeenCalled();
     });
 
     it('reports false when no stored message matched', async () => {
       messagesRepo.update.mockResolvedValue({ affected: 0 });
 
       await expect(
-        service.markDeleted('co-1', 'user-a', 'wamid.missing', new Date()),
+        service.markDeleted(
+          'co-1',
+          'user-a',
+          'wamid.missing',
+          new Date(),
+          true,
+        ),
       ).resolves.toBe(false);
     });
   });

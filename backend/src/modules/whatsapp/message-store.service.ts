@@ -10,6 +10,8 @@ import {
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
 
 const MESSAGES_PAGE_DEFAULT = 50;
+// Matches the stub the chat thread renders for a deleted message.
+const DELETED_PREVIEW = 'This message was deleted';
 const MESSAGES_PAGE_MAX = 200;
 const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
@@ -322,40 +324,87 @@ export class MessageStoreService {
     return this.messages.exists({ where: { companyId, userId, waMessageId } });
   }
 
-  // Echoed edit from the WhatsApp Business app: our own live rows only, and never an older edit over a newer one.
+  async getMessage(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+  ): Promise<WaMessage | null> {
+    const row = await this.messages.findOne({
+      where: { companyId, userId, waMessageId },
+    });
+    return row ? this.toWaMessage(row) : null;
+  }
+
+  // Each side may only change its own messages, never a deleted one, never an older edit over a newer one.
   async applyEdit(
     companyId: string,
     userId: string,
     waMessageId: string,
     body: string,
     editedAt: Date,
+    fromMe: boolean,
   ): Promise<boolean> {
     const result = await this.messages.update(
       {
         companyId,
         userId,
         waMessageId,
-        fromMe: true,
+        fromMe,
         deletedAt: IsNull(),
         editedAt: Or(IsNull(), LessThan(editedAt)),
       },
       { body, editedAt },
     );
-    return (result.affected ?? 0) > 0;
+    const isApplied = (result.affected ?? 0) > 0;
+    if (isApplied)
+      await this.refreshChatPreview(companyId, userId, waMessageId, body);
+    return isApplied;
   }
 
-  // Echoed delete from the WhatsApp Business app; the row stays and renders as a stub.
+  // Delete for everyone; the row stays and renders as a stub. Each side may only delete its own messages.
   async markDeleted(
     companyId: string,
     userId: string,
     waMessageId: string,
     deletedAt: Date,
+    fromMe: boolean,
   ): Promise<boolean> {
     const result = await this.messages.update(
-      { companyId, userId, waMessageId, deletedAt: IsNull() },
+      { companyId, userId, waMessageId, fromMe, deletedAt: IsNull() },
       { deletedAt },
     );
-    return (result.affected ?? 0) > 0;
+    const isApplied = (result.affected ?? 0) > 0;
+    if (isApplied) {
+      await this.refreshChatPreview(
+        companyId,
+        userId,
+        waMessageId,
+        DELETED_PREVIEW,
+      );
+    }
+    return isApplied;
+  }
+
+  // Only when the changed message is still the chat's latest, since the preview shows only that one.
+  private async refreshChatPreview(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+    lastBody: string,
+  ): Promise<void> {
+    await this.chats.query(
+      `UPDATE "whatsapp_chats" c
+          SET "last_body" = $4, "updated_at" = now()
+         FROM "whatsapp_messages" m
+        WHERE m."company_id" = $1
+          AND m."user_id" = $2
+          AND m."wa_message_id" = $3
+          AND c."company_id" = m."company_id"
+          AND c."user_id" = m."user_id"
+          AND c."chat_id" = m."chat_id"
+          AND c."last_ts" = m."timestamp"`,
+      [companyId, userId, waMessageId, lastBody],
+    );
   }
 
   // Page 1 is the newest slice; each page is returned oldest-first for rendering.

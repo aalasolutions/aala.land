@@ -2334,4 +2334,22 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.strictEqual(controller.connection.historySyncStatus, 'complete');
   });
+
+  test('a late pre-edit copy never puts the old text back', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    const edited = { id: 'm-1', body: 'TWO', editedAt: 200 };
+
+    assert.strictEqual(
+      controller._mergeExisting(edited, { id: 'm-1', body: 'ONE' }),
+      null,
+    );
+    assert.deepEqual(
+      controller._mergeExisting(edited, {
+        id: 'm-1',
+        body: 'THREE',
+        editedAt: 300,
+      }),
+      { id: 'm-1', body: 'THREE', editedAt: 300 },
+    );
+  });
 });

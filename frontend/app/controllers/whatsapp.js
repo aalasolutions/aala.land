@@ -774,7 +774,10 @@ export default class WhatsappController extends Controller {
   _mergeExisting(existing, incoming) {
     let changed = false;
     const merged = { ...existing };
+    // A late copy from before an edit must not put the old text back.
+    const isOlderBody = (existing.editedAt ?? 0) > (incoming.editedAt ?? 0);
     for (const field of MUTABLE_MESSAGE_FIELDS) {
+      if (field === 'body' && isOlderBody) continue;
       const next = incoming[field] ?? null;
       if (next !== null && next !== (existing[field] ?? null)) {
         merged[field] = next;

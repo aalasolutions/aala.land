@@ -146,6 +146,7 @@ describe('WhatsappWebhookService', () => {
     applyEdit: jest.Mock;
     markDeleted: jest.Mock;
     hasMessage: jest.Mock;
+    getMessage: jest.Mock;
   };
   let gateway: {
     emitMessage: jest.Mock;
@@ -175,6 +176,7 @@ describe('WhatsappWebhookService', () => {
       applyEdit: jest.fn().mockResolvedValue(true),
       markDeleted: jest.fn().mockResolvedValue(true),
       hasMessage: jest.fn().mockResolvedValue(true),
+      getMessage: jest.fn().mockResolvedValue(null),
     };
     gateway = {
       emitMessage: jest.fn(),
@@ -1532,10 +1534,11 @@ describe('WhatsappWebhookService', () => {
     });
 
     it('applies an edit parked for one of our history messages', async () => {
-      redisStore.set('wa:echo:pending:company-1:user-1:wamid.h2', {
+      redisStore.set('wa:msg:pending:company-1:user-1:wamid.h2', {
         kind: 'edit',
         body: 'yes, two bays',
         at: 1761000900 * 1000,
+        fromMe: true,
       });
 
       await service.processEnvelope(
@@ -1549,19 +1552,31 @@ describe('WhatsappWebhookService', () => {
         'wamid.h2',
         'yes, two bays',
         new Date(1761000900 * 1000),
+        true,
       );
-      expect(redisStore.has('wa:echo:pending:company-1:user-1:wamid.h2')).toBe(
+      expect(redisStore.has('wa:msg:pending:company-1:user-1:wamid.h2')).toBe(
         false,
       );
     });
 
-    it('never looks up parked echoes for customer history messages', async () => {
+    it('applies a customer delete parked for one of their history messages', async () => {
+      redisStore.set('wa:msg:pending:company-1:user-1:wamid.h1', {
+        kind: 'revoke',
+        at: 1761000900 * 1000,
+        fromMe: false,
+      });
+
       await service.processEnvelope(
         coexistenceEnvelope('history', historyValue(40)),
       );
 
-      const keys = redis.getJson.mock.calls.map((c) => String(c[0]));
-      expect(keys).toEqual(['wa:echo:pending:company-1:user-1:wamid.h2']);
+      expect(store.markDeleted).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.h1',
+        new Date(1761000900 * 1000),
+        false,
+      );
     });
 
     it('ignores history when no request was made recently', async () => {
@@ -1718,11 +1733,12 @@ describe('WhatsappWebhookService', () => {
         'wamid.e1',
         'calling in 5',
         new Date(1761000200 * 1000),
+        true,
       );
       expect(store.addMessage).not.toHaveBeenCalled();
     });
 
-    const PENDING_KEY = 'wa:echo:pending:company-1:user-1:wamid.e1';
+    const PENDING_KEY = 'wa:msg:pending:company-1:user-1:wamid.e1';
     const editOf = (id: string, body: string, timestamp = '1761000200') =>
       echo({
         id,
@@ -1746,6 +1762,7 @@ describe('WhatsappWebhookService', () => {
         kind: 'edit',
         body: 'calling in 5',
         at: 1761000200 * 1000,
+        fromMe: true,
       });
     });
 
@@ -1781,6 +1798,7 @@ describe('WhatsappWebhookService', () => {
         kind: 'edit',
         body: 'calling in 5',
         at: 1761000300 * 1000,
+        fromMe: true,
       });
 
       await service.processEnvelope(
@@ -1797,6 +1815,7 @@ describe('WhatsappWebhookService', () => {
         'wamid.e1',
         'calling in 5',
         new Date(1761000300 * 1000),
+        true,
       );
       expect(redisStore.has(PENDING_KEY)).toBe(false);
     });
@@ -1820,6 +1839,29 @@ describe('WhatsappWebhookService', () => {
       expect(redisStore.has(PENDING_KEY)).toBe(false);
     });
 
+    it('pushes the updated message live once an edit is applied', async () => {
+      const updated = { id: 'wamid.e1', body: 'calling in 5', editedAt: 1 };
+      store.getMessage.mockResolvedValue(updated);
+
+      await service.processEnvelope(editOf('wamid.e2', 'calling in 5'));
+
+      expect(store.getMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.e1',
+      );
+      expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', updated);
+    });
+
+    it('pushes nothing when the edit changed no row', async () => {
+      store.applyEdit.mockResolvedValue(false);
+
+      await service.processEnvelope(editOf('wamid.e2', 'calling in 5'));
+
+      expect(store.getMessage).not.toHaveBeenCalled();
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
     it('marks the original message revoked on a delete', async () => {
       await service.processEnvelope(
         echo({
@@ -1834,6 +1876,7 @@ describe('WhatsappWebhookService', () => {
         'user-1',
         'wamid.e1',
         new Date(1761000200 * 1000),
+        true,
       );
       expect(store.addMessage).not.toHaveBeenCalled();
     });
@@ -1859,6 +1902,109 @@ describe('WhatsappWebhookService', () => {
       );
 
       expect(store.addMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('customer deletes and edits', () => {
+    const inboundChange = (message: Record<string, unknown>) =>
+      coexistenceEnvelope('messages', {
+        contacts: [{ profile: { name: 'Zainab' }, wa_id: '971501234567' }],
+        messages: [
+          { from: '971501234567', timestamp: '1761000400', ...message },
+        ],
+      });
+
+    it('applies a customer delete to the customer message only', async () => {
+      await service.processEnvelope(
+        inboundChange({
+          id: 'wamid.r1',
+          type: 'revoke',
+          revoke: { original_message_id: 'wamid.1' },
+        }),
+      );
+
+      expect(store.markDeleted).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.1',
+        new Date(1761000400 * 1000),
+        false,
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('applies a customer edit to the customer message only', async () => {
+      await service.processEnvelope(
+        inboundChange({
+          id: 'wamid.x1',
+          type: 'edit',
+          edit: {
+            original_message_id: 'wamid.1',
+            message: { type: 'text', text: { body: 'TWO' } },
+          },
+        }),
+      );
+
+      expect(store.applyEdit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.1',
+        'TWO',
+        new Date(1761000400 * 1000),
+        false,
+      );
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('skips the AI for a message the customer deleted before it was stored', async () => {
+      redisStore.set('wa:msg:pending:company-1:user-1:wamid.1', {
+        kind: 'revoke',
+        at: 1761234600 * 1000,
+        fromMe: false,
+      });
+      store.getMessage.mockResolvedValue({ id: 'wamid.1', deletedAt: 1 });
+
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(store.markDeleted).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.1',
+        new Date(1761234600 * 1000),
+        false,
+      );
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('hands the AI the text as stored, so an applied edit wins', async () => {
+      store.getMessage.mockResolvedValue({
+        id: 'wamid.1',
+        body: 'edited text',
+        deletedAt: null,
+      });
+
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(ai.handleIncomingMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'wamid.1', body: 'edited text' }),
+        'company-1',
+        'user-1',
+      );
+    });
+
+    it('rethrows a failed customer change so BullMQ retries it', async () => {
+      store.markDeleted.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.processEnvelope(
+          inboundChange({
+            id: 'wamid.r1',
+            type: 'revoke',
+            revoke: { original_message_id: 'wamid.1' },
+          }),
+        ),
+      ).rejects.toThrow('db down');
     });
   });
 });

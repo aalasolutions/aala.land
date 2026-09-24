@@ -122,12 +122,14 @@ const PLACEHOLDER_BODIES: Record<string, string> = {
 };
 
 // Long enough for a racing original to land; edits and deletes of messages we never stored just expire.
-const PENDING_ECHO_TTL_MS = 15 * 60 * 1000;
+const PENDING_CHANGE_TTL_MS = 15 * 60 * 1000;
 
-interface PendingEcho {
+// An edit or delete for a stored message; fromMe says whose message it may touch.
+interface MessageChange {
   kind: 'edit' | 'revoke';
   body?: string;
   at: number;
+  fromMe: boolean;
 }
 
 // History that arrives this long after our request belongs to an earlier owner of the number.
@@ -483,10 +485,7 @@ export class WhatsappWebhookService {
           connection.phoneNumberId,
           { isPassive: true },
         );
-        // Echo edits and deletes only ever target our own messages.
-        if (inserted && evt.fromMe) {
-          await this.applyPendingEcho(connection, evt.id);
-        }
+        if (inserted) await this.applyPendingChange(connection, evt.id);
       } catch (err) {
         firstError = firstError ?? toError(err);
         this.logger.error(
@@ -565,19 +564,11 @@ export class WhatsappWebhookService {
   ): Promise<void> {
     const originalId = echo.revoke?.original_message_id;
     if (!originalId) return;
-    const at = parseEpochDate(echo.timestamp);
-    const isApplied = await this.store.markDeleted(
-      connection.companyId,
-      connection.userId,
-      originalId,
-      at,
-    );
-    if (!isApplied) {
-      await this.parkIfOriginalMissing(connection, originalId, {
-        kind: 'revoke',
-        at: at.getTime(),
-      });
-    }
+    await this.changeOrPark(connection, originalId, {
+      kind: 'revoke',
+      at: parseEpochDate(echo.timestamp).getTime(),
+      fromMe: true,
+    });
   }
 
   private async applyEchoEdit(
@@ -587,35 +578,118 @@ export class WhatsappWebhookService {
     const originalId = echo.edit?.original_message_id;
     const body = resolveStorableBody(echo.edit?.message);
     if (!originalId || !body) return;
-    const at = parseEpochDate(echo.timestamp);
-    const isApplied = await this.store.applyEdit(
-      connection.companyId,
-      connection.userId,
-      originalId,
+    await this.changeOrPark(connection, originalId, {
+      kind: 'edit',
+      body,
+      at: parseEpochDate(echo.timestamp).getTime(),
+      fromMe: true,
+    });
+  }
+
+  // A customer delete (Coexistence) or edit; it can only touch the customer's own messages.
+  private async applyInboundChange(
+    connection: WhatsappConnection,
+    message: CloudMessage,
+  ): Promise<void> {
+    const at = parseEpochDate(message.timestamp).getTime();
+    if (message.type === 'revoke') {
+      const originalId = message.revoke?.original_message_id;
+      if (!originalId) return;
+      await this.changeOrPark(connection, originalId, {
+        kind: 'revoke',
+        at,
+        fromMe: false,
+      });
+      return;
+    }
+    const originalId = message.edit?.original_message_id;
+    const body = resolveStorableBody(message.edit?.message);
+    if (!originalId || !body) return;
+    await this.changeOrPark(connection, originalId, {
+      kind: 'edit',
       body,
       at,
+      fromMe: false,
+    });
+  }
+
+  private async changeOrPark(
+    connection: WhatsappConnection,
+    originalId: string,
+    change: MessageChange,
+  ): Promise<void> {
+    const isApplied = await this.applyMessageChange(
+      connection,
+      originalId,
+      change,
     );
     if (!isApplied) {
-      await this.parkIfOriginalMissing(connection, originalId, {
-        kind: 'edit',
-        body,
-        at: at.getTime(),
-      });
+      await this.parkIfOriginalMissing(connection, originalId, change);
     }
   }
 
-  private pendingEchoKey(
+  private async applyMessageChange(
+    connection: WhatsappConnection,
+    waMessageId: string,
+    change: MessageChange,
+  ): Promise<boolean> {
+    const { companyId, userId } = connection;
+    const at = new Date(change.at);
+    let isApplied = false;
+    if (change.kind === 'revoke') {
+      isApplied = await this.store.markDeleted(
+        companyId,
+        userId,
+        waMessageId,
+        at,
+        change.fromMe,
+      );
+    } else if (change.body) {
+      isApplied = await this.store.applyEdit(
+        companyId,
+        userId,
+        waMessageId,
+        change.body,
+        at,
+        change.fromMe,
+      );
+    }
+    if (isApplied) await this.pushUpdatedMessage(connection, waMessageId);
+    return isApplied;
+  }
+
+  // The open chat merges body, editedAt and deletedAt into the row it already shows.
+  private async pushUpdatedMessage(
+    connection: WhatsappConnection,
+    waMessageId: string,
+  ): Promise<void> {
+    try {
+      const updated = await this.store.getMessage(
+        connection.companyId,
+        connection.userId,
+        waMessageId,
+      );
+      if (updated) this.gateway.emitMessage(connection.userId, updated);
+    } catch (err) {
+      this.logger.error(
+        `Failed to push the updated WhatsApp message ${waMessageId}`,
+        errorMessage(err, true),
+      );
+    }
+  }
+
+  private pendingChangeKey(
     connection: WhatsappConnection,
     originalId: string,
   ): string {
-    return `wa:echo:pending:${connection.companyId}:${connection.userId}:${originalId}`;
+    return `wa:msg:pending:${connection.companyId}:${connection.userId}:${originalId}`;
   }
 
-  // Envelopes run concurrently, so an edit can beat its original; it waits here instead of failing the job.
+  // Envelopes run concurrently, so a change can beat its original; it waits here instead of failing the job.
   private async parkIfOriginalMissing(
     connection: WhatsappConnection,
     originalId: string,
-    pending: PendingEcho,
+    change: MessageChange,
   ): Promise<void> {
     const isStored = await this.store.hasMessage(
       connection.companyId,
@@ -623,45 +697,29 @@ export class WhatsappWebhookService {
       originalId,
     );
     if (isStored) return;
-    const key = this.pendingEchoKey(connection, originalId);
-    const current = await this.redis.getJson<PendingEcho>(key);
+    const key = this.pendingChangeKey(connection, originalId);
+    const current = await this.redis.getJson<MessageChange>(key);
     // A delete outranks any edit; between edits the newer one wins.
     if (current?.kind === 'revoke') return;
-    if (current && pending.kind === 'edit' && current.at >= pending.at) return;
-    await this.redis.setJson(key, pending, PENDING_ECHO_TTL_MS);
+    if (current && change.kind === 'edit' && current.at >= change.at) return;
+    await this.redis.setJson(key, change, PENDING_CHANGE_TTL_MS);
     // Closes the gap where the original landed between the check above and the park.
     const isStoredNow = await this.store.hasMessage(
       connection.companyId,
       connection.userId,
       originalId,
     );
-    if (isStoredNow) await this.applyPendingEcho(connection, originalId);
+    if (isStoredNow) await this.applyPendingChange(connection, originalId);
   }
 
-  private async applyPendingEcho(
+  private async applyPendingChange(
     connection: WhatsappConnection,
     waMessageId: string,
   ): Promise<void> {
-    const key = this.pendingEchoKey(connection, waMessageId);
-    const pending = await this.redis.getJson<PendingEcho>(key);
+    const key = this.pendingChangeKey(connection, waMessageId);
+    const pending = await this.redis.getJson<MessageChange>(key);
     if (!pending) return;
-    const at = new Date(pending.at);
-    if (pending.kind === 'revoke') {
-      await this.store.markDeleted(
-        connection.companyId,
-        connection.userId,
-        waMessageId,
-        at,
-      );
-    } else if (pending.body) {
-      await this.store.applyEdit(
-        connection.companyId,
-        connection.userId,
-        waMessageId,
-        pending.body,
-        at,
-      );
-    }
+    await this.applyMessageChange(connection, waMessageId, pending);
     await this.redis.del(key);
   }
 
@@ -693,7 +751,6 @@ export class WhatsappWebhookService {
     // Only our own retry may redo the AI pause for a stored echo; a Meta redelivery must not.
     if (!inserted && !isRetryAttempt) return;
     if (inserted) {
-      await this.applyPendingEcho(connection, evt.id);
       try {
         this.gateway.emitMessage(userId, evt);
       } catch (err) {
@@ -703,6 +760,8 @@ export class WhatsappWebhookService {
         );
       }
     }
+    // After the push, so the parked change reaches the UI as an update; our retry redoes it.
+    await this.applyPendingChange(connection, evt.id);
     await this.ai.recordHumanReply(userId, evt.chatId, timestamp * 1000);
   }
 
@@ -974,6 +1033,18 @@ export class WhatsappWebhookService {
     for (const message of messages) {
       // One poisoned message must not cost us the rest of the batch.
       try {
+        if (message.type === 'revoke' || message.type === 'edit') {
+          try {
+            await this.applyInboundChange(connection, message);
+          } catch (err) {
+            firstError = firstError ?? toError(err);
+            this.logger.error(
+              `Failed to apply the customer change ${message.id ?? 'unknown'}`,
+              errorMessage(err, true),
+            );
+          }
+          continue;
+        }
         if (message.type !== 'text' || !message.id || !message.from) continue;
         const body = message.text?.body ?? '';
         if (!body.trim()) continue;
@@ -1042,6 +1113,26 @@ export class WhatsappWebhookService {
             );
           }
         }
+        // Runs on our retry too, so a failed apply is not lost once the row exists.
+        let current: WaMessage | null;
+        try {
+          await this.applyPendingChange(connection, evt.id);
+          current = await this.store.getMessage(
+            connection.companyId,
+            connection.userId,
+            evt.id,
+          );
+        } catch (err) {
+          firstError = firstError ?? toError(err);
+          this.logger.error(
+            `Failed to apply a parked change to ${evt.id}`,
+            errorMessage(err, true),
+          );
+          continue;
+        }
+        // Read back so a customer delete or edit that already landed is what the AI sees.
+        if (current?.deletedAt) continue;
+        const aiEvt = current ? { ...evt, body: current.body } : evt;
         // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
         if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
           this.logger.debug(
@@ -1051,7 +1142,7 @@ export class WhatsappWebhookService {
         }
         try {
           await this.ai.handleIncomingMessage(
-            evt,
+            aiEvt,
             connection.companyId,
             connection.userId,
           );
@@ -1063,7 +1154,7 @@ export class WhatsappWebhookService {
           );
         }
       } catch (err) {
-        // Unexpected per-message failure is log-only; the message is already stored.
+        // Unexpected per-message failure is log-only.
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
           errorMessage(err, true),
