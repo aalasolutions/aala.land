@@ -361,7 +361,11 @@ export default class NuDropdownComponent extends Component {
     this.isCreating = true;
     try {
       const created = await this.args.onCreate?.(term);
-      if (isDestroyed(this) || !created) {
+      if (isDestroyed(this)) {
+        return;
+      }
+      if (!created) {
+        this.close();
         return;
       }
       const value = created.value ?? created.id;

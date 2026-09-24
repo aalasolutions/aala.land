@@ -239,7 +239,7 @@ export default class NuvoDropdownController extends Controller {
   callbackRows = [
     { name: '@onSelect', signature: '(value, option)', description: 'An option was chosen, or a created option resolved.' },
     { name: '@onSearch', signature: '(term) => Promise<array>', description: 'Remote search. Resolve an array of options; stale results are discarded.' },
-    { name: '@onCreate', signature: '(term) => Promise<option>', description: 'Create row chosen. Resolve an object with value (or id) and label; it becomes the selection.' },
+    { name: '@onCreate', signature: '(term) => Promise<option>', description: 'Create row chosen. Resolve an object with value (or id) and label; it becomes the selection. Resolve null to close without selecting.' },
     { name: '@onClear', signature: '()', description: 'Filter input cleared, or a remote selection erased by emptying the input.' },
   ];
 

@@ -46,6 +46,12 @@ export default class RemoteAutocompleteComponent extends Component {
     return this.args.searchParam ?? 'q';
   }
 
+  get allowCreate() {
+    return (
+      typeof this.args.onCreate === 'function' || Boolean(this.args.createUrl)
+    );
+  }
+
   @action
   async search(term) {
     if (!this.args.searchUrl) {
@@ -77,5 +83,14 @@ export default class RemoteAutocompleteComponent extends Component {
       this.listItems = [...this.listItems, created];
     }
     return created;
+  }
+
+  // A host @onCreate replaces the createUrl POST.
+  @action
+  onCreate(term) {
+    if (typeof this.args.onCreate === 'function') {
+      return this.args.onCreate(term);
+    }
+    return this.create(term);
   }
 }

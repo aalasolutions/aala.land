@@ -12,7 +12,7 @@
   @options={{this.options}}
   @filter={{if @listUrl this.filter}}
   @onSearch={{this.search}}
-  @onCreate={{if @createUrl this.create}}
+  @onCreate={{if this.allowCreate this.onCreate}}
   @onSelect={{@onSelect}}
   @onClear={{@onClear}}
   data-test-remote-autocomplete

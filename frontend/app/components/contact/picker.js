@@ -73,4 +73,11 @@ export default class ContactPickerComponent extends Component {
   toggleWhatsapp(checked) {
     this.args.onIdentityChange?.('isWhatsapp', checked);
   }
+
+  @action
+  create(term) {
+    this.startCreating();
+    this.args.onIdentityChange?.('firstName', term);
+    return null;
+  }
 }
