@@ -11,12 +11,14 @@ import { IsNull, LessThanOrEqual, Or } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
 } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappWebhookService } from './whatsapp-webhook.service';
+import { RedisService } from '@modules/redis/redis.service';
 import { WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
 
 const APP_SECRET = 'test-app-secret';
@@ -32,11 +34,13 @@ function signed(body: unknown): { rawBody: Buffer; signature: string } {
 
 function connectionRow(): WhatsappConnection {
   const row = new WhatsappConnection();
+  row.id = 'conn-1';
   row.companyId = 'company-1';
   row.userId = 'user-1';
   row.phoneNumberId = 'phone-1';
   row.wabaId = 'waba-1';
   row.status = WhatsappConnectionStatus.CONNECTED;
+  row.historySyncRequestedAt = new Date();
   return row;
 }
 
@@ -70,6 +74,26 @@ function inboundEnvelope(): unknown {
                   text: { body: 'hello, is the unit still available?' },
                 },
               ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function coexistenceEnvelope(field: string, value: unknown): unknown {
+  return {
+    object: 'whatsapp_business_account',
+    entry: [
+      {
+        id: 'waba-1',
+        changes: [
+          {
+            field,
+            value: {
+              metadata: { phone_number_id: 'phone-1' },
+              ...(value as object),
             },
           },
         ],
@@ -114,20 +138,32 @@ const stored = (inserted: boolean) => ({ inserted, unread: UNREAD });
 
 describe('WhatsappWebhookService', () => {
   let service: WhatsappWebhookService;
-  let ai: { handleIncomingMessage: jest.Mock };
+  let ai: { handleIncomingMessage: jest.Mock; recordHumanReply: jest.Mock };
   let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
-  let store: { addMessage: jest.Mock; applyMessageStatus: jest.Mock };
+  let store: {
+    addMessage: jest.Mock;
+    applyMessageStatus: jest.Mock;
+    applyEdit: jest.Mock;
+    markDeleted: jest.Mock;
+    hasMessage: jest.Mock;
+  };
   let gateway: {
     emitMessage: jest.Mock;
     emitStatus: jest.Mock;
     emitUnread: jest.Mock;
+    emitHistory: jest.Mock;
   };
   let queue: { add: jest.Mock };
+  let redisStore: Map<string, unknown>;
+  let redis: { getJson: jest.Mock; setJson: jest.Mock; del: jest.Mock };
 
   beforeEach(async () => {
     process.env.WHATSAPP_APP_SECRET = APP_SECRET;
     process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN;
-    ai = { handleIncomingMessage: jest.fn().mockResolvedValue(undefined) };
+    ai = {
+      handleIncomingMessage: jest.fn().mockResolvedValue(undefined),
+      recordHumanReply: jest.fn().mockResolvedValue(undefined),
+    };
     repo = {
       findOne: jest.fn().mockResolvedValue(connectionRow()),
       find: jest.fn().mockResolvedValue([]),
@@ -136,13 +172,31 @@ describe('WhatsappWebhookService', () => {
     store = {
       addMessage: jest.fn().mockResolvedValue(stored(true)),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
+      applyEdit: jest.fn().mockResolvedValue(true),
+      markDeleted: jest.fn().mockResolvedValue(true),
+      hasMessage: jest.fn().mockResolvedValue(true),
     };
     gateway = {
       emitMessage: jest.fn(),
       emitStatus: jest.fn(),
       emitUnread: jest.fn(),
+      emitHistory: jest.fn(),
     };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
+    redisStore = new Map();
+    redis = {
+      getJson: jest.fn((key: string) =>
+        Promise.resolve(redisStore.get(key) ?? null),
+      ),
+      setJson: jest.fn((key: string, value: unknown) => {
+        redisStore.set(key, value);
+        return Promise.resolve();
+      }),
+      del: jest.fn((key: string) => {
+        redisStore.delete(key);
+        return Promise.resolve();
+      }),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -151,6 +205,7 @@ describe('WhatsappWebhookService', () => {
         { provide: MessageStoreService, useValue: store },
         { provide: WhatsappGateway, useValue: gateway },
         { provide: WhatsappAiService, useValue: ai },
+        { provide: RedisService, useValue: redis },
         { provide: getQueueToken(WA_WEBHOOK_EVENTS_QUEUE), useValue: queue },
       ],
     }).compile();
@@ -1377,6 +1432,433 @@ describe('WhatsappWebhookService', () => {
 
       expect(store.addMessage).not.toHaveBeenCalled();
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('history', () => {
+    const historyValue = (progress: number) => ({
+      history: [
+        {
+          metadata: { phase: 0, chunk_order: 1, progress },
+          threads: [
+            {
+              id: '971501234567',
+              messages: [
+                {
+                  from: '971501234567',
+                  id: 'wamid.h1',
+                  timestamp: '1761000000',
+                  type: 'text',
+                  text: { body: 'is parking included?' },
+                  history_context: { status: 'READ' },
+                },
+                {
+                  from: '15550001111',
+                  to: '971501234567',
+                  id: 'wamid.h2',
+                  timestamp: '1761000060',
+                  type: 'text',
+                  text: { body: 'yes, one bay' },
+                  history_context: { status: 'READ' },
+                },
+                {
+                  from: '971501234567',
+                  id: 'wamid.h3',
+                  timestamp: '1761000120',
+                  type: 'media_placeholder',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    it('stores every message passively, with direction from the to field', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      expect(store.addMessage).toHaveBeenCalledTimes(3);
+      const calls = store.addMessage.mock.calls;
+      expect(calls[0][2]).toMatchObject({
+        id: 'wamid.h1',
+        chatId: '971501234567',
+        fromMe: false,
+        body: 'is parking included?',
+      });
+      expect(calls[1][2]).toMatchObject({ id: 'wamid.h2', fromMe: true });
+      expect(calls[2][2]).toMatchObject({ id: 'wamid.h3', body: '[Media]' });
+      for (const call of calls) expect(call[4]).toEqual({ isPassive: true });
+    });
+
+    it('never reaches the AI, unread pushes or live message pushes', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(gateway.emitUnread).not.toHaveBeenCalled();
+    });
+
+    it('records progress forward-only and marks 100 as complete', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(100)),
+      );
+
+      expect(repo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ historySyncProgress: expect.anything() }),
+        {
+          historySyncStatus: WhatsappHistorySyncStatus.COMPLETE,
+          historySyncProgress: 100,
+        },
+      );
+      expect(gateway.emitHistory).toHaveBeenCalledWith('user-1', {
+        status: WhatsappHistorySyncStatus.COMPLETE,
+        progress: 100,
+      });
+    });
+
+    it('does not push a progress that did not move forward', async () => {
+      repo.update.mockResolvedValue({ affected: 0 });
+
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(20)),
+      );
+
+      expect(gateway.emitHistory).not.toHaveBeenCalled();
+    });
+
+    it('applies an edit parked for one of our history messages', async () => {
+      redisStore.set('wa:echo:pending:company-1:user-1:wamid.h2', {
+        kind: 'edit',
+        body: 'yes, two bays',
+        at: 1761000900 * 1000,
+      });
+
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      expect(store.applyEdit).toHaveBeenCalledTimes(1);
+      expect(store.applyEdit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.h2',
+        'yes, two bays',
+        new Date(1761000900 * 1000),
+      );
+      expect(redisStore.has('wa:echo:pending:company-1:user-1:wamid.h2')).toBe(
+        false,
+      );
+    });
+
+    it('never looks up parked echoes for customer history messages', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      const keys = redis.getJson.mock.calls.map((c) => String(c[0]));
+      expect(keys).toEqual(['wa:echo:pending:company-1:user-1:wamid.h2']);
+    });
+
+    it('ignores history when no request was made recently', async () => {
+      const stale = connectionRow();
+      stale.historySyncRequestedAt = new Date(
+        Date.now() - 3 * 24 * 60 * 60 * 1000,
+      );
+      repo.findOne.mockResolvedValue(stale);
+
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('records no progress for a chunk with a failed row, so the retry can', async () => {
+      store.addMessage
+        .mockResolvedValueOnce(stored(true))
+        .mockRejectedValueOnce(new Error('db down'));
+
+      await expect(
+        service.processEnvelope(
+          coexistenceEnvelope('history', historyValue(100)),
+        ),
+      ).rejects.toThrow('db down');
+
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(gateway.emitHistory).not.toHaveBeenCalled();
+    });
+
+    it('records a declined sync and stores nothing', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              errors: [
+                {
+                  code: 2593109,
+                  title:
+                    'History sync is turned off by the business from the WhatsApp Business App',
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'conn-1', historySyncStatus: expect.anything() },
+        {
+          historySyncStatus: WhatsappHistorySyncStatus.DECLINED,
+          historySyncProgress: null,
+        },
+      );
+    });
+  });
+
+  describe('smb_message_echoes', () => {
+    const echo = (message: Record<string, unknown>) =>
+      coexistenceEnvelope('smb_message_echoes', {
+        message_echoes: [
+          {
+            from: '15550001111',
+            to: '971501234567',
+            timestamp: '1761000200',
+            ...message,
+          },
+        ],
+      });
+
+    it('stores a phone reply as outgoing, pushes it and pauses the AI', async () => {
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e1',
+          type: 'text',
+          text: { body: 'calling you now' },
+        }),
+      );
+
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({
+          id: 'wamid.e1',
+          chatId: '971501234567',
+          fromMe: true,
+          aiGenerated: false,
+          body: 'calling you now',
+        }),
+        'phone-1',
+      );
+      expect(gateway.emitMessage).toHaveBeenCalledTimes(1);
+      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        1761000200 * 1000,
+      );
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('does nothing more for an echo already stored', async () => {
+      store.addMessage.mockResolvedValue(stored(false));
+
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e1',
+          type: 'text',
+          text: { body: 'calling you now' },
+        }),
+      );
+
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+    });
+
+    it('redoes the AI pause on our own retry of a stored echo, without a second push', async () => {
+      store.addMessage.mockResolvedValue(stored(false));
+
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e1',
+          type: 'text',
+          text: { body: 'calling you now' },
+        }),
+        true,
+      );
+
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        1761000200 * 1000,
+      );
+    });
+
+    it('applies an edit to the original message', async () => {
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e2',
+          type: 'edit',
+          edit: {
+            original_message_id: 'wamid.e1',
+            message: { type: 'text', text: { body: 'calling in 5' } },
+          },
+        }),
+      );
+
+      expect(store.applyEdit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.e1',
+        'calling in 5',
+        new Date(1761000200 * 1000),
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
+    });
+
+    const PENDING_KEY = 'wa:echo:pending:company-1:user-1:wamid.e1';
+    const editOf = (id: string, body: string, timestamp = '1761000200') =>
+      echo({
+        id,
+        type: 'edit',
+        timestamp,
+        edit: {
+          original_message_id: 'wamid.e1',
+          message: { type: 'text', text: { body } },
+        },
+      });
+
+    it('parks an edit that beats its original, without failing the job', async () => {
+      store.applyEdit.mockResolvedValue(false);
+      store.hasMessage.mockResolvedValue(false);
+
+      await expect(
+        service.processEnvelope(editOf('wamid.e2', 'calling in 5')),
+      ).resolves.toBeUndefined();
+
+      expect(redisStore.get(PENDING_KEY)).toEqual({
+        kind: 'edit',
+        body: 'calling in 5',
+        at: 1761000200 * 1000,
+      });
+    });
+
+    it('parks a delete that beats its original, and a later edit cannot replace it', async () => {
+      store.markDeleted.mockResolvedValue(false);
+      store.applyEdit.mockResolvedValue(false);
+      store.hasMessage.mockResolvedValue(false);
+
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e3',
+          type: 'revoke',
+          revoke: { original_message_id: 'wamid.e1' },
+        }),
+      );
+      await service.processEnvelope(editOf('wamid.e4', 'late', '1761000300'));
+
+      expect(redisStore.get(PENDING_KEY)).toMatchObject({ kind: 'revoke' });
+    });
+
+    it('keeps the newer of two parked edits', async () => {
+      store.applyEdit.mockResolvedValue(false);
+      store.hasMessage.mockResolvedValue(false);
+
+      await service.processEnvelope(editOf('wamid.e5', 'newer', '1761000300'));
+      await service.processEnvelope(editOf('wamid.e6', 'older', '1761000100'));
+
+      expect(redisStore.get(PENDING_KEY)).toMatchObject({ body: 'newer' });
+    });
+
+    it('applies a parked edit when the original arrives, then clears it', async () => {
+      redisStore.set(PENDING_KEY, {
+        kind: 'edit',
+        body: 'calling in 5',
+        at: 1761000300 * 1000,
+      });
+
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e1',
+          type: 'text',
+          text: { body: 'calling you now' },
+        }),
+      );
+
+      expect(store.applyEdit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.e1',
+        'calling in 5',
+        new Date(1761000300 * 1000),
+      );
+      expect(redisStore.has(PENDING_KEY)).toBe(false);
+    });
+
+    it('does not park an edit whose original is stored but newer', async () => {
+      store.applyEdit.mockResolvedValue(false);
+      store.hasMessage.mockResolvedValue(true);
+
+      await service.processEnvelope(editOf('wamid.e2', 'old edit'));
+
+      expect(redis.setJson).not.toHaveBeenCalled();
+    });
+
+    it('applies at once when the original lands while the edit is being parked', async () => {
+      store.applyEdit.mockResolvedValueOnce(false);
+      store.hasMessage.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+      await service.processEnvelope(editOf('wamid.e2', 'calling in 5'));
+
+      expect(store.applyEdit).toHaveBeenCalledTimes(2);
+      expect(redisStore.has(PENDING_KEY)).toBe(false);
+    });
+
+    it('marks the original message revoked on a delete', async () => {
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e3',
+          type: 'revoke',
+          revoke: { original_message_id: 'wamid.e1' },
+        }),
+      );
+
+      expect(store.markDeleted).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.e1',
+        new Date(1761000200 * 1000),
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
+    });
+
+    it('stores a non-text echo as a placeholder', async () => {
+      await service.processEnvelope(
+        echo({ id: 'wamid.e4', type: 'image', image: { id: 'media-1' } }),
+      );
+
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({ id: 'wamid.e4', body: '[Image]' }),
+        'phone-1',
+      );
+    });
+
+    it('ignores an echo for an unknown number', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await service.processEnvelope(
+        echo({ id: 'wamid.e1', type: 'text', text: { body: 'hi' } }),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
     });
   });
 });

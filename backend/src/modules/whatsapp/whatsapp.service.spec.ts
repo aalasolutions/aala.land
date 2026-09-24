@@ -95,6 +95,24 @@ describe('WhatsappService', () => {
         connectedAt: '2026-08-01T10:00:00.000Z',
         disconnectedAt: '2026-08-05T09:30:00.000Z',
         disconnectReason: 'PARTNER_REMOVED',
+        historySyncStatus: null,
+        historySyncProgress: null,
+      });
+    });
+
+    it('passes the history sync state through', async () => {
+      connections.findOne.mockResolvedValue({
+        ...connection,
+        status: 'connected',
+        historySyncStatus: 'in_progress',
+        historySyncProgress: 40,
+      });
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).toMatchObject({
+        historySyncStatus: 'in_progress',
+        historySyncProgress: 40,
       });
     });
 
@@ -115,6 +133,8 @@ describe('WhatsappService', () => {
         connectedAt: null,
         disconnectedAt: null,
         disconnectReason: null,
+        historySyncStatus: null,
+        historySyncProgress: null,
       });
     });
   });

@@ -286,6 +286,90 @@ describe('MessageStoreService', () => {
     });
   });
 
+  describe('addMessage passive (synced history)', () => {
+    it('never counts a history message as unread', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][10]).toBe(0);
+    });
+
+    it('never opens the reply-window clock for a history message', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][9]).toBeNull();
+    });
+  });
+
+  describe('echo edit and revoke', () => {
+    beforeEach(() => {
+      messagesRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+    });
+
+    it('applyEdit rewrites only our own live row, never over a newer edit', async () => {
+      const at = new Date(1761000200 * 1000);
+
+      await expect(
+        service.applyEdit('co-1', 'user-a', 'wamid.1', 'new text', at),
+      ).resolves.toBe(true);
+      const [where, patch] = messagesRepo.update.mock.calls[0];
+      expect(where).toMatchObject({
+        companyId: 'co-1',
+        userId: 'user-a',
+        waMessageId: 'wamid.1',
+        fromMe: true,
+      });
+      expect(where.deletedAt).toBeDefined();
+      expect(where.editedAt).toBeDefined();
+      expect(patch).toEqual({ body: 'new text', editedAt: at });
+    });
+
+    it('hasMessage checks inside the caller company and agent', async () => {
+      messagesRepo.exists = jest.fn().mockResolvedValue(true);
+
+      await expect(
+        service.hasMessage('co-1', 'user-a', 'wamid.1'),
+      ).resolves.toBe(true);
+      expect(messagesRepo.exists).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', userId: 'user-a', waMessageId: 'wamid.1' },
+      });
+    });
+
+    it('markDeleted stamps deleted_at once and keeps the row', async () => {
+      const at = new Date(1761000200 * 1000);
+
+      await service.markDeleted('co-1', 'user-a', 'wamid.1', at);
+
+      const [where, patch] = messagesRepo.update.mock.calls[0];
+      expect(where).toMatchObject({
+        companyId: 'co-1',
+        userId: 'user-a',
+        waMessageId: 'wamid.1',
+      });
+      expect(where.deletedAt).toBeDefined();
+      expect(patch).toEqual({ deletedAt: at });
+    });
+
+    it('reports false when no stored message matched', async () => {
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.markDeleted('co-1', 'user-a', 'wamid.missing', new Date()),
+      ).resolves.toBe(false);
+    });
+  });
+
   describe('markChatRead', () => {
     const target = { timestamp: '500', wa_message_id: 'wamid.X' };
 

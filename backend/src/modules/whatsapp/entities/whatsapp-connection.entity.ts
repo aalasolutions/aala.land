@@ -14,6 +14,15 @@ export enum WhatsappConnectionStatus {
   FLAGGED = 'flagged',
 }
 
+// Coexistence history sync, requested once per onboarding.
+export enum WhatsappHistorySyncStatus {
+  REQUESTED = 'requested',
+  IN_PROGRESS = 'in_progress',
+  COMPLETE = 'complete',
+  DECLINED = 'declined',
+  FAILED = 'failed',
+}
+
 // One connected WhatsApp number per agent, enforced by the unique index on userId.
 @Entity('whatsapp_connections')
 @Index('UQ_wa_connections_user', ['userId'], { unique: true })
@@ -75,6 +84,25 @@ export class WhatsappConnection {
   // Meta entry.time of the last applied account_update; older events are refused.
   @Column({ name: 'lifecycle_event_at', type: 'timestamptz', nullable: true })
   lifecycleEventAt: Date | null;
+
+  @Column({
+    name: 'history_sync_status',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  historySyncStatus: WhatsappHistorySyncStatus | null;
+
+  // Meta's 0-100 progress; chunks may arrive out of order, so it only moves forward.
+  @Column({ name: 'history_sync_progress', type: 'smallint', nullable: true })
+  historySyncProgress: number | null;
+
+  @Column({
+    name: 'history_sync_requested_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  historySyncRequestedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

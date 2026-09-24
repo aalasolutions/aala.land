@@ -1,4 +1,7 @@
-import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
+import {
+  WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
+} from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 
 export interface WaMessage {
@@ -71,6 +74,13 @@ export interface WaConnectionInfo {
   connectedAt: string | null;
   disconnectedAt: string | null;
   disconnectReason: string | null;
+  historySyncStatus: WhatsappHistorySyncStatus | null;
+  historySyncProgress: number | null;
+}
+
+export interface WaHistorySyncState {
+  status: WhatsappHistorySyncStatus;
+  progress: number | null;
 }
 
 export interface AiCreditAgentUsage {

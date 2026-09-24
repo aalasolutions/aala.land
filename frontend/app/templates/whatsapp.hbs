@@ -23,6 +23,11 @@
           {{this.connectionDetail}}
         </span>
       {{/if}}
+      {{#if this.historySyncText}}
+        <span class="wa-connection__detail" data-test-wa-history-sync>
+          {{this.historySyncText}}
+        </span>
+      {{/if}}
     </div>
 
     {{#if this.isConnected}}

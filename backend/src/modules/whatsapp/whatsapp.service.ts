@@ -57,6 +57,8 @@ export class WhatsappService {
         ? row.disconnectedAt.toISOString()
         : null,
       disconnectReason: row.disconnectReason ?? null,
+      historySyncStatus: row.historySyncStatus ?? null,
+      historySyncProgress: row.historySyncProgress ?? null,
     };
   }
 

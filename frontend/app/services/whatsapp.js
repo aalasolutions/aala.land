@@ -42,6 +42,7 @@ export default class WhatsappService extends Service {
     status: new Set(),
     ai: new Set(),
     chats: new Set(),
+    history: new Set(),
   };
 
   get apiUrl() {
@@ -79,6 +80,7 @@ export default class WhatsappService extends Service {
     socket.on('whatsapp:ai', (data) => this._emit('ai', data));
     socket.on('whatsapp:unread', (data) => this._applyUnread(data));
     socket.on('whatsapp:ready', (payload) => this._onReady(payload));
+    socket.on('whatsapp:history', (data) => this._onHistory(data));
 
     return socket;
   }
@@ -340,6 +342,12 @@ export default class WhatsappService extends Service {
     this._resync();
   }
 
+  // Synced history lands without live pushes, so the chat list is refetched once it completes.
+  _onHistory(data) {
+    this._emit('history', data);
+    if (data?.status === 'complete') this._resync();
+  }
+
   async _resync() {
     if (this._resyncInFlight) {
       this._resyncPending = true;
@@ -373,10 +381,10 @@ export default class WhatsappService extends Service {
   getSignupConfig() {
     return this.auth.fetchJson('/whatsapp/signup-config');
   }
-  connect({ code, wabaId, phoneNumberId }) {
+  connect({ code, wabaId, phoneNumberId, isCoexistence }) {
     return this.auth.fetchJson('/whatsapp/connect', {
       method: 'POST',
-      body: JSON.stringify({ code, wabaId, phoneNumberId }),
+      body: JSON.stringify({ code, wabaId, phoneNumberId, isCoexistence }),
     });
   }
   disconnect() {

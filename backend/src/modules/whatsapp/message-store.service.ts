@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, LessThan, Or, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { WaMessage, WaChat, WaMessageWindow, WaUnreadState } from './wa-types';
 import {
@@ -86,7 +86,10 @@ export class MessageStoreService {
     userId: string,
     msg: WaMessage,
     phoneNumberId?: string | null,
+    // Synced history: never unread and never opens Meta's reply window.
+    options: { isPassive?: boolean } = {},
   ): Promise<{ inserted: boolean; unread: WaUnreadState }> {
+    const isPassive = options.isPassive ?? false;
     const safeTs = String(
       Math.min(
         msg.timestamp ?? 0,
@@ -94,7 +97,8 @@ export class MessageStoreService {
       ),
     );
     // Meta's reply-window clock opens on inbound customer messages only.
-    const lastInboundAt = msg.fromMe ? null : new Date(Number(safeTs) * 1000);
+    const lastInboundAt =
+      msg.fromMe || isPassive ? null : new Date(Number(safeTs) * 1000);
     let inserted = false;
     let unread: WaUnreadState = {
       chatId: msg.chatId,
@@ -167,7 +171,7 @@ export class MessageStoreService {
           phoneNumberId ?? null,
           lastInboundAt,
           // Only a first delivery of a customer message counts as unread.
-          inserted && !msg.fromMe ? 1 : 0,
+          inserted && !msg.fromMe && !isPassive ? 1 : 0,
         ],
       );
       const chat = chatRows?.[0];
@@ -307,6 +311,50 @@ export class MessageStoreService {
       })
       .execute();
 
+    return (result.affected ?? 0) > 0;
+  }
+
+  async hasMessage(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+  ): Promise<boolean> {
+    return this.messages.exists({ where: { companyId, userId, waMessageId } });
+  }
+
+  // Echoed edit from the WhatsApp Business app: our own live rows only, and never an older edit over a newer one.
+  async applyEdit(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+    body: string,
+    editedAt: Date,
+  ): Promise<boolean> {
+    const result = await this.messages.update(
+      {
+        companyId,
+        userId,
+        waMessageId,
+        fromMe: true,
+        deletedAt: IsNull(),
+        editedAt: Or(IsNull(), LessThan(editedAt)),
+      },
+      { body, editedAt },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
+  // Echoed delete from the WhatsApp Business app; the row stays and renders as a stub.
+  async markDeleted(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+    deletedAt: Date,
+  ): Promise<boolean> {
+    const result = await this.messages.update(
+      { companyId, userId, waMessageId, deletedAt: IsNull() },
+      { deletedAt },
+    );
     return (result.affected ?? 0) > 0;
   }
 

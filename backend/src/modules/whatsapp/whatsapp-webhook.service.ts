@@ -10,6 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
   IsNull,
+  LessThan,
   LessThanOrEqual,
   Not,
   Or,
@@ -20,6 +21,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
 } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
@@ -32,6 +34,7 @@ import {
   WA_WEBHOOK_EVENTS_QUEUE,
 } from './wa-types';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
+import { RedisService } from '@modules/redis/redis.service';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
 
@@ -60,29 +63,127 @@ interface WebhookValue {
   contacts?: { profile?: { name?: string }; wa_id?: string }[];
   messages?: CloudMessage[];
   statuses?: CloudStatus[];
+  // history only.
+  history?: HistoryChunk[];
+  // smb_message_echoes only.
+  message_echoes?: CloudMessage[];
+  errors?: CloudError[];
   // account_update only.
   event?: string;
   phone_number?: string;
   disconnection_info?: { reason?: string; initiated_by?: string };
 }
 
+interface CloudError {
+  code?: number | string;
+}
+
 interface CloudMessage {
   id?: string;
   from?: string;
+  // Present only on a message the business sent (echoes and history).
+  to?: string;
   timestamp?: string;
   type?: string;
   text?: { body?: string };
+  edit?: { original_message_id?: string; message?: CloudMessage };
+  revoke?: { original_message_id?: string };
+}
+
+interface HistoryChunk {
+  metadata?: { phase?: number; chunk_order?: number; progress?: number };
+  threads?: { id?: string; messages?: CloudMessage[] }[];
+  errors?: CloudError[];
 }
 
 interface CloudStatus {
   id?: string;
   status?: string;
   timestamp?: string;
-  errors?: { code?: number | string }[];
+  errors?: CloudError[];
 }
 
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
+
+// Meta's error when the business turned history sharing off in the WhatsApp Business app.
+const HISTORY_DECLINED_CODE = '2593109';
+
+// Media is not stored yet, so non-text messages keep their place in the thread as a label.
+const PLACEHOLDER_BODIES: Record<string, string> = {
+  image: '[Image]',
+  video: '[Video]',
+  audio: '[Voice message]',
+  document: '[Document]',
+  sticker: '[Sticker]',
+  location: '[Location]',
+  contacts: '[Contact card]',
+  media_placeholder: '[Media]',
+};
+
+// Long enough for a racing original to land; edits and deletes of messages we never stored just expire.
+const PENDING_ECHO_TTL_MS = 15 * 60 * 1000;
+
+interface PendingEcho {
+  kind: 'edit' | 'revoke';
+  body?: string;
+  at: number;
+}
+
+// History that arrives this long after our request belongs to an earlier owner of the number.
+const HISTORY_ACCEPT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+// Null means no row: reactions, empty text and unknown types.
+function resolveStorableBody(message: CloudMessage | undefined): string | null {
+  if (!message?.type) return null;
+  if (message.type === 'text') {
+    const body = message.text?.body ?? '';
+    return body.trim() ? body : null;
+  }
+  return PLACEHOLDER_BODIES[message.type] ?? null;
+}
+
+function parseEpochSeconds(value: string | number | undefined): number | null {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+// Falls back to now when Meta sent no usable time.
+function parseEpochDate(value: string | number | undefined): Date {
+  const seconds = parseEpochSeconds(value);
+  return seconds ? new Date(seconds * 1000) : new Date();
+}
+
+function historyStatusFor(progress: number): WhatsappHistorySyncStatus {
+  return progress >= 100
+    ? WhatsappHistorySyncStatus.COMPLETE
+    : WhatsappHistorySyncStatus.IN_PROGRESS;
+}
+
+// Cloud API one-to-one message; only the identity, direction and body differ per caller.
+function buildCloudWaMessage(fields: {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName?: string;
+  body: string;
+  mediaType: string;
+  fromMe: boolean;
+  timestamp: number;
+  originUserId: string;
+}): WaMessage {
+  return {
+    ...fields,
+    senderName: fields.senderName ?? '',
+    chatName: fields.senderName ?? '',
+    isGroup: false,
+    hasMedia: false,
+    mediaUrls: [],
+    mentionedIds: [],
+    quotedParticipant: '',
+    aiGenerated: false,
+  };
+}
 
 const LIFECYCLE_EVENTS = new Set<string>([
   'PARTNER_ADDED',
@@ -106,6 +207,7 @@ export class WhatsappWebhookService {
     private readonly store: MessageStoreService,
     private readonly gateway: WhatsappGateway,
     private readonly ai: WhatsappAiService,
+    private readonly redis: RedisService,
     @InjectQueue(WA_WEBHOOK_EVENTS_QUEUE)
     private readonly webhookQueue: Queue<WaWebhookJobData>,
   ) {}
@@ -215,12 +317,18 @@ export class WhatsappWebhookService {
   ): Promise<void> {
     // account_update has no phone_number_id, so it must branch off before the guard below.
     if (field === 'account_update') {
-      const seconds = Number(entryTime);
-      const eventAt =
-        Number.isFinite(seconds) && seconds > 0
-          ? new Date(seconds * 1000)
-          : new Date();
-      await this.handleAccountUpdate(value, wabaId, eventAt);
+      await this.handleAccountUpdate(value, wabaId, parseEpochDate(entryTime));
+      return;
+    }
+
+    if (field === 'history' || field === 'smb_message_echoes') {
+      const connection = await this.resolveConnection(
+        value.metadata?.phone_number_id,
+        wabaId,
+      );
+      if (!connection) return;
+      if (field === 'history') await this.persistHistory(connection, value);
+      else await this.persistEchoes(connection, value, isRetryAttempt);
       return;
     }
 
@@ -238,27 +346,8 @@ export class WhatsappWebhookService {
       return;
     }
 
-    // FLAGGED breaks outbound only and Meta keeps delivering inbound, so it is kept here.
-    const connection = await this.connections.findOne({
-      where: [
-        { phoneNumberId, status: WhatsappConnectionStatus.CONNECTED },
-        { phoneNumberId, status: WhatsappConnectionStatus.FLAGGED },
-      ],
-    });
-    if (!connection) {
-      this.logger.warn(
-        `Webhook for unknown or disconnected phone_number_id ${phoneNumberId}`,
-      );
-      return;
-    }
-
-    // A WABA mismatch would route messages to the wrong tenant, so it is rejected outright.
-    if (wabaId && connection.wabaId !== wabaId) {
-      this.logger.error(
-        `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
-      );
-      return;
-    }
+    const connection = await this.resolveConnection(phoneNumberId, wabaId);
+    if (!connection) return;
 
     // Both branches run even if one throws, so a status failure can't cost the messages too.
     let firstError: Error | null = null;
@@ -283,6 +372,338 @@ export class WhatsappWebhookService {
       }
     }
     if (firstError) throw firstError;
+  }
+
+  private async resolveConnection(
+    phoneNumberId: string | undefined,
+    wabaId: string | undefined,
+  ): Promise<WhatsappConnection | null> {
+    if (!phoneNumberId) return null;
+    // FLAGGED breaks outbound only and Meta keeps delivering inbound, so it is kept here.
+    const connection = await this.connections.findOne({
+      where: [
+        { phoneNumberId, status: WhatsappConnectionStatus.CONNECTED },
+        { phoneNumberId, status: WhatsappConnectionStatus.FLAGGED },
+      ],
+    });
+    if (!connection) {
+      this.logger.warn(
+        `Webhook for unknown or disconnected phone_number_id ${phoneNumberId}`,
+      );
+      return null;
+    }
+
+    // A WABA mismatch would route messages to the wrong tenant, so it is rejected outright.
+    if (wabaId && connection.wabaId !== wabaId) {
+      this.logger.error(
+        `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
+      );
+      return null;
+    }
+    return connection;
+  }
+
+  // Stored passively: history never counts as unread, opens a reply window, or reaches the AI.
+  private async persistHistory(
+    connection: WhatsappConnection,
+    value: WebhookValue,
+  ): Promise<void> {
+    const requestedAt = connection.historySyncRequestedAt?.getTime();
+    if (!requestedAt || Date.now() - requestedAt > HISTORY_ACCEPT_WINDOW_MS) {
+      this.logger.warn(
+        `Ignoring history for connection ${connection.id}: no recent history request`,
+      );
+      return;
+    }
+
+    const chunks = value.history ?? [];
+    const errors = [
+      ...(value.errors ?? []),
+      ...chunks.flatMap((chunk) => chunk.errors ?? []),
+    ];
+    if (errors.some((error) => String(error.code) === HISTORY_DECLINED_CODE)) {
+      await this.recordHistorySync(
+        connection,
+        WhatsappHistorySyncStatus.DECLINED,
+        null,
+      );
+      return;
+    }
+
+    let firstError: Error | null = null;
+    let progress: number | null = null;
+    for (const chunk of chunks) {
+      for (const thread of chunk.threads ?? []) {
+        const threadError = await this.persistHistoryThread(connection, thread);
+        firstError = firstError ?? threadError;
+      }
+      const chunkProgress = Number(chunk.metadata?.progress);
+      if (Number.isFinite(chunkProgress)) {
+        progress = Math.max(progress ?? 0, Math.min(chunkProgress, 100));
+      }
+    }
+
+    // A chunk with a failed row is retried whole, so its progress waits for that retry.
+    if (firstError) throw firstError;
+    if (progress !== null) {
+      await this.recordHistorySync(
+        connection,
+        historyStatusFor(progress),
+        progress,
+      );
+    }
+  }
+
+  private async persistHistoryThread(
+    connection: WhatsappConnection,
+    thread: { id?: string; messages?: CloudMessage[] },
+  ): Promise<Error | null> {
+    const chatId = thread.id;
+    if (!chatId) return null;
+    let firstError: Error | null = null;
+    for (const message of thread.messages ?? []) {
+      const body = resolveStorableBody(message);
+      const timestamp = parseEpochSeconds(message.timestamp);
+      if (!message.id || !body || !timestamp) continue;
+      const evt = buildCloudWaMessage({
+        id: message.id,
+        chatId,
+        senderId: message.from ?? '',
+        body,
+        mediaType: message.type ?? 'text',
+        fromMe: Boolean(message.to),
+        timestamp,
+        originUserId: connection.userId,
+      });
+      try {
+        const { inserted } = await this.store.addMessage(
+          connection.companyId,
+          connection.userId,
+          evt,
+          connection.phoneNumberId,
+          { isPassive: true },
+        );
+        // Echo edits and deletes only ever target our own messages.
+        if (inserted && evt.fromMe) {
+          await this.applyPendingEcho(connection, evt.id);
+        }
+      } catch (err) {
+        firstError = firstError ?? toError(err);
+        this.logger.error(
+          `Failed to persist history message ${message.id}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    return firstError;
+  }
+
+  // Progress only moves forward and a decline never overwrites complete, since Meta does not guarantee order.
+  private async recordHistorySync(
+    connection: WhatsappConnection,
+    status: WhatsappHistorySyncStatus,
+    progress: number | null,
+  ): Promise<void> {
+    const where =
+      progress === null
+        ? {
+            id: connection.id,
+            historySyncStatus: Or(
+              IsNull(),
+              Not(WhatsappHistorySyncStatus.COMPLETE),
+            ),
+          }
+        : {
+            id: connection.id,
+            historySyncProgress: Or(IsNull(), LessThan(progress)),
+          };
+    const result = await this.connections.update(where, {
+      historySyncStatus: status,
+      historySyncProgress: progress,
+    });
+    if ((result.affected ?? 0) === 0) return;
+    try {
+      this.gateway.emitHistory(connection.userId, { status, progress });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push history sync state for user ${connection.userId}`,
+        errorMessage(err, true),
+      );
+    }
+  }
+
+  // Replies, edits and deletes made in the WhatsApp Business app; a new reply pauses the AI.
+  private async persistEchoes(
+    connection: WhatsappConnection,
+    value: WebhookValue,
+    isRetryAttempt = false,
+  ): Promise<void> {
+    let firstError: Error | null = null;
+    for (const echo of value.message_echoes ?? []) {
+      try {
+        if (echo.type === 'revoke') {
+          await this.applyEchoRevoke(connection, echo);
+        } else if (echo.type === 'edit') {
+          await this.applyEchoEdit(connection, echo);
+        } else {
+          await this.persistEchoReply(connection, echo, isRetryAttempt);
+        }
+      } catch (err) {
+        firstError = firstError ?? toError(err);
+        this.logger.error(
+          `Failed to process WhatsApp echo ${echo.id ?? 'unknown'}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    if (firstError) throw firstError;
+  }
+
+  private async applyEchoRevoke(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+  ): Promise<void> {
+    const originalId = echo.revoke?.original_message_id;
+    if (!originalId) return;
+    const at = parseEpochDate(echo.timestamp);
+    const isApplied = await this.store.markDeleted(
+      connection.companyId,
+      connection.userId,
+      originalId,
+      at,
+    );
+    if (!isApplied) {
+      await this.parkIfOriginalMissing(connection, originalId, {
+        kind: 'revoke',
+        at: at.getTime(),
+      });
+    }
+  }
+
+  private async applyEchoEdit(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+  ): Promise<void> {
+    const originalId = echo.edit?.original_message_id;
+    const body = resolveStorableBody(echo.edit?.message);
+    if (!originalId || !body) return;
+    const at = parseEpochDate(echo.timestamp);
+    const isApplied = await this.store.applyEdit(
+      connection.companyId,
+      connection.userId,
+      originalId,
+      body,
+      at,
+    );
+    if (!isApplied) {
+      await this.parkIfOriginalMissing(connection, originalId, {
+        kind: 'edit',
+        body,
+        at: at.getTime(),
+      });
+    }
+  }
+
+  private pendingEchoKey(
+    connection: WhatsappConnection,
+    originalId: string,
+  ): string {
+    return `wa:echo:pending:${connection.companyId}:${connection.userId}:${originalId}`;
+  }
+
+  // Envelopes run concurrently, so an edit can beat its original; it waits here instead of failing the job.
+  private async parkIfOriginalMissing(
+    connection: WhatsappConnection,
+    originalId: string,
+    pending: PendingEcho,
+  ): Promise<void> {
+    const isStored = await this.store.hasMessage(
+      connection.companyId,
+      connection.userId,
+      originalId,
+    );
+    if (isStored) return;
+    const key = this.pendingEchoKey(connection, originalId);
+    const current = await this.redis.getJson<PendingEcho>(key);
+    // A delete outranks any edit; between edits the newer one wins.
+    if (current?.kind === 'revoke') return;
+    if (current && pending.kind === 'edit' && current.at >= pending.at) return;
+    await this.redis.setJson(key, pending, PENDING_ECHO_TTL_MS);
+    // Closes the gap where the original landed between the check above and the park.
+    const isStoredNow = await this.store.hasMessage(
+      connection.companyId,
+      connection.userId,
+      originalId,
+    );
+    if (isStoredNow) await this.applyPendingEcho(connection, originalId);
+  }
+
+  private async applyPendingEcho(
+    connection: WhatsappConnection,
+    waMessageId: string,
+  ): Promise<void> {
+    const key = this.pendingEchoKey(connection, waMessageId);
+    const pending = await this.redis.getJson<PendingEcho>(key);
+    if (!pending) return;
+    const at = new Date(pending.at);
+    if (pending.kind === 'revoke') {
+      await this.store.markDeleted(
+        connection.companyId,
+        connection.userId,
+        waMessageId,
+        at,
+      );
+    } else if (pending.body) {
+      await this.store.applyEdit(
+        connection.companyId,
+        connection.userId,
+        waMessageId,
+        pending.body,
+        at,
+      );
+    }
+    await this.redis.del(key);
+  }
+
+  private async persistEchoReply(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+    isRetryAttempt: boolean,
+  ): Promise<void> {
+    const { companyId, userId } = connection;
+    const body = resolveStorableBody(echo);
+    const timestamp = parseEpochSeconds(echo.timestamp);
+    if (!echo.id || !echo.to || !body || !timestamp) return;
+    const evt = buildCloudWaMessage({
+      id: echo.id,
+      chatId: echo.to,
+      senderId: echo.from ?? '',
+      body,
+      mediaType: echo.type ?? 'text',
+      fromMe: true,
+      timestamp,
+      originUserId: userId,
+    });
+    const { inserted } = await this.store.addMessage(
+      companyId,
+      userId,
+      evt,
+      connection.phoneNumberId,
+    );
+    // Only our own retry may redo the AI pause for a stored echo; a Meta redelivery must not.
+    if (!inserted && !isRetryAttempt) return;
+    if (inserted) {
+      await this.applyPendingEcho(connection, evt.id);
+      try {
+        this.gateway.emitMessage(userId, evt);
+      } catch (err) {
+        this.logger.error(
+          `Failed to push echoed WhatsApp message ${evt.id}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    await this.ai.recordHumanReply(userId, evt.chatId, timestamp * 1000);
   }
 
   // Mapping is explicit; an unrecognised event changes nothing so guessing never loses a number.
@@ -491,11 +912,7 @@ export class WhatsappWebhookService {
           continue;
         }
         const mapped = value as WhatsappMessageStatus;
-        const seconds = Number(status.timestamp);
-        const statusAt =
-          Number.isFinite(seconds) && seconds > 0
-            ? new Date(seconds * 1000)
-            : new Date();
+        const statusAt = parseEpochDate(status.timestamp);
         const failureCode = status.errors?.[0]?.code;
         const errorCode =
           mapped === WhatsappMessageStatus.FAILED && failureCode != null
@@ -562,32 +979,25 @@ export class WhatsappWebhookService {
         if (!body.trim()) continue;
 
         // Cloud API sends seconds; handleIncomingMessage compares against seconds.
-        const timestamp = Number(message.timestamp);
-        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+        const timestamp = parseEpochSeconds(message.timestamp);
+        if (!timestamp) {
           this.logger.warn(
             `Skipping message ${message.id} with a missing or non-numeric timestamp`,
           );
           continue;
         }
 
-        const evt: WaMessage = {
+        const evt = buildCloudWaMessage({
           id: message.id,
           chatId: message.from,
           senderId: message.from,
           senderName: names.get(message.from) ?? '',
-          chatName: names.get(message.from) ?? '',
-          isGroup: false,
           body,
-          hasMedia: false,
           mediaType: 'text',
-          mediaUrls: [],
-          mentionedIds: [],
-          quotedParticipant: '',
           fromMe: false,
-          aiGenerated: false,
           timestamp,
           originUserId: connection.userId,
-        };
+        });
 
         // Persist first; a store failure propagates for BullMQ retry.
         let firstDelivery: boolean;

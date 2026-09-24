@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { Not, QueryFailedError } from 'typeorm';
 import { WhatsappSignupService } from './whatsapp-signup.service';
-import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
+import {
+  WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
+} from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
 import { GRAPH_VERSION } from './wa-types';
 
@@ -21,6 +24,7 @@ const dto = {
   wabaId: '111222333',
   phoneNumberId: '444555666',
 };
+const coexistenceDto = { ...dto, isCoexistence: true };
 
 // Shapes a fake QueryFailedError to exercise connect's 23505 unique-violation mapping.
 const makeUniqueViolation = (driverError: {
@@ -117,11 +121,12 @@ describe('WhatsappSignupService', () => {
     ],
   });
 
-  // Order matters: exchange, read, subscribe, then store, since the code expires in 30 seconds.
+  // Order matters: exchange, read, subscribe, store, then request history.
   const happyPathFetches = () => {
     fetchMock
       .mockResolvedValueOnce(ok({ access_token: TOKEN }))
       .mockResolvedValueOnce(phoneListing)
+      .mockResolvedValueOnce(ok({ success: true }))
       .mockResolvedValueOnce(ok({ success: true }));
   };
 
@@ -181,6 +186,177 @@ describe('WhatsappSignupService', () => {
       expect(saved.lifecycleEventAt).toEqual(saved.connectedAt);
 
       expect(result).toBe(connectedInfo);
+    });
+
+    it('requests the one-time history sync after storing the connection', async () => {
+      happyPathFetches();
+
+      await service.connect('user-1', 'company-1', coexistenceDto);
+
+      expect(String(fetchMock.mock.calls[3][0])).toBe(
+        `https://graph.facebook.com/${GRAPH_VERSION}/${dto.phoneNumberId}/smb_app_data`,
+      );
+      expect(fetchMock.mock.calls[3][1].method).toBe('POST');
+      expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({
+        messaging_product: 'whatsapp',
+        sync_type: 'history',
+      });
+      expect(connections.insert.mock.invocationCallOrder[0]).toBeLessThan(
+        fetchMock.mock.invocationCallOrder[3],
+      );
+      const requestedWrite = connections.update.mock.calls.findIndex(
+        (call) =>
+          call[1]?.historySyncStatus === WhatsappHistorySyncStatus.REQUESTED,
+      );
+      expect(
+        connections.update.mock.invocationCallOrder[requestedWrite],
+      ).toBeLessThan(fetchMock.mock.invocationCallOrder[3]);
+      expect(connections.update).toHaveBeenCalledWith(
+        { userId: 'user-1', companyId: 'company-1' },
+        expect.objectContaining({
+          historySyncStatus: WhatsappHistorySyncStatus.REQUESTED,
+          historySyncProgress: null,
+        }),
+      );
+    });
+
+    it('never requests the contacts sync', async () => {
+      happyPathFetches();
+
+      await service.connect('user-1', 'company-1', coexistenceDto);
+
+      const bodies = fetchMock.mock.calls.map((c) => String(c[1]?.body ?? ''));
+      expect(bodies.some((b) => b.includes('smb_app_state_sync'))).toBe(false);
+    });
+
+    it('records a failed history request without failing the connect', async () => {
+      fetchMock
+        .mockResolvedValueOnce(ok({ access_token: TOKEN }))
+        .mockResolvedValueOnce(phoneListing)
+        .mockResolvedValueOnce(ok({ success: true }))
+        .mockResolvedValueOnce(fail(400, 'sync window closed'));
+
+      const result = await service.connect(
+        'user-1',
+        'company-1',
+        coexistenceDto,
+      );
+
+      expect(result).toBe(connectedInfo);
+      expect(connections.update).toHaveBeenCalledWith(
+        {
+          userId: 'user-1',
+          companyId: 'company-1',
+          historySyncStatus: WhatsappHistorySyncStatus.REQUESTED,
+        },
+        { historySyncStatus: WhatsappHistorySyncStatus.FAILED },
+      );
+    });
+
+    it('does not request history for a non-Coexistence onboarding', async () => {
+      happyPathFetches();
+
+      await service.connect('user-1', 'company-1', dto);
+
+      const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+      expect(urls.some((u) => u.endsWith('/smb_app_data'))).toBe(false);
+    });
+
+    const syncedAt = new Date('2026-09-01T10:00:00.000Z');
+
+    it('keeps a completed sync when Meta refuses a repeat request on the same number', async () => {
+      connections.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'existing-1',
+        wabaId: dto.wabaId,
+        phoneNumberId: dto.phoneNumberId,
+        accessTokenCiphertext: null,
+        historySyncStatus: WhatsappHistorySyncStatus.COMPLETE,
+        historySyncProgress: 100,
+        historySyncRequestedAt: syncedAt,
+      });
+      fetchMock
+        .mockResolvedValueOnce(ok({ access_token: TOKEN }))
+        .mockResolvedValueOnce(phoneListing)
+        .mockResolvedValueOnce(ok({ success: true }))
+        .mockResolvedValueOnce(fail(400, 'already synced'));
+
+      await service.connect('user-1', 'company-1', coexistenceDto);
+
+      expect(connections.update).toHaveBeenCalledWith(
+        {
+          userId: 'user-1',
+          companyId: 'company-1',
+          historySyncStatus: WhatsappHistorySyncStatus.REQUESTED,
+        },
+        {
+          historySyncStatus: WhatsappHistorySyncStatus.COMPLETE,
+          historySyncProgress: 100,
+          historySyncRequestedAt: syncedAt,
+        },
+      );
+    });
+
+    it('keeps a declined sync when Meta refuses a repeat request on the same number', async () => {
+      connections.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'existing-1',
+        wabaId: dto.wabaId,
+        phoneNumberId: dto.phoneNumberId,
+        accessTokenCiphertext: null,
+        historySyncStatus: WhatsappHistorySyncStatus.DECLINED,
+        historySyncProgress: null,
+        historySyncRequestedAt: syncedAt,
+      });
+      fetchMock
+        .mockResolvedValueOnce(ok({ access_token: TOKEN }))
+        .mockResolvedValueOnce(phoneListing)
+        .mockResolvedValueOnce(ok({ success: true }))
+        .mockResolvedValueOnce(fail(400, 'already synced'));
+
+      await service.connect('user-1', 'company-1', coexistenceDto);
+
+      expect(connections.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          historySyncStatus: WhatsappHistorySyncStatus.REQUESTED,
+        }),
+        expect.objectContaining({
+          historySyncStatus: WhatsappHistorySyncStatus.DECLINED,
+        }),
+      );
+    });
+
+    it('marks a refused request FAILED when the row held a different number', async () => {
+      connections.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 'existing-1',
+        wabaId: dto.wabaId,
+        phoneNumberId: '999999999',
+        accessTokenCiphertext: null,
+        historySyncStatus: WhatsappHistorySyncStatus.COMPLETE,
+        historySyncProgress: 100,
+        historySyncRequestedAt: syncedAt,
+      });
+      fetchMock
+        .mockResolvedValueOnce(ok({ access_token: TOKEN }))
+        .mockResolvedValueOnce(phoneListing)
+        .mockResolvedValueOnce(ok({ success: true }))
+        .mockResolvedValueOnce(fail(400, 'window closed'));
+
+      await service.connect('user-1', 'company-1', coexistenceDto);
+
+      expect(connections.update).toHaveBeenCalledWith(
+        { id: 'existing-1' },
+        expect.objectContaining({
+          phoneNumberId: dto.phoneNumberId,
+          historySyncStatus: null,
+          historySyncProgress: null,
+          historySyncRequestedAt: null,
+        }),
+      );
+      expect(connections.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          historySyncStatus: WhatsappHistorySyncStatus.REQUESTED,
+        }),
+        { historySyncStatus: WhatsappHistorySyncStatus.FAILED },
+      );
     });
 
     // Meta errors on /register for Coexistence numbers already registered; this call must never fire.
@@ -479,8 +655,13 @@ describe('WhatsappSignupService', () => {
 
     it('still connects when Meta refuses the old unsubscribe', async () => {
       existingRow(OLD_WABA, encryption.encrypt(OLD_TOKEN));
-      happyPathFetches();
-      fetchMock.mockResolvedValueOnce(fail(500, 'graph down'));
+      // Exchange, read, subscribe, then the old WABA unsubscribe fails, then history.
+      fetchMock
+        .mockResolvedValueOnce(ok({ access_token: TOKEN }))
+        .mockResolvedValueOnce(phoneListing)
+        .mockResolvedValueOnce(ok({ success: true }))
+        .mockResolvedValueOnce(fail(500, 'graph down'))
+        .mockResolvedValueOnce(ok({ success: true }));
       const warn = jest
         .spyOn(service['logger'], 'warn')
         .mockImplementation(() => undefined);

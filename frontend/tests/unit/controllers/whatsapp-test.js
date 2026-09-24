@@ -966,6 +966,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(Object.keys(whatsapp.listeners).sort(), [
       'ai',
       'chats',
+      'history',
       'message',
       'status',
     ]);
@@ -2262,5 +2263,75 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.stopClock();
 
     assert.strictEqual(errorMessage, 'Could not load WhatsApp data');
+  });
+
+  test('historySyncText follows the sync state pushed over the socket', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected', historySyncStatus: null };
+    assert.strictEqual(controller.historySyncText, '');
+
+    controller.applyHistorySync({ status: 'in_progress', progress: 40 });
+    assert.strictEqual(
+      controller.historySyncText,
+      'Syncing chat history... 40%',
+    );
+
+    controller.applyHistorySync({ status: 'declined', progress: null });
+    assert.strictEqual(
+      controller.historySyncText,
+      'Chat history sharing is turned off in the WhatsApp Business app',
+    );
+
+    controller.applyHistorySync({ status: 'complete', progress: 100 });
+    assert.strictEqual(controller.historySyncText, '');
+  });
+
+  test('applyHistorySync ignores a push when there is no connection', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = null;
+    controller.applyHistorySync({ status: 'in_progress', progress: 10 });
+    assert.strictEqual(controller.connection, null);
+  });
+
+  test('a chat resync also refreshes the connection card', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = {
+      status: 'connected',
+      historySyncStatus: 'requested',
+    };
+    controller.whatsapp.getConnection = async () => ({
+      data: {
+        status: 'connected',
+        historySyncStatus: 'complete',
+        historySyncProgress: 100,
+      },
+    });
+
+    await controller.applyResyncChats([]);
+    await settled();
+
+    assert.strictEqual(controller.connection.historySyncStatus, 'complete');
+    assert.strictEqual(controller.historySyncText, '');
+  });
+
+  test('a connection refresh never overwrites a newer push that landed first', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected', historySyncStatus: null };
+    let release;
+    controller.whatsapp.getConnection = () =>
+      new Promise((resolve) => {
+        release = () =>
+          resolve({
+            data: { status: 'connected', historySyncStatus: 'requested' },
+          });
+      });
+
+    const refresh = controller.applyResyncChats([]);
+    controller.applyHistorySync({ status: 'complete', progress: 100 });
+    release();
+    await refresh;
+    await settled();
+
+    assert.strictEqual(controller.connection.historySyncStatus, 'complete');
   });
 });

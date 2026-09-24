@@ -216,6 +216,24 @@ module('Unit | Service | whatsapp', function (hooks) {
       assert.deepEqual(this.emittedChats, []);
     });
 
+    test('a completed history sync emits history and refetches chats', async function (assert) {
+      const emitted = [];
+      this.service.on('history', (data) => emitted.push(data));
+
+      this.service._onHistory({ status: 'complete', progress: 100 });
+      assert.deepEqual(emitted, [{ status: 'complete', progress: 100 }]);
+      assert.strictEqual(this.fetches.length, 1);
+
+      this.fetches[0].resolve(this.chats);
+      await settled();
+      assert.deepEqual(this.emittedChats, [[{ chatId: 'c-1' }]]);
+    });
+
+    test('history progress below complete does not refetch chats', function (assert) {
+      this.service._onHistory({ status: 'in_progress', progress: 40 });
+      assert.strictEqual(this.fetches.length, 0);
+    });
+
     test('the first ready with no payload also resyncs', function (assert) {
       this.service._onReady(undefined);
       assert.strictEqual(this.fetches.length, 1);
@@ -355,6 +373,7 @@ module('Unit | Service | whatsapp', function (hooks) {
       'connect_error',
       'disconnect',
       'whatsapp:ai',
+      'whatsapp:history',
       'whatsapp:message',
       'whatsapp:ready',
       'whatsapp:status',

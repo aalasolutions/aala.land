@@ -30,6 +30,14 @@ const MUTABLE_MESSAGE_FIELDS = [
   'deletedAt',
 ];
 
+const HISTORY_SYNC_COPY = {
+  requested: () => 'Syncing chat history...',
+  in_progress: (progress) => `Syncing chat history... ${progress ?? 0}%`,
+  declined: () =>
+    'Chat history sharing is turned off in the WhatsApp Business app',
+  failed: () => 'Chat history could not be synced',
+};
+
 const CONNECTION_COPY = {
   none: {
     label: 'No number connected',
@@ -133,6 +141,7 @@ export default class WhatsappController extends Controller {
     status: (data) => this.applyStatus(data),
     ai: (data) => this.applyAi(data),
     chats: (chats) => this.applyResyncChats(chats),
+    history: (data) => this.applyHistorySync(data),
   };
 
 
@@ -227,6 +236,20 @@ export default class WhatsappController extends Controller {
     }
     return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
       .detail;
+  }
+
+  get historySyncText() {
+    const copy = HISTORY_SYNC_COPY[this.connection?.historySyncStatus];
+    return copy ? copy(this.connection.historySyncProgress) : '';
+  }
+
+  applyHistorySync(data) {
+    if (!this.connection || !data?.status) return;
+    this.connection = {
+      ...this.connection,
+      historySyncStatus: data.status,
+      historySyncProgress: data.progress ?? null,
+    };
   }
 
   // A dead token is stored as FLAGGED, not DISCONNECTED, so Meta keeps delivering inbound.
@@ -560,9 +583,26 @@ export default class WhatsappController extends Controller {
   }
 
   // Reconnect: refresh open chat.
+  // A resync means pushes may have been missed, the history sync state included.
   async applyResyncChats(chats) {
     this._setChats(chats);
+    this._refreshConnection();
     if (this.currentChatId) await this._reloadWindow(this.currentChatId);
+  }
+
+  async _refreshConnection() {
+    const setupGen = this._setupGeneration;
+    // Every other writer assigns a new object, so a changed reference means newer state landed.
+    const before = this.connection;
+    try {
+      const connData = await this.whatsapp.getConnection();
+      if (setupGen !== this._setupGeneration || this.connection !== before) {
+        return;
+      }
+      this.connection = connData?.data ?? null;
+    } catch {
+      // The card keeps its last known state.
+    }
   }
 
   async _reloadWindow(chatId) {
