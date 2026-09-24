@@ -1,0 +1,16 @@
+{{~#each this.parts as |part|~}}
+  {{~#if part.isLink~}}
+    <a
+      class="wa-message-link"
+      href={{part.href}}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      title={{part.host}}
+      data-test-wa-message-link={{part.host}}
+      {{on "click" (fn this.openLink part)}}
+      {{on "auxclick" (fn this.openLink part)}}
+    >{{part.value}}</a>
+  {{~else~}}
+    {{part.value}}
+  {{~/if~}}
+{{~/each~}}

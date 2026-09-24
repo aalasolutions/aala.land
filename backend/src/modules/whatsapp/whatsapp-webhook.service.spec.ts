@@ -1494,6 +1494,43 @@ describe('WhatsappWebhookService', () => {
       for (const call of calls) expect(call[4]).toEqual({ isPassive: true });
     });
 
+    it('treats a history message from the business number as ours even without a to field', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              metadata: { phase: 0, chunk_order: 1, progress: 40 },
+              threads: [
+                {
+                  id: '971501234567',
+                  messages: [
+                    {
+                      from: '15550001111',
+                      id: 'wamid.h9',
+                      timestamp: '1761000060',
+                      type: 'text',
+                      text: { body: 'our old reply' },
+                    },
+                    {
+                      from: '971501234567',
+                      id: 'wamid.h10',
+                      timestamp: '1761000120',
+                      type: 'text',
+                      text: { body: 'their old message' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      const calls = store.addMessage.mock.calls;
+      expect(calls[0][2]).toMatchObject({ id: 'wamid.h9', fromMe: true });
+      expect(calls[1][2]).toMatchObject({ id: 'wamid.h10', fromMe: false });
+    });
+
     it('never reaches the AI, unread pushes or live message pushes', async () => {
       await service.processEnvelope(
         coexistenceEnvelope('history', historyValue(40)),

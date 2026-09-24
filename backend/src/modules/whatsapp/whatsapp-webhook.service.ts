@@ -156,6 +156,20 @@ function parseEpochDate(value: string | number | undefined): Date {
   return seconds ? new Date(seconds * 1000) : new Date();
 }
 
+function digitsOnly(value: string | undefined): string {
+  return (value ?? '').replace(/\D/g, '');
+}
+
+// The thread id is the customer, so anything not from the customer was sent by the business.
+function isHistoryMessageFromBusiness(
+  message: CloudMessage,
+  customerId: string,
+): boolean {
+  if (message.to) return true;
+  const sender = digitsOnly(message.from);
+  return sender !== '' && sender !== digitsOnly(customerId);
+}
+
 function historyStatusFor(progress: number): WhatsappHistorySyncStatus {
   return progress >= 100
     ? WhatsappHistorySyncStatus.COMPLETE
@@ -473,7 +487,7 @@ export class WhatsappWebhookService {
         senderId: message.from ?? '',
         body,
         mediaType: message.type ?? 'text',
-        fromMe: Boolean(message.to),
+        fromMe: isHistoryMessageFromBusiness(message, chatId),
         timestamp,
         originUserId: connection.userId,
       });

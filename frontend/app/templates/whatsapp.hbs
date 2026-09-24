@@ -204,7 +204,10 @@
                   This message was deleted
                 </div>
               {{else}}
-                <div class="wa-bubble" dir="auto">{{msg.body}}</div>
+                <div class="wa-bubble" dir="auto"><Whatsapp::MessageText
+                    @text={{msg.body}}
+                    @isExternal={{not msg.fromMe}}
+                  /></div>
               {{/if}}
 
               <div class="wa-meta">

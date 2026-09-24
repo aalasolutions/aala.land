@@ -279,6 +279,12 @@ $wa-message-max-width: 70%;
   }
 }
 
+.wa-message-link {
+  color: inherit;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
 // A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.
 .wa-bubble.is-deleted {
   display: flex;
