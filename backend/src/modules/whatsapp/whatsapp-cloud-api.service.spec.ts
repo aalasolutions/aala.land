@@ -195,6 +195,35 @@ describe('WhatsappCloudApiService', () => {
       expect(connections.update).not.toHaveBeenCalled();
     });
 
+    it('marks a Graph 131047 as a closed reply window without flagging', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        graphError(400, 131047, 'Re-engagement message'),
+      );
+
+      const err = (await service
+        .sendText(connection, '+923001234567', 'hello')
+        .catch((e: unknown) => e)) as WhatsappSendError;
+
+      expect(err).toBeInstanceOf(WhatsappSendError);
+      expect(err.graphCode).toBe(131047);
+      expect(err.windowClosed).toBe(true);
+      expect(err.needsReconnect).toBeFalsy();
+      expect(connections.update).not.toHaveBeenCalled();
+    });
+
+    it('does not read other Graph failures as a closed window', () => {
+      expect(
+        new WhatsappSendError('Cloud API send failed 400', 400, 131042)
+          .windowClosed,
+      ).toBe(false);
+      expect(new WhatsappSendError('Cloud API send error').windowClosed).toBe(
+        false,
+      );
+    });
+
     it('throws and flags the connection on a 401', async () => {
       jest
         .spyOn((service as any).logger, 'error')

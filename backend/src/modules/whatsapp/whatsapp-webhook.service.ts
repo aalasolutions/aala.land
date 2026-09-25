@@ -25,7 +25,7 @@ import {
 } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
-import { MessageStoreService } from './message-store.service';
+import { HistoryMessage, MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import {
   WaMessage,
@@ -473,7 +473,7 @@ export class WhatsappWebhookService {
       }
     }
 
-    // A chunk with a failed row is retried whole, so its progress waits for that retry.
+    // A chunk with a failed thread is retried whole, so its progress waits for that retry.
     if (firstError) throw firstError;
     if (progress !== null) {
       await this.recordHistorySync(
@@ -490,7 +490,7 @@ export class WhatsappWebhookService {
   ): Promise<Error | null> {
     const chatId = thread.id;
     if (!chatId) return null;
-    let firstError: Error | null = null;
+    const items: HistoryMessage[] = [];
     for (const message of thread.messages ?? []) {
       const body = resolveStorableBody(message);
       const timestamp = parseEpochSeconds(message.timestamp);
@@ -506,22 +506,37 @@ export class WhatsappWebhookService {
         originUserId: connection.userId,
       });
       const status = evt.fromMe ? historyMessageStatus(message) : null;
+      items.push({
+        msg: evt,
+        ...(status ? { status, statusAt: new Date(timestamp * 1000) } : {}),
+      });
+    }
+    if (items.length === 0) return null;
+
+    let insertedIds: string[];
+    try {
+      insertedIds = await this.store.addHistoryMessages(
+        connection.companyId,
+        connection.userId,
+        connection.phoneNumberId,
+        items,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to persist history thread ${chatId}`,
+        errorMessage(err, true),
+      );
+      return toError(err);
+    }
+
+    let firstError: Error | null = null;
+    for (const waMessageId of insertedIds) {
       try {
-        const { inserted } = await this.store.addMessage(
-          connection.companyId,
-          connection.userId,
-          evt,
-          connection.phoneNumberId,
-          {
-            isPassive: true,
-            ...(status ? { status, statusAt: new Date(timestamp * 1000) } : {}),
-          },
-        );
-        if (inserted) await this.applyPendingChange(connection, evt.id);
+        await this.applyPendingChange(connection, waMessageId);
       } catch (err) {
         firstError = firstError ?? toError(err);
         this.logger.error(
-          `Failed to persist history message ${message.id}`,
+          `Failed to apply pending change for history message ${waMessageId}`,
           errorMessage(err, true),
         );
       }

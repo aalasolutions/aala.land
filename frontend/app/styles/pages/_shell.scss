@@ -62,6 +62,21 @@ $shell-sidebar-collapsed: 3.75rem;
     border-radius: 50px;
     overflow: hidden;
   }
+
+  // Only the active group's inline icons are pills; flyout rows keep the kit radius.
+  .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
+    border-radius: 9999px;
+  }
+
+  .nu-sidebar__link {
+    padding: 0.65rem;
+    border-radius: 9999px;
+  }
+
+  .nu-sidebar__group-toggle {
+    padding: 0.65rem;
+    border-radius: 9999px;
+  }
 }
 
 // Nav above already grows to fill; this only separates it from the collapse button.

@@ -19,7 +19,7 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappWebhookService } from './whatsapp-webhook.service';
 import { RedisService } from '@modules/redis/redis.service';
-import { WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
+import { WA_WEBHOOK_EVENTS_QUEUE, WaMessage } from './wa-types';
 
 const APP_SECRET = 'test-app-secret';
 const VERIFY_TOKEN = 'test-verify-token';
@@ -142,6 +142,7 @@ describe('WhatsappWebhookService', () => {
   let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
   let store: {
     addMessage: jest.Mock;
+    addHistoryMessages: jest.Mock;
     applyMessageStatus: jest.Mock;
     applyEdit: jest.Mock;
     markDeleted: jest.Mock;
@@ -173,6 +174,10 @@ describe('WhatsappWebhookService', () => {
     };
     store = {
       addMessage: jest.fn().mockResolvedValue(stored(true)),
+      addHistoryMessages: jest.fn(
+        (_c: string, _u: string, _p: string, items: { msg: WaMessage }[]) =>
+          Promise.resolve(items.map((item) => item.msg.id)),
+      ),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
       applyEdit: jest.fn().mockResolvedValue(true),
       markDeleted: jest.fn().mockResolvedValue(true),
@@ -1487,6 +1492,8 @@ describe('WhatsappWebhookService', () => {
   });
 
   describe('history', () => {
+    const historyItems = (): { msg: WaMessage; status?: string }[] =>
+      store.addHistoryMessages.mock.calls.flatMap((c) => c[3]);
     const historyValue = (progress: number) => ({
       history: [
         {
@@ -1530,18 +1537,23 @@ describe('WhatsappWebhookService', () => {
         coexistenceEnvelope('history', historyValue(40)),
       );
 
-      expect(store.addMessage).toHaveBeenCalledTimes(3);
-      const calls = store.addMessage.mock.calls;
-      expect(calls[0][2]).toMatchObject({
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(store.addHistoryMessages).toHaveBeenCalledTimes(1);
+      expect(store.addHistoryMessages.mock.calls[0].slice(0, 3)).toEqual([
+        'company-1',
+        'user-1',
+        connectionRow().phoneNumberId,
+      ]);
+      const msgs = historyItems().map((item) => item.msg);
+      expect(msgs).toHaveLength(3);
+      expect(msgs[0]).toMatchObject({
         id: 'wamid.h1',
         chatId: '971501234567',
         fromMe: false,
         body: 'is parking included?',
       });
-      expect(calls[1][2]).toMatchObject({ id: 'wamid.h2', fromMe: true });
-      expect(calls[2][2]).toMatchObject({ id: 'wamid.h3', body: '[Media]' });
-      for (const call of calls)
-        expect(call[4]).toMatchObject({ isPassive: true });
+      expect(msgs[1]).toMatchObject({ id: 'wamid.h2', fromMe: true });
+      expect(msgs[2]).toMatchObject({ id: 'wamid.h3', body: '[Media]' });
     });
 
     it("inserts Meta's delivery state on our own history messages only", async () => {
@@ -1583,17 +1595,16 @@ describe('WhatsappWebhookService', () => {
       );
 
       const options = Object.fromEntries(
-        store.addMessage.mock.calls.map((c) => [c[2].id, c[4]]),
+        historyItems().map(({ msg, ...rest }) => [msg.id, rest]),
       );
       expect(options['wamid.read']).toEqual({
-        isPassive: true,
         status: 'read',
         statusAt: new Date(1761000060 * 1000),
       });
       expect(options['wamid.error'].status).toBe('failed');
       expect(options['wamid.none'].status).toBe('delivered');
-      expect(options['wamid.pending']).toEqual({ isPassive: true });
-      expect(options['wamid.theirs']).toEqual({ isPassive: true });
+      expect(options['wamid.pending']).toEqual({});
+      expect(options['wamid.theirs']).toEqual({});
       expect(store.applyMessageStatus).not.toHaveBeenCalled();
     });
 
@@ -1629,9 +1640,9 @@ describe('WhatsappWebhookService', () => {
         }),
       );
 
-      const calls = store.addMessage.mock.calls;
-      expect(calls[0][2]).toMatchObject({ id: 'wamid.h9', fromMe: true });
-      expect(calls[1][2]).toMatchObject({ id: 'wamid.h10', fromMe: false });
+      const msgs = historyItems().map((item) => item.msg);
+      expect(msgs[0]).toMatchObject({ id: 'wamid.h9', fromMe: true });
+      expect(msgs[1]).toMatchObject({ id: 'wamid.h10', fromMe: false });
     });
 
     it('never reaches the AI, unread pushes or live message pushes', async () => {
@@ -1699,6 +1710,40 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
+    it('leaves a parked change alone for a row this delivery did not insert', async () => {
+      store.addHistoryMessages.mockResolvedValueOnce(['wamid.h1']);
+      redisStore.set('wa:msg:pending:company-1:user-1:wamid.h2', {
+        kind: 'edit',
+        body: 'yes, two bays',
+        at: 1761000900 * 1000,
+        fromMe: true,
+      });
+
+      await service.processEnvelope(
+        coexistenceEnvelope('history', historyValue(40)),
+      );
+
+      expect(store.applyEdit).not.toHaveBeenCalled();
+      expect(redisStore.has('wa:msg:pending:company-1:user-1:wamid.h2')).toBe(
+        true,
+      );
+    });
+
+    it('skips a thread with nothing storable', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              metadata: { phase: 0, chunk_order: 1, progress: 40 },
+              threads: [{ id: '971501234567', messages: [{ id: 'wamid.x' }] }],
+            },
+          ],
+        }),
+      );
+
+      expect(store.addHistoryMessages).not.toHaveBeenCalled();
+    });
+
     it('applies a customer delete parked for one of their history messages', async () => {
       redisStore.set('wa:msg:pending:company-1:user-1:wamid.h1', {
         kind: 'revoke',
@@ -1730,14 +1775,12 @@ describe('WhatsappWebhookService', () => {
         coexistenceEnvelope('history', historyValue(40)),
       );
 
-      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(store.addHistoryMessages).not.toHaveBeenCalled();
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('records no progress for a chunk with a failed row, so the retry can', async () => {
-      store.addMessage
-        .mockResolvedValueOnce(stored(true))
-        .mockRejectedValueOnce(new Error('db down'));
+    it('records no progress for a chunk with a failed thread, so the retry can', async () => {
+      store.addHistoryMessages.mockRejectedValueOnce(new Error('db down'));
 
       await expect(
         service.processEnvelope(
@@ -1766,7 +1809,7 @@ describe('WhatsappWebhookService', () => {
         }),
       );
 
-      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(store.addHistoryMessages).not.toHaveBeenCalled();
       expect(repo.update).toHaveBeenCalledWith(
         { id: 'conn-1', historySyncStatus: expect.anything() },
         {

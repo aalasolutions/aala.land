@@ -141,7 +141,12 @@ export default class WhatsappController extends Controller {
   }
 
   get composerDisabled() {
-    return !this.currentChatId || this.isSending || !this.isConnected;
+    return (
+      !this.currentChatId ||
+      this.isSending ||
+      !this.isConnected ||
+      !this.replyWindow?.open
+    );
   }
 
   get currentThread() {

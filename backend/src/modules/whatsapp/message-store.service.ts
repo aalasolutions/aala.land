@@ -16,7 +16,9 @@ const MESSAGES_PAGE_MAX = 200;
 const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
-const REPLY_WINDOW_S = 24 * 60 * 60;
+export const REPLY_WINDOW_S = 24 * 60 * 60;
+// About 20 bind parameters per row; 500 rows stays well under Postgres's 65535 limit.
+const HISTORY_INSERT_CHUNK = 500;
 
 // Delivery ladder, forward only: failed tops it so a redelivered sent cannot resurrect.
 const STATUS_RANK: Record<WhatsappMessageStatus, number> = {
@@ -32,6 +34,12 @@ const ALWAYS_WRITE_STATUSES: WhatsappMessageStatus[] = [
   WhatsappMessageStatus.FAILED,
 ];
 
+export interface HistoryMessage {
+  msg: WaMessage;
+  status?: WhatsappMessageStatus;
+  statusAt?: Date;
+}
+
 interface ChatUnreadRow {
   unread_count: number | string;
   last_read_message_id: string | null;
@@ -39,6 +47,52 @@ interface ChatUnreadRow {
 
 // Same ladder in SQL, so the no-downgrade guard is evaluated inside the UPDATE.
 const STATUS_RANK_SQL = `COALESCE(CASE "status" WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 WHEN 'played' THEN 4 WHEN 'failed' THEN 5 ELSE 0 END, 0)`;
+
+// Raw SQL: orUpdate() can't express conditional columns; mirror renames in the entity
+const CHAT_UPSERT_SQL = `INSERT INTO "whatsapp_chats"
+         ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me", "phone_number_id", "last_inbound_at", "unread_count")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT ("company_id", "user_id", "chat_id") DO UPDATE SET
+         "chat_name" = COALESCE(
+           NULLIF(NULLIF("whatsapp_chats"."chat_name", ''), "whatsapp_chats"."chat_id"),
+           NULLIF(EXCLUDED."chat_name", ''),
+           EXCLUDED."chat_id"
+         ),
+         "is_group" = EXCLUDED."is_group",
+         "last_body" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_body" ELSE "whatsapp_chats"."last_body" END,
+         "last_from_me" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_from_me" ELSE "whatsapp_chats"."last_from_me" END,
+         "last_ts" = GREATEST(EXCLUDED."last_ts", "whatsapp_chats"."last_ts"),
+         "phone_number_id" = COALESCE(EXCLUDED."phone_number_id", "whatsapp_chats"."phone_number_id"),
+         "last_inbound_at" = GREATEST(EXCLUDED."last_inbound_at", "whatsapp_chats"."last_inbound_at"),
+         "unread_count" = "whatsapp_chats"."unread_count" + EXCLUDED."unread_count",
+         "updated_at" = now()
+       RETURNING "unread_count", "last_read_message_id"`;
+
+// chat_id may be a legacy JID; contact_resolution_attempted stops the subquery from re-running per chat.
+const CONTACT_RESOLVE_SQL = `UPDATE "whatsapp_chats"
+             SET
+               "contact_id" = (
+                 SELECT c."id"
+                   FROM "contacts" c
+                  WHERE c."company_id" = $1
+                    AND c."phone" IS NOT NULL
+                    AND RIGHT(regexp_replace(c."phone", '\\D', '', 'g'), 9)
+                      = RIGHT(
+                          regexp_replace(
+                            split_part(split_part($3, '@', 1), ':', 1),
+                            '\\D', '', 'g'
+                          ),
+                          9
+                        )
+                  LIMIT 1
+               ),
+               "contact_resolution_attempted" = true
+           WHERE "company_id" = $1
+             AND "user_id" = $2
+             AND "chat_id" = $3
+             AND "contact_id" IS NULL
+             AND COALESCE("contact_resolution_attempted", false) = false
+             AND COALESCE("is_group", false) = false`;
 
 @Injectable()
 export class MessageStoreService {
@@ -83,13 +137,51 @@ export class MessageStoreService {
     };
   }
 
+  // status is written only on insert; the conflict path never touches an existing row.
+  private toInsertValues(
+    companyId: string,
+    userId: string,
+    msg: WaMessage,
+    phoneNumberId: string | null | undefined,
+    safeTs: string,
+    insertStatus: { status?: WhatsappMessageStatus; statusAt?: Date },
+  ): QueryDeepPartialEntity<WhatsappMessage> {
+    return {
+      companyId,
+      userId,
+      originUserId: userId,
+      waMessageId: msg.id,
+      chatId: msg.chatId,
+      senderId: msg.senderId ?? '',
+      senderName: msg.senderName ?? '',
+      chatName: msg.chatName ?? '',
+      isGroup: msg.isGroup ?? false,
+      body: msg.body ?? '',
+      hasMedia: msg.hasMedia ?? false,
+      mediaType: msg.mediaType ?? '',
+      mediaUrls: msg.mediaUrls ?? [],
+      mentionedIds: msg.mentionedIds ?? [],
+      quotedParticipant: msg.quotedParticipant ?? '',
+      fromMe: msg.fromMe ?? false,
+      aiGenerated: msg.aiGenerated ?? false,
+      phoneNumberId: phoneNumberId ?? null,
+      timestamp: safeTs,
+      ...(insertStatus.status
+        ? {
+            status: insertStatus.status,
+            statusAt: insertStatus.statusAt ?? null,
+          }
+        : {}),
+    };
+  }
+
   // inserted is false when the row already existed (a Meta redelivery), true only on first insert.
   async addMessage(
     companyId: string,
     userId: string,
     msg: WaMessage,
     phoneNumberId?: string | null,
-    // Synced history: never unread; opens Meta's reply window only when under 24h old.
+    // Passive store: never unread; opens Meta's reply window only when under 24h old.
     options: {
       isPassive?: boolean;
       // Written only when this call inserts the row, so a live row's status is never overwritten.
@@ -123,56 +215,20 @@ export class MessageStoreService {
         .createQueryBuilder()
         .insert()
         .into(WhatsappMessage)
-        .values({
-          companyId,
-          userId,
-          originUserId: userId,
-          waMessageId: msg.id,
-          chatId: msg.chatId,
-          senderId: msg.senderId ?? '',
-          senderName: msg.senderName ?? '',
-          chatName: msg.chatName ?? '',
-          isGroup: msg.isGroup ?? false,
-          body: msg.body ?? '',
-          hasMedia: msg.hasMedia ?? false,
-          mediaType: msg.mediaType ?? '',
-          mediaUrls: msg.mediaUrls ?? [],
-          mentionedIds: msg.mentionedIds ?? [],
-          quotedParticipant: msg.quotedParticipant ?? '',
-          fromMe: msg.fromMe ?? false,
-          aiGenerated: msg.aiGenerated ?? false,
-          phoneNumberId: phoneNumberId ?? null,
-          timestamp: safeTs,
-          ...(options.status
-            ? { status: options.status, statusAt: options.statusAt ?? null }
-            : {}),
-        })
+        .values(
+          this.toInsertValues(companyId, userId, msg, phoneNumberId, safeTs, {
+            status: options.status,
+            statusAt: options.statusAt,
+          }),
+        )
         .orIgnore()
         .execute();
 
       // orIgnore returns an empty raw array when the unique index already held the row.
       inserted = Array.isArray(insertResult.raw) && insertResult.raw.length > 0;
 
-      // Raw SQL: orUpdate() can't express conditional columns; mirror renames in the entity
       const chatRows: ChatUnreadRow[] | undefined = await manager.query(
-        `INSERT INTO "whatsapp_chats"
-         ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me", "phone_number_id", "last_inbound_at", "unread_count")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       ON CONFLICT ("company_id", "user_id", "chat_id") DO UPDATE SET
-         "chat_name" = COALESCE(
-           NULLIF(NULLIF("whatsapp_chats"."chat_name", ''), "whatsapp_chats"."chat_id"),
-           NULLIF(EXCLUDED."chat_name", ''),
-           EXCLUDED."chat_id"
-         ),
-         "is_group" = EXCLUDED."is_group",
-         "last_body" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_body" ELSE "whatsapp_chats"."last_body" END,
-         "last_from_me" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_from_me" ELSE "whatsapp_chats"."last_from_me" END,
-         "last_ts" = GREATEST(EXCLUDED."last_ts", "whatsapp_chats"."last_ts"),
-         "phone_number_id" = COALESCE(EXCLUDED."phone_number_id", "whatsapp_chats"."phone_number_id"),
-         "last_inbound_at" = GREATEST(EXCLUDED."last_inbound_at", "whatsapp_chats"."last_inbound_at"),
-         "unread_count" = "whatsapp_chats"."unread_count" + EXCLUDED."unread_count",
-         "updated_at" = now()
-       RETURNING "unread_count", "last_read_message_id"`,
+        CHAT_UPSERT_SQL,
         [
           companyId,
           userId,
@@ -195,39 +251,103 @@ export class MessageStoreService {
         lastReadMessageId: chat?.last_read_message_id ?? null,
       };
 
-      // chat_id may be a legacy JID; contact_resolution_attempted stops the subquery from re-running per chat.
       if (!msg.isGroup) {
-        await manager.query(
-          `UPDATE "whatsapp_chats"
-             SET
-               "contact_id" = (
-                 SELECT c."id"
-                   FROM "contacts" c
-                  WHERE c."company_id" = $1
-                    AND c."phone" IS NOT NULL
-                    AND RIGHT(regexp_replace(c."phone", '\\D', '', 'g'), 9)
-                      = RIGHT(
-                          regexp_replace(
-                            split_part(split_part($3, '@', 1), ':', 1),
-                            '\\D', '', 'g'
-                          ),
-                          9
-                        )
-                  LIMIT 1
-               ),
-               "contact_resolution_attempted" = true
-           WHERE "company_id" = $1
-             AND "user_id" = $2
-             AND "chat_id" = $3
-             AND "contact_id" IS NULL
-             AND COALESCE("contact_resolution_attempted", false) = false
-             AND COALESCE("is_group", false) = false`,
-          [companyId, userId, msg.chatId],
-        );
+        await manager.query(CONTACT_RESOLVE_SQL, [
+          companyId,
+          userId,
+          msg.chatId,
+        ]);
       }
     });
 
     return { inserted, unread };
+  }
+
+  // Synced history for one chat in one transaction; returns the ids this call inserted.
+  async addHistoryMessages(
+    companyId: string,
+    userId: string,
+    phoneNumberId: string | null | undefined,
+    items: HistoryMessage[],
+  ): Promise<string[]> {
+    if (items.length === 0) return [];
+    const { chatId } = items[0].msg;
+    if (items.some((item) => item.msg.chatId !== chatId)) {
+      throw new Error('addHistoryMessages accepts messages from one chat only');
+    }
+
+    const nowS = Math.floor(Date.now() / 1000);
+    const rows = items.map((item) => ({
+      item,
+      safeTs: String(Math.min(item.msg.timestamp ?? 0, nowS + MAX_TS_SKEW_S)),
+    }));
+    // Ties go to the later row, matching addMessage's >= preview rule applied in order.
+    const newest = rows.reduce((best, row) =>
+      Number(row.safeTs) >= Number(best.safeTs) ? row : best,
+    );
+    // Passive rule: only a customer message under 24h old opens the reply window.
+    const newestInboundS = rows.reduce<number | null>((max, row) => {
+      const ts = Number(row.safeTs);
+      if (row.item.msg.fromMe || ts <= nowS - REPLY_WINDOW_S) return max;
+      return max === null || ts > max ? ts : max;
+    }, null);
+    // First meaningful name wins, as sequential upserts keep the first non-blank one.
+    const chatName =
+      items.find((item) => item.msg.chatName && item.msg.chatName !== chatId)
+        ?.msg.chatName ?? '';
+    const isGroup = items[items.length - 1].msg.isGroup ?? false;
+    const insertedIds: string[] = [];
+
+    await this.messages.manager.transaction(async (manager) => {
+      for (let i = 0; i < rows.length; i += HISTORY_INSERT_CHUNK) {
+        const insertResult = await manager
+          .createQueryBuilder()
+          .insert()
+          .into(WhatsappMessage)
+          .values(
+            rows
+              .slice(i, i + HISTORY_INSERT_CHUNK)
+              .map(({ item, safeTs }) =>
+                this.toInsertValues(
+                  companyId,
+                  userId,
+                  item.msg,
+                  phoneNumberId,
+                  safeTs,
+                  item,
+                ),
+              ),
+          )
+          .orIgnore()
+          .returning('"wa_message_id"')
+          .updateEntity(false)
+          .execute();
+        const raw = insertResult.raw as { wa_message_id: string }[];
+        if (Array.isArray(raw)) {
+          insertedIds.push(...raw.map((row) => row.wa_message_id));
+        }
+      }
+
+      await manager.query(CHAT_UPSERT_SQL, [
+        companyId,
+        userId,
+        chatId,
+        chatName || chatId,
+        isGroup,
+        newest.item.msg.body ?? '',
+        newest.safeTs,
+        newest.item.msg.fromMe ?? false,
+        phoneNumberId ?? null,
+        newestInboundS === null ? null : new Date(newestInboundS * 1000),
+        0,
+      ]);
+
+      if (!isGroup) {
+        await manager.query(CONTACT_RESOLVE_SQL, [companyId, userId, chatId]);
+      }
+    });
+
+    return insertedIds;
   }
 
   // Moves the read marker forward only and recomputes unread_count; null when the message is unknown.

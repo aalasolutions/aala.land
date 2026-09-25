@@ -83,6 +83,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     let capturedBody;
     controller.whatsapp = {
       ...fakeWhatsappService(),
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage(chatId, body) {
         capturedChatId = chatId;
         capturedBody = body;
@@ -129,6 +130,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     };
     controller.whatsapp = {
       ...fakeWhatsappService(),
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         return Promise.resolve({
           data: {
@@ -160,6 +162,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
       },
     };
     controller.whatsapp = {
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         return Promise.reject(new Error('No connected WhatsApp number'));
       },
@@ -173,9 +176,17 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.false(controller.isSending, 'isSending reset');
   });
 
+  function withOpenWindow(controller, chatId = 'chat-1') {
+    controller.now = Date.now();
+    controller.whatsapp.chats = [
+      { chatId, chatName: 'Layla', lastInboundAt: controller.now },
+    ];
+  }
+
   test('composerDisabled is true with no chat selected or while sending', function (assert) {
     const controller = makeController(this);
     controller.connection = { status: 'connected' };
+    withOpenWindow(controller);
     controller.currentChatId = null;
     assert.true(controller.composerDisabled);
 
@@ -189,6 +200,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('composerDisabled is true with no connected number, even with a chat open', function (assert) {
     const controller = makeController(this);
+    withOpenWindow(controller);
     controller.currentChatId = 'chat-1';
     controller.isSending = false;
 
@@ -305,13 +317,25 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
-  test('a closed window never disables the composer: the backend is the enforcement point', function (assert) {
+  test('a closed reply window disables the composer', function (assert) {
     const controller = makeController(this);
-    withChat(controller, NOW - 30 * HOUR);
     controller.connection = { status: 'connected' };
 
+    withChat(controller, NOW - 30 * HOUR);
     assert.false(controller.replyWindow.open);
-    assert.false(controller.composerDisabled, 'composer stays usable');
+    assert.true(controller.composerDisabled, 'expired window');
+
+    withChat(controller, null);
+    assert.true(controller.composerDisabled, 'customer never wrote');
+  });
+
+  test('an open reply window leaves the composer enabled', function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    withChat(controller, NOW - 2 * HOUR);
+
+    assert.true(controller.replyWindow.open);
+    assert.false(controller.composerDisabled);
   });
 
   test('an inbound message reopens the window without a chat-list refetch', function (assert) {
@@ -1457,6 +1481,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     });
     whatsapp.sendMessage = () =>
       Promise.resolve({ data: { ...msg('m-9', 900), fromMe: true } });
+    whatsapp.chats = [{ chatId: 'chat-1', lastInboundAt: Date.now() }];
     controller.whatsapp = whatsapp;
     controller.messageText = 'hi';
 
@@ -1686,6 +1711,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const whatsapp = fakeWhatsappService();
     let resolveSend;
     whatsapp.sendMessage = () => new Promise((r) => (resolveSend = r));
+    whatsapp.chats = [{ chatId: 'chat-1', lastInboundAt: Date.now() }];
     controller.whatsapp = whatsapp;
     controller.messageText = 'hi';
 
@@ -2090,6 +2116,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     // @action getter-binds sendMessage; spy on the service call instead of replacing the bound action.
     let sendCalled = 0;
     controller.whatsapp = {
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         sendCalled++;
         return Promise.resolve({ data: { id: `m-${sendCalled}` } });

@@ -406,8 +406,9 @@
         display: block;
       }
 
+      // Both sides, so a hovered flyout row fills the panel width evenly.
       .nu-sidebar__sublink {
-        margin-inline-start: 0;
+        margin-inline: 0;
       }
     }
 

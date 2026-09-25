@@ -18,7 +18,10 @@ const DEFAULT_SEND_TIMEOUT_MS = 15000;
 // Meta's code for an invalid or expired access token.
 const GRAPH_TOKEN_INVALID_CODE = 190;
 
-// A reply that never reached Meta; thrown so the turn's catch skips writing delivery record or history.
+// Meta's code for a free-form send outside the 24h customer service window.
+export const GRAPH_REPLY_WINDOW_CLOSED_CODE = 131047;
+
+// A reply Meta did not accept; thrown so the turn's catch skips writing delivery record or history.
 export class WhatsappSendError extends Error {
   constructor(
     message: string,
@@ -29,6 +32,10 @@ export class WhatsappSendError extends Error {
   ) {
     super(message);
     this.name = 'WhatsappSendError';
+  }
+
+  get windowClosed(): boolean {
+    return this.graphCode === GRAPH_REPLY_WINDOW_CLOSED_CODE;
   }
 }
 
