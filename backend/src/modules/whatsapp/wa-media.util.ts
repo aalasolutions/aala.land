@@ -1,5 +1,4 @@
 import { envInt } from '@shared/utils/env.util';
-import { ALLOWED_DOCUMENT_TYPES } from '@shared/constants/document-types';
 import {
   WA_MEDIA_DELETED_BY,
   WaMediaStatus,
@@ -191,27 +190,56 @@ interface WaOutboundRule {
   type: WaOutboundMediaType;
   ext: string;
   limitBytes: number;
+  // The mime handed to Meta when it differs from the detected one.
+  uploadMime?: string;
 }
 
 const KB = 1024;
 const MB = 1024 * 1024;
 export const WA_ANIMATED_STICKER_LIMIT_BYTES = 500 * KB;
 
-const DOCUMENT_EXT: Record<string, string> = {
-  'application/pdf': 'pdf',
-  'application/msword': 'doc',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-    'docx',
-  'application/vnd.ms-excel': 'xls',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-  'application/vnd.ms-powerpoint': 'ppt',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-    'pptx',
-  'application/rtf': 'rtf',
-  'text/plain': 'txt',
-  'text/markdown': 'md',
-  'text/csv': 'csv',
-  'image/gif': 'gif',
+// Meta accepts plain text, PDF and Office files as documents; csv and markdown are text and go up as text/plain.
+const DOCUMENT_RULES: Record<string, WaOutboundRule> = {
+  'application/pdf': { type: 'document', ext: 'pdf', limitBytes: 100 * MB },
+  'application/msword': { type: 'document', ext: 'doc', limitBytes: 100 * MB },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
+    type: 'document',
+    ext: 'docx',
+    limitBytes: 100 * MB,
+  },
+  'application/vnd.ms-excel': {
+    type: 'document',
+    ext: 'xls',
+    limitBytes: 100 * MB,
+  },
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+    type: 'document',
+    ext: 'xlsx',
+    limitBytes: 100 * MB,
+  },
+  'application/vnd.ms-powerpoint': {
+    type: 'document',
+    ext: 'ppt',
+    limitBytes: 100 * MB,
+  },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+    type: 'document',
+    ext: 'pptx',
+    limitBytes: 100 * MB,
+  },
+  'text/plain': { type: 'document', ext: 'txt', limitBytes: 100 * MB },
+  'text/csv': {
+    type: 'document',
+    ext: 'csv',
+    limitBytes: 100 * MB,
+    uploadMime: 'text/plain',
+  },
+  'text/markdown': {
+    type: 'document',
+    ext: 'md',
+    limitBytes: 100 * MB,
+    uploadMime: 'text/plain',
+  },
 };
 
 const MEDIA_RULES: Record<string, WaOutboundRule> = {
@@ -230,20 +258,15 @@ const MEDIA_RULES: Record<string, WaOutboundRule> = {
 
 // Keyed by the mime detected from the file bytes, never the one the client sent.
 export const WA_OUTBOUND_MEDIA: Readonly<Record<string, WaOutboundRule>> = {
-  ...Object.fromEntries(
-    ALLOWED_DOCUMENT_TYPES.filter((mime) => !(mime in MEDIA_RULES)).map(
-      (mime) => [
-        mime,
-        {
-          type: 'document',
-          ext: DOCUMENT_EXT[mime] ?? 'bin',
-          limitBytes: 100 * MB,
-        },
-      ],
-    ),
-  ),
+  ...DOCUMENT_RULES,
   ...MEDIA_RULES,
 };
+
+// The mime Meta receives for a stored row; text-like documents only travel as text/plain.
+export function metaUploadMime(mime: string | null | undefined): string {
+  const base = baseMime(mime);
+  return WA_OUTBOUND_MEDIA[base]?.uploadMime ?? base;
+}
 
 // file-type names these differently from Meta, or cannot tell legacy Office formats apart.
 const DETECTED_MIME_ALIASES: Record<string, string> = {
@@ -268,8 +291,7 @@ export function isVoiceNoteMedia(
   return type === 'audio' && baseMime(mime) === 'audio/ogg';
 }
 
-export const WA_VIDEO_TOO_LARGE_MESSAGE =
-  'Video is over 16 MB. Send it as a document instead.';
+export const WA_VIDEO_TOO_LARGE_MESSAGE = 'Video is over 16 MB.';
 
 const TOO_LARGE_MESSAGES: Record<WaOutboundMediaType, string> = {
   image: 'Image is over 5 MB.',
@@ -282,6 +304,7 @@ const TOO_LARGE_MESSAGES: Record<WaOutboundMediaType, string> = {
 export interface WaOutboundMedia {
   type: WaOutboundMediaType;
   mime: string;
+  uploadMime: string;
   ext: string;
   limitBytes: number;
 }
@@ -342,7 +365,13 @@ export function resolveOutboundMedia(
           : TOO_LARGE_MESSAGES[rule.type],
     };
   }
-  return { type: rule.type, mime, ext: rule.ext, limitBytes };
+  return {
+    type: rule.type,
+    mime,
+    uploadMime: rule.uploadMime ?? mime,
+    ext: rule.ext,
+    limitBytes,
+  };
 }
 
 // Outbound keys use the row uuid: the wamid is unknown until Meta accepts the send.

@@ -345,6 +345,13 @@ describe('WhatsappMediaSendService', () => {
         mediaType: 'document',
         mediaMime: 'text/csv',
       });
+      // Meta lists plain text only, so a csv travels as text/plain under its own name.
+      const uploadCall = fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith('/media'),
+      );
+      const form = uploadCall?.[1]?.body as FormData;
+      expect(form.get('type')).toBe('text/plain');
+      expect((form.get('file') as File).name).toBe(file.originalname);
     });
 
     it('sends an Opus OGG as plain audio when it is not flagged as a voice note', async () => {
@@ -478,11 +485,7 @@ describe('WhatsappMediaSendService', () => {
 
       await expect(
         service.sendFile('company-1', 'user-1', '971501234567', file),
-      ).rejects.toThrow(
-        new BadRequestException(
-          'Video is over 16 MB. Send it as a document instead.',
-        ),
-      );
+      ).rejects.toThrow(new BadRequestException('Video is over 16 MB.'));
 
       expect(reserveStorage).not.toHaveBeenCalled();
       expect(mockUploads).toHaveLength(0);

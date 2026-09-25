@@ -47,10 +47,8 @@ module('Unit | Utility | wa-outbound-media', function () {
       ],
       ['a.xls', 'application/vnd.ms-excel', MB, 'document'],
       ['a.txt', 'text/plain', KB, 'document'],
-      ['a.rtf', 'application/rtf', KB, 'document'],
       ['a.md', 'text/markdown', KB, 'document'],
       ['a.csv', 'text/csv', KB, 'document'],
-      ['a.gif', 'image/gif', MB, 'document'],
     ];
     for (const [name, type, size, kind] of cases) {
       assert.deepEqual(
@@ -86,10 +84,7 @@ module('Unit | Utility | wa-outbound-media', function () {
     );
     assert.strictEqual(result.kind, 'video');
     assert.strictEqual(result.error, VIDEO_TOO_LARGE_ERROR);
-    assert.strictEqual(
-      VIDEO_TOO_LARGE_ERROR,
-      'Video is over 16 MB. Send it as a document instead.',
-    );
+    assert.strictEqual(VIDEO_TOO_LARGE_ERROR, 'Video is over 16 MB.');
   });
 
   test('an unknown or missing type is refused', function (assert) {
@@ -111,13 +106,11 @@ module('Unit | Utility | wa-outbound-media', function () {
     assert.true(accepted.includes('image/jpeg'));
     assert.true(accepted.includes('image/webp'));
     assert.true(accepted.includes('application/pdf'));
-    for (const type of [
-      'application/rtf',
-      'text/markdown',
-      'text/csv',
-      'image/gif',
-    ]) {
+    for (const type of ['text/markdown', 'text/csv']) {
       assert.true(accepted.includes(type), type);
+    }
+    for (const type of ['application/rtf', 'image/gif']) {
+      assert.false(accepted.includes(type), type);
     }
     assert.false(accepted.includes('application/zip'));
   });

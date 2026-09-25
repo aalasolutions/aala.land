@@ -54,6 +54,7 @@ import {
   countsTowardQuota,
   generatedMediaFileName,
   isVoiceNoteMedia,
+  metaUploadMime,
   outboundObjectKey,
   outboundTextMime,
   resolveMediaUrlTtlSeconds,
@@ -79,6 +80,7 @@ interface DeliveryFile {
   path: string;
   type: WaOutboundMediaType;
   mime: string;
+  uploadMime: string;
   fileName: string;
   caption: string;
   voice: boolean;
@@ -218,6 +220,9 @@ export class WhatsappMediaSendService {
           path,
           type: row.mediaType as WaOutboundMediaType,
           mime: row.mediaMime ?? 'application/octet-stream',
+          uploadMime: metaUploadMime(
+            row.mediaMime ?? 'application/octet-stream',
+          ),
           fileName:
             row.mediaFileName ??
             generatedMediaFileName(row.mediaType, row.id, row.mediaMime),
@@ -313,6 +318,7 @@ export class WhatsappMediaSendService {
         path: file.path,
         type: media.type,
         mime: media.mime,
+        uploadMime: media.uploadMime,
         fileName,
         caption,
         voice,
@@ -411,7 +417,7 @@ export class WhatsappMediaSendService {
   ): Promise<{ messageId: string }> {
     const mediaId = await this.cloud.uploadMedia(connection, token, {
       path: file.path,
-      mime: file.mime,
+      mime: file.uploadMime,
       fileName: file.fileName,
     });
     return this.cloud.sendMedia(connection, chatId, {

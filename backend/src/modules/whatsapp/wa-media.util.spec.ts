@@ -130,10 +130,11 @@ describe('wa-media.util', () => {
     expect(evt.mediaMetaId).toBe('meta-1');
   });
   describe('outbound media', () => {
+    const KB = 1024;
     const MB = 1024 * 1024;
 
     it('maps detected mimes to Meta types with their limits', () => {
-      expect(resolveOutboundMedia('image/jpeg', MB, 'a.jpg')).toEqual({
+      expect(resolveOutboundMedia('image/jpeg', MB, 'a.jpg')).toMatchObject({
         type: 'image',
         mime: 'image/jpeg',
         ext: 'jpg',
@@ -149,17 +150,28 @@ describe('wa-media.util', () => {
         type: 'audio',
         mime: 'audio/mp4',
       });
-      expect(resolveOutboundMedia('image/gif', MB, 'a.gif')).toMatchObject({
-        type: 'document',
-        ext: 'gif',
+      expect(resolveOutboundMedia('image/gif', MB, 'a.gif')).toEqual({
+        refusal: 'This file type (image/gif) cannot be sent on WhatsApp.',
+      });
+      expect(resolveOutboundMedia('application/rtf', KB, 'a.rtf')).toEqual({
+        refusal: 'This file type (application/rtf) cannot be sent on WhatsApp.',
       });
       expect(WA_OUTBOUND_MEDIA['text/csv']).toMatchObject({ type: 'document' });
+      expect(resolveOutboundMedia('text/csv', KB, 'a.csv')).toMatchObject({
+        mime: 'text/csv',
+        uploadMime: 'text/plain',
+      });
+      expect(
+        resolveOutboundMedia('application/pdf', KB, 'a.pdf'),
+      ).toMatchObject({
+        uploadMime: 'application/pdf',
+      });
     });
 
     it('accepts Opus OGG only and refuses Vorbis, FLAC or Speex OGG', () => {
       expect(
         resolveOutboundMedia('audio/ogg; codecs=opus', MB, 'n.ogg'),
-      ).toEqual({
+      ).toMatchObject({
         type: 'audio',
         mime: 'audio/ogg',
         ext: 'ogg',
@@ -191,7 +203,7 @@ describe('wa-media.util', () => {
 
     it('refuses over-limit files with a message per type', () => {
       expect(resolveOutboundMedia('video/3gpp', 16 * MB + 1, 'c.3gp')).toEqual({
-        refusal: 'Video is over 16 MB. Send it as a document instead.',
+        refusal: 'Video is over 16 MB.',
       });
       expect(resolveOutboundMedia('image/png', 5 * MB + 1, 'a.png')).toEqual({
         refusal: 'Image is over 5 MB.',

@@ -36,18 +36,15 @@ const LIMITS = [
       'application/vnd.ms-powerpoint',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'text/plain',
-      'application/rtf',
       'text/markdown',
       'text/csv',
-      'image/gif',
     ],
   },
 ];
 
 export const UNSUPPORTED_TYPE_ERROR =
   'This file type cannot be sent on WhatsApp.';
-export const VIDEO_TOO_LARGE_ERROR =
-  'Video is over 16 MB. Send it as a document instead.';
+export const VIDEO_TOO_LARGE_ERROR = 'Video is over 16 MB.';
 export const CAPTION_MAX_LENGTH = 1024;
 
 export const OUTBOUND_ACCEPT = LIMITS.flatMap((entry) => entry.types).join(',');
