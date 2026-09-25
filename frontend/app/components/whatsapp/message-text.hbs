@@ -1,16 +1,38 @@
-{{~#each this.parts as |part|~}}
-  {{~#if part.isLink~}}
+{{~#each this.nodes as |node|~}}
+  {{~#if (eq node.type "link")~}}
     <a
       class="wa-message-link"
-      href={{part.href}}
+      href={{node.href}}
       target="_blank"
       rel="noopener noreferrer nofollow"
-      title={{part.host}}
-      data-test-wa-message-link={{part.host}}
-      {{on "click" (fn this.openLink part)}}
-      {{on "auxclick" (fn this.openLink part)}}
-    >{{part.value}}</a>
+      title={{node.host}}
+      data-test-wa-message-link={{node.host}}
+      {{on "click" (fn this.openLink node)}}
+      {{on "auxclick" (fn this.openLink node)}}
+    >{{node.value}}</a>
+  {{~else if (eq node.type "bold")~}}
+    <strong data-test-wa-format="bold"><Whatsapp::MessageText
+        @nodes={{node.children}}
+        @isExternal={{@isExternal}}
+      /></strong>
+  {{~else if (eq node.type "italic")~}}
+    <em data-test-wa-format="italic"><Whatsapp::MessageText
+        @nodes={{node.children}}
+        @isExternal={{@isExternal}}
+      /></em>
+  {{~else if (eq node.type "strike")~}}
+    <s data-test-wa-format="strike"><Whatsapp::MessageText
+        @nodes={{node.children}}
+        @isExternal={{@isExternal}}
+      /></s>
+  {{~else if (eq node.type "code")~}}
+    <code class="nu-code" data-test-wa-format="code">{{node.value}}</code>
+  {{~else if (eq node.type "pre")~}}
+    <code
+      class="nu-code wa-message-pre"
+      data-test-wa-format="pre"
+    >{{node.value}}</code>
   {{~else~}}
-    {{part.value}}
+    {{node.value}}
   {{~/if~}}
 {{~/each~}}

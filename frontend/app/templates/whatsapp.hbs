@@ -98,45 +98,12 @@
         </div>
       {{/if}}
 
-      <div class="wa-chat-list">
-        {{#each this.chats as |chat|}}
-          <button
-            type="button"
-            class="wa-chat-item
-              {{if (eq this.currentChatId chat.chatId) 'is-active'}}"
-            data-test-wa-chat={{chat.chatId}}
-            {{on "click" (fn this.selectChat chat.chatId)}}
-          >
-            <div class="flex between x-center">
-              <span class="wa-chat-name">
-                {{#if chat.isGroup}}
-                  <Nuvo::Tag @size="sm" @text="group" />
-                {{/if}}
-                {{chat.chatName}}
-              </span>
-              <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
-            </div>
-            <div class="wa-chat-preview-row">
-              <p class="wa-chat-preview">
-                {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
-              </p>
-              {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
-                {{#if unreadCount}}
-                  <Nuvo::Badge
-                    class="wa-chat-unread"
-                    @count={{true}}
-                    @value={{unreadCount}}
-                    @max={{99}}
-                    data-test-wa-chat-unread
-                  />
-                {{/if}}
-              {{/let}}
-            </div>
-          </button>
-        {{else}}
-          <Nuvo::EmptyState @title="No chats yet" />
-        {{/each}}
-      </div>
+      <Whatsapp::ChatList
+        @chats={{this.chats}}
+        @currentChatId={{this.currentChatId}}
+        @onSelect={{this.selectChat}}
+        @now={{this.now}}
+      />
 
     </aside>
 

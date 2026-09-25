@@ -2234,6 +2234,51 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.chats[0].chatName, '971500000000');
   });
 
+  test('_updateChat gives a number-only chat the name a live message carries', function (assert) {
+    const controller = makeController(this);
+    controller.chats = [
+      { chatId: '971500000000', chatName: '971500000000', lastTs: 100000 },
+      { chatId: '971511111111', chatName: '', lastTs: 300000 },
+    ];
+
+    controller._updateChat({
+      chatId: '971500000000',
+      chatName: 'Layla',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 200000,
+    });
+    controller._updateChat({
+      chatId: '971511111111',
+      chatName: 'Omar',
+      body: 'older',
+      fromMe: false,
+      timestamp: 50000,
+    });
+
+    const byId = Object.fromEntries(controller.chats.map((c) => [c.chatId, c]));
+    assert.strictEqual(byId['971500000000'].chatName, 'Layla');
+    assert.strictEqual(byId['971511111111'].chatName, 'Omar', 'older message');
+    assert.strictEqual(byId['971511111111'].lastBody, undefined);
+  });
+
+  test('_updateChat keeps a real chat name', function (assert) {
+    const controller = makeController(this);
+    controller.chats = [
+      { chatId: '971500000000', chatName: 'Layla', lastTs: 100000 },
+    ];
+
+    controller._updateChat({
+      chatId: '971500000000',
+      chatName: 'Layla Phone',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 200000,
+    });
+
+    assert.strictEqual(controller.chats[0].chatName, 'Layla');
+  });
+
   test('setup surfaces a failure via notifications.error, not just the console', async function (assert) {
     const controller = makeController(this);
 

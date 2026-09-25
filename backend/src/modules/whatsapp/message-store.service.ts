@@ -16,6 +16,7 @@ const MESSAGES_PAGE_MAX = 200;
 const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
+const REPLY_WINDOW_S = 24 * 60 * 60;
 
 // Delivery ladder, forward only: failed tops it so a redelivered sent cannot resurrect.
 const STATUS_RANK: Record<WhatsappMessageStatus, number> = {
@@ -88,7 +89,7 @@ export class MessageStoreService {
     userId: string,
     msg: WaMessage,
     phoneNumberId?: string | null,
-    // Synced history: never unread and never opens Meta's reply window.
+    // Synced history: never unread; opens Meta's reply window only when under 24h old.
     options: { isPassive?: boolean } = {},
   ): Promise<{ inserted: boolean; unread: WaUnreadState }> {
     const isPassive = options.isPassive ?? false;
@@ -99,8 +100,11 @@ export class MessageStoreService {
       ),
     );
     // Meta's reply-window clock opens on inbound customer messages only.
-    const lastInboundAt =
-      msg.fromMe || isPassive ? null : new Date(Number(safeTs) * 1000);
+    const opensWindow =
+      !msg.fromMe &&
+      (!isPassive ||
+        Number(safeTs) > Math.floor(Date.now() / 1000) - REPLY_WINDOW_S);
+    const lastInboundAt = opensWindow ? new Date(Number(safeTs) * 1000) : null;
     let inserted = false;
     let unread: WaUnreadState = {
       chatId: msg.chatId,

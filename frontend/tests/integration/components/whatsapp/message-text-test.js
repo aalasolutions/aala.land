@@ -33,6 +33,29 @@ module('Integration | Component | whatsapp/message-text', function (hooks) {
     assert.dom(this.element).hasText('Unit list https://aala.land/units here');
   });
 
+  test('renders WhatsApp formatting without adding whitespace', async function (assert) {
+    this.set('text', 'hi *bold* _it_ ~gone~ `code` ```a\nb```');
+    await render(hbs`<Whatsapp::MessageText @text={{this.text}} />`);
+
+    assert.dom('strong[data-test-wa-format="bold"]').hasText('bold');
+    assert.dom('em[data-test-wa-format="italic"]').hasText('it');
+    assert.dom('s[data-test-wa-format="strike"]').hasText('gone');
+    assert.dom('code[data-test-wa-format="code"]').hasText('code');
+    assert.dom('code[data-test-wa-format="pre"]').hasClass('wa-message-pre');
+    assert.strictEqual(this.element.textContent, 'hi bold it gone code a\nb');
+  });
+
+  test('a customer link inside bold still asks before opening', async function (assert) {
+    this.set('text', '*pay https://paypa1-secure.com/x*');
+    await render(
+      hbs`<Whatsapp::MessageText @text={{this.text}} @isExternal={{true}} />`,
+    );
+    await click('strong [data-test-wa-message-link]');
+
+    assert.strictEqual(this.confirms.length, 1);
+    assert.true(this.confirms[0].message.includes('paypa1-secure.com'));
+  });
+
   test('message text is never parsed as HTML', async function (assert) {
     this.set('text', '<img src=x onerror=alert(1)> hi');
     await render(hbs`<Whatsapp::MessageText @text={{this.text}} />`);

@@ -104,7 +104,6 @@ $wa-message-max-width: 70%;
   color: var(--text-muted);
 }
 
-
 .wa-chat-list {
   flex: 1;
   overflow-y: auto;
@@ -120,6 +119,7 @@ $wa-message-max-width: 70%;
   border: 0;
   border-block-end: 1px solid var(--border-base);
   border-inline-start: 3px solid transparent;
+  border-radius: 0;
   cursor: pointer;
   transition: background nu-duration(fast) $nu-ease;
 
@@ -151,6 +151,19 @@ $wa-message-max-width: 70%;
   margin-inline-start: nu-space(2);
   font-size: nu-font-size(2xs);
   color: var(--text-muted);
+}
+
+.wa-chat-window {
+  margin-inline-end: nu-space(1);
+  vertical-align: middle;
+
+  &.is-open {
+    color: var(--success);
+  }
+
+  &.is-closed {
+    color: var(--warning);
+  }
 }
 
 .wa-chat-preview-row {
@@ -283,6 +296,12 @@ $wa-message-max-width: 70%;
   color: inherit;
   text-decoration: underline;
   word-break: break-all;
+}
+
+.wa-message-pre {
+  display: block;
+  margin-block: nu-space(1);
+  white-space: pre-wrap;
 }
 
 // A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.

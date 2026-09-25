@@ -1,14 +1,15 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { splitMessageLinks } from 'land/utils/message-links';
+import { parseMessageText } from 'land/utils/message-format';
 
 // Customer links open only after a confirm naming the real domain; our own links open directly.
 export default class WhatsappMessageTextComponent extends Component {
   @service dialogs;
 
-  get parts() {
-    return splitMessageLinks(this.args.text ?? '');
+  // Nested formatting renders by recursion; @nodes is only passed by this component to itself.
+  get nodes() {
+    return this.args.nodes ?? parseMessageText(this.args.text ?? '');
   }
 
   // Bound to click and auxclick, so a middle-click cannot skip the confirm.

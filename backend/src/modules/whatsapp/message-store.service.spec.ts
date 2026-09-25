@@ -299,11 +299,40 @@ describe('MessageStoreService', () => {
       expect(txManager.query.mock.calls[0][1][10]).toBe(0);
     });
 
-    it('never opens the reply-window clock for a history message', async () => {
+    it('never opens the reply-window clock for a history message over 24h old', async () => {
+      const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
       await service.addMessage(
         'co-1',
         'user-a',
-        makeMsg({ fromMe: false }),
+        makeMsg({ fromMe: false, timestamp: twoDaysAgo }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][9]).toBeNull();
+    });
+
+    it('opens the reply-window clock for a customer history message under 24h old', async () => {
+      const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false, timestamp: hourAgo }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      const lastInboundAt = txManager.query.mock.calls[0][1][9] as Date;
+      expect(lastInboundAt.getTime()).toBe(hourAgo * 1000);
+      expect(txManager.query.mock.calls[0][1][10]).toBe(0);
+    });
+
+    it('never opens the reply-window clock for our own recent history message', async () => {
+      const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true, timestamp: hourAgo }),
         'phone-1',
         { isPassive: true },
       );

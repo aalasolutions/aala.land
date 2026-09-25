@@ -8,9 +8,8 @@ import {
   disconnectReasonText,
   isTokenInvalidReason,
 } from 'land/utils/whatsapp-disconnect-reasons';
+import { REPLY_WINDOW_MS, formatRemaining } from 'land/utils/reply-window';
 
-// Meta's 24h reply window opens only on an inbound message; an agent reply never extends it.
-const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 50;
 const AROUND_LIMIT = 100;
 const SAVE_THROTTLE_MS = 500;
@@ -66,16 +65,6 @@ const CONNECTION_COPY = {
       'Meta has flagged this number for quality. Sending may be restricted.',
   },
 };
-
-// Coarse on purpose: the operator needs "plenty of time" or "almost gone", not seconds.
-function formatRemaining(ms) {
-  const totalMinutes = Math.floor(ms / 60000);
-  if (totalMinutes < 1) return 'under a minute';
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours < 1) return `${minutes}m`;
-  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-}
 
 export default class WhatsappController extends Controller {
   @service whatsapp;
@@ -187,11 +176,6 @@ export default class WhatsappController extends Controller {
 
   get currentChatWindowError() {
     return Boolean(this.currentThread?.windowError);
-  }
-
-  @action
-  unreadCountFor(chatId) {
-    return this.whatsapp.unread.get(chatId)?.unreadCount ?? 0;
   }
 
   get currentChat() {
@@ -856,11 +840,19 @@ export default class WhatsappController extends Controller {
     // An inbound message reopens Meta's window; an outbound one never does.
     const inboundAt = msg.fromMe ? null : (msg.timestamp ?? null);
 
-    if (existingIdx >= 0 && isNewer) {
+    // Mirrors the chat upsert: a real name is kept, a missing or number-only one takes the message's.
+    const current = this.chats[existingIdx];
+    const nameMissing =
+      !current?.chatName || current.chatName === current.chatId;
+    if (existingIdx >= 0 && !isNewer && nameMissing && msg.chatName) {
       const updated = [...this.chats];
-      const current = updated[existingIdx];
+      updated[existingIdx] = { ...current, chatName: msg.chatName };
+      this.chats = updated;
+    } else if (existingIdx >= 0 && isNewer) {
+      const updated = [...this.chats];
       updated[existingIdx] = {
         ...current,
+        chatName: nameMissing && msg.chatName ? msg.chatName : current.chatName,
         lastBody: msg.body,
         lastTs: msg.timestamp,
         lastFromMe: msg.fromMe,
