@@ -59,6 +59,24 @@ module('Unit | Utility | message-format', function () {
     ]);
   });
 
+  test('a fenced block trims exactly one leading and one trailing newline', function (assert) {
+    assert.deepEqual(parseMessageText('```\ncode\n```'), [
+      { type: 'pre', value: 'code' },
+    ]);
+  });
+
+  test('a fenced block keeps inner blank lines beyond the fence newline', function (assert) {
+    assert.deepEqual(parseMessageText('```\n\ncode\n\n```'), [
+      { type: 'pre', value: '\ncode\n' },
+    ]);
+  });
+
+  test('a fenced block with no fence newline is unchanged', function (assert) {
+    assert.deepEqual(parseMessageText('```code```'), [
+      { type: 'pre', value: 'code' },
+    ]);
+  });
+
   test('inline code keeps markers raw', function (assert) {
     assert.deepEqual(parseMessageText('`*not bold*`'), [
       { type: 'code', value: '*not bold*' },
@@ -107,7 +125,7 @@ module('Unit | Utility | message-format', function () {
     ]);
   });
 
-  test('letters with diacritics or outside the basic plane are word edges', function (assert) {
+  test('letters with diacritics or outside the basic plane count as word characters', function (assert) {
     for (const plain of ['كَتَبَ*x*', 'नमस्ते*x*', '𠀀*x*']) {
       assert.deepEqual(parseMessageText(plain), [text(plain)], plain);
     }

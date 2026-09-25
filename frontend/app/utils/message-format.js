@@ -5,7 +5,7 @@ const FENCE = '```';
 const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
 const SPACE = /\s/;
 
-// Whole code points, so a letter outside the basic plane still counts as a word edge.
+// Whole code points, so a letter outside the basic plane still counts as a word character.
 function charBefore(text, index) {
   const code = text.charCodeAt(index - 1);
   return code >= 0xdc00 && code <= 0xdfff && index >= 2
@@ -61,6 +61,11 @@ function pushPlain(ctx, nodes, start, end) {
   }
 }
 
+// Fenced-code convention: a single leading/trailing newline is the fence's own line break, not content.
+function trimFenceEdges(value) {
+  return value.replace(/^\n/, '').replace(/\n$/, '');
+}
+
 function fenceEnd(ctx, start, end) {
   if (!ctx.text.startsWith(FENCE, start)) return { close: -1 };
   const close = ctx.text.indexOf(FENCE, start + FENCE.length + 1);
@@ -107,7 +112,7 @@ function parseRange(ctx, start, end) {
       pushPlain(ctx, nodes, plainStart, i);
       nodes.push({
         type: 'pre',
-        value: ctx.text.slice(i + FENCE.length, fence.close),
+        value: trimFenceEdges(ctx.text.slice(i + FENCE.length, fence.close)),
       });
       i = fence.close + FENCE.length;
       plainStart = i;

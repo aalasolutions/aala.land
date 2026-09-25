@@ -121,6 +121,12 @@ module('Unit | Controller | whatsapp', function (hooks) {
       timestamp: 1000,
     });
 
+    const errors = [];
+    controller.notifications = {
+      error: (m) => errors.push(m),
+      success() {},
+      info() {},
+    };
     controller.whatsapp = {
       ...fakeWhatsappService(),
       sendMessage() {
@@ -138,6 +144,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     await controller.sendMessage();
     assert.deepEqual(ids(controller), ['m-1'], 'no duplicate message');
+    assert.deepEqual(errors, [], 'the dedupe path raises no error');
   });
 
   test('sendMessage surfaces a failure via notifications.error and resets isSending', async function (assert) {
@@ -1458,6 +1465,11 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(whatsapp.calls[0].opts, { limit: 50 });
     assert.deepEqual(ids(controller), ['m-8', 'm-9']);
     assert.false(controller.threads.get('chat-1').hasMoreNewer);
+    assert.strictEqual(
+      controller.whatsapp.chats.find((c) => c.chatId === 'chat-1')?.lastBody,
+      'm-9',
+      'chat list reflects the sent message',
+    );
   });
 
   // ── Read tracking ──

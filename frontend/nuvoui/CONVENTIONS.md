@@ -173,7 +173,9 @@ RTL on its own: the SCSS (shipped as the HTML/CSS kit) and the components.
 - **Arrow keys follow the reading direction.** Horizontal ArrowLeft/ArrowRight
   handlers read `document.documentElement.dir` (tabs, segmented).
 - **Data that stays LTR.** `Nuvo::Input` sets `dir="ltr"` for `tel`, `number`,
-  `email` and `url`; code blocks are pinned to `direction: ltr`.
+  `email` and `url`; code blocks are pinned to `direction: ltr`; `Nuvo::Badge`
+  wraps count values and capped numbers (`99+`) in `<bdi dir="ltr">`, while text
+  labels keep their own direction.
 - **Verify on `/nuvo`** with the Dir switch, in both directions.
 
 ## Showcase

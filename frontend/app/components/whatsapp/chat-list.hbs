@@ -31,11 +31,14 @@
                 ><Ui::Ph @icon="clock" /></span>
               {{/if}}
             {{/let}}
-            {{format-date-time chat.lastTs}}
+            <span
+              title={{format-date-time chat.lastTs}}
+              data-test-wa-chat-time
+            >{{format-chat-time chat.lastTs now=@now}}</span>
           </span>
         </div>
         <div class="wa-chat-preview-row">
-          <p class="wa-chat-preview">
+          <p class="wa-chat-preview" dir="auto" data-test-wa-chat-preview>
             {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
           </p>
           {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}

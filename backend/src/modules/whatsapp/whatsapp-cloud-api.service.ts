@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -213,8 +213,9 @@ export class WhatsappCloudApiService {
       ? `token_invalid_${graphCode}`
       : `token_invalid_http_${status}`;
     try {
-      await this.connections.update(
-        { id: connection.id },
+      // Scoped to unflagged rows, so a repeat failure changes nothing and pushes nothing.
+      const result = await this.connections.update(
+        { id: connection.id, status: Not(WhatsappConnectionStatus.FLAGGED) },
         {
           status: WhatsappConnectionStatus.FLAGGED,
           disconnectReason: reason,
@@ -223,10 +224,25 @@ export class WhatsappCloudApiService {
       this.logger.error(
         `Connection ${connection.phoneNumberId} flagged (${reason}); it needs reconnecting`,
       );
+      if (result.affected) this.pushConnectionChange(connection);
     } catch (err) {
       this.logger.error(
         'Failed to flag the WhatsApp connection',
         errorMessage(err),
+      );
+    }
+  }
+
+  // A live push failure is log-only; the status is already stored.
+  private pushConnectionChange(connection: WhatsappConnection): void {
+    try {
+      this.gateway.emitConnection(connection.userId, {
+        status: WhatsappConnectionStatus.FLAGGED,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push connection status ${WhatsappConnectionStatus.FLAGGED} for user ${connection.userId}`,
+        errorMessage(err, true),
       );
     }
   }

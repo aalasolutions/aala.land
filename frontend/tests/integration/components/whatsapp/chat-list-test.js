@@ -1,11 +1,41 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { render, click } from '@ember/test-helpers';
+import { render, click, find } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
 
 const NOW = Date.UTC(2026, 8, 25, 12, 0, 0);
 const HOUR_MS = 60 * 60 * 1000;
+const FULL_STAMP = {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+// Browser-local wall clock on NOW's calendar day, shifted by dayOffset days.
+function localAt(dayOffset, hours, minutes) {
+  const date = new Date(NOW);
+  date.setDate(date.getDate() + dayOffset);
+  date.setHours(hours, minutes, 0, 0);
+  return date.getTime();
+}
+
+// Left edge of one character of an element's text, for checking visual order.
+function charLeft(element, index) {
+  const text = document
+    .createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) =>
+        node.data.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
+    })
+    .nextNode();
+  const offset = text.data.indexOf(text.data.trim()) + index;
+  const range = document.createRange();
+  range.setStart(text, offset);
+  range.setEnd(text, offset + 1);
+  return range.getBoundingClientRect().left;
+}
 
 module('Integration | Component | whatsapp/chat-list', function (hooks) {
   setupRenderingTest(hooks);
@@ -14,7 +44,10 @@ module('Integration | Component | whatsapp/chat-list', function (hooks) {
     this.owner.register(
       'service:whatsapp',
       class extends Service {
-        unread = new Map([['c-open', { unreadCount: 3 }]]);
+        unread = new Map([
+          ['c-open', { unreadCount: 3 }],
+          ['c-many', { unreadCount: 120 }],
+        ]);
       },
     );
     this.now = NOW;
@@ -102,6 +135,62 @@ module('Integration | Component | whatsapp/chat-list', function (hooks) {
 
     await click('[data-test-wa-chat="c-other"]');
     assert.deepEqual(this.selected, ['c-other']);
+  });
+
+  test('shows a short time with the full stamp on hover', async function (assert) {
+    const today = localAt(0, 9, 30);
+    const yesterday = localAt(-1, 18, 45);
+    this.chats = [
+      { chatId: 'c-today', chatName: 'Layla', lastTs: today },
+      { chatId: 'c-yesterday', chatName: 'Omar', lastTs: yesterday },
+    ];
+    await render(hbs`<Whatsapp::ChatList
+      @chats={{this.chats}}
+      @onSelect={{this.onSelect}}
+      @now={{this.now}}
+    />`);
+
+    const fullStamp = (value) =>
+      new Date(value).toLocaleString('en-US', FULL_STAMP).replace(/\s/g, ' ');
+    assert
+      .dom('[data-test-wa-chat="c-today"] [data-test-wa-chat-time]')
+      .hasText('9:30 AM')
+      .hasAttribute('title', fullStamp(today));
+    assert
+      .dom('[data-test-wa-chat="c-yesterday"] [data-test-wa-chat-time]')
+      .hasText('Yesterday')
+      .hasAttribute('title', fullStamp(yesterday));
+  });
+
+  test('keeps the preview and the unread count in reading order under RTL', async function (assert) {
+    this.chats = [
+      {
+        chatId: 'c-many',
+        chatName: 'Layla',
+        lastTs: NOW,
+        lastFromMe: true,
+        lastBody: '',
+      },
+    ];
+    await render(hbs`<div dir="rtl"><Whatsapp::ChatList
+      @chats={{this.chats}}
+      @onSelect={{this.onSelect}}
+      @now={{this.now}}
+    /></div>`);
+
+    assert
+      .dom('[data-test-wa-chat="c-many"] [data-test-wa-chat-preview]')
+      .hasAttribute('dir', 'auto')
+      .hasText('You:');
+
+    const badge = find(
+      '[data-test-wa-chat="c-many"] [data-test-wa-chat-unread]',
+    );
+    assert.dom(badge).hasText('99+');
+    assert.true(
+      charLeft(badge, 0) < charLeft(badge, 2),
+      'the plus sign renders after the digits, not before them',
+    );
   });
 
   test('shows the empty state with no chats', async function (assert) {

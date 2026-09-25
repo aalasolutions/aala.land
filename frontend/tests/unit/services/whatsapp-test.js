@@ -303,7 +303,7 @@ module('Unit | Service | whatsapp', function (hooks) {
   test('isIgnoredChat only filters groups now that Baileys JIDs are gone', function (assert) {
     assert.true(isIgnoredChat({ isGroup: true }));
     assert.false(isIgnoredChat({ isGroup: false }));
-    // Cloud API chat ids can never look like the old Baileys newsletter suffix; none is special-cased.
+    // Cloud API chat ids are bare digits, so a Baileys-style suffix gets no special case.
     assert.false(
       isIgnoredChat({
         isGroup: false,

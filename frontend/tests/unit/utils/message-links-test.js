@@ -88,4 +88,16 @@ module('Unit | Utility | message-links', function () {
     );
     assert.true(parts[1].isLink);
   });
+
+  test('a long run of trailing close-parens trims in linear time', function (assert) {
+    const url = 'https://example.com/a(' + ')'.repeat(8000);
+    const started = performance.now();
+    const parts = splitMessageLinks(url);
+    const elapsed = performance.now() - started;
+    assert.strictEqual(parts[0].value, 'https://example.com/a()');
+    assert.true(
+      elapsed < 50,
+      `under 50 ms for 8K trailing parens (was ${elapsed}ms)`,
+    );
+  });
 });

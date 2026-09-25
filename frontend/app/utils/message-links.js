@@ -1,20 +1,43 @@
 // Only web links become clickable; javascript:, data: and every other scheme stays plain text.
 // The prefix group stands in for a lookbehind, which older iOS webviews cannot parse; _ allows _italic_ links.
 const LINK_PATTERN = /(^|[^\w.@]|_)((?:https?:\/\/|www\.)[^\s<>"'`]+)/gi;
-const TRAILING_PUNCTUATION = /[.,!?;:'"*_~\]]+$/;
+const TRAILING_PUNCTUATION_CHARS = new Set([
+  '.',
+  ',',
+  '!',
+  '?',
+  ';',
+  ':',
+  "'",
+  '"',
+  '*',
+  '_',
+  '~',
+  ']',
+]);
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
-function countOf(text, char) {
-  return text.split(char).length - 1;
-}
-
 // A closing bracket belongs to the link only while it balances one the link opened.
+// Parens are counted once up front so trimming a long run of ")" stays linear, not quadratic.
 function trimTrailing(candidate) {
-  let url = candidate.replace(TRAILING_PUNCTUATION, '');
-  while (url.endsWith(')') && countOf(url, ')') > countOf(url, '(')) {
-    url = url.slice(0, -1).replace(TRAILING_PUNCTUATION, '');
+  let openCount = 0;
+  let closeCount = 0;
+  for (let i = 0; i < candidate.length; i++) {
+    if (candidate[i] === '(') openCount++;
+    else if (candidate[i] === ')') closeCount++;
   }
-  return url;
+  let end = candidate.length;
+  while (end > 0 && TRAILING_PUNCTUATION_CHARS.has(candidate[end - 1])) {
+    end--;
+  }
+  while (end > 0 && candidate[end - 1] === ')' && closeCount > openCount) {
+    end--;
+    closeCount--;
+    while (end > 0 && TRAILING_PUNCTUATION_CHARS.has(candidate[end - 1])) {
+      end--;
+    }
+  }
+  return candidate.slice(0, end);
 }
 
 function toSafeUrl(raw) {

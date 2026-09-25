@@ -46,7 +46,7 @@ interface CloudWebhookEnvelope {
 }
 
 interface WebhookEntry {
-  // The WABA id: the only routing key account_update carries (no metadata.phone_number_id).
+  // Usually the WABA id; PARTNER_* account_update events send the partner business id instead, with the WABA in waba_info.
   id?: string;
   // Unix seconds.
   time?: number;
@@ -292,7 +292,7 @@ export class WhatsappWebhookService {
         try {
           if (VERBOSE_WEBHOOK_LOGS) {
             this.logger.log(
-              `Webhook change received: field=${change.field ?? 'none'} waba=${entry.id ?? 'none'}`,
+              `Webhook change received: field=${change.field ?? 'none'} entry=${entry.id ?? 'none'}`,
             );
           }
           await this.dispatchValue(
@@ -421,7 +421,7 @@ export class WhatsappWebhookService {
     return connection;
   }
 
-  // Stored passively: history never counts as unread, opens a reply window, or reaches the AI.
+  // Stored passively: never unread and never reaches the AI; a customer message under 24h old still opens the reply window.
   private async persistHistory(
     connection: WhatsappConnection,
     value: WebhookValue,

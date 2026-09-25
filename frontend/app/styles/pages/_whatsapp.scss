@@ -20,7 +20,7 @@ $wa-message-max-width: 70%;
   --wa-thread-dot: #{nu-tint(primary, 14%)};
   --wa-bubble-in: var(--bg-surface);
   --wa-bubble-out: var(--primary-50);
-  --wa-bubble-ai: var(--info-50);
+  --wa-bubble-ai: var(--info-100);
   --wa-meta: color-mix(in srgb, var(--text-muted) 70%, var(--text-color));
   --wa-accent: var(--primary);
   --wa-accent-text: var(--primary-800);
@@ -404,7 +404,7 @@ $wa-message-max-width: 70%;
     margin-block-start: nu-space(2);
   }
 
-  // AI and team fills differ by hue only, so the stripe carries the distinction.
+  // The info fill plus the stripe keeps AI replies apart from the team's primary-tinted ones.
   &.m-ai {
     --wa-fill: var(--wa-bubble-ai);
 
@@ -484,6 +484,11 @@ $wa-message-max-width: 70%;
   font-size: nu-font-size(2xs);
   white-space: nowrap;
   color: var(--wa-meta);
+
+  // The kit's -50 chip fill matches the tinted bubbles, so the author chips sit on white.
+  .nu-tag {
+    --nu-tag--BackgroundColor: var(--bg-surface);
+  }
 }
 
 .wa-input-area {

@@ -1,3 +1,4 @@
+{{! Count bubbles and capped plain values isolate as LTR so "99+" never reads "+99" under RTL; text labels keep their own direction. }}
 {{#if (has-block)}}
   <span class="nu-badge-wrap" data-test-nu-badge-wrap ...attributes>
     {{yield}}
@@ -5,7 +6,7 @@
     {{#unless this.isHidden}}
       <span class="{{this.countClasses}} is-fixed" data-test-nu-badge>
         {{#unless @isDot}}
-          {{this.displayValue}}
+          <bdi dir="ltr">{{this.displayValue}}</bdi>
         {{/unless}}
       </span>
     {{/unless}}
@@ -13,12 +14,14 @@
 {{else if this.isCount}}
   {{! Standalone count bubble, no anchor element. }}
   <span class={{this.countClasses}} data-test-nu-badge ...attributes>
-    {{#unless @isDot}}{{this.displayValue}}{{/unless}}
+    {{#unless @isDot}}<bdi dir="ltr">{{this.displayValue}}</bdi>{{/unless}}
   </span>
 {{else}}
   <span class={{this.classes}} data-test-nu-badge ...attributes>
     {{#if @isDot}}
       <span class="nu-badge__dot"></span>
+    {{else if this.isOverflow}}
+      <bdi dir="ltr">{{this.displayValue}}</bdi>
     {{else}}
       {{this.displayValue}}
     {{/if}}
