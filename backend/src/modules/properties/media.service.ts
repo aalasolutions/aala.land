@@ -273,7 +273,7 @@ export class MediaService {
       );
     }
 
-    // Both original and thumbnail come from the in-memory buffer; B2 is never re-downloaded
+    // Both original and thumbnail come from the in-memory buffer; the bucket is never re-downloaded
     let processedBuffer: Buffer;
     let thumbnailBuffer: Buffer;
     try {
@@ -347,7 +347,7 @@ export class MediaService {
           .send(new DeleteObjectCommand({ Bucket: bucket, Key: originalKey }))
           .catch((rollbackErr) => {
             this.logger.error(
-              `Orphaned B2 object after thumbnail PUT failure. Manual cleanup required. ` +
+              `Orphaned bucket object after thumbnail PUT failure. Manual cleanup required. ` +
                 `key=${originalKey} rollbackError=` +
                 errorMessage(rollbackErr),
             );
@@ -663,7 +663,7 @@ export class MediaService {
         }
         const msg = errorMessage(err);
         this.logger.error(
-          `Failed to fetch document B2 object ${s3Key}: ${msg}`,
+          `Failed to fetch document object ${s3Key}: ${msg}`,
         );
         throw new InternalServerErrorException(
           `Could not fetch document from storage: ${msg}`,

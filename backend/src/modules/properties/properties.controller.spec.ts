@@ -391,9 +391,9 @@ describe('PropertiesController', () => {
     it('calls mediaService.uploadImage with companyId, file, and dto', async () => {
       const mockMedia = {
         id: 'media-uuid-1',
-        url: 'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/photo.jpg',
+        url: 'https://storage.example.com/test-bucket/companies/c1/photo.jpg',
         thumbnailUrl:
-          'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/thumbs/thumb-photo.jpg',
+          'https://storage.example.com/test-bucket/companies/c1/thumbs/thumb-photo.jpg',
         fileSize: 204800,
         thumbnailSize: 12288,
         companyId,

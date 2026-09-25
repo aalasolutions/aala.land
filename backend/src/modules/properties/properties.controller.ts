@@ -65,7 +65,7 @@ export class PropertiesController {
     summary:
       'Upload a property photo (server-side). Compressed and re-encoded via sharp ' +
       '(2560 px max, JPEG quality 80, EXIF stripped). Thumbnail 400x400. ' +
-      'Stored to Backblaze B2. Max 5 MB. Accepted: image/jpeg, image/png, image/webp.',
+      'Stored to the media bucket. Max 5 MB. Accepted: image/jpeg, image/png, image/webp.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
