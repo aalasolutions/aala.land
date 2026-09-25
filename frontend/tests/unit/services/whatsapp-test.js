@@ -1365,13 +1365,15 @@ module('Unit | Service | whatsapp', function (hooks) {
     ]);
   });
 
-  test('a user change clears the attachment queue', function (assert) {
+  test('a user change clears the attachment tray and pending uploads', function (assert) {
     const service = this.owner.lookup('service:whatsapp');
     const attachments = this.owner.lookup('service:wa-attachments');
     attachments.add([new File(['x'], 'a.jpg', { type: 'image/jpeg' })]);
+    attachments.pendingByChat = new Map([['chat-1', [{ id: 'att-9' }]]]);
 
     service.disconnectSocket();
 
     assert.deepEqual(attachments.items, []);
+    assert.strictEqual(attachments.pendingByChat.size, 0);
   });
 });

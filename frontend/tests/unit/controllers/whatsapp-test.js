@@ -2709,19 +2709,113 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.waAttachments.clear();
   });
 
-  test('the composer is disabled while attachments upload', function (assert) {
-    const controller = makeController(this);
+  function stubUploads(controller) {
+    const uploads = [];
+    controller.waAttachments.whatsapp = {
+      sendMediaFile(chatId, sent, options) {
+        return new Promise((resolve, reject) => {
+          uploads.push({ chatId, file: sent, options, resolve, reject });
+        });
+      },
+    };
+    return uploads;
+  }
+
+  function readyToSend(controller, whatsapp = fakeWhatsappService()) {
+    controller.whatsapp = whatsapp;
     controller.connection = { status: 'connected' };
     withOpenWindow(controller);
-    controller.currentChatId = 'chat-1';
+    openThread(controller);
+    controller.waAttachments.onSent = controller._onMediaSent;
+  }
+
+  test('the composer stays enabled while an upload runs and a text send goes through', async function (assert) {
+    const controller = makeController(this);
+    const uploads = stubUploads(controller);
+    readyToSend(controller, {
+      ...fakeWhatsappService(),
+      sendMessage: (chatId, body) =>
+        Promise.resolve({
+          data: { id: 'm-text', chatId, body, fromMe: true, timestamp: 900 },
+        }),
+    });
+    controller._scrollToBottom = () => {};
+
+    controller.addAttachments([imageFile('a.jpg')]);
+    controller.sendAttachments();
+    assert.strictEqual(uploads.length, 1, 'upload in flight');
     assert.false(controller.composerDisabled);
 
-    controller.waAttachments.isSending = true;
-    assert.true(controller.composerDisabled);
-    controller.waAttachments.isSending = false;
+    controller.messageText = 'hello';
+    await controller.sendMessage();
+    assert.deepEqual(ids(controller), ['m-text'], 'text interleaves');
+    assert.strictEqual(
+      controller.currentChatPendingMedia.length,
+      1,
+      'the pending bubble stays below',
+    );
+    controller.waAttachments.reset();
   });
 
-  test('switching chat and leaving the page clear the attachment queue', async function (assert) {
+  test('sending attachments scrolls to the new bubble and the sent row replaces it', async function (assert) {
+    const controller = makeController(this);
+    const uploads = stubUploads(controller);
+    readyToSend(controller);
+    const scrolls = [];
+    controller._scrollToBottom = (chatId) => scrolls.push(chatId);
+
+    controller.addAttachments([imageFile('a.jpg')]);
+    const run = controller.sendAttachments();
+    assert.deepEqual(scrolls, ['chat-1'], 'scrolled on append');
+    assert.deepEqual(controller.waAttachments.items, [], 'tray emptied');
+    assert.deepEqual(
+      controller.currentChatPendingMedia.map((p) => p.file.name),
+      ['a.jpg'],
+    );
+
+    uploads[0].resolve({
+      data: mediaMsg({ id: 'wamid.1', fromMe: true, mediaStatus: 'STORED' }),
+    });
+    await run;
+    await settled();
+
+    assert.deepEqual(controller.currentChatPendingMedia, []);
+    assert.deepEqual(ids(controller), ['wamid.1']);
+    assert.deepEqual(scrolls, ['chat-1', 'chat-1'], 'scrolled on replace');
+    assert.strictEqual(
+      controller.sendAttachments(),
+      null,
+      'nothing to send, no scroll',
+    );
+    assert.strictEqual(scrolls.length, 2);
+  });
+
+  test('only the current chat shows its pending bubbles, and a late row for another chat is dropped', async function (assert) {
+    const controller = makeController(this);
+    const uploads = stubUploads(controller);
+    readyToSend(controller);
+    controller._scrollToBottom = () => {};
+
+    controller.addAttachments([imageFile('a.jpg')]);
+    const run = controller.sendAttachments();
+    controller.currentChatId = 'chat-2';
+    assert.deepEqual(controller.currentChatPendingMedia, []);
+
+    controller.currentChatId = 'chat-1';
+    assert.strictEqual(controller.currentChatPendingMedia.length, 1);
+
+    controller.currentChatId = 'chat-2';
+    uploads[0].resolve({
+      data: mediaMsg({ id: 'wamid.1', fromMe: true, mediaStatus: 'STORED' }),
+    });
+    await run;
+
+    assert.strictEqual(controller.waAttachments.pendingFor('chat-1').length, 0);
+    controller.currentChatId = 'chat-1';
+    assert.deepEqual(ids(controller), [], 'left to the socket delivery');
+  });
+
+  test('switching chat clears the tray but keeps pending uploads; leaving clears both', async function (assert) {
     const controller = makeController(this);
     const whatsapp = fakeWhatsappService();
     controller.whatsapp = whatsapp;
@@ -2731,15 +2825,28 @@ module('Unit | Controller | whatsapp', function (hooks) {
       'function',
       'sent rows are routed to the controller',
     );
+    stubUploads(controller);
     await controller.selectChat('chat-1');
+    controller.waAttachments.add([imageFile('sent.jpg')]);
+    controller.waAttachments.sendAll('chat-1');
     controller.waAttachments.add([imageFile()]);
 
     await controller.selectChat('chat-2');
     assert.deepEqual(controller.waAttachments.items, [], 'cleared on switch');
+    assert.deepEqual(
+      controller.waAttachments.pendingFor('chat-1').map((p) => p.file.name),
+      ['sent.jpg'],
+      'pending upload survives the switch',
+    );
 
     controller.waAttachments.add([imageFile()]);
     controller.teardown();
     assert.deepEqual(controller.waAttachments.items, [], 'cleared on leave');
+    assert.strictEqual(
+      controller.waAttachments.pendingByChat.size,
+      0,
+      'pending cleared on leave',
+    );
     assert.strictEqual(controller.waAttachments.onSent, null);
   });
 

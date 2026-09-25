@@ -410,7 +410,7 @@ export default class WhatsappService extends Service {
     this._mediaUrlRequests.clear();
     this.viewerMessage = null;
     this.activeChatId = null;
-    this.waAttachments.clear();
+    this.waAttachments.reset();
     this.clearLastChat();
   }
 

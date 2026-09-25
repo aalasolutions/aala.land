@@ -1,6 +1,12 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { render, click, settled } from '@ember/test-helpers';
+import {
+  render,
+  click,
+  settled,
+  clearRender,
+  waitUntil,
+} from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
 import {
@@ -74,6 +80,30 @@ module('Integration | Component | whatsapp/message-media', function (hooks) {
   async function mediaError(selector) {
     document.querySelector(selector).dispatchEvent(new Event('error'));
     await settled();
+  }
+
+  // Stands in for the attachments service holding local previews of just-sent files.
+  function stubPlaceholders(ctx, placeholders) {
+    const released = [];
+    ctx.owner.register(
+      'service:wa-attachments',
+      class extends Service {
+        placeholderFor(uuid) {
+          return placeholders[uuid] ?? null;
+        }
+        releasePlaceholder(uuid) {
+          released.push(uuid);
+          delete placeholders[uuid];
+        }
+      },
+    );
+    return released;
+  }
+
+  function deferred() {
+    let resolve;
+    const promise = new Promise((done) => (resolve = done));
+    return { promise, resolve };
   }
 
   async function renderMedia(ctx, message) {
@@ -207,6 +237,105 @@ module('Integration | Component | whatsapp/message-media', function (hooks) {
     await click('[data-test-wa-media-video-open]');
     assert.strictEqual(this.viewerOpened.length, 1);
     assert.strictEqual(this.viewerOpened[0].uuid, 'row-2');
+  });
+
+  test('a just-sent image shows its local preview until the signed URL has loaded, then releases it', async function (assert) {
+    const local = `${PNG_URL}#local`;
+    const released = stubPlaceholders(this, { 'row-1': local });
+    const signed = deferred();
+    this.urls = [signed.promise];
+    const OriginalImage = window.Image;
+    const preloads = [];
+    window.Image = class {
+      set src(value) {
+        this.url = value;
+        preloads.push(this);
+      }
+    };
+    try {
+      await renderMedia(this, media());
+      assert.dom('[data-test-wa-media-image]').hasAttribute('src', local);
+
+      signed.resolve(`${PNG_URL}#sig=1`);
+      await waitUntil(() => preloads.length === 1);
+      assert.strictEqual(preloads[0].url, `${PNG_URL}#sig=1`);
+      await settled();
+      assert
+        .dom('[data-test-wa-media-image]')
+        .hasAttribute('src', local, 'preview stays while the signed URL loads');
+      assert.deepEqual(released, []);
+
+      preloads[0].onload();
+      await waitUntil(() => released.length === 1);
+      await settled();
+      assert
+        .dom('[data-test-wa-media-image]')
+        .hasAttribute('src', `${PNG_URL}#sig=1`);
+      assert.deepEqual(released, ['row-1']);
+    } finally {
+      window.Image = OriginalImage;
+    }
+  });
+
+  test('a just-sent sticker shows its local preview until the signed URL resolves', async function (assert) {
+    const local = `${PNG_URL}#local`;
+    const released = stubPlaceholders(this, { 'row-1': local });
+    const signed = deferred();
+    this.urls = [signed.promise];
+    await renderMedia(this, media({ mediaType: 'sticker' }));
+    assert.dom('[data-test-wa-media-sticker]').hasAttribute('src', local);
+
+    signed.resolve(`${PNG_URL}#sig=1`);
+    await waitUntil(() => released.length === 1);
+    await settled();
+    assert
+      .dom('[data-test-wa-media-sticker]')
+      .hasAttribute('src', `${PNG_URL}#sig=1`);
+  });
+
+  test('a just-sent video shows its local first frame until the signed URL has loaded', async function (assert) {
+    const local = wavUrl().replace(
+      'data:audio/wav;',
+      'data:audio/wav;name=local;',
+    );
+    const released = stubPlaceholders(this, { 'row-2': local });
+    const signed = deferred();
+    this.urls = [signed.promise];
+    await renderMedia(this, media({ mediaType: 'video', uuid: 'row-2' }));
+
+    const video = () => document.querySelector('[data-test-wa-media-video]');
+    assert
+      .dom('[data-test-wa-media-video]')
+      .hasAttribute('src', `${local}#t=0.1`);
+    await waitUntil(() => video().readyState >= 1, { timeout: 3000 });
+    assert.deepEqual(released, [], 'the preview metadata releases nothing');
+
+    signed.resolve(wavUrl());
+    await waitUntil(() => released.length === 1, { timeout: 3000 });
+    assert
+      .dom('[data-test-wa-media-video]')
+      .hasAttribute('src', `${wavUrl()}#t=0.1`);
+    assert.deepEqual(released, ['row-2']);
+  });
+
+  test('a placeholder is released when the bubble goes away before its URL loads', async function (assert) {
+    const released = stubPlaceholders(this, { 'row-1': `${PNG_URL}#local` });
+    this.urls = [new Promise(() => {})];
+    await renderMedia(this, media());
+    assert.dom('[data-test-wa-media-image]').exists();
+
+    await clearRender();
+    assert.deepEqual(released, ['row-1']);
+  });
+
+  test('a failed URL fetch releases the placeholder', async function (assert) {
+    const released = stubPlaceholders(this, { 'row-1': `${PNG_URL}#local` });
+    this.urls = [new Error('boom')];
+    await renderMedia(this, media());
+    await settled();
+
+    assert.dom('[data-test-wa-media-load-failed]').exists();
+    assert.deepEqual(released, ['row-1']);
   });
 
   test('audio renders the custom player with its size inside it', async function (assert) {

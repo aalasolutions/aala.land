@@ -1,0 +1,137 @@
+<div
+  class="wa-message m-outgoing"
+  data-test-wa-pending={{this.item.id}}
+  data-test-wa-pending-state={{this.item.state}}
+  ...attributes
+>
+  <div class="wa-media-block flex col gap-1">
+    {{#if this.showsFrame}}
+      <div class="wa-media m-{{this.item.kind}}">
+        {{#if (eq this.item.kind "sticker")}}
+          <div class="wa-media__sticker">
+            <img
+              src={{this.item.previewUrl}}
+              alt=""
+              data-test-wa-pending-sticker
+            />
+          </div>
+        {{else if (eq this.item.kind "video")}}
+          <div class="wa-media__frame m-video is-static">
+            {{! template-lint-disable require-media-caption }}
+            <video
+              class="wa-media__video"
+              src={{this.videoSrc}}
+              preload="metadata"
+              muted
+              playsinline
+              aria-hidden="true"
+              data-test-wa-pending-video
+            ></video>
+            <span class="wa-media__play" aria-hidden="true"><Nuvo::Icon
+                @icon="play"
+              /></span>
+          </div>
+        {{else}}
+          <div class="wa-media__frame is-static">
+            <img
+              class="wa-media__image"
+              src={{this.item.previewUrl}}
+              alt=""
+              data-test-wa-pending-image
+            />
+          </div>
+        {{/if}}
+        {{#unless (eq this.item.kind "sticker")}}
+          <Nuvo::Badge
+            @size="sm"
+            @quiet={{true}}
+            @text={{format-bytes this.item.file.size}}
+            data-test-wa-pending-size
+          />
+        {{/unless}}
+      </div>
+      {{#if this.isFailed}}
+        <div class="flex x-center gap-1">
+          <Nuvo::Text
+            class="grow"
+            @tag="span"
+            @size="xs"
+            @variant="danger"
+            role="alert"
+            data-test-wa-pending-error
+          >{{this.item.error}}</Nuvo::Text>
+          <Whatsapp::PendingActions @onRetry={{@onRetry}} @onRemove={{@onRemove}} />
+        </div>
+      {{else}}
+        <Nuvo::Progress
+          @size="sm"
+          @value={{this.item.progress}}
+          aria-label="Upload progress"
+          data-test-wa-pending-progress
+        />
+      {{/if}}
+    {{else}}
+      <Nuvo::ListItem>
+        <:main>
+          <span class="wa-pending__thumb m-icon" data-test-wa-pending-icon>
+            <Nuvo::Icon @icon={{this.icon}} @size="1.5rem" aria-hidden="true" />
+          </span>
+          <div class="wa-pending__body">
+            <div class="flex x-center gap-2 min-w-0p">
+              <Nuvo::Text
+                @tag="span"
+                @size="sm"
+                @truncate={{true}}
+                data-test-wa-pending-name
+              ><bdi>{{this.item.file.name}}</bdi></Nuvo::Text>
+              <Nuvo::Badge
+                @size="sm"
+                @quiet={{true}}
+                @text={{format-bytes this.item.file.size}}
+                data-test-wa-pending-size
+              />
+            </div>
+            {{#if this.isFailed}}
+              <Nuvo::Text
+                @tag="span"
+                @size="xs"
+                @variant="danger"
+                role="alert"
+                data-test-wa-pending-error
+              >{{this.item.error}}</Nuvo::Text>
+            {{else}}
+              <Nuvo::Progress
+                @size="sm"
+                @value={{this.item.progress}}
+                aria-label="Upload progress"
+                data-test-wa-pending-progress
+              />
+            {{/if}}
+          </div>
+        </:main>
+        <:actions>
+          {{#if this.isFailed}}
+            <Whatsapp::PendingActions @onRetry={{@onRetry}} @onRemove={{@onRemove}} />
+          {{/if}}
+        </:actions>
+      </Nuvo::ListItem>
+    {{/if}}
+    {{#if this.item.caption}}
+      <div
+        class="wa-bubble"
+        dir="auto"
+        data-test-wa-pending-caption
+      ><Whatsapp::MessageText @text={{this.item.caption}} /></div>
+    {{/if}}
+  </div>
+
+  <div class="wa-meta">
+    {{#if this.isFailed}}
+      <span class="wa-tick is-failed"><Ui::Ph @icon="warning-circle" /></span>
+      <span>Not sent</span>
+    {{else}}
+      <span class="wa-tick"><Ui::Ph @icon="clock" /></span>
+      <span data-test-wa-pending-uploading>Uploading</span>
+    {{/if}}
+  </div>
+</div>

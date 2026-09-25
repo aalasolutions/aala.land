@@ -165,7 +165,6 @@ export default class WhatsappController extends Controller {
     return (
       !this.currentChatId ||
       this.isSending ||
-      this.waAttachments.isSending ||
       !this.isConnected ||
       !this.replyWindow?.open
     );
@@ -179,6 +178,15 @@ export default class WhatsappController extends Controller {
 
   get currentChatMessages() {
     return this.currentThread?.messages ?? [];
+  }
+
+  get currentChatPendingMedia() {
+    return this.waAttachments.pendingFor(this.currentChatId);
+  }
+
+  // A chat with only uploads in flight is not empty.
+  get showsEmptyThread() {
+    return this.currentChatPendingMedia.length === 0;
   }
 
   get currentChatLoadingWindow() {
@@ -403,7 +411,7 @@ export default class WhatsappController extends Controller {
     this.mediaToDelete = null;
     this.mediaDeleteReason = '';
     this.mediaReasonError = '';
-    this.waAttachments.clear();
+    this.waAttachments.reset();
     this.waAttachments.onSent = null;
     this.retryingUuids = new Set();
     this.currentChatId = null;
@@ -1238,7 +1246,10 @@ export default class WhatsappController extends Controller {
 
   @action
   sendAttachments() {
-    return this.waAttachments.sendAll(this.currentChatId);
+    const chatId = this.currentChatId;
+    const run = this.waAttachments.sendAll(chatId);
+    if (run) this._scrollToBottom(chatId);
+    return run;
   }
 
   canRetrySend = (msg) => isRetryableSend(msg);

@@ -1,13 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import {
-  render,
-  click,
-  fillIn,
-  find,
-  findAll,
-  settled,
-} from '@ember/test-helpers';
+import { render, click, fillIn, find, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 function item(overrides = {}) {
@@ -18,7 +11,6 @@ function item(overrides = {}) {
     caption: '',
     error: null,
     refused: false,
-    progress: 0,
     state: 'queued',
     ...overrides,
   };
@@ -60,9 +52,9 @@ module('Integration | Component | whatsapp/attachment-tray', function (hooks) {
     assert
       .dom('[data-test-wa-attachment-caption]')
       .hasAttribute('maxlength', '1024');
-    assert.dom('[data-test-wa-attachment-progress]').doesNotExist();
     assert.dom('[data-test-wa-attachment-send]').hasText('Send 1 file');
     assert.dom('[data-test-wa-attachment-send]').isNotDisabled();
+    assert.dom('[data-test-wa-attachment-clear]').isNotDisabled();
   });
 
   test('a document shows an icon instead of a thumbnail', async function (assert) {
@@ -154,26 +146,6 @@ module('Integration | Component | whatsapp/attachment-tray', function (hooks) {
     assert.dom('[data-test-wa-attachment-send]').hasText('Send 2 files');
   });
 
-  test('an uploading file shows progress and locks the tray', async function (assert) {
-    this.items = [
-      item({ state: 'uploading', progress: 45 }),
-      item({ id: 'att-2' }),
-    ];
-    await renderTray();
-
-    assert
-      .dom('[data-test-wa-attachment="att-1"]')
-      .hasAttribute('data-test-wa-attachment-state', 'uploading');
-    assert
-      .dom('[data-test-wa-attachment-progress] [role="progressbar"]')
-      .hasAttribute('aria-valuenow', '45');
-    for (const button of findAll('[data-test-wa-attachment-remove]')) {
-      assert.dom(button).isDisabled();
-    }
-    assert.dom('[data-test-wa-attachment-clear]').isDisabled();
-    assert.dom('[data-test-wa-attachment-send]').isDisabled();
-  });
-
   test('a refused file shows its error, no caption, and is not counted', async function (assert) {
     this.items = [
       item({
@@ -192,28 +164,6 @@ module('Integration | Component | whatsapp/attachment-tray', function (hooks) {
     assert.dom('[data-test-wa-attachment-remove]').isNotDisabled();
     assert.dom('[data-test-wa-attachment-send]').hasText('Send 0 files');
     assert.dom('[data-test-wa-attachment-send]').isDisabled();
-  });
-
-  test('a file the server refused keeps its caption and is sent again', async function (assert) {
-    this.items = [
-      item({ state: 'failed', error: 'Reply window closed', caption: 'Hi' }),
-    ];
-    await renderTray();
-
-    assert
-      .dom('[data-test-wa-attachment-error]')
-      .hasText('Reply window closed');
-    assert.dom('[data-test-wa-attachment-caption]').hasValue('Hi');
-    assert.dom('[data-test-wa-attachment-send]').hasText('Send 1 file');
-  });
-
-  test('a sent file shows a check instead of remove', async function (assert) {
-    this.items = [item({ state: 'sent', progress: 100 })];
-    await renderTray();
-
-    assert.dom('[data-test-wa-attachment-sent]').exists();
-    assert.dom('[data-test-wa-attachment-remove]').doesNotExist();
-    assert.dom('[data-test-wa-attachment-caption]').isDisabled();
   });
 
   test('@disabled disables send and captions but not remove', async function (assert) {

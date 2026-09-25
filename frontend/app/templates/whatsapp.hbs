@@ -269,7 +269,7 @@
               <div class="wa-load-older" data-test-wa-thread-loading>
                 <Nuvo::Spinner @size="sm" />
               </div>
-            {{else}}
+            {{else if this.showsEmptyThread}}
               <Nuvo::EmptyState
                 @fill={{true}}
                 @title="No messages in this chat yet"
@@ -293,6 +293,13 @@
               <Nuvo::Spinner @size="sm" />
             </div>
           {{/if}}
+          {{#each this.currentChatPendingMedia key="id" as |pending|}}
+            <Whatsapp::PendingMedia
+              @item={{pending}}
+              @onRetry={{fn this.waAttachments.retryPending pending.id}}
+              @onRemove={{fn this.waAttachments.removePending pending.id}}
+            />
+          {{/each}}
         </div>
 
         <div

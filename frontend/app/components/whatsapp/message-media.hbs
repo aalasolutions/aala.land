@@ -26,10 +26,10 @@
           {{this.observeMedia this.loadUrl}}
           {{on "click" this.openViewer}}
         >
-          {{#if this.url}}
+          {{#if this.imageSrc}}
             <img
               class="wa-media__image"
-              src={{this.url}}
+              src={{this.imageSrc}}
               alt={{this.fileName}}
               data-test-wa-media-image
               {{on "error" this.onMediaError}}
@@ -38,9 +38,9 @@
         </button>
       {{else if (eq this.kind "sticker")}}
         <div class="wa-media__sticker" {{this.observeMedia this.loadUrl}}>
-          {{#if this.url}}
+          {{#if this.imageSrc}}
             <img
-              src={{this.url}}
+              src={{this.imageSrc}}
               alt="Sticker"
               data-test-wa-media-sticker
               {{on "error" this.onMediaError}}
@@ -56,11 +56,11 @@
           {{this.observeMedia this.loadUrl}}
           {{on "click" this.openViewer}}
         >
-          {{#if this.url}}
+          {{#if this.videoSrc}}
             {{! template-lint-disable require-media-caption }}
             <video
               class="wa-media__video"
-              src={{this.posterSrc}}
+              src={{this.videoSrc}}
               preload="metadata"
               muted
               playsinline

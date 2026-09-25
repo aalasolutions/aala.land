@@ -517,6 +517,10 @@ $wa-tray-max-height: 16rem;
     aspect-ratio: 16 / 9;
     background: var(--black);
   }
+
+  &.is-static {
+    cursor: default;
+  }
 }
 
 .wa-media__image,
@@ -727,7 +731,8 @@ $wa-tray-max-height: 16rem;
   }
 }
 
-.wa-tray__thumb {
+.wa-tray__thumb,
+.wa-pending__thumb {
   flex-shrink: 0;
   inline-size: $wa-tray-thumb-size;
   block-size: $wa-tray-thumb-size;
@@ -743,7 +748,8 @@ $wa-tray-max-height: 16rem;
   }
 }
 
-.wa-tray__body {
+.wa-tray__body,
+.wa-pending__body {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -753,10 +759,6 @@ $wa-tray-max-height: 16rem;
 
 .wa-tray__caption {
   resize: none;
-}
-
-.wa-tray__sent {
-  color: var(--success-600);
 }
 
 .wa-tray__footer {

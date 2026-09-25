@@ -1,0 +1,20 @@
+<Nuvo::Button
+  @variant="ghost"
+  @shape="circle"
+  @size="xs"
+  @icon="arrow-clockwise"
+  @onClick={{@onRetry}}
+  aria-label="Retry upload"
+  title="Retry"
+  data-test-wa-pending-retry
+/>
+<Nuvo::Button
+  @variant="ghost"
+  @shape="circle"
+  @size="xs"
+  @icon="x"
+  @onClick={{@onRemove}}
+  aria-label="Remove file"
+  title="Remove"
+  data-test-wa-pending-remove
+/>

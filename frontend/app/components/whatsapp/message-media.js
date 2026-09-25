@@ -15,6 +15,7 @@ import { openSignedDownload } from 'land/utils/media-download';
 
 const INLINE_TYPES = new Set(['image', 'video', 'audio', 'sticker']);
 const SIZE_BELOW_KINDS = new Set(['image', 'video']);
+const PLACEHOLDER_KINDS = new Set(['image', 'sticker', 'video']);
 // Requests a signed URL slightly before the bubble enters the viewport.
 const PRELOAD_MARGIN = '200px 0px';
 const ROOT_SELECTOR = '[data-wa-media-root]';
@@ -63,11 +64,23 @@ function observeOnce(element, onVisible) {
   return () => releaseObserved(key, element);
 }
 
+// Settles once the browser holds the image or gave up on it, so a swap to it never paints an empty frame.
+function preloadImage(url) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = image.onerror = () => resolve();
+    image.src = url;
+  });
+}
+
 export default class WhatsappMessageMediaComponent extends Component {
   @service whatsapp;
   @service notifications;
+  @service waAttachments;
 
   @tracked url = null;
+  // Local preview of a just-sent file, shown until the signed URL has loaded.
+  @tracked placeholderUrl = null;
   @tracked loadFailed = false;
   @tracked videoDuration = 0;
   // One fresh URL per element after a load error; only a proactive refresh re-arms it.
@@ -76,6 +89,22 @@ export default class WhatsappMessageMediaComponent extends Component {
   observeMedia = modifier((element, [onVisible]) =>
     observeOnce(element, onVisible),
   );
+
+  constructor(owner, args) {
+    super(owner, args);
+    if (PLACEHOLDER_KINDS.has(this.kind)) {
+      this.placeholderUrl = this.waAttachments.placeholderFor(
+        this.message.uuid,
+      );
+    }
+  }
+
+  willDestroy() {
+    super.willDestroy();
+    if (this.placeholderUrl) {
+      this.waAttachments.releasePlaceholder(this.message.uuid);
+    }
+  }
 
   get message() {
     return this.args.message;
@@ -137,6 +166,15 @@ export default class WhatsappMessageMediaComponent extends Component {
     return this.url ? `${this.url}#t=0.1` : null;
   }
 
+  get imageSrc() {
+    return this.url ?? this.placeholderUrl;
+  }
+
+  get videoSrc() {
+    if (this.posterSrc) return this.posterSrc;
+    return this.placeholderUrl ? `${this.placeholderUrl}#t=0.1` : null;
+  }
+
   get videoDurationLabel() {
     return this.videoDuration ? formatClock(this.videoDuration) : '';
   }
@@ -146,7 +184,13 @@ export default class WhatsappMessageMediaComponent extends Component {
     if (!this.isStored || this.url) return;
     try {
       const url = await this.whatsapp.getMediaUrl(this.message.uuid);
-      if (!this._isGone()) this.url = url;
+      if (this._isGone()) return;
+      if (this.placeholderUrl && this.kind !== 'video') {
+        await preloadImage(url);
+        if (this._isGone()) return;
+      }
+      this.url = url;
+      if (this.kind !== 'video') this._releasePlaceholder();
     } catch (err) {
       this._failLoad(err);
     }
@@ -190,6 +234,7 @@ export default class WhatsappMessageMediaComponent extends Component {
   @action
   onVideoMetadata(event) {
     this.videoDuration = event.target.duration || 0;
+    if (this.url) this._releasePlaceholder();
   }
 
   @action
@@ -239,7 +284,15 @@ export default class WhatsappMessageMediaComponent extends Component {
 
   _failLoad(err) {
     console.error('WhatsApp media load failed', this.message.uuid, err);
-    if (!this._isGone()) this.loadFailed = true;
+    if (this._isGone()) return;
+    this.loadFailed = true;
+    this._releasePlaceholder();
+  }
+
+  _releasePlaceholder() {
+    if (!this.placeholderUrl) return;
+    this.placeholderUrl = null;
+    this.waAttachments.releasePlaceholder(this.message.uuid);
   }
 
   _isGone() {

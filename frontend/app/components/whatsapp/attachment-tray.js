@@ -19,13 +19,8 @@ export default class WhatsappAttachmentTrayComponent extends Component {
     return this.args.items ?? [];
   }
 
-  get isUploading() {
-    return this.items.some((item) => item.state === 'uploading');
-  }
-
   get sendableCount() {
-    return this.items.filter((item) => !item.refused && item.state !== 'sent')
-      .length;
+    return this.items.filter((item) => !item.refused).length;
   }
 
   get sendLabel() {

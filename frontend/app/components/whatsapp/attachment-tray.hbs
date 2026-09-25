@@ -45,18 +45,10 @@
                 @rows="1"
                 @maxlength={{this.captionMaxLength}}
                 @placeholder="Add a caption"
-                @disabled={{or @disabled (eq item.state "sent")}}
+                @disabled={{@disabled}}
                 @onInput={{fn @onCaption item.id}}
                 aria-label="Caption"
                 data-test-wa-attachment-caption
-              />
-            {{/if}}
-            {{#if (eq item.state "uploading")}}
-              <Nuvo::Progress
-                @size="sm"
-                @value={{item.progress}}
-                aria-label="Upload progress"
-                data-test-wa-attachment-progress
               />
             {{/if}}
             {{#if item.error}}
@@ -71,26 +63,16 @@
           </div>
         </:main>
         <:actions>
-          {{#if (eq item.state "sent")}}
-            <Nuvo::Icon
-              class="wa-tray__sent"
-              @icon="check"
-              aria-label="Sent"
-              data-test-wa-attachment-sent
-            />
-          {{else}}
-            <Nuvo::Button
-              @variant="ghost"
-              @shape="circle"
-              @size="xs"
-              @icon="x"
-              @disabled={{this.isUploading}}
-              @onClick={{fn @onRemove item.id}}
-              aria-label="Remove file"
-              title="Remove"
-              data-test-wa-attachment-remove
-            />
-          {{/if}}
+          <Nuvo::Button
+            @variant="ghost"
+            @shape="circle"
+            @size="xs"
+            @icon="x"
+            @onClick={{fn @onRemove item.id}}
+            aria-label="Remove file"
+            title="Remove"
+            data-test-wa-attachment-remove
+          />
         </:actions>
       </Nuvo::ListItem>
     {{/each}}
@@ -100,7 +82,6 @@
       @variant="ghost"
       @size="sm"
       @text="Clear"
-      @disabled={{this.isUploading}}
       @onClick={{@onClear}}
       data-test-wa-attachment-clear
     />
@@ -109,7 +90,6 @@
       @size="sm"
       @icon="paper-plane-tilt"
       @text={{this.sendLabel}}
-      @loading={{this.isUploading}}
       @disabled={{this.sendDisabled}}
       @onClick={{@onSend}}
       data-test-wa-attachment-send
