@@ -128,7 +128,9 @@
           class="wa-messages"
           id="wa-messages-container"
           data-wa-media-root
+          data-test-wa-drop-zone="thread"
           {{on "scroll" this.onThreadScroll}}
+          {{file-drop this.addAttachments disabled=this.composerDisabled}}
         >
           {{#if this.currentChatWindowError}}
             <div class="wa-load-older-error" data-test-wa-reload-error>
@@ -219,6 +221,16 @@
                         "Not delivered"
                       }}
                     ><Ui::Ph @icon="warning-circle" /></span>
+                    {{#if (this.canRetrySend msg)}}
+                      <Nuvo::Button
+                        @variant="ghost"
+                        @size="xs"
+                        @text="Retry"
+                        @loading={{this.isRetryingSend msg}}
+                        @onClick={{fn this.retrySend msg}}
+                        data-test-wa-retry-send
+                      />
+                    {{/if}}
                   {{else if (eq msg.status "read")}}
                     <span
                       class="wa-tick is-read"
@@ -283,7 +295,11 @@
           {{/if}}
         </div>
 
-        <div class="wa-input-area">
+        <div
+          class="wa-input-area"
+          data-test-wa-drop-zone="composer"
+          {{file-drop this.addAttachments disabled=this.composerDisabled}}
+        >
           {{#if this.replyWindow}}
             <div
               class="wa-window
@@ -304,7 +320,22 @@
             </div>
           {{/if}}
 
+          {{#if this.waAttachments.items.length}}
+            <Whatsapp::AttachmentTray
+              @items={{this.waAttachments.items}}
+              @disabled={{this.composerDisabled}}
+              @onCaption={{this.waAttachments.setCaption}}
+              @onRemove={{this.waAttachments.remove}}
+              @onClear={{this.waAttachments.clear}}
+              @onSend={{this.sendAttachments}}
+            />
+          {{/if}}
+
           <div class="wa-input-row">
+            <Whatsapp::AttachButton
+              @disabled={{this.composerDisabled}}
+              @onFiles={{this.addAttachments}}
+            />
             <Nuvo::Textarea
               @value={{this.messageText}}
               @onInput={{this.setMessageText}}

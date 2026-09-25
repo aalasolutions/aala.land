@@ -47,7 +47,10 @@ module('Integration | Component | whatsapp/audio-player', function (hooks) {
   }
 
   test('renders a hidden native element under custom controls', async function (assert) {
-    await renderPlayers(this);
+    const [audio] = await renderPlayers(this);
+    // The two-second fixture may or may not have loaded yet; wait so the clock is deterministic.
+    await waitUntil(() => audio.readyState >= 1, { timeout: 2000 });
+    await settled();
 
     assert
       .dom('[data-test-wa-media-audio]')
@@ -57,7 +60,7 @@ module('Integration | Component | whatsapp/audio-player', function (hooks) {
     assert.dom('[data-test-wa-play]').hasAttribute('aria-label', 'Play');
     assert.dom('[data-test-wa-seek]').hasAttribute('type', 'range');
     assert.dom('[data-test-wa-seek]').hasAttribute('aria-valuetext', '0:00');
-    assert.dom('[data-test-wa-time]').hasText('0:00 / 0:00');
+    assert.dom('[data-test-wa-time]').hasText('0:00 / 0:02');
     assert.dom('[data-test-wa-speed]').hasText('1x');
     assert.dom('[data-test-wa-media-size]').hasText('12 KB');
   });

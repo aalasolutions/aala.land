@@ -1,0 +1,118 @@
+<div class="wa-tray" data-test-wa-attachment-tray ...attributes>
+  <div class="wa-tray__list">
+    {{#each this.items key="id" as |item|}}
+      <Nuvo::ListItem
+        class="wa-tray__item {{if item.error 'is-error'}}"
+        data-test-wa-attachment={{item.id}}
+        data-test-wa-attachment-state={{item.state}}
+      >
+        <:main>
+          {{#if (this.hasThumbnail item)}}
+            <img
+              class="wa-tray__thumb"
+              alt=""
+              data-test-wa-attachment-thumb
+              {{this.preview item.file}}
+            />
+          {{else}}
+            <span class="wa-tray__thumb m-icon" data-test-wa-attachment-icon>
+              <Nuvo::Icon
+                @icon={{this.iconFor item}}
+                @size="1.5rem"
+                aria-hidden="true"
+              />
+            </span>
+          {{/if}}
+          <div class="wa-tray__body">
+            <div class="flex x-center gap-2 min-w-0p">
+              <Nuvo::Text
+                @tag="span"
+                @size="sm"
+                @truncate={{true}}
+                data-test-wa-attachment-name
+              ><bdi>{{item.file.name}}</bdi></Nuvo::Text>
+              <Nuvo::Badge
+                @size="sm"
+                @quiet={{true}}
+                @text={{format-bytes item.file.size}}
+                data-test-wa-attachment-size
+              />
+            </div>
+            {{#if (this.showCaption item)}}
+              <Nuvo::Textarea
+                class="wa-tray__caption"
+                @value={{item.caption}}
+                @rows="1"
+                @maxlength={{this.captionMaxLength}}
+                @placeholder="Add a caption"
+                @disabled={{or @disabled (eq item.state "sent")}}
+                @onInput={{fn @onCaption item.id}}
+                aria-label="Caption"
+                data-test-wa-attachment-caption
+              />
+            {{/if}}
+            {{#if (eq item.state "uploading")}}
+              <Nuvo::Progress
+                @size="sm"
+                @value={{item.progress}}
+                aria-label="Upload progress"
+                data-test-wa-attachment-progress
+              />
+            {{/if}}
+            {{#if item.error}}
+              <Nuvo::Text
+                @tag="span"
+                @size="xs"
+                @variant="danger"
+                role="alert"
+                data-test-wa-attachment-error
+              >{{item.error}}</Nuvo::Text>
+            {{/if}}
+          </div>
+        </:main>
+        <:actions>
+          {{#if (eq item.state "sent")}}
+            <Nuvo::Icon
+              class="wa-tray__sent"
+              @icon="check"
+              aria-label="Sent"
+              data-test-wa-attachment-sent
+            />
+          {{else}}
+            <Nuvo::Button
+              @variant="ghost"
+              @shape="circle"
+              @size="xs"
+              @icon="x"
+              @disabled={{this.isUploading}}
+              @onClick={{fn @onRemove item.id}}
+              aria-label="Remove file"
+              title="Remove"
+              data-test-wa-attachment-remove
+            />
+          {{/if}}
+        </:actions>
+      </Nuvo::ListItem>
+    {{/each}}
+  </div>
+  <div class="wa-tray__footer">
+    <Nuvo::Button
+      @variant="ghost"
+      @size="sm"
+      @text="Clear"
+      @disabled={{this.isUploading}}
+      @onClick={{@onClear}}
+      data-test-wa-attachment-clear
+    />
+    <Nuvo::Button
+      @variant="primary"
+      @size="sm"
+      @icon="paper-plane-tilt"
+      @text={{this.sendLabel}}
+      @loading={{this.isUploading}}
+      @disabled={{this.sendDisabled}}
+      @onClick={{@onSend}}
+      data-test-wa-attachment-send
+    />
+  </div>
+</div>

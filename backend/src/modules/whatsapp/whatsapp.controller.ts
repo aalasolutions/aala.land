@@ -12,8 +12,20 @@ import {
   Query,
   UseGuards,
   Request,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { WhatsappService } from './whatsapp.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -31,6 +43,8 @@ import {
   WhatsappMediaService,
 } from './whatsapp-media.service';
 import { DeleteWaMediaDto } from './dto/delete-wa-media.dto';
+import { SendWaMediaDto } from './dto/send-wa-media.dto';
+import { WhatsappMediaSendService } from './whatsapp-media-send.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 import {
@@ -51,6 +65,7 @@ export class WhatsappController {
     private readonly wa: WhatsappService,
     private readonly signup: WhatsappSignupService,
     private readonly media: WhatsappMediaService,
+    private readonly mediaSend: WhatsappMediaSendService,
   ) {}
 
   @Get('connection')
@@ -214,6 +229,74 @@ export class WhatsappController {
       requireCompanyId(req.user),
       dto.chatId,
       dto.body,
+    );
+  }
+
+  @Post('chats/:chatId/media')
+  @ApiOperation({
+    summary:
+      'Send one file as the human operator; stored in our bucket first, then sent through WhatsApp',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'The file. Multipart field name must be "file".',
+        },
+        caption: { type: 'string', maxLength: 1024 },
+        voice: { type: 'boolean' },
+      },
+      required: ['file'],
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      // Spooled to disk, not RAM; the service removes the temp file on every path.
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, _file, cb) => cb(null, `wa-upload-${randomUUID()}`),
+      }),
+      limits: { fileSize: 100 * 1024 * 1024 },
+    }),
+  )
+  sendMedia(
+    @Request() req: AuthenticatedRequest,
+    @Param() { chatId }: WaChatIdParamDto,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() dto: SendWaMediaDto,
+  ): Promise<WaMessage> {
+    if (!file) {
+      throw new BadRequestException(
+        'No file provided. Send it in a multipart/form-data field named "file".',
+      );
+    }
+    return this.mediaSend.sendFile(
+      requireCompanyId(req.user),
+      req.user.userId,
+      chatId,
+      file,
+      { caption: dto.caption, voice: dto.voice },
+    );
+  }
+
+  @Post('messages/:uuid/retry')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Resend a media message WhatsApp refused, from our stored copy (owning agent or company admin)',
+  })
+  retryMedia(
+    @Request() req: AuthenticatedRequest,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ): Promise<WaMessage> {
+    return this.mediaSend.retry(
+      requireCompanyId(req.user),
+      { userId: req.user.userId, role: req.user.role },
+      uuid,
     );
   }
 

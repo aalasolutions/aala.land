@@ -23,8 +23,11 @@ import { Company } from '../companies/entities/company.entity';
 import { UploadMediaDto } from './dto/upload-media.dto';
 import {
   getStorageQuotaBytes,
+  releaseStorage,
   reserveStorage,
 } from '@shared/utils/storage-quota.util';
+import { ALLOWED_DOCUMENT_TYPES } from '@shared/constants/document-types';
+import { verifyTextFile } from '@shared/utils/text-file.util';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
 import { SystemEmailService } from '../email/system-email.service';
@@ -51,45 +54,14 @@ const MAX_OUTPUT_DIMENSION = 2560; // longest dimension cap for stored original
 const THUMBNAIL_WIDTH = 400;
 const THUMBNAIL_HEIGHT = 400;
 
-export const ALLOWED_DOCUMENT_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/rtf',
-  'text/plain',
-  'text/markdown',
-  'text/csv',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-] as const;
+export { ALLOWED_DOCUMENT_TYPES };
 
-// No magic-byte signature exists for these; verifyTextFile below checks them instead.
+// No magic-byte signature exists for these; verifyTextFile checks them instead.
 const TEXT_DOCUMENT_TYPES = new Set<string>([
   'text/plain',
   'text/markdown',
   'text/csv',
 ]);
-
-// <html> deliberately excluded from the binary-signature list.
-const TEXT_FILE_BINARY_SIGNATURES: ReadonlyArray<{
-  bytes: Buffer;
-  caseInsensitive?: boolean;
-}> = [
-  { bytes: Buffer.from('<script'), caseInsensitive: true },
-  { bytes: Buffer.from('<?php'), caseInsensitive: true },
-  { bytes: Buffer.from('MZ') },
-  { bytes: Buffer.from('%PDF') },
-  { bytes: Buffer.from('PK') },
-];
-const TEXT_FILE_SIGNATURE_SAMPLE_SIZE = Math.max(
-  ...TEXT_FILE_BINARY_SIGNATURES.map((s) => s.bytes.length),
-);
 
 export interface DocumentUploadResult {
   url: string;
@@ -199,16 +171,7 @@ export class MediaService {
   }
 
   async decrementStorage(companyId: string, bytes: number): Promise<void> {
-    if (bytes <= 0) return;
-    await this.companyRepository
-      .createQueryBuilder()
-      .update(Company)
-      .set({
-        storageUsedBytes: () => 'GREATEST("storage_used_bytes" - :bytes, 0)',
-      })
-      .setParameter('bytes', bytes)
-      .where('id = :companyId', { companyId })
-      .execute();
+    await releaseStorage(this.companyRepository, companyId, bytes);
   }
 
   private async verifyUnitOwnership(
@@ -476,54 +439,6 @@ export class MediaService {
     }
   }
 
-  // Content sanity check for formats with no magic-byte signature.
-  private async verifyTextFile(filePath: string): Promise<void> {
-    const decoder = new TextDecoder('utf-8', { fatal: true });
-    let checkedHead = false;
-
-    const stream = createReadStream(filePath);
-    try {
-      for await (const chunk of stream as AsyncIterable<Buffer>) {
-        if (!checkedHead) {
-          checkedHead = true;
-          const head = chunk.subarray(0, TEXT_FILE_SIGNATURE_SAMPLE_SIZE);
-          for (const sig of TEXT_FILE_BINARY_SIGNATURES) {
-            const candidate = head.subarray(0, sig.bytes.length);
-            const matches = sig.caseInsensitive
-              ? candidate.toString('latin1').toLowerCase() ===
-                sig.bytes.toString('latin1').toLowerCase()
-              : candidate.equals(sig.bytes);
-            if (matches) {
-              throw new BadRequestException(
-                'File content does not look like plain text — upload rejected.',
-              );
-            }
-          }
-        }
-
-        if (chunk.includes(0)) {
-          throw new BadRequestException(
-            'File contains binary content and cannot be accepted as a text document.',
-          );
-        }
-
-        try {
-          decoder.decode(chunk, { stream: true });
-        } catch {
-          throw new BadRequestException('File is not valid UTF-8 text.');
-        }
-      }
-
-      try {
-        decoder.decode();
-      } catch {
-        throw new BadRequestException('File is not valid UTF-8 text.');
-      }
-    } finally {
-      stream.destroy();
-    }
-  }
-
   private async uploadDocumentFile(
     companyId: string,
     file: Express.Multer.File,
@@ -540,7 +455,7 @@ export class MediaService {
 
     // Content validation confirms file bytes match the declared MIME type.
     if (TEXT_DOCUMENT_TYPES.has(file.mimetype)) {
-      await this.verifyTextFile(file.path);
+      await verifyTextFile(file.path);
     } else {
       const { fileTypeFromFile } = await import('file-type');
       const detected = await fileTypeFromFile(file.path);

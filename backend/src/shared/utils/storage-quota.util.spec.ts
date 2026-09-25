@@ -1,6 +1,7 @@
 import {
   addStorageUsage,
   getStorageQuotaBytes,
+  releaseStorage,
   reserveStorage,
 } from './storage-quota.util';
 import {
@@ -189,6 +190,43 @@ describe('addStorageUsage', () => {
     await expect(
       addStorageUsage(repo as any, 'company-1', bytes),
     ).rejects.toThrow('invalid byte count');
+    expect(qb.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe('releaseStorage', () => {
+  const makeRepo = () => {
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      setParameter: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    return { qb, repo: { createQueryBuilder: jest.fn(() => qb) } };
+  };
+
+  it('decrements usage floored at zero in one UPDATE', async () => {
+    const { qb, repo } = makeRepo();
+
+    await releaseStorage(repo as any, 'company-1', 2048);
+
+    const setArg = qb.set.mock.calls[0][0];
+    expect(setArg.storageUsedBytes()).toBe(
+      'GREATEST("storage_used_bytes" - :bytes, 0)',
+    );
+    expect(qb.setParameter).toHaveBeenCalledWith('bytes', 2048);
+    expect(qb.where).toHaveBeenCalledWith('id = :companyId', {
+      companyId: 'company-1',
+    });
+    expect(qb.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the query for zero bytes', async () => {
+    const { qb, repo } = makeRepo();
+
+    await releaseStorage(repo as any, 'company-1', 0);
+
     expect(qb.execute).not.toHaveBeenCalled();
   });
 });

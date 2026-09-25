@@ -1,4 +1,5 @@
 import { envInt } from '@shared/utils/env.util';
+import { ALLOWED_DOCUMENT_TYPES } from '@shared/constants/document-types';
 import {
   WA_MEDIA_DELETED_BY,
   WaMediaStatus,
@@ -177,4 +178,186 @@ export function toWireMessage(evt: WaMessage & WaMessageInsert): WaMessage {
   delete message.mediaMetaId;
   delete message.mediaSha256;
   return message;
+}
+
+export type WaOutboundMediaType =
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'document'
+  | 'sticker';
+
+interface WaOutboundRule {
+  type: WaOutboundMediaType;
+  ext: string;
+  limitBytes: number;
+}
+
+const KB = 1024;
+const MB = 1024 * 1024;
+export const WA_ANIMATED_STICKER_LIMIT_BYTES = 500 * KB;
+
+const DOCUMENT_EXT: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+    'pptx',
+  'application/rtf': 'rtf',
+  'text/plain': 'txt',
+  'text/markdown': 'md',
+  'text/csv': 'csv',
+  'image/gif': 'gif',
+};
+
+const MEDIA_RULES: Record<string, WaOutboundRule> = {
+  'image/jpeg': { type: 'image', ext: 'jpg', limitBytes: 5 * MB },
+  'image/png': { type: 'image', ext: 'png', limitBytes: 5 * MB },
+  'video/mp4': { type: 'video', ext: 'mp4', limitBytes: 16 * MB },
+  'video/3gpp': { type: 'video', ext: '3gp', limitBytes: 16 * MB },
+  'audio/aac': { type: 'audio', ext: 'aac', limitBytes: 16 * MB },
+  'audio/amr': { type: 'audio', ext: 'amr', limitBytes: 16 * MB },
+  'audio/mpeg': { type: 'audio', ext: 'mp3', limitBytes: 16 * MB },
+  'audio/mp4': { type: 'audio', ext: 'm4a', limitBytes: 16 * MB },
+  'audio/ogg': { type: 'audio', ext: 'ogg', limitBytes: 16 * MB },
+  // Static limit; an animated sticker is allowed WA_ANIMATED_STICKER_LIMIT_BYTES.
+  'image/webp': { type: 'sticker', ext: 'webp', limitBytes: 100 * KB },
+};
+
+// Keyed by the mime detected from the file bytes, never the one the client sent.
+export const WA_OUTBOUND_MEDIA: Readonly<Record<string, WaOutboundRule>> = {
+  ...Object.fromEntries(
+    ALLOWED_DOCUMENT_TYPES.filter((mime) => !(mime in MEDIA_RULES)).map(
+      (mime) => [
+        mime,
+        {
+          type: 'document',
+          ext: DOCUMENT_EXT[mime] ?? 'bin',
+          limitBytes: 100 * MB,
+        },
+      ],
+    ),
+  ),
+  ...MEDIA_RULES,
+};
+
+// file-type names these differently from Meta, or cannot tell legacy Office formats apart.
+const DETECTED_MIME_ALIASES: Record<string, string> = {
+  'audio/x-m4a': 'audio/mp4',
+};
+const LEGACY_OFFICE_BY_EXT: Record<string, string> = {
+  doc: 'application/msword',
+  xls: 'application/vnd.ms-excel',
+  ppt: 'application/vnd.ms-powerpoint',
+};
+
+// file-type reports Opus as 'audio/ogg; codecs=opus' and Vorbis, FLAC and Speex as plain 'audio/ogg'.
+const OGG_OPUS_MIME = 'audio/ogg;codecs=opus';
+export const WA_OGG_NOT_OPUS_MESSAGE =
+  'Only OGG files encoded with Opus can be sent on WhatsApp.';
+
+// Only Opus passes resolveOutboundMedia as audio/ogg, which is what a voice note needs.
+export function isVoiceNoteMedia(
+  type: string | null | undefined,
+  mime: string | null | undefined,
+): boolean {
+  return type === 'audio' && baseMime(mime) === 'audio/ogg';
+}
+
+export const WA_VIDEO_TOO_LARGE_MESSAGE =
+  'Video is over 16 MB. Send it as a document instead.';
+
+const TOO_LARGE_MESSAGES: Record<WaOutboundMediaType, string> = {
+  image: 'Image is over 5 MB.',
+  video: WA_VIDEO_TOO_LARGE_MESSAGE,
+  audio: 'Audio is over 16 MB.',
+  document: 'File is over 100 MB.',
+  sticker: 'Sticker is over 100 KB.',
+};
+
+export interface WaOutboundMedia {
+  type: WaOutboundMediaType;
+  mime: string;
+  ext: string;
+  limitBytes: number;
+}
+
+export interface WaOutboundRefusal {
+  refusal: string;
+}
+
+function fileExt(fileName: string | null | undefined): string {
+  return (
+    /\.([A-Za-z0-9]{1,10})$/.exec(fileName ?? '')?.[1] ?? ''
+  ).toLowerCase();
+}
+
+// A text document has no magic bytes, so its mime comes from the name once its content has been checked.
+export function outboundTextMime(fileName: string | null | undefined): string {
+  const ext = fileExt(fileName);
+  if (ext === 'csv') return 'text/csv';
+  if (ext === 'md' || ext === 'markdown') return 'text/markdown';
+  return 'text/plain';
+}
+
+export function resolveOutboundMedia(
+  detectedMime: string | null | undefined,
+  sizeBytes: number,
+  fileName: string | null | undefined,
+  animated = false,
+): WaOutboundMedia | WaOutboundRefusal {
+  let mime = baseMime(detectedMime);
+  mime = DETECTED_MIME_ALIASES[mime] ?? mime;
+  if (mime === 'application/x-cfb') {
+    mime = LEGACY_OFFICE_BY_EXT[fileExt(fileName)] ?? mime;
+  }
+  const rule = WA_OUTBOUND_MEDIA[mime];
+  if (!rule) {
+    return {
+      refusal: `This file type (${mime || 'unknown'}) cannot be sent on WhatsApp.`,
+    };
+  }
+  if (
+    mime === 'audio/ogg' &&
+    (detectedMime ?? '').toLowerCase().replace(/\s+/g, '') !== OGG_OPUS_MIME
+  ) {
+    return { refusal: WA_OGG_NOT_OPUS_MESSAGE };
+  }
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) {
+    return { refusal: 'The file is empty.' };
+  }
+  const limitBytes =
+    rule.type === 'sticker' && animated
+      ? WA_ANIMATED_STICKER_LIMIT_BYTES
+      : rule.limitBytes;
+  if (sizeBytes > limitBytes) {
+    return {
+      refusal:
+        rule.type === 'sticker' && animated
+          ? 'Animated sticker is over 500 KB.'
+          : TOO_LARGE_MESSAGES[rule.type],
+    };
+  }
+  return { type: rule.type, mime, ext: rule.ext, limitBytes };
+}
+
+// Outbound keys use the row uuid: the wamid is unknown until Meta accepts the send.
+export function outboundObjectKey(
+  companyId: string,
+  userId: string,
+  chatId: string,
+  uuid: string,
+  ext: string,
+): string {
+  return [
+    'whatsapp',
+    companyId,
+    userId,
+    safeWaMessageId(chatId),
+    `${uuid}.${ext}`,
+  ].join('/');
 }

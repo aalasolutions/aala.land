@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, LessThan, Or, Repository } from 'typeorm';
+import { In, IsNull, LessThan, Like, Or, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   WaMessage,
@@ -9,6 +9,7 @@ import {
   WaMessageWindow,
   WaMediaStatus,
   WaUnreadState,
+  WA_LOCAL_ID_PREFIX,
   WA_PLACEHOLDER_BODIES,
 } from './wa-types';
 import {
@@ -25,6 +26,7 @@ const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
 export const REPLY_WINDOW_S = 24 * 60 * 60;
+export const RETRY_CLAIM_STALE_MS = 10 * 60 * 1000;
 // About 26 bind parameters per row; 500 rows stays well under Postgres's 65535 limit.
 const HISTORY_INSERT_CHUNK = 500;
 
@@ -174,7 +176,11 @@ export class MessageStoreService {
     msg: WaMessageInsert,
     phoneNumberId: string | null | undefined,
     safeTs: string,
-    insertStatus: { status?: WhatsappMessageStatus; statusAt?: Date },
+    insertStatus: {
+      status?: WhatsappMessageStatus;
+      statusAt?: Date;
+      errorCode?: string | null;
+    },
   ): QueryDeepPartialEntity<WhatsappMessage> {
     return {
       ...(msg.uuid ? { id: msg.uuid } : {}),
@@ -196,6 +202,8 @@ export class MessageStoreService {
       mediaSizeBytes: msg.mediaSizeBytes ?? null,
       mediaSha256: msg.mediaSha256 ?? null,
       mediaStatus: msg.mediaStatus ?? null,
+      mediaKey: msg.mediaKey ?? null,
+      mediaStoredAt: msg.mediaStoredAt ? new Date(msg.mediaStoredAt) : null,
       mentionedIds: msg.mentionedIds ?? [],
       quotedParticipant: msg.quotedParticipant ?? '',
       fromMe: msg.fromMe ?? false,
@@ -206,6 +214,7 @@ export class MessageStoreService {
         ? {
             status: insertStatus.status,
             statusAt: insertStatus.statusAt ?? null,
+            errorCode: insertStatus.errorCode ?? null,
           }
         : {}),
     };
@@ -223,6 +232,7 @@ export class MessageStoreService {
       // Written only when this call inserts the row, so a live row's status is never overwritten.
       status?: WhatsappMessageStatus;
       statusAt?: Date;
+      errorCode?: string | null;
     } = {},
   ): Promise<{ inserted: boolean; unread: WaUnreadState }> {
     const isPassive = options.isPassive ?? false;
@@ -255,6 +265,7 @@ export class MessageStoreService {
           this.toInsertValues(companyId, userId, msg, phoneNumberId, safeTs, {
             status: options.status,
             statusAt: options.statusAt,
+            errorCode: options.errorCode,
           }),
         )
         .orIgnore()
@@ -517,6 +528,66 @@ export class MessageStoreService {
   ): Promise<WaMessage | null> {
     const row = await this.findRowByUuid(companyId, uuid);
     return row ? this.toWaMessage(row) : null;
+  }
+
+  // Claims a failed local row for one retry, or one whose claim was abandoned; false while a live retry holds it.
+  async claimFailedLocalRow(companyId: string, uuid: string): Promise<boolean> {
+    const now = new Date();
+    const local = {
+      companyId,
+      id: uuid,
+      waMessageId: Like(`${WA_LOCAL_ID_PREFIX}%`),
+    };
+    const result = await this.messages.update(
+      [
+        { ...local, status: WhatsappMessageStatus.FAILED },
+        {
+          ...local,
+          status: IsNull(),
+          statusAt: LessThan(new Date(now.getTime() - RETRY_CLAIM_STALE_MS)),
+        },
+      ],
+      { status: null, statusAt: now },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
+  async markLocalRowFailed(
+    companyId: string,
+    uuid: string,
+    errorCode: string | null,
+  ): Promise<void> {
+    await this.messages.update(
+      {
+        companyId,
+        id: uuid,
+        waMessageId: Like(`${WA_LOCAL_ID_PREFIX}%`),
+      },
+      { status: WhatsappMessageStatus.FAILED, statusAt: new Date(), errorCode },
+    );
+  }
+
+  // Meta accepted the retry: the row takes the real wamid so status callbacks find it.
+  async promoteLocalRow(
+    companyId: string,
+    uuid: string,
+    waMessageId: string,
+  ): Promise<boolean> {
+    const result = await this.messages.update(
+      {
+        companyId,
+        id: uuid,
+        waMessageId: Like(`${WA_LOCAL_ID_PREFIX}%`),
+      },
+      {
+        waMessageId,
+        status: null,
+        errorCode: null,
+        statusAt: null,
+        timestamp: String(Math.floor(Date.now() / 1000)),
+      },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   // Lands only on a PENDING row, so a revoke that already set DELETED is never overwritten.

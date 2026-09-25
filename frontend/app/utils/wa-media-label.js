@@ -6,6 +6,18 @@ const TYPE_LABELS = {
   sticker: 'Sticker',
 };
 
+const TYPE_ICONS = {
+  image: 'image',
+  video: 'video-camera',
+  audio: 'microphone',
+  document: 'file-text',
+  sticker: 'sticker',
+};
+
+export function mediaTypeIcon(type) {
+  return TYPE_ICONS[type] ?? 'paperclip';
+}
+
 export function mediaTypeLabel(type) {
   return TYPE_LABELS[type] ?? 'Attachment';
 }

@@ -8,6 +8,8 @@ $wa-message-max-width: 70%;
 $wa-media-width: 18rem;
 $wa-sticker-size: 8rem;
 $wa-media-play-size: 3rem;
+$wa-tray-thumb-size: 2.5rem;
+$wa-tray-max-height: 16rem;
 
 // `:has()` outranks the bare `.content-area` rule, so no `!important` is needed here.
 .content-area:has(.wa-shell) {
@@ -312,6 +314,11 @@ $wa-media-play-size: 3rem;
   background-position:
     0 0,
     0.75rem 0.75rem;
+
+  &.is-dropping {
+    outline: 2px dashed var(--wa-accent);
+    outline-offset: calc(-1 * #{nu-space(2)});
+  }
 }
 
 .wa-load-older {
@@ -688,6 +695,75 @@ $wa-media-play-size: 3rem;
   flex-shrink: 0;
   padding: nu-space(3) nu-space(4);
   background: var(--wa-bar-bg);
+
+  &.is-dropping {
+    outline: 2px dashed var(--wa-accent);
+    outline-offset: calc(-1 * #{nu-space(1)});
+  }
+}
+
+// Queued files; the list scrolls on its own so the composer stays in view.
+.wa-tray {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(2);
+  margin-block-end: nu-space(2);
+}
+
+.wa-tray__list {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  max-block-size: $wa-tray-max-height;
+  overflow-y: auto;
+}
+
+.wa-tray__item {
+  --nu-list-item--PaddingBlock: #{nu-space(2)};
+  --nu-list-item--PaddingInline: #{nu-space(3)};
+
+  &.is-error {
+    --nu-list-item--BorderColor: var(--danger-600);
+  }
+}
+
+.wa-tray__thumb {
+  flex-shrink: 0;
+  inline-size: $wa-tray-thumb-size;
+  block-size: $wa-tray-thumb-size;
+  border-radius: nu-radius(md);
+  object-fit: cover;
+  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+
+  &.m-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+}
+
+.wa-tray__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: nu-space(1);
+  min-inline-size: 0;
+}
+
+.wa-tray__caption {
+  resize: none;
+}
+
+.wa-tray__sent {
+  color: var(--success-600);
+}
+
+.wa-tray__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: nu-space(2);
 }
 
 // Sits above the composer so window state is read before typing, not after a send is refused.

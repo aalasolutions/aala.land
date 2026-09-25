@@ -9,16 +9,21 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
 import { randomUUID } from 'node:crypto';
+import { openAsBlob } from 'node:fs';
 import {
   GRAPH_VERSION,
   WA_MESSAGE_NO_STORED_MEDIA,
   WaMessage,
 } from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
+import type { WaOutboundMediaType } from './wa-media.util';
 import { errorMessage } from '@shared/utils/error.util';
 import { envInt } from '@shared/utils/env.util';
 
 const DEFAULT_SEND_TIMEOUT_MS = 15000;
+const DEFAULT_MEDIA_UPLOAD_TIMEOUT_MS = 120000;
+
+const CAPTIONED_MEDIA_TYPES = new Set(['image', 'video', 'document']);
 
 // Meta's code for an invalid or expired access token.
 const GRAPH_TOKEN_INVALID_CODE = 190;
@@ -47,6 +52,14 @@ export class WhatsappSendError extends Error {
 // Graph's answer for an object id that does not exist, which is how an expired media id reads.
 const GRAPH_UNKNOWN_OBJECT_CODE = 100;
 const GRAPH_UNKNOWN_OBJECT_SUBCODE = 33;
+
+export interface WhatsappOutboundMedia {
+  type: WaOutboundMediaType;
+  mediaId: string;
+  caption?: string;
+  fileName?: string;
+  voice?: boolean;
+}
 
 export interface WhatsappMediaInfo {
   url: string;
@@ -108,6 +121,87 @@ export class WhatsappCloudApiService {
     to: string,
     body: string,
   ): Promise<{ messageId: string }> {
+    return this.postMessage(connection, to, {
+      type: 'text',
+      text: { body },
+    });
+  }
+
+  // Meta takes a caption on image, video and document only, and a file name on documents only.
+  async sendMedia(
+    connection: WhatsappConnection,
+    to: string,
+    media: WhatsappOutboundMedia,
+  ): Promise<{ messageId: string }> {
+    const object: Record<string, unknown> = { id: media.mediaId };
+    if (media.caption && CAPTIONED_MEDIA_TYPES.has(media.type)) {
+      object.caption = media.caption;
+    }
+    if (media.type === 'document' && media.fileName) {
+      object.filename = media.fileName;
+    }
+    if (media.type === 'audio' && media.voice) object.voice = true;
+    return this.postMessage(connection, to, {
+      type: media.type,
+      [media.type]: object,
+    });
+  }
+
+  // Streams the file from disk as multipart; returns the Meta media id the send refers to.
+  async uploadMedia(
+    connection: WhatsappConnection,
+    token: string,
+    file: { path: string; mime: string; fileName: string },
+  ): Promise<string> {
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      envInt(
+        'WHATSAPP_MEDIA_UPLOAD_TIMEOUT_MS',
+        DEFAULT_MEDIA_UPLOAD_TIMEOUT_MS,
+        1,
+      ),
+    );
+    try {
+      const form = new FormData();
+      form.append('messaging_product', 'whatsapp');
+      form.append('type', file.mime);
+      form.append(
+        'file',
+        await openAsBlob(file.path, { type: file.mime }),
+        file.fileName,
+      );
+      const res = await fetch(
+        `https://graph.facebook.com/${GRAPH_VERSION}/${connection.phoneNumberId}/media`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+          signal: controller.signal,
+        },
+      );
+      if (!res.ok)
+        throw await this.sendFailure(connection, res, 'media upload');
+      const data = (await res.json()) as { id?: unknown };
+      if (typeof data.id !== 'string' || !data.id) {
+        this.logger.error(
+          `Cloud API accepted the media upload but returned no media id for ${connection.phoneNumberId}`,
+        );
+        throw new WhatsappSendError('Cloud API returned no media id');
+      }
+      return data.id;
+    } catch (err) {
+      throw this.toSendError(err, 'media upload');
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async postMessage(
+    connection: WhatsappConnection,
+    to: string,
+    content: Record<string, unknown>,
+  ): Promise<{ messageId: string }> {
     const token = this.resolveAccessToken(connection);
     if (!token) {
       this.logger.error(
@@ -134,26 +228,11 @@ export class WhatsappCloudApiService {
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to,
-          type: 'text',
-          text: { body },
+          ...content,
         }),
         signal: controller.signal,
       });
-      if (!res.ok) {
-        const raw = await res.text();
-        const graphCode = this.graphError(raw).code ?? null;
-        this.logger.error(
-          `Cloud API send failed ${res.status} (graph code ${graphCode ?? 'none'}) for ${connection.phoneNumberId}: ${raw.slice(0, 500)}`,
-        );
-        if (res.status === 401 || graphCode === GRAPH_TOKEN_INVALID_CODE) {
-          await this.flagConnection(connection, res.status, graphCode);
-        }
-        throw new WhatsappSendError(
-          `Cloud API send failed ${res.status}`,
-          res.status,
-          graphCode ?? undefined,
-        );
-      }
+      if (!res.ok) throw await this.sendFailure(connection, res, 'send');
       const data = (await res.json()) as {
         messages?: Array<{ id?: string }>;
       };
@@ -166,13 +245,37 @@ export class WhatsappCloudApiService {
       }
       return { messageId };
     } catch (err) {
-      if (err instanceof WhatsappSendError) throw err;
-      const reason = errorMessage(err);
-      this.logger.error(`Cloud API send error: ${reason}`);
-      throw new WhatsappSendError(`Cloud API send error: ${reason}`);
+      throw this.toSendError(err, 'send');
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private async sendFailure(
+    connection: WhatsappConnection,
+    res: Response,
+    action: string,
+  ): Promise<WhatsappSendError> {
+    const raw = await res.text();
+    const graphCode = this.graphError(raw).code ?? null;
+    this.logger.error(
+      `Cloud API ${action} failed ${res.status} (graph code ${graphCode ?? 'none'}) for ${connection.phoneNumberId}: ${raw.slice(0, 500)}`,
+    );
+    if (res.status === 401 || graphCode === GRAPH_TOKEN_INVALID_CODE) {
+      await this.flagConnection(connection, res.status, graphCode);
+    }
+    return new WhatsappSendError(
+      `Cloud API ${action} failed ${res.status}`,
+      res.status,
+      graphCode ?? undefined,
+    );
+  }
+
+  private toSendError(err: unknown, action: string): WhatsappSendError {
+    if (err instanceof WhatsappSendError) return err;
+    const reason = errorMessage(err);
+    this.logger.error(`Cloud API ${action} error: ${reason}`);
+    return new WhatsappSendError(`Cloud API ${action} error: ${reason}`);
   }
 
   // The returned url lives 5 minutes and needs the same bearer token.

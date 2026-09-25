@@ -28,6 +28,7 @@ function httpUrl(value) {
 export default class WhatsappService extends Service {
   @service auth;
   @service notifications;
+  @service waAttachments;
 
   // Replaced on write.
   @tracked unread = new Map();
@@ -409,6 +410,7 @@ export default class WhatsappService extends Service {
     this._mediaUrlRequests.clear();
     this.viewerMessage = null;
     this.activeChatId = null;
+    this.waAttachments.clear();
     this.clearLastChat();
   }
 
@@ -543,6 +545,25 @@ export default class WhatsappService extends Service {
       method: 'POST',
       body: JSON.stringify({ chatId, body }),
     });
+  }
+
+  // XHR, because fetch cannot report upload progress.
+  sendMediaFile(chatId, file, { caption = '', onProgress } = {}) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) formData.append('caption', caption);
+    return this.auth.uploadWithProgress(
+      `/whatsapp/chats/${encodeURIComponent(chatId)}/media`,
+      formData,
+      onProgress,
+    );
+  }
+
+  retrySend(uuid) {
+    return this.auth.fetchJson(
+      `/whatsapp/messages/${encodeURIComponent(uuid)}/retry`,
+      { method: 'POST' },
+    );
   }
 
   // A cached URL with more than a minute left, else null; an expired entry is pruned.

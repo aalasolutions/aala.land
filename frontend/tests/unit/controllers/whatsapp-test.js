@@ -2454,7 +2454,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const before = controller.threads;
 
     controller.ingestMessageUpdate(
-      mediaMsg({ id: 'm-1', mediaStatus: 'STORED' }),
+      mediaMsg({ id: 'm-1', uuid: 'row-m1', mediaStatus: 'STORED' }),
     );
     controller.ingestMessageUpdate({ ...msg('m-2', 200), editedAt: 950 });
     controller.ingestMessageUpdate(mediaMsg({ id: 'm-3', chatId: 'chat-2' }));
@@ -2668,5 +2668,256 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.currentChatMessages[0].mediaStatus, 'STORED');
     assert.ok(controller.mediaToDelete, 'modal stays open for a retry');
     assert.false(controller.isDeletingMedia);
+  });
+
+  function imageFile(name = 'a.jpg') {
+    return new File(['x'], name, { type: 'image/jpeg' });
+  }
+
+  function failedLocalRow(overrides = {}) {
+    return mediaMsg({
+      id: 'local-row-9',
+      uuid: 'row-9',
+      fromMe: true,
+      status: 'failed',
+      errorCode: 131053,
+      mediaStatus: 'STORED',
+      timestamp: 500,
+      ...overrides,
+    });
+  }
+
+  test('addAttachments queues dropped or picked files only while the composer is usable', function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    withOpenWindow(controller);
+    controller.currentChatId = 'chat-1';
+
+    controller.addAttachments([imageFile('a.jpg'), imageFile('b.jpg')]);
+    assert.deepEqual(
+      controller.waAttachments.items.map((i) => i.file.name),
+      ['a.jpg', 'b.jpg'],
+    );
+
+    controller.connection = { status: 'disconnected' };
+    controller.addAttachments([imageFile('c.jpg')]);
+    assert.strictEqual(
+      controller.waAttachments.items.length,
+      2,
+      'ignored while disabled',
+    );
+    controller.waAttachments.clear();
+  });
+
+  test('the composer is disabled while attachments upload', function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    withOpenWindow(controller);
+    controller.currentChatId = 'chat-1';
+    assert.false(controller.composerDisabled);
+
+    controller.waAttachments.isSending = true;
+    assert.true(controller.composerDisabled);
+    controller.waAttachments.isSending = false;
+  });
+
+  test('switching chat and leaving the page clear the attachment queue', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    assert.strictEqual(
+      typeof controller.waAttachments.onSent,
+      'function',
+      'sent rows are routed to the controller',
+    );
+    await controller.selectChat('chat-1');
+    controller.waAttachments.add([imageFile()]);
+
+    await controller.selectChat('chat-2');
+    assert.deepEqual(controller.waAttachments.items, [], 'cleared on switch');
+
+    controller.waAttachments.add([imageFile()]);
+    controller.teardown();
+    assert.deepEqual(controller.waAttachments.items, [], 'cleared on leave');
+    assert.strictEqual(controller.waAttachments.onSent, null);
+  });
+
+  test('a sent media row goes through ingestMessage and a socket echo is deduped', async function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    await controller.setup();
+    openThread(controller);
+    const row = mediaMsg({
+      id: 'wamid.1',
+      fromMe: true,
+      mediaStatus: 'STORED',
+    });
+
+    await controller.waAttachments.onSent(row, 'chat-1');
+    controller.ingestMessage(row);
+
+    assert.deepEqual(ids(controller), ['wamid.1']);
+    controller.teardown();
+  });
+
+  test('an update matches by uuid first, so a retried send swaps its local id in place', function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    openThread(controller, {
+      messages: [
+        controller._normalizeMessage(msg('m-1', 100)),
+        controller._normalizeMessage(failedLocalRow()),
+      ],
+      oldestId: 'm-1',
+      newestId: 'local-row-9',
+    });
+
+    controller.ingestMessageUpdate(
+      failedLocalRow({
+        id: 'wamid.REAL',
+        status: null,
+        statusAt: null,
+        errorCode: null,
+      }),
+    );
+
+    assert.deepEqual(ids(controller), ['m-1', 'wamid.REAL'], 'no second row');
+    const row = controller.currentChatMessages[1];
+    assert.strictEqual(row.uuid, 'row-9');
+    assert.strictEqual(row.status, null, 'failure cleared');
+    assert.strictEqual(row.errorCode, null);
+    assert.strictEqual(controller.currentThread.newestId, 'wamid.REAL');
+    assert.strictEqual(controller.currentThread.oldestId, 'm-1');
+
+    controller.applyStatus({ id: 'wamid.REAL', status: 'delivered' });
+    assert.strictEqual(
+      controller.currentChatMessages[1].status,
+      'delivered',
+      'later status pushes find the row by its new id',
+    );
+  });
+
+  test('a retry that fails again keeps the local id and takes the new error code', function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    openThread(controller, {
+      messages: [controller._normalizeMessage(failedLocalRow())],
+    });
+
+    controller.ingestMessageUpdate(failedLocalRow({ errorCode: 131026 }));
+
+    const row = controller.currentChatMessages[0];
+    assert.strictEqual(row.id, 'local-row-9');
+    assert.strictEqual(row.status, 'failed');
+    assert.strictEqual(row.errorCode, 131026);
+  });
+
+  test('an update matches a parked row by uuid with a changed id', async function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-1', 100)], hasMore: false }],
+    });
+    openThread(controller);
+    const load = controller.loadWindow('chat-1');
+    controller.ingestMessage(failedLocalRow());
+    controller.ingestMessageUpdate(
+      failedLocalRow({ id: 'wamid.REAL', status: null, errorCode: null }),
+    );
+    await load;
+
+    assert.deepEqual(ids(controller), ['m-1', 'wamid.REAL']);
+    assert.strictEqual(controller.currentChatMessages[1].status, null);
+  });
+
+  test("a retried send's new id keeps the sidebar preview pointing at it", function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+    whatsapp.chats = [
+      {
+        chatId: 'chat-1',
+        lastMessageId: 'local-row-9',
+        lastTs: 500000,
+        lastBody: '',
+      },
+    ];
+    openThread(controller, {
+      messages: [controller._normalizeMessage(failedLocalRow())],
+    });
+
+    controller.ingestMessageUpdate(
+      failedLocalRow({ id: 'wamid.REAL', status: null, errorCode: null }),
+    );
+
+    assert.strictEqual(whatsapp.chats[0].lastMessageId, 'wamid.REAL');
+  });
+
+  test('Retry is offered only on a failed media row with a local id', function (assert) {
+    const controller = makeController(this);
+    assert.true(controller.canRetrySend(failedLocalRow()));
+    assert.false(controller.canRetrySend(failedLocalRow({ id: 'wamid.X' })));
+    assert.false(controller.canRetrySend(failedLocalRow({ status: 'sent' })));
+    assert.false(
+      controller.canRetrySend(failedLocalRow({ hasMedia: false })),
+      'failed text rows have no retry',
+    );
+  });
+
+  test('retrySend posts the uuid and merges the returned row', async function (assert) {
+    const controller = makeController(this);
+    const retried = [];
+    controller.whatsapp = {
+      ...fakeWhatsappService(),
+      retrySend(uuid) {
+        retried.push(uuid);
+        assert.true(controller.isRetryingSend({ uuid }), 'in flight');
+        return Promise.resolve({
+          success: true,
+          data: failedLocalRow({ id: 'wamid.REAL', status: null }),
+        });
+      },
+    };
+    openThread(controller, {
+      messages: [controller._normalizeMessage(failedLocalRow())],
+    });
+
+    await controller.retrySend(controller.currentChatMessages[0]);
+
+    assert.deepEqual(retried, ['row-9']);
+    assert.deepEqual(ids(controller), ['wamid.REAL']);
+    assert.false(controller.isRetryingSend({ uuid: 'row-9' }));
+  });
+
+  test('retrySend toasts when the send fails again or the request errors', async function (assert) {
+    const controller = makeController(this);
+    const errors = [];
+    controller.notifications = {
+      error: (m) => errors.push(m),
+      success() {},
+      info() {},
+    };
+    let reply = Promise.resolve({
+      data: failedLocalRow({ errorCode: 131026 }),
+    });
+    controller.whatsapp = {
+      ...fakeWhatsappService(),
+      retrySend: () => reply,
+    };
+    openThread(controller, {
+      messages: [controller._normalizeMessage(failedLocalRow())],
+    });
+
+    await controller.retrySend(controller.currentChatMessages[0]);
+    assert.strictEqual(controller.currentChatMessages[0].errorCode, 131026);
+
+    reply = Promise.reject(new Error('Reply window closed'));
+    await controller.retrySend(controller.currentChatMessages[0]);
+
+    assert.deepEqual(errors, [
+      'WhatsApp still could not send this file',
+      'Reply window closed',
+    ]);
+    assert.false(controller.isRetryingSend({ uuid: 'row-9' }));
   });
 });

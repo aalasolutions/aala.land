@@ -1,6 +1,6 @@
 // backend/src/modules/whatsapp/message-store.service.spec.ts
 import { BadRequestException } from '@nestjs/common';
-import { In } from 'typeorm';
+import { FindOperator, In } from 'typeorm';
 import { MessageStoreService } from './message-store.service';
 import { WaMediaStatus, WaMessageInsert } from './wa-types';
 import {
@@ -1579,6 +1579,145 @@ describe('MessageStoreService', () => {
         mediaSha256: null,
         mediaStatus: null,
       });
+    });
+
+    it('writes the bucket key, stored time and a failed status with its error code for outbound media', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({
+          id: 'local-row-x',
+          fromMe: true,
+          mediaKey: 'whatsapp/co-1/user-a/chat-a/row-x.jpg',
+          mediaStoredAt: '2026-09-26T10:00:00.000Z',
+          mediaStatus: WaMediaStatus.STORED,
+        }),
+        'pnid-1',
+        {
+          status: WhatsappMessageStatus.FAILED,
+          statusAt: new Date('2026-09-26T10:00:01.000Z'),
+          errorCode: '131026',
+        },
+      );
+      await service.addMessage('co-1', 'user-a', makeMsg({ id: 'm2' }));
+
+      expect(insertBuilder.values.mock.calls[0][0]).toMatchObject({
+        mediaKey: 'whatsapp/co-1/user-a/chat-a/row-x.jpg',
+        mediaStoredAt: new Date('2026-09-26T10:00:00.000Z'),
+        status: WhatsappMessageStatus.FAILED,
+        errorCode: '131026',
+      });
+      expect(insertBuilder.values.mock.calls[1][0]).toMatchObject({
+        mediaKey: null,
+        mediaStoredAt: null,
+      });
+      expect(insertBuilder.values.mock.calls[1][0]).not.toHaveProperty(
+        'errorCode',
+      );
+    });
+
+    it('claims, re-fails and promotes only local-id rows', async () => {
+      messagesRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+      const localId = expect.objectContaining({
+        _type: 'like',
+        _value: 'local-%',
+      });
+
+      await expect(service.claimFailedLocalRow('co-1', 'row-x')).resolves.toBe(
+        true,
+      );
+      expect(messagesRepo.update).toHaveBeenLastCalledWith(
+        [
+          {
+            companyId: 'co-1',
+            id: 'row-x',
+            waMessageId: localId,
+            status: WhatsappMessageStatus.FAILED,
+          },
+          expect.objectContaining({ companyId: 'co-1', id: 'row-x' }),
+        ],
+        { status: null, statusAt: expect.any(Date) },
+      );
+
+      await service.markLocalRowFailed('co-1', 'row-x', '131000');
+      expect(messagesRepo.update).toHaveBeenLastCalledWith(
+        { companyId: 'co-1', id: 'row-x', waMessageId: localId },
+        {
+          status: WhatsappMessageStatus.FAILED,
+          statusAt: expect.any(Date),
+          errorCode: '131000',
+        },
+      );
+
+      await expect(
+        service.promoteLocalRow('co-1', 'row-x', 'wamid.real'),
+      ).resolves.toBe(true);
+      expect(messagesRepo.update).toHaveBeenLastCalledWith(
+        { companyId: 'co-1', id: 'row-x', waMessageId: localId },
+        {
+          waMessageId: 'wamid.real',
+          status: null,
+          errorCode: null,
+          statusAt: null,
+          timestamp: expect.stringMatching(/^\d+$/),
+        },
+      );
+
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+      await expect(service.claimFailedLocalRow('co-1', 'row-x')).resolves.toBe(
+        false,
+      );
+    });
+
+    it('reclaims a local row whose claim is older than ten minutes, never a fresh one', async () => {
+      const now = new Date('2026-09-26T12:00:00.000Z');
+      jest.useFakeTimers({ now });
+      try {
+        messagesRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+        await service.claimFailedLocalRow('co-1', 'row-x');
+      } finally {
+        jest.useRealTimers();
+      }
+
+      const [where, values] = messagesRepo.update.mock.calls[0] as [
+        Record<string, FindOperator<unknown> | string>[],
+        Partial<WhatsappMessage>,
+      ];
+      expect(values).toEqual({ status: null, statusAt: now });
+      const operand = (value: FindOperator<unknown> | string) =>
+        value instanceof FindOperator ? value : null;
+      const matches = (row: Partial<WhatsappMessage>) =>
+        where.some((branch) =>
+          Object.entries(branch).every(([field, expected]) => {
+            const actual = row[field as keyof WhatsappMessage];
+            const op = operand(expected);
+            if (!op) return actual === expected;
+            if (op.type === 'isNull') return actual === null;
+            if (op.type === 'lessThan') {
+              return (actual as Date) < (op.value as Date);
+            }
+            if (op.type === 'like') {
+              return String(actual).startsWith(
+                String(op.value).replace(/%$/, ''),
+              );
+            }
+            throw new Error(`unhandled operator ${op.type}`);
+          }),
+        );
+      const localRow = (statusAt: Date): Partial<WhatsappMessage> => ({
+        companyId: 'co-1',
+        id: 'row-x',
+        waMessageId: 'local-row-x',
+        status: null,
+        statusAt,
+      });
+
+      expect(matches(localRow(new Date(now.getTime() - 11 * 60 * 1000)))).toBe(
+        true,
+      );
+      expect(matches(localRow(new Date(now.getTime() - 60 * 1000)))).toBe(
+        false,
+      );
     });
 
     it('uses a caller-supplied uuid as the row id', async () => {
