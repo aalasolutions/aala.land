@@ -23,14 +23,18 @@ describe('StorageQuotaReconcileCron', () => {
       .mockImplementation(() => undefined);
   });
 
-  it('recomputes from the media and document SUM and only updates drifted rows', async () => {
+  it('recomputes from the media, document and WhatsApp media SUM and only updates drifted rows', async () => {
     await cron.run();
 
-    const [sql] = query.mock.calls[0];
+    const [sql, params] = query.mock.calls[0];
     expect(sql).toContain(
       'COALESCE(pm.file_size, 0) + COALESCE(pm.thumbnail_size, 0)',
     );
     expect(sql).toContain('COALESCE(SUM(COALESCE(pd.file_size, 0)), 0)');
+    expect(sql).toContain('COALESCE(SUM(COALESCE(wm.media_size_bytes, 0)), 0)');
+    expect(sql).toContain("wm.media_status = 'STORED'");
+    expect(sql).toContain('wm.media_type <> $1');
+    expect(params).toEqual(['sticker']);
     expect(sql).toContain('UPDATE "companies"');
     expect(sql).toContain('a.old_bytes <> a.new_bytes');
   });

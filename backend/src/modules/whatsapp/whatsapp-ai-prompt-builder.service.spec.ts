@@ -103,4 +103,27 @@ describe('WhatsappAiPromptBuilderService', () => {
       expect(result).toContain('Context data');
     });
   });
+
+  describe('buildMediaTurnText', () => {
+    const builder = new WhatsappAiPromptBuilderService();
+
+    it.each([
+      ['image', 'a photo'],
+      ['video', 'a video'],
+      ['audio', 'a voice message'],
+      ['document', 'a document'],
+      ['sticker', 'a sticker'],
+      ['media_placeholder', 'a file'],
+    ])('names %s as %s', (type, noun) => {
+      expect(builder.buildMediaTurnText(type, '')).toBe(
+        `The customer sent ${noun}. You cannot view it.`,
+      );
+    });
+
+    it('appends a trimmed caption on its own line', () => {
+      expect(builder.buildMediaTurnText('image', '  the balcony ')).toBe(
+        'The customer sent a photo. You cannot view it.\nthe balcony',
+      );
+    });
+  });
 });

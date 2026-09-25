@@ -19,8 +19,10 @@ import {
   StorageTarget,
   buildDocumentsClient,
   buildMediaClient,
+  buildWhatsappClient,
   getDocumentsBucket,
   getMediaBucket,
+  getWhatsappBucket,
 } from './storage-targets.util';
 
 @Processor(STORAGE_PURGE_QUEUE)
@@ -28,6 +30,7 @@ export class StoragePurgeProcessor extends WorkerHost {
   private readonly logger = new Logger(StoragePurgeProcessor.name);
   private mediaClient: S3Client | null = null;
   private documentsClient: S3Client | null = null;
+  private whatsappClient: S3Client | null = null;
 
   constructor(
     @InjectRepository(StoragePurgeJob)
@@ -78,6 +81,10 @@ export class StoragePurgeProcessor extends WorkerHost {
   }
 
   private targetFor(kind: StorageBucketKind): StorageTarget {
+    if (kind === StorageBucketKind.WHATSAPP) {
+      this.whatsappClient ??= buildWhatsappClient();
+      return { client: this.whatsappClient, bucket: getWhatsappBucket() };
+    }
     if (kind === StorageBucketKind.DOCUMENTS) {
       this.documentsClient ??= buildDocumentsClient();
       return { client: this.documentsClient, bucket: getDocumentsBucket() };

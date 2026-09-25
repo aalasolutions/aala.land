@@ -127,6 +127,7 @@
         <div
           class="wa-messages"
           id="wa-messages-container"
+          data-wa-media-root
           {{on "scroll" this.onThreadScroll}}
         >
           {{#if this.currentChatWindowError}}
@@ -178,6 +179,11 @@
                   <Ui::Ph @icon="prohibit" />
                   This message was deleted
                 </div>
+              {{else if (and msg.hasMedia msg.mediaStatus)}}
+                <Whatsapp::MessageMedia
+                  @message={{msg}}
+                  @onDeleteMedia={{this.openDeleteMedia}}
+                />
               {{else}}
                 <div class="wa-bubble" dir="auto"><Whatsapp::MessageText
                     @text={{msg.body}}
@@ -349,3 +355,43 @@
   @onClose={{this.closeDisconnectConfirm}}
   @onConfirm={{this.confirmDisconnect}}
 />
+
+<ConfirmModal
+  @open={{if this.mediaToDelete true false}}
+  @title="Delete media"
+  @message="The message stays in the chat. The file is removed from storage and cannot be recovered."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmVariant="danger"
+  @isConfirming={{this.isDeletingMedia}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteMedia}}
+  @onConfirm={{this.confirmDeleteMedia}}
+  data-test-wa-media-delete-modal
+>
+  <Nuvo::Text
+    class="mt-2 break-words"
+    @weight="semibold"
+    data-test-wa-media-delete-name
+  ><bdi>{{this.mediaToDeleteLabel}}</bdi></Nuvo::Text>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.mediaReasonError}}
+  >
+    <Nuvo::Textarea
+      id="wa-media-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Sent to the wrong chat"
+      @value={{this.mediaDeleteReason}}
+      @onInput={{this.setMediaDeleteReason}}
+      @invalid={{if this.mediaReasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>
+
+<Whatsapp::MediaViewer />

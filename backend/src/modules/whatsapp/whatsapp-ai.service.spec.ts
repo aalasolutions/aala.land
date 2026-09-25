@@ -1,3 +1,4 @@
+import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import {
   ChatLockTimeoutError,
   WhatsappAiService,
@@ -110,6 +111,9 @@ const makeMockBuilder = (
     .mockReturnValue({ block: '', fallbackCurrency: '' }),
   buildFullPrompt: jest.fn().mockReturnValue(fullPrompt),
   formatToolResult: jest.fn().mockReturnValue('Formatted listings'),
+  buildMediaTurnText: jest.fn((type: string, caption: string) =>
+    new WhatsappAiPromptBuilderService().buildMediaTurnText(type, caption),
+  ),
 });
 
 const makeMockStore = (history: any[] = []) => ({
@@ -2283,7 +2287,6 @@ describe('WhatsappAiService', () => {
       body: 'earlier message',
       hasMedia: false,
       mediaType: '',
-      mediaUrls: [],
       mentionedIds: [],
       quotedParticipant: '',
       fromMe: false,
@@ -3212,6 +3215,63 @@ describe('WhatsappAiService', () => {
 
       expect(mockMarkRead).not.toHaveBeenCalled();
       expect(global.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('inbound media turn text', () => {
+    let redis: ReturnType<typeof makeMockRedis>;
+    const buffered = () =>
+      [...redis.lists.values()]
+        .flat()
+        .map((raw) => (JSON.parse(raw) as { body: string }).body);
+
+    beforeEach(() => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+    });
+
+    it('buffers a context line instead of an empty turn for a caption-less photo', async () => {
+      await incoming(
+        { ...baseEvt({ body: '' }), hasMedia: true, mediaType: 'image' },
+        'company-1',
+        'user-1',
+        jest.fn(),
+      );
+
+      expect(buffered()).toEqual([
+        'The customer sent a photo. You cannot view it.',
+      ]);
+    });
+
+    it('appends the caption after the context line', async () => {
+      await incoming(
+        {
+          ...baseEvt({ body: 'is this the one?' }),
+          hasMedia: true,
+          mediaType: 'audio',
+        },
+        'company-1',
+        'user-1',
+        jest.fn(),
+      );
+
+      expect(buffered()).toEqual([
+        'The customer sent a voice message. You cannot view it.\nis this the one?',
+      ]);
+    });
+
+    it('still skips an empty text message', async () => {
+      await incoming(baseEvt({ body: '   ' }), 'company-1', 'user-1', jest.fn());
+
+      expect(buffered()).toEqual([]);
     });
   });
 });

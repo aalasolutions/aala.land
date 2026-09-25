@@ -5,6 +5,9 @@
 // No NuvoUI size token covers these.
 $wa-sidebar-width: clamp(22.5rem, 35%, 26.25rem);
 $wa-message-max-width: 70%;
+$wa-media-width: 18rem;
+$wa-sticker-size: 8rem;
+$wa-media-play-size: 3rem;
 
 // `:has()` outranks the bare `.content-area` rule, so no `!important` is needed here.
 .content-area:has(.wa-shell) {
@@ -447,6 +450,197 @@ $wa-message-max-width: 70%;
   color: var(--wa-meta);
   font-style: italic;
   white-space: normal;
+}
+
+// A media bubble stacks media, caption and meta, and the caption wraps to the media width.
+.wa-message:has(> .wa-media-block) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+// A stored sticker floats on the thread like it does on the phone.
+.wa-message:has(.wa-media__sticker) {
+  background: transparent;
+  box-shadow: none;
+
+  &::before {
+    content: none;
+  }
+}
+
+.wa-media-block {
+  inline-size: $wa-media-width;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+
+  &:has(.wa-media__sticker) {
+    inline-size: auto;
+  }
+}
+
+// Positions the hover-revealed delete over the media.
+.wa-media {
+  position: relative;
+  min-inline-size: 0;
+
+  &.has-action:is(.m-document, .m-audio) {
+    padding-inline-end: nu-space(8);
+  }
+}
+
+// Fixed aspect frames keep the thread height stable while signed URLs load.
+.wa-media__frame {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  border-radius: nu-radius(md);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+  }
+
+  &.m-video {
+    aspect-ratio: 16 / 9;
+    background: var(--black);
+  }
+}
+
+.wa-media__image,
+.wa-media__video {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+// Centred play glyph over a paused preview; the frame itself is the button.
+.wa-media__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: $wa-media-play-size;
+  block-size: $wa-media-play-size;
+  margin: auto;
+  border-radius: nu-radius(full);
+  background: nu-scrim(55%);
+  color: var(--white);
+  font-size: nu-font-size(xl);
+  pointer-events: none;
+}
+
+// Placement and poster contrast only; the chip itself is Nuvo::Badge.
+.nu-badge.wa-media__badge {
+  --nu-badge--BackgroundColor: #{nu-scrim(55%)};
+  --nu-badge--Color: var(--white);
+
+  position: absolute;
+  inset-block-end: nu-space(1);
+  inset-inline-end: nu-space(1);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+// No bubble chrome: a sticker renders at its own size.
+.wa-media__sticker {
+  inline-size: $wa-sticker-size;
+  max-inline-size: 100%;
+  aspect-ratio: 1;
+
+  img {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: contain;
+  }
+}
+
+// Scrubber row shared by the voice note player and the video viewer.
+.wa-controls {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: nu-space(1);
+  min-inline-size: 0;
+}
+
+.wa-controls__seek {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  accent-color: var(--wa-accent);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    border-radius: nu-radius(full);
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+.wa-controls__time {
+  font-variant-numeric: tabular-nums;
+}
+
+// Hidden until the row is hovered or focused; touch screens have no hover, so it stays visible there.
+.wa-media__delete {
+  position: absolute;
+  inset-block-start: nu-space(1);
+  inset-inline-end: nu-space(1);
+  background: var(--bg-surface);
+  opacity: 0;
+  transition: opacity nu-duration(fast) $nu-ease;
+
+  .wa-message:hover &,
+  .wa-message:focus-within & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+// Nuvo::Modal at full size, re-themed dark through its own tokens.
+.nu-backdrop:has(> .wa-viewer) {
+  --nu-backdrop--Padding: 0;
+  --nu-backdrop--BackgroundColor: #{nu-scrim(90%)};
+}
+
+// Compound selectors: the kit declares its tokens on the same element, so these must outrank it.
+.nu-modal.wa-viewer {
+  --nu-modal--BackgroundColor: transparent;
+  --nu-modal--BorderWidth: 0;
+  --nu-modal--BoxShadow: none;
+  --nu-modal--Padding: #{nu-space(4)};
+  --nu-modal--Gap: #{nu-space(2)};
+  --bg-alternate: #{nu-tint(white, 15%)};
+  --border-base: #{nu-tint(white, 15%)};
+  --text-color: var(--white);
+  --text-muted: #{nu-tint(white, 75%)};
+  --wa-accent: var(--white);
+  --wa-meta: #{nu-tint(white, 75%)};
+}
+
+// Fit to screen: the media never overflows the viewport.
+.wa-viewer__media {
+  display: block;
+  min-block-size: 0;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
 }
 
 .wa-edited {

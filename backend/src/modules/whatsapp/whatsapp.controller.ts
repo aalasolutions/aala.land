@@ -5,7 +5,10 @@ import {
   Post,
   Delete,
   Body,
+  HttpCode,
+  HttpStatus,
   Param,
+  ParseUUIDPipe,
   Query,
   UseGuards,
   Request,
@@ -23,6 +26,11 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { WhatsappSignupService } from './whatsapp-signup.service';
+import {
+  WaSignedMediaUrl,
+  WhatsappMediaService,
+} from './whatsapp-media.service';
+import { DeleteWaMediaDto } from './dto/delete-wa-media.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 import {
@@ -42,6 +50,7 @@ export class WhatsappController {
   constructor(
     private readonly wa: WhatsappService,
     private readonly signup: WhatsappSignupService,
+    private readonly media: WhatsappMediaService,
   ) {}
 
   @Get('connection')
@@ -156,6 +165,42 @@ export class WhatsappController {
       limit,
       before,
     );
+  }
+
+  @Get('messages/:uuid/media')
+  @ApiOperation({
+    summary:
+      'Short-lived signed URL for stored message media (owning agent or company admin)',
+  })
+  getMedia(
+    @Request() req: AuthenticatedRequest,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+  ): Promise<WaSignedMediaUrl> {
+    return this.media.signUrl(
+      requireCompanyId(req.user),
+      { userId: req.user.userId, role: req.user.role },
+      uuid,
+    );
+  }
+
+  @Post('messages/:uuid/delete-media')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Delete the stored media of a message with a reason; the message stays (owning agent or company admin)',
+  })
+  deleteMedia(
+    @Request() req: AuthenticatedRequest,
+    @Param('uuid', ParseUUIDPipe) uuid: string,
+    @Body() dto: DeleteWaMediaDto,
+  ): Promise<void> {
+    const companyId = requireCompanyId(req.user);
+    return this.media.deleteStoredMedia(companyId, uuid, req.user.userId, {
+      companyId,
+      userId: req.user.userId,
+      role: req.user.role,
+      reason: dto.reason,
+    });
   }
 
   @Post('send')

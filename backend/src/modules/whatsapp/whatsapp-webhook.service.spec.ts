@@ -19,7 +19,13 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappWebhookService } from './whatsapp-webhook.service';
 import { RedisService } from '@modules/redis/redis.service';
-import { WA_WEBHOOK_EVENTS_QUEUE, WaMessage } from './wa-types';
+import { WhatsappMediaService } from './whatsapp-media.service';
+import {
+  WA_MEDIA_QUEUE,
+  WA_WEBHOOK_EVENTS_QUEUE,
+  WaMediaStatus,
+  WaMessage,
+} from './wa-types';
 
 const APP_SECRET = 'test-app-secret';
 const VERIFY_TOKEN = 'test-verify-token';
@@ -148,15 +154,19 @@ describe('WhatsappWebhookService', () => {
     markDeleted: jest.Mock;
     hasMessage: jest.Mock;
     getMessage: jest.Mock;
+    findPendingMediaUuids: jest.Mock;
   };
   let gateway: {
     emitMessage: jest.Mock;
+    emitMessageUpdate: jest.Mock;
     emitStatus: jest.Mock;
     emitUnread: jest.Mock;
     emitHistory: jest.Mock;
     emitConnection: jest.Mock;
   };
   let queue: { add: jest.Mock };
+  let mediaQueue: { add: jest.Mock; addBulk: jest.Mock };
+  let media: { deleteStoredMedia: jest.Mock; resumePendingMedia: jest.Mock };
   let redisStore: Map<string, unknown>;
   let redis: { getJson: jest.Mock; setJson: jest.Mock; del: jest.Mock };
 
@@ -183,15 +193,25 @@ describe('WhatsappWebhookService', () => {
       markDeleted: jest.fn().mockResolvedValue(true),
       hasMessage: jest.fn().mockResolvedValue(true),
       getMessage: jest.fn().mockResolvedValue(null),
+      findPendingMediaUuids: jest.fn().mockResolvedValue([]),
     };
     gateway = {
       emitMessage: jest.fn(),
+      emitMessageUpdate: jest.fn(),
       emitStatus: jest.fn(),
       emitUnread: jest.fn(),
       emitHistory: jest.fn(),
       emitConnection: jest.fn(),
     };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
+    mediaQueue = {
+      add: jest.fn().mockResolvedValue({ id: 'media-job-1' }),
+      addBulk: jest.fn().mockResolvedValue([]),
+    };
+    media = {
+      deleteStoredMedia: jest.fn().mockResolvedValue(undefined),
+      resumePendingMedia: jest.fn().mockResolvedValue(undefined),
+    };
     redisStore = new Map();
     redis = {
       getJson: jest.fn((key: string) =>
@@ -216,6 +236,8 @@ describe('WhatsappWebhookService', () => {
         { provide: WhatsappAiService, useValue: ai },
         { provide: RedisService, useValue: redis },
         { provide: getQueueToken(WA_WEBHOOK_EVENTS_QUEUE), useValue: queue },
+        { provide: getQueueToken(WA_MEDIA_QUEUE), useValue: mediaQueue },
+        { provide: WhatsappMediaService, useValue: media },
       ],
     }).compile();
 
@@ -313,9 +335,9 @@ describe('WhatsappWebhookService', () => {
         'sha256=' +
         createHmac('sha256', 'other-secret').update(rawBody).digest('hex');
 
-      await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.handleWebhook(rawBody, signature),
+      ).rejects.toThrow(ForbiddenException);
       expect(queue.add).not.toHaveBeenCalled();
     });
 
@@ -339,9 +361,9 @@ describe('WhatsappWebhookService', () => {
     it('fails closed when the app secret is whitespace only', async () => {
       process.env.WHATSAPP_APP_SECRET = '   ';
       const { rawBody, signature } = signed(inboundEnvelope());
-      await expect(
-        service.handleWebhook(rawBody, signature),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
@@ -829,7 +851,9 @@ describe('WhatsappWebhookService', () => {
   describe('timestamp hardening', () => {
     const withTimestamp = (timestamp: unknown) => {
       const envelope = inboundEnvelope() as {
-        entry: { changes: { value: { messages: Record<string, unknown>[] } }[] }[];
+        entry: {
+          changes: { value: { messages: Record<string, unknown>[] } }[];
+        }[];
       };
       const message = envelope.entry[0].changes[0].value.messages[0];
       if (timestamp === undefined) delete message.timestamp;
@@ -1124,6 +1148,10 @@ describe('WhatsappWebhookService', () => {
       expect(patch.status).toBe(WhatsappConnectionStatus.CONNECTED);
       expect(patch.disconnectReason).toBeNull();
       expect(patch.disconnectedAt).toBeNull();
+      expect(media.resumePendingMedia).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+      );
     });
 
     it('promotes a PENDING row on PARTNER_ADDED but leaves a CONNECTED one alone', async () => {
@@ -1311,6 +1339,7 @@ describe('WhatsappWebhookService', () => {
         disconnectReason: 'ACCOUNT_OFFBOARDED',
         lifecycleEventAt: expect.anything(),
       });
+      expect(media.resumePendingMedia).not.toHaveBeenCalled();
     });
 
     describe('stale lifecycle events', () => {
@@ -2033,7 +2062,7 @@ describe('WhatsappWebhookService', () => {
         'user-1',
         'wamid.e1',
       );
-      expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', updated);
+      expect(gateway.emitMessageUpdate).toHaveBeenCalledWith('user-1', updated);
     });
 
     it('pushes nothing when the edit changed no row', async () => {
@@ -2043,6 +2072,7 @@ describe('WhatsappWebhookService', () => {
 
       expect(store.getMessage).not.toHaveBeenCalled();
       expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(gateway.emitMessageUpdate).not.toHaveBeenCalled();
     });
 
     it('marks the original message revoked on a delete', async () => {
@@ -2064,17 +2094,76 @@ describe('WhatsappWebhookService', () => {
       expect(store.addMessage).not.toHaveBeenCalled();
     });
 
-    it('stores a non-text echo as a placeholder', async () => {
+    it('stores a media echo as PENDING outgoing media and queues its download', async () => {
       await service.processEnvelope(
-        echo({ id: 'wamid.e4', type: 'image', image: { id: 'media-1' } }),
+        echo({
+          id: 'wamid.e4',
+          type: 'image',
+          image: { id: 'media-1', mime_type: 'image/jpeg', sha256: 'abc=' },
+        }),
+      );
+
+      const [, , msg] = store.addMessage.mock.calls[0];
+      expect(msg).toEqual(
+        expect.objectContaining({
+          id: 'wamid.e4',
+          body: '',
+          fromMe: true,
+          hasMedia: true,
+          mediaType: 'image',
+          mediaMetaId: 'media-1',
+          mediaStatus: WaMediaStatus.PENDING,
+          mediaFileName: 'image-wamid_e4.jpg',
+        }),
+      );
+      expect(mediaQueue.add).toHaveBeenCalledWith(
+        'ingest',
+        { messageUuid: msg.uuid, companyId: 'company-1' },
+        { jobId: msg.uuid },
+      );
+      const pushed = gateway.emitMessage.mock.calls[0][1];
+      expect(pushed).not.toHaveProperty('mediaMetaId');
+      expect(pushed).not.toHaveProperty('mediaSha256');
+    });
+
+    it('still applies a parked change and pauses the AI when queueing echo media fails', async () => {
+      mediaQueue.add.mockRejectedValue(new Error('valkey down'));
+      redisStore.set('wa:msg:pending:company-1:user-1:wamid.e6', {
+        kind: 'revoke',
+        at: 1761000300000,
+        fromMe: true,
+      });
+
+      await expect(
+        service.processEnvelope(
+          echo({
+            id: 'wamid.e6',
+            type: 'image',
+            image: { id: 'media-6', mime_type: 'image/jpeg' },
+          }),
+        ),
+      ).rejects.toThrow('valkey down');
+
+      expect(store.markDeleted).toHaveBeenCalled();
+      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        1761000200000,
+      );
+    });
+
+    it('stores a location echo as a placeholder, as before', async () => {
+      await service.processEnvelope(
+        echo({ id: 'wamid.e5', type: 'location', location: {} }),
       );
 
       expect(store.addMessage).toHaveBeenCalledWith(
         'company-1',
         'user-1',
-        expect.objectContaining({ id: 'wamid.e4', body: '[Image]' }),
+        expect.objectContaining({ id: 'wamid.e5', body: '[Location]' }),
         'phone-1',
       );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
     });
 
     it('ignores an echo for an unknown number', async () => {
@@ -2188,6 +2277,483 @@ describe('WhatsappWebhookService', () => {
           }),
         ),
       ).rejects.toThrow('db down');
+    });
+  });
+
+  describe('inbound media', () => {
+    const mediaEnvelope = (message: Record<string, unknown>) =>
+      coexistenceEnvelope('messages', {
+        contacts: [{ profile: { name: 'Zainab' }, wa_id: '971501234567' }],
+        messages: [
+          {
+            from: '971501234567',
+            id: 'wamid.m1',
+            timestamp: String(Math.floor(Date.now() / 1000)),
+            ...message,
+          },
+        ],
+      });
+    const storedMsg = () =>
+      store.addMessage.mock.calls[0][2] as WaMessage & {
+        mediaMetaId?: string | null;
+        mediaSha256?: string | null;
+      };
+
+    beforeEach(() => {
+      // Read-back returns what was inserted, as the real store would.
+      store.getMessage.mockImplementation(
+        (_c: string, _u: string, id: string) => {
+          const call = store.addMessage.mock.calls.find(
+            (args) => (args[2] as WaMessage).id === id,
+          );
+          return Promise.resolve(call ? call[2] : null);
+        },
+      );
+    });
+
+    it('stores an image with its caption as PENDING and queues it by row id', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'image',
+          image: {
+            id: 'meta-media-1',
+            mime_type: 'image/jpeg',
+            sha256: 'hash=',
+            caption: 'the kitchen',
+          },
+        }),
+      );
+
+      const msg = storedMsg();
+      expect(msg).toEqual(
+        expect.objectContaining({
+          body: 'the kitchen',
+          hasMedia: true,
+          mediaType: 'image',
+          mediaMetaId: 'meta-media-1',
+          mediaMime: 'image/jpeg',
+          mediaSha256: 'hash=',
+          mediaFileName: 'image-wamid_m1.jpg',
+          mediaStatus: WaMediaStatus.PENDING,
+          fromMe: false,
+        }),
+      );
+      expect(mediaQueue.add).toHaveBeenCalledWith(
+        'ingest',
+        { messageUuid: msg.uuid, companyId: 'company-1' },
+        { jobId: msg.uuid },
+      );
+      expect(gateway.emitMessage).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasMedia: true,
+          mediaType: 'image',
+          body: 'the kitchen',
+        }),
+        'company-1',
+        'user-1',
+      );
+    });
+
+    it('stores a voice note as audio with an empty body', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'audio',
+          audio: {
+            id: 'meta-voice',
+            mime_type: 'audio/ogg; codecs=opus',
+            sha256: 'h=',
+            voice: true,
+          },
+        }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          body: '',
+          mediaType: 'audio',
+          mediaFileName: 'audio-wamid_m1.ogg',
+          mediaStatus: WaMediaStatus.PENDING,
+        }),
+      );
+      expect(mediaQueue.add).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a document's own file name", async () => {
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'document',
+          document: {
+            id: 'meta-doc',
+            mime_type: 'application/pdf',
+            sha256: 'h=',
+            filename: 'Tenancy Contract.pdf',
+          },
+        }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          mediaType: 'document',
+          mediaFileName: 'Tenancy Contract.pdf',
+        }),
+      );
+    });
+
+    it('stores a 131052 message as TOO_LARGE without a download', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'unsupported',
+          errors: [{ code: 131052, title: 'Media file size too big' }],
+        }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          body: '',
+          hasMedia: true,
+          mediaType: 'media_placeholder',
+          mediaStatus: WaMediaStatus.TOO_LARGE,
+        }),
+      );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('keeps the media type on a 131052 video', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'video',
+          video: { id: 'meta-video' },
+          errors: [{ code: 131052 }],
+        }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          mediaType: 'video',
+          mediaStatus: WaMediaStatus.TOO_LARGE,
+        }),
+      );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('queues the stored row id, not the built one, on our own retry of a conflict', async () => {
+      store.addMessage.mockResolvedValue(stored(false));
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-uuid-existing',
+        id: 'wamid.m1',
+        mediaStatus: WaMediaStatus.PENDING,
+        body: '',
+      });
+
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'image',
+          image: { id: 'meta-media-1', mime_type: 'image/jpeg' },
+        }),
+        true,
+      );
+
+      expect(mediaQueue.add).toHaveBeenCalledWith(
+        'ingest',
+        { messageUuid: 'row-uuid-existing', companyId: 'company-1' },
+        { jobId: 'row-uuid-existing' },
+      );
+    });
+
+    it('still drops a location message', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({ type: 'location', location: {} }),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('history media', () => {
+    it('downloads media under 14 days old and keeps older media as a placeholder', async () => {
+      store.findPendingMediaUuids.mockResolvedValue(['row-recent', 'row-dup']);
+      const nowS = Math.floor(Date.now() / 1000);
+      const day = 24 * 60 * 60;
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              metadata: { progress: 50 },
+              threads: [
+                {
+                  id: '971501234567',
+                  messages: [
+                    {
+                      id: 'wamid.recent',
+                      from: '971501234567',
+                      timestamp: String(nowS - 13 * day),
+                      type: 'image',
+                      image: { id: 'meta-recent', mime_type: 'image/png' },
+                    },
+                    {
+                      id: 'wamid.old',
+                      from: '971501234567',
+                      timestamp: String(nowS - 15 * day),
+                      type: 'image',
+                      image: { id: 'meta-old', mime_type: 'image/png' },
+                    },
+                    {
+                      id: 'wamid.dup',
+                      from: '971501234567',
+                      timestamp: String(nowS - 2 * day),
+                      type: 'video',
+                      video: { id: 'meta-dup', mime_type: 'video/mp4' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      const items = store.addHistoryMessages.mock.calls[0][3] as {
+        msg: WaMessage & { mediaMetaId?: string | null };
+      }[];
+      const byId = new Map(items.map((item) => [item.msg.id, item.msg]));
+      expect(byId.get('wamid.recent')).toEqual(
+        expect.objectContaining({
+          body: '',
+          hasMedia: true,
+          mediaMetaId: 'meta-recent',
+          mediaStatus: WaMediaStatus.PENDING,
+        }),
+      );
+      const old = byId.get('wamid.old');
+      expect(old).toEqual(
+        expect.objectContaining({
+          body: '[Image]',
+          hasMedia: false,
+          mediaType: 'image',
+          mediaStatus: null,
+        }),
+      );
+      expect(old?.mediaMetaId).toBeUndefined();
+
+      expect(store.findPendingMediaUuids).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        ['wamid.recent', 'wamid.dup'],
+      );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+      expect(mediaQueue.addBulk).toHaveBeenCalledTimes(1);
+      expect(mediaQueue.addBulk).toHaveBeenCalledWith([
+        {
+          name: 'ingest',
+          data: { messageUuid: 'row-recent', companyId: 'company-1' },
+          opts: { jobId: 'row-recent' },
+        },
+        {
+          name: 'ingest',
+          data: { messageUuid: 'row-dup', companyId: 'company-1' },
+          opts: { jobId: 'row-dup' },
+        },
+      ]);
+    });
+
+    it('queues the stored PENDING rows even when this delivery inserted none', async () => {
+      store.addHistoryMessages.mockResolvedValue([]);
+      store.findPendingMediaUuids.mockResolvedValue(['row-9']);
+      const nowS = Math.floor(Date.now() / 1000);
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              threads: [
+                {
+                  id: '971501234567',
+                  messages: ['wamid.recent', 'wamid.dup'].map((id) => ({
+                    id,
+                    from: '971501234567',
+                    timestamp: String(nowS - 60),
+                    type: 'image',
+                    image: { id: `meta-${id}`, mime_type: 'image/png' },
+                  })),
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(mediaQueue.addBulk).toHaveBeenCalledWith([
+        {
+          name: 'ingest',
+          data: { messageUuid: 'row-9', companyId: 'company-1' },
+          opts: { jobId: 'row-9' },
+        },
+      ]);
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('fails the chunk for a retry when the bulk queue write fails', async () => {
+      store.findPendingMediaUuids.mockResolvedValue(['row-9']);
+      mediaQueue.addBulk.mockRejectedValue(new Error('valkey down'));
+      await expect(
+        service.processEnvelope(
+          coexistenceEnvelope('history', {
+            history: [
+              {
+                threads: [
+                  {
+                    id: '971501234567',
+                    messages: [
+                      {
+                        id: 'wamid.recent',
+                        from: '971501234567',
+                        timestamp: String(Math.floor(Date.now() / 1000) - 60),
+                        type: 'image',
+                        image: { id: 'meta-recent', mime_type: 'image/png' },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }),
+        ),
+      ).rejects.toThrow('valkey down');
+    });
+
+    it('does not read pending media for a thread without downloadable media', async () => {
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              threads: [
+                {
+                  id: '971501234567',
+                  messages: [
+                    {
+                      id: 'wamid.text',
+                      from: '971501234567',
+                      timestamp: String(Math.floor(Date.now() / 1000) - 60),
+                      type: 'text',
+                      text: { body: 'hello' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      expect(store.addHistoryMessages).toHaveBeenCalled();
+      expect(store.findPendingMediaUuids).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('revoke of stored media', () => {
+    const revoke = (fromMe: boolean) =>
+      fromMe
+        ? coexistenceEnvelope('smb_message_echoes', {
+            message_echoes: [
+              {
+                from: '15550001111',
+                to: '971501234567',
+                id: 'wamid.rv',
+                timestamp: '1761000400',
+                type: 'revoke',
+                revoke: { original_message_id: 'wamid.1' },
+              },
+            ],
+          })
+        : coexistenceEnvelope('messages', {
+            messages: [
+              {
+                from: '971501234567',
+                id: 'wamid.rv',
+                timestamp: '1761000400',
+                type: 'revoke',
+                revoke: { original_message_id: 'wamid.1' },
+              },
+            ],
+          });
+
+    it('purges STORED media with the customer reason', async () => {
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-1',
+        id: 'wamid.1',
+        mediaStatus: WaMediaStatus.STORED,
+      });
+
+      await service.processEnvelope(revoke(false));
+
+      expect(media.deleteStoredMedia).toHaveBeenCalledWith(
+        'company-1',
+        'row-1',
+        'CUSTOMER_REVOKE',
+      );
+    });
+
+    it('hands PENDING media to the same revoke path after markDeleted', async () => {
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-1',
+        id: 'wamid.1',
+        mediaStatus: WaMediaStatus.PENDING,
+      });
+
+      await service.processEnvelope(revoke(true));
+
+      expect(media.deleteStoredMedia).toHaveBeenCalledWith(
+        'company-1',
+        'row-1',
+        'BUSINESS_APP_REVOKE',
+      );
+      expect(store.markDeleted.mock.invocationCallOrder[0]).toBeLessThan(
+        media.deleteStoredMedia.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('purges STORED media with the business app reason', async () => {
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-1',
+        id: 'wamid.1',
+        mediaStatus: WaMediaStatus.STORED,
+      });
+
+      await service.processEnvelope(revoke(true));
+
+      expect(media.deleteStoredMedia).toHaveBeenCalledWith(
+        'company-1',
+        'row-1',
+        'BUSINESS_APP_REVOKE',
+      );
+    });
+
+    it('does not purge for a text row', async () => {
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-1',
+        id: 'wamid.1',
+        mediaStatus: null,
+      });
+
+      await service.processEnvelope(revoke(false));
+
+      expect(store.markDeleted).toHaveBeenCalled();
+      expect(media.deleteStoredMedia).not.toHaveBeenCalled();
+    });
+
+    it('keeps the revoke when the purge fails', async () => {
+      store.getMessage.mockResolvedValue({
+        uuid: 'row-1',
+        id: 'wamid.1',
+        mediaStatus: WaMediaStatus.STORED,
+      });
+      media.deleteStoredMedia.mockRejectedValue(new Error('bucket down'));
+
+      await expect(
+        service.processEnvelope(revoke(false)),
+      ).resolves.toBeUndefined();
+      expect(gateway.emitMessageUpdate).toHaveBeenCalled();
     });
   });
 });

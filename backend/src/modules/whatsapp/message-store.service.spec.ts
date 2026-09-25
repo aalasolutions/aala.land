@@ -1,13 +1,14 @@
 // backend/src/modules/whatsapp/message-store.service.spec.ts
 import { BadRequestException } from '@nestjs/common';
+import { In } from 'typeorm';
 import { MessageStoreService } from './message-store.service';
-import { WaMessage } from './wa-types';
+import { WaMediaStatus, WaMessageInsert } from './wa-types';
 import {
   WhatsappMessage,
   WhatsappMessageStatus,
 } from './entities/whatsapp-message.entity';
 
-const makeMsg = (overrides: Partial<WaMessage> = {}): WaMessage => ({
+const makeMsg = (overrides: Partial<WaMessageInsert> = {}): WaMessageInsert => ({
   id: 'msg-1',
   chatId: '971501234567@s.whatsapp.net',
   senderId: '971501234567@s.whatsapp.net',
@@ -17,7 +18,6 @@ const makeMsg = (overrides: Partial<WaMessage> = {}): WaMessage => ({
   body: 'Hello',
   hasMedia: false,
   mediaType: '',
-  mediaUrls: [],
   mentionedIds: [],
   quotedParticipant: '',
   fromMe: false,
@@ -42,7 +42,6 @@ const makeRow = (overrides: Partial<WhatsappMessage> = {}) =>
     body: 'Hello',
     hasMedia: false,
     mediaType: '',
-    mediaUrls: [],
     mentionedIds: [],
     quotedParticipant: '',
     fromMe: false,
@@ -154,6 +153,24 @@ describe('MessageStoreService', () => {
       expect(params[2]).toBe('chat-a');
       expect(params[5]).toBe('second');
       expect(params[6]).toBe('200');
+    });
+
+    it('previews a caption-less media row by its type label', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ body: '', hasMedia: true, mediaType: 'audio' }),
+      );
+      expect(txManager.query.mock.calls[0][1][5]).toBe('[Voice message]');
+    });
+
+    it('previews a media row by its caption when it has one', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ body: 'the view', hasMedia: true, mediaType: 'image' }),
+      );
+      expect(txManager.query.mock.calls[0][1][5]).toBe('the view');
     });
 
     it('falls back to the chat id when the chat has no name', async () => {
@@ -1522,6 +1539,181 @@ describe('MessageStoreService', () => {
       const out = await service.getChatHistory('co-1', 'user-a', 'chat-a', 20);
 
       expect(out.map((m) => m.id)).toEqual(['older', 'newer']);
+    });
+  });
+
+  describe('media', () => {
+    it('writes media columns from the insert shape and null when absent', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({
+          hasMedia: true,
+          mediaType: 'image',
+          mediaMetaId: 'meta-1',
+          mediaMime: 'image/jpeg',
+          mediaFileName: 'photo.jpg',
+          mediaSizeBytes: 1234,
+          mediaSha256: 'abc',
+          mediaStatus: WaMediaStatus.PENDING,
+        }),
+      );
+      await service.addMessage('co-1', 'user-a', makeMsg({ id: 'm2' }));
+
+      const withMedia = insertBuilder.values.mock.calls[0][0];
+      expect(withMedia).toMatchObject({
+        mediaMetaId: 'meta-1',
+        mediaMime: 'image/jpeg',
+        mediaFileName: 'photo.jpg',
+        mediaSizeBytes: 1234,
+        mediaSha256: 'abc',
+        mediaStatus: WaMediaStatus.PENDING,
+      });
+      expect(withMedia).not.toHaveProperty('id');
+      const plain = insertBuilder.values.mock.calls[1][0];
+      expect(plain).toMatchObject({
+        mediaMetaId: null,
+        mediaMime: null,
+        mediaFileName: null,
+        mediaSizeBytes: null,
+        mediaSha256: null,
+        mediaStatus: null,
+      });
+    });
+
+    it('uses a caller-supplied uuid as the row id', async () => {
+      await service.addMessage('co-1', 'user-a', makeMsg({ uuid: 'row-x' }));
+
+      expect(insertBuilder.values.mock.calls[0][0].id).toBe('row-x');
+    });
+
+    it('maps the row id and media output fields, never the key, hash or Meta id', async () => {
+      const storedAt = new Date('2026-09-25T10:00:00.000Z');
+      messagesRepo.findOne.mockResolvedValue(
+        makeRow({
+          id: 'row-9',
+          mediaMetaId: 'meta-1',
+          mediaMime: 'application/pdf',
+          mediaFileName: 'lease.pdf',
+          mediaSizeBytes: 5000,
+          mediaSha256: 'abc',
+          mediaKey: 'whatsapp/co-1/user-a/chat-a/msg-1.pdf',
+          mediaStatus: WaMediaStatus.STORED,
+          mediaStoredAt: storedAt,
+          mediaDeletedAt: null,
+          mediaDeletedBy: null,
+        }),
+      );
+
+      const msg = await service.getMessageByUuid('co-1', 'row-9');
+
+      expect(messagesRepo.findOne).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', id: 'row-9' },
+      });
+      expect(msg).toMatchObject({
+        uuid: 'row-9',
+        id: 'msg-1',
+        mediaMime: 'application/pdf',
+        mediaFileName: 'lease.pdf',
+        mediaSizeBytes: 5000,
+        mediaStatus: WaMediaStatus.STORED,
+        mediaStoredAt: '2026-09-25T10:00:00.000Z',
+        mediaDeletedAt: null,
+        mediaDeletedBy: null,
+      });
+      expect(msg).not.toHaveProperty('mediaKey');
+      expect(msg).not.toHaveProperty('mediaSha256');
+      expect(msg).not.toHaveProperty('mediaMetaId');
+    });
+
+    it('maps a row without media to null media fields', async () => {
+      messagesRepo.findOne.mockResolvedValue(makeRow());
+
+      const msg = await service.getMessageByUuid('co-1', 'row-1');
+
+      expect(msg).toMatchObject({
+        uuid: 'row-1',
+        mediaMime: null,
+        mediaFileName: null,
+        mediaSizeBytes: null,
+        mediaStatus: null,
+        mediaStoredAt: null,
+        mediaDeletedAt: null,
+        mediaDeletedBy: null,
+      });
+    });
+
+    it('getMessageByUuid returns null for a row outside the company', async () => {
+      messagesRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getMessageByUuid('co-2', 'row-1'),
+      ).resolves.toBeNull();
+    });
+
+    it('markPendingMediaFailed lands only on a PENDING company row', async () => {
+      messagesRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+
+      await expect(
+        service.markPendingMediaFailed('co-1', 'row-1'),
+      ).resolves.toBe(true);
+      expect(messagesRepo.update).toHaveBeenCalledWith(
+        { companyId: 'co-1', id: 'row-1', mediaStatus: WaMediaStatus.PENDING },
+        { mediaStatus: WaMediaStatus.FAILED },
+      );
+
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+      await expect(
+        service.markPendingMediaFailed('co-1', 'row-1'),
+      ).resolves.toBe(false);
+    });
+
+    it('findPendingMediaUuids reads the PENDING rows of the given wamids', async () => {
+      messagesRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'row-1' }, { id: 'row-2' }]);
+
+      await expect(
+        service.findPendingMediaUuids('co-1', 'user-a', ['wamid.1', 'wamid.2']),
+      ).resolves.toEqual(['row-1', 'row-2']);
+      expect(messagesRepo.find).toHaveBeenCalledWith({
+        select: { id: true },
+        where: {
+          companyId: 'co-1',
+          userId: 'user-a',
+          waMessageId: In(['wamid.1', 'wamid.2']),
+          mediaStatus: WaMediaStatus.PENDING,
+        },
+      });
+    });
+
+    it('findPendingMediaUuids skips the query for an empty list', async () => {
+      messagesRepo.find = jest.fn();
+
+      await expect(
+        service.findPendingMediaUuids('co-1', 'user-a', []),
+      ).resolves.toEqual([]);
+      expect(messagesRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('findPendingMediaUuidsForUser reads the PENDING rows of one agent, oldest first', async () => {
+      messagesRepo.find = jest
+        .fn()
+        .mockResolvedValue([{ id: 'row-1' }, { id: 'row-2' }]);
+
+      await expect(
+        service.findPendingMediaUuidsForUser('co-1', 'user-a'),
+      ).resolves.toEqual(['row-1', 'row-2']);
+      expect(messagesRepo.find).toHaveBeenCalledWith({
+        select: { id: true },
+        where: {
+          companyId: 'co-1',
+          userId: 'user-a',
+          mediaStatus: WaMediaStatus.PENDING,
+        },
+        order: { timestamp: 'ASC' },
+        take: 500,
+      });
     });
   });
 });

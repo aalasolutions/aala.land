@@ -934,7 +934,12 @@ module('Unit | Controller | whatsapp', function (hooks) {
       activeChatId: null,
       unread: new Map(),
       chats: [],
+      viewerMessage: null,
       updateChat: WhatsappService.prototype.updateChat,
+      isChatLastMessage: WhatsappService.prototype.isChatLastMessage,
+      closeMediaViewer() {
+        this.viewerMessage = null;
+      },
       on(type, fn) {
         (listeners[type] ??= new Set()).add(fn);
       },
@@ -1009,6 +1014,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
       'connection',
       'history',
       'message',
+      'message-update',
       'status',
     ]);
     assert.strictEqual(whatsapp.connects, 0, 'the app controller owns connect');
@@ -1034,7 +1040,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     await controller.setup();
     controller.teardown();
 
-    for (const type of ['message', 'status', 'ai', 'chats']) {
+    for (const type of ['message', 'message-update', 'status', 'ai', 'chats']) {
       assert.strictEqual(whatsapp.listeners[type].size, 0, `${type} removed`);
     }
     assert.strictEqual(whatsapp.disconnects, 0, 'socket stays alive');
@@ -2095,7 +2101,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('setup starts one clock and teardown clears it', function (assert) {
     const controller = makeController(this);
-    controller.whatsapp = { off() {} };
+    controller.whatsapp = { off() {}, closeMediaViewer() {} };
 
     controller.startClock();
     const first = controller._clockTimer;
@@ -2379,5 +2385,288 @@ module('Unit | Controller | whatsapp', function (hooks) {
       }),
       { id: 'm-1', body: 'THREE', editedAt: 300 },
     );
+  });
+
+  function mediaMsg(overrides = {}) {
+    return {
+      id: 'm-media',
+      uuid: 'row-1',
+      chatId: 'chat-1',
+      body: '',
+      hasMedia: true,
+      mediaType: 'image',
+      mediaStatus: 'PENDING',
+      mediaSizeBytes: null,
+      fromMe: false,
+      timestamp: 100,
+      ...overrides,
+    };
+  }
+
+  test('a caption-less media row is renderable', function (assert) {
+    const controller = makeController(this);
+    assert.true(controller._isRenderable(mediaMsg()));
+  });
+
+  test('a media update repaints the held message with every media field', function (assert) {
+    const controller = makeController(this);
+    openThread(controller);
+    controller.whatsapp = fakeWhatsappService();
+    controller.ingestMessage(mediaMsg());
+
+    controller.ingestMessageUpdate(
+      mediaMsg({
+        mediaStatus: 'STORED',
+        mediaSizeBytes: 2048,
+        mediaMime: 'image/jpeg',
+        mediaFileName: 'photo.jpg',
+        mediaStoredAt: '2026-09-25T10:00:00.000Z',
+      }),
+    );
+    let held = controller.currentChatMessages[0];
+    assert.strictEqual(controller.currentChatMessages.length, 1);
+    assert.strictEqual(held.mediaStatus, 'STORED');
+    assert.strictEqual(held.mediaSizeBytes, 2048);
+    assert.strictEqual(held.mediaMime, 'image/jpeg');
+    assert.strictEqual(held.mediaFileName, 'photo.jpg');
+    assert.strictEqual(held.mediaStoredAt, '2026-09-25T10:00:00.000Z');
+
+    controller.ingestMessageUpdate(
+      mediaMsg({
+        mediaStatus: 'DELETED',
+        mediaDeletedAt: '2026-09-25T11:00:00.000Z',
+        mediaDeletedBy: 'user-1',
+      }),
+    );
+    held = controller.currentChatMessages[0];
+    assert.strictEqual(held.mediaStatus, 'DELETED');
+    assert.strictEqual(held.mediaDeletedAt, '2026-09-25T11:00:00.000Z');
+    assert.strictEqual(held.mediaDeletedBy, 'user-1');
+  });
+
+  test('an update for a message outside the window is dropped, never appended or prepended', function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    openThread(controller, {
+      messages: [controller._normalizeMessage(mediaMsg({ id: 'm-5' }))],
+      newestId: 'm-5',
+    });
+    const before = controller.threads;
+
+    controller.ingestMessageUpdate(
+      mediaMsg({ id: 'm-1', mediaStatus: 'STORED' }),
+    );
+    controller.ingestMessageUpdate({ ...msg('m-2', 200), editedAt: 950 });
+    controller.ingestMessageUpdate(mediaMsg({ id: 'm-3', chatId: 'chat-2' }));
+
+    assert.deepEqual(ids(controller), ['m-5']);
+    assert.strictEqual(controller.threads, before, 'thread untouched');
+    assert.deepEqual(controller._pendingLive, [], 'nothing parked');
+  });
+
+  test('a first delivery with stored media is appended as new', function (assert) {
+    const controller = makeController(this);
+    openThread(controller);
+    controller.whatsapp = fakeWhatsappService();
+
+    controller.ingestMessage(mediaMsg({ id: 'm-4', mediaStatus: 'STORED' }));
+
+    assert.deepEqual(ids(controller), ['m-4']);
+  });
+
+  test('an update for a message parked during a load merges into the parked copy', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-1', 100)], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+    openThread(controller);
+    const load = controller.loadWindow('chat-1');
+
+    controller.ingestMessage(mediaMsg({ id: 'm-2', timestamp: 200 }));
+    assert.strictEqual(controller._pendingLive.length, 1, 'parked');
+
+    controller.ingestMessageUpdate(
+      mediaMsg({
+        id: 'm-2',
+        timestamp: 200,
+        mediaStatus: 'STORED',
+        mediaSizeBytes: 10,
+      }),
+    );
+    assert.strictEqual(controller._pendingLive.length, 1, 'not added twice');
+    assert.strictEqual(controller._pendingLive[0].mediaStatus, 'STORED');
+
+    await load;
+    assert.deepEqual(ids(controller), ['m-1', 'm-2']);
+    assert.strictEqual(controller.currentChatMessages[1].mediaStatus, 'STORED');
+    assert.strictEqual(controller.currentChatMessages[1].mediaSizeBytes, 10);
+  });
+
+  test("an update refreshes the sidebar preview only when it is the chat's last message", function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    openThread(controller);
+    controller.ingestMessage(msg('m-1', 100));
+    controller.ingestMessage(msg('m-2', 200));
+    assert.strictEqual(controller.whatsapp.chats[0].lastBody, 'm-2');
+
+    controller.ingestMessageUpdate({
+      ...msg('m-1', 100),
+      body: 'edited old',
+      editedAt: 300,
+    });
+    assert.strictEqual(
+      controller.whatsapp.chats[0].lastBody,
+      'm-2',
+      'older edit leaves it',
+    );
+    assert.strictEqual(controller.currentChatMessages[0].body, 'edited old');
+
+    controller.ingestMessageUpdate({
+      ...msg('m-2', 200),
+      body: 'edited last',
+      editedAt: 310,
+    });
+    assert.strictEqual(controller.whatsapp.chats[0].lastBody, 'edited last');
+    assert.strictEqual(controller.currentChatMessages[1].body, 'edited last');
+
+    controller.ingestMessageUpdate({
+      ...msg('m-2', 200),
+      body: '',
+      deletedAt: 320,
+    });
+    assert.strictEqual(
+      controller.whatsapp.chats[0].lastBody,
+      'This message was deleted',
+    );
+    assert.strictEqual(controller.whatsapp.chats.length, 1, 'no chat added');
+  });
+
+  test("an update for another chat refreshes only that chat's preview", function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService();
+    controller.whatsapp.chats = [
+      { chatId: 'chat-2', chatName: 'Omar', lastBody: 'old', lastTs: 500000 },
+    ];
+    openThread(controller);
+
+    controller.ingestMessageUpdate({
+      ...msg('x-1', 500, 'chat-2'),
+      body: 'new',
+    });
+
+    assert.strictEqual(controller.whatsapp.chats[0].lastBody, 'new');
+    assert.deepEqual(ids(controller), [], 'open chat untouched');
+  });
+
+  test('teardown closes the media viewer and resets the delete-media modal', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    whatsapp.viewerMessage = mediaMsg();
+    controller.openDeleteMedia(mediaMsg({ mediaStatus: 'STORED' }));
+    controller.setMediaDeleteReason('Wrong chat');
+    controller.mediaReasonError = 'Reason is required.';
+
+    controller.teardown();
+
+    assert.strictEqual(whatsapp.viewerMessage, null);
+    assert.strictEqual(controller.mediaToDelete, null);
+    assert.strictEqual(controller.mediaDeleteReason, '');
+    assert.strictEqual(controller.mediaReasonError, '');
+  });
+
+  test('the delete modal names the media with the shared label', function (assert) {
+    const controller = makeController(this);
+    controller.openDeleteMedia(mediaMsg({ mediaFileName: 'lease.pdf' }));
+    assert.strictEqual(controller.mediaToDeleteLabel, 'lease.pdf');
+    controller.openDeleteMedia(mediaMsg({ mediaType: 'audio' }));
+    assert.strictEqual(controller.mediaToDeleteLabel, 'Voice message');
+  });
+
+  test('confirmDeleteMedia requires a reason', async function (assert) {
+    const controller = makeController(this);
+    let called = false;
+    controller.whatsapp = {
+      deleteMedia() {
+        called = true;
+        return Promise.resolve();
+      },
+    };
+    controller.openDeleteMedia(mediaMsg({ mediaStatus: 'STORED' }));
+    controller.setMediaDeleteReason('   ');
+
+    await controller.confirmDeleteMedia();
+
+    assert.false(called);
+    assert.strictEqual(controller.mediaReasonError, 'Reason is required.');
+    assert.ok(controller.mediaToDelete, 'modal stays open');
+  });
+
+  test('confirmDeleteMedia deletes, patches the row to DELETED, toasts and closes', async function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = {
+      ...fakeWhatsappService(),
+      deleteCalls: [],
+      deleteMedia(uuid, reason) {
+        this.deleteCalls.push({ uuid, reason });
+        return Promise.resolve();
+      },
+    };
+    const toasts = [];
+    controller.notifications = {
+      success: (m) => toasts.push(m),
+      error() {},
+      info() {},
+    };
+    openThread(controller, {
+      messages: [mediaMsg({ mediaStatus: 'STORED' })],
+    });
+
+    controller.openDeleteMedia(controller.currentChatMessages[0]);
+    controller.setMediaDeleteReason(' Wrong chat ');
+    await controller.confirmDeleteMedia();
+
+    assert.deepEqual(controller.whatsapp.deleteCalls, [
+      { uuid: 'row-1', reason: 'Wrong chat' },
+    ]);
+    assert.strictEqual(
+      controller.currentChatMessages[0].mediaStatus,
+      'DELETED',
+    );
+    assert.ok(controller.currentChatMessages[0].mediaDeletedAt);
+    assert.deepEqual(toasts, ['Media deleted']);
+    assert.strictEqual(controller.mediaToDelete, null);
+    assert.false(controller.isDeletingMedia);
+  });
+
+  test('confirmDeleteMedia surfaces the error and keeps the row stored', async function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = {
+      ...fakeWhatsappService(),
+      deleteMedia() {
+        return Promise.reject(new Error('Not allowed'));
+      },
+    };
+    const errors = [];
+    controller.notifications = {
+      success() {},
+      error: (m) => errors.push(m),
+      info() {},
+    };
+    openThread(controller, {
+      messages: [mediaMsg({ mediaStatus: 'STORED' })],
+    });
+
+    controller.openDeleteMedia(controller.currentChatMessages[0]);
+    controller.setMediaDeleteReason('Wrong chat');
+    await controller.confirmDeleteMedia();
+
+    assert.deepEqual(errors, ['Not allowed']);
+    assert.strictEqual(controller.currentChatMessages[0].mediaStatus, 'STORED');
+    assert.ok(controller.mediaToDelete, 'modal stays open for a retry');
+    assert.false(controller.isDeletingMedia);
   });
 });

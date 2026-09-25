@@ -5,8 +5,24 @@ import { PropertyType } from '../properties/entities/property-type.enum';
 import { REGIONS } from '../../shared/constants/regions';
 import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
 
+// The model receives no file, only what kind of file arrived.
+const MEDIA_TURN_NOUNS: Record<string, string> = {
+  image: 'a photo',
+  video: 'a video',
+  audio: 'a voice message',
+  document: 'a document',
+  sticker: 'a sticker',
+};
+
 @Injectable()
 export class WhatsappAiPromptBuilderService {
+  buildMediaTurnText(mediaType: string, caption: string): string {
+    const noun = MEDIA_TURN_NOUNS[mediaType] ?? 'a file';
+    const line = `The customer sent ${noun}. You cannot view it.`;
+    const text = caption.trim();
+    return text ? `${line}\n${text}` : line;
+  }
+
   buildContextBlock(company: Company | null): {
     block: string;
     fallbackCurrency: string;

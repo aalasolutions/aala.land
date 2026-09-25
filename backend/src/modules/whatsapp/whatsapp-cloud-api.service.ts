@@ -8,7 +8,12 @@ import {
 import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
-import { GRAPH_VERSION, WaMessage } from './wa-types';
+import { randomUUID } from 'node:crypto';
+import {
+  GRAPH_VERSION,
+  WA_MESSAGE_NO_STORED_MEDIA,
+  WaMessage,
+} from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
 import { errorMessage } from '@shared/utils/error.util';
 import { envInt } from '@shared/utils/env.util';
@@ -36,6 +41,30 @@ export class WhatsappSendError extends Error {
 
   get windowClosed(): boolean {
     return this.graphCode === GRAPH_REPLY_WINDOW_CLOSED_CODE;
+  }
+}
+
+// Graph's answer for an object id that does not exist, which is how an expired media id reads.
+const GRAPH_UNKNOWN_OBJECT_CODE = 100;
+const GRAPH_UNKNOWN_OBJECT_SUBCODE = 33;
+
+export interface WhatsappMediaInfo {
+  url: string;
+  file_size: number | null;
+  mime_type: string | null;
+  sha256: string | null;
+}
+
+// isMediaGone means no retry can succeed: Meta no longer holds the media id.
+export class WhatsappMediaFetchError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    readonly isMediaGone = false,
+    readonly graphCode?: number,
+  ) {
+    super(message);
+    this.name = 'WhatsappMediaFetchError';
   }
 }
 
@@ -112,7 +141,7 @@ export class WhatsappCloudApiService {
       });
       if (!res.ok) {
         const raw = await res.text();
-        const graphCode = this.graphErrorCode(raw);
+        const graphCode = this.graphError(raw).code ?? null;
         this.logger.error(
           `Cloud API send failed ${res.status} (graph code ${graphCode ?? 'none'}) for ${connection.phoneNumberId}: ${raw.slice(0, 500)}`,
         );
@@ -144,6 +173,79 @@ export class WhatsappCloudApiService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  // The returned url lives 5 minutes and needs the same bearer token.
+  async getMedia(
+    connection: WhatsappConnection,
+    token: string,
+    mediaId: string,
+  ): Promise<WhatsappMediaInfo> {
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(mediaId)}?phone_number_id=${encodeURIComponent(connection.phoneNumberId)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.resolveTimeoutMs());
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        const error = this.graphError(raw);
+        if (res.status === 401 || error.code === GRAPH_TOKEN_INVALID_CODE) {
+          await this.flagConnection(connection, res.status, error.code ?? null);
+        }
+        const isMediaGone =
+          res.status === 404 ||
+          (res.status === 400 &&
+            error.code === GRAPH_UNKNOWN_OBJECT_CODE &&
+            error.subcode === GRAPH_UNKNOWN_OBJECT_SUBCODE);
+        throw new WhatsappMediaFetchError(
+          `Graph media lookup failed ${res.status} (graph code ${error.code ?? 'none'}): ${raw.slice(0, 300)}`,
+          res.status,
+          isMediaGone,
+          error.code,
+        );
+      }
+      const data = (await res.json()) as {
+        url?: unknown;
+        file_size?: unknown;
+        mime_type?: unknown;
+        sha256?: unknown;
+      };
+      if (typeof data.url !== 'string' || !data.url) {
+        throw new WhatsappMediaFetchError('Graph media lookup returned no url');
+      }
+      const size = Number(data.file_size);
+      return {
+        url: data.url,
+        file_size: Number.isFinite(size) ? size : null,
+        mime_type: typeof data.mime_type === 'string' ? data.mime_type : null,
+        sha256: typeof data.sha256 === 'string' ? data.sha256 : null,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // The caller owns the signal, since the body streams long after this resolves.
+  async openMediaDownload(
+    token: string,
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      await res.body?.cancel().catch(() => undefined);
+      throw new WhatsappMediaFetchError(
+        `Media download failed ${res.status}`,
+        res.status,
+      );
+    }
+    return res;
   }
 
   // Meta has no standalone typing call: this read-receipt rider is log-only so it never blocks the reply.
@@ -201,12 +303,18 @@ export class WhatsappCloudApiService {
     };
   }
 
-  private graphErrorCode(raw: string): number | null {
+  private graphError(raw: string): { code?: number; subcode?: number } {
     try {
-      const parsed = JSON.parse(raw) as { error?: { code?: number } };
-      return typeof parsed.error?.code === 'number' ? parsed.error.code : null;
+      const parsed = JSON.parse(raw) as {
+        error?: { code?: unknown; error_subcode?: unknown };
+      };
+      const { code, error_subcode: subcode } = parsed.error ?? {};
+      return {
+        code: typeof code === 'number' ? code : undefined,
+        subcode: typeof subcode === 'number' ? subcode : undefined,
+      };
     } catch {
-      return null;
+      return {};
     }
   }
 
@@ -269,6 +377,8 @@ export class WhatsappCloudApiService {
       const result = await this.sendText(connection, chatId, message);
 
       const aiMsg: WaMessage = {
+        uuid: randomUUID(),
+        ...WA_MESSAGE_NO_STORED_MEDIA,
         id: result.messageId,
         chatId,
         senderId: connection.displayPhoneNumber,
@@ -278,7 +388,6 @@ export class WhatsappCloudApiService {
         body: message,
         hasMedia: false,
         mediaType: 'text',
-        mediaUrls: [],
         mentionedIds: [],
         quotedParticipant: '',
         fromMe: true,

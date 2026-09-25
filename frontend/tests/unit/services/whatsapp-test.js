@@ -326,6 +326,44 @@ module('Unit | Service | whatsapp', function (hooks) {
     assert.strictEqual(service.chats[0].chatName, '971500000000');
   });
 
+  test('isChatLastMessage matches the live last message id, else the seeded preview time', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.seedChats(
+      [{ chatId: 'c-1', chatName: 'Layla', lastBody: 'hi', lastTs: 100 }],
+      service.beginUnreadSeed(),
+    );
+
+    assert.true(
+      service.isChatLastMessage({
+        id: 'm-1',
+        chatId: 'c-1',
+        timestamp: 100000,
+      }),
+      'seeded chat matched by time',
+    );
+    assert.false(
+      service.isChatLastMessage({ id: 'm-0', chatId: 'c-1', timestamp: 90000 }),
+    );
+
+    service.updateChat({
+      id: 'm-2',
+      chatId: 'c-1',
+      body: 'later',
+      fromMe: false,
+      timestamp: 200000,
+    });
+    assert.true(service.isChatLastMessage({ id: 'm-2', chatId: 'c-1' }));
+    assert.false(
+      service.isChatLastMessage({
+        id: 'm-3',
+        chatId: 'c-1',
+        timestamp: 200000,
+      }),
+      'a live id wins over the time',
+    );
+    assert.false(service.isChatLastMessage({ id: 'm-2', chatId: 'c-9' }));
+  });
+
   test('updateChat gives a number-only chat the name a live message carries', function (assert) {
     const service = this.owner.lookup('service:whatsapp');
     service.chats = [
@@ -539,6 +577,7 @@ module('Unit | Service | whatsapp', function (hooks) {
       'whatsapp:connection',
       'whatsapp:history',
       'whatsapp:message',
+      'whatsapp:message-update',
       'whatsapp:ready',
       'whatsapp:status',
       'whatsapp:unread',
@@ -856,6 +895,42 @@ module('Unit | Service | whatsapp', function (hooks) {
       assert.deepEqual(this.removed, [1], 'older toast replaced');
     });
 
+    test('a whatsapp:message-update never toasts and reaches only message-update listeners', function (assert) {
+      const messages = [];
+      const updates = [];
+      this.service.on('message', (data) => messages.push(data));
+      this.service.on('message-update', (data) => updates.push(data));
+      const update = {
+        id: 'm-9',
+        chatId: 'c-1',
+        chatName: 'Layla',
+        body: '',
+        fromMe: false,
+        hasMedia: true,
+        mediaStatus: 'STORED',
+      };
+
+      this.socket.fire('whatsapp:message-update', update);
+
+      assert.strictEqual(this.toasts.length, 0, 'no toast');
+      assert.deepEqual(updates, [update]);
+      assert.deepEqual(messages, [], 'not delivered as a new message');
+    });
+
+    test('an inbound first delivery with stored media still toasts', function (assert) {
+      this.socket.fire('whatsapp:message', {
+        id: 'm-10',
+        chatId: 'c-1',
+        chatName: 'Layla',
+        body: '',
+        fromMe: false,
+        hasMedia: true,
+        mediaStatus: 'STORED',
+      });
+
+      assert.strictEqual(this.toasts.length, 1);
+    });
+
     test('a resync never toasts', async function (assert) {
       this.socket.fire('whatsapp:ready', { recovered: false });
       await settled();
@@ -992,6 +1067,266 @@ module('Unit | Service | whatsapp', function (hooks) {
         resyncTicket,
       );
       assert.strictEqual(this.service.unread.get('c-1').unreadCount, 2);
+    });
+  });
+
+  module('media URLs', function (innerHooks) {
+    innerHooks.beforeEach(function () {
+      const calls = [];
+      this.calls = calls;
+      this.responses = [];
+      const ctx = this;
+      this.owner.register(
+        'service:auth',
+        class extends Service {
+          fetchJson(path, options) {
+            calls.push({ path, options });
+            const next = ctx.responses.shift();
+            return next instanceof Error
+              ? Promise.reject(next)
+              : Promise.resolve(next ?? null);
+          }
+        },
+      );
+      this.service = this.owner.lookup('service:whatsapp');
+      this.expiresIn = (ms) => new Date(Date.now() + ms).toISOString();
+    });
+
+    test('getMediaUrl reads the single-item payload and reuses it while more than 60s remain', async function (assert) {
+      this.responses.push({
+        success: true,
+        data: {
+          url: 'https://cdn/a?sig=1',
+          expiresAt: this.expiresIn(600_000),
+        },
+      });
+
+      const first = await this.service.getMediaUrl('row-1');
+      const second = await this.service.getMediaUrl('row-1');
+
+      assert.strictEqual(first, 'https://cdn/a?sig=1');
+      assert.strictEqual(second, 'https://cdn/a?sig=1');
+      assert.strictEqual(this.calls.length, 1, 'cached URL reused');
+      assert.strictEqual(this.calls[0].path, '/whatsapp/messages/row-1/media');
+    });
+
+    test('getMediaUrl requests a new URL when fewer than 60s remain', async function (assert) {
+      this.responses.push(
+        {
+          data: {
+            url: 'https://cdn/a?sig=1',
+            expiresAt: this.expiresIn(59_000),
+          },
+        },
+        {
+          data: {
+            url: 'https://cdn/a?sig=2',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+      );
+
+      await this.service.getMediaUrl('row-1');
+      const refreshed = await this.service.getMediaUrl('row-1');
+
+      assert.strictEqual(refreshed, 'https://cdn/a?sig=2');
+      assert.strictEqual(this.calls.length, 2);
+    });
+
+    test('a fresh request after a media error bypasses a still valid cache', async function (assert) {
+      this.responses.push(
+        {
+          data: {
+            url: 'https://cdn/a?sig=1',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+        {
+          data: {
+            url: 'https://cdn/a?sig=2',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+      );
+
+      await this.service.getMediaUrl('row-1');
+      const fresh = await this.service.getMediaUrl('row-1', { fresh: true });
+
+      assert.strictEqual(fresh, 'https://cdn/a?sig=2');
+      assert.strictEqual(this.calls.length, 2);
+      assert.strictEqual(
+        await this.service.getMediaUrl('row-1'),
+        'https://cdn/a?sig=2',
+        'the fresh URL replaces the cache',
+      );
+    });
+
+    test('concurrent requests for one message share one fetch', async function (assert) {
+      this.responses.push({
+        data: {
+          url: 'https://cdn/a?sig=1',
+          expiresAt: this.expiresIn(600_000),
+        },
+      });
+
+      const [a, b] = await Promise.all([
+        this.service.getMediaUrl('row-1'),
+        this.service.getMediaUrl('row-1'),
+      ]);
+
+      assert.strictEqual(a, b);
+      assert.strictEqual(this.calls.length, 1);
+    });
+
+    test('a failed URL request rejects and is not cached', async function (assert) {
+      this.responses.push(new Error('Forbidden'), {
+        data: {
+          url: 'https://cdn/a?sig=2',
+          expiresAt: this.expiresIn(600_000),
+        },
+      });
+
+      await assert.rejects(this.service.getMediaUrl('row-1'), /Forbidden/);
+      assert.strictEqual(
+        await this.service.getMediaUrl('row-1'),
+        'https://cdn/a?sig=2',
+      );
+    });
+
+    test('a non-http URL or a missing one is refused and never cached', async function (assert) {
+      this.responses.push(
+        {
+          data: {
+            url: 'javascript:alert(1)',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+        { data: { expiresAt: this.expiresIn(600_000) } },
+        {
+          data: {
+            url: 'https://cdn/a?sig=3',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+      );
+
+      await assert.rejects(
+        this.service.getMediaUrl('row-1'),
+        /Invalid media URL/,
+      );
+      await assert.rejects(
+        this.service.getMediaUrl('row-1'),
+        /Invalid media URL/,
+      );
+      assert.strictEqual(this.service._mediaUrls.size, 0);
+      assert.strictEqual(
+        await this.service.getMediaUrl('row-1'),
+        'https://cdn/a?sig=3',
+      );
+    });
+
+    test('peekMediaUrl returns only a URL with more than a minute left and prunes an expired one', async function (assert) {
+      this.responses.push(
+        {
+          data: {
+            url: 'https://cdn/a?sig=1',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+        {
+          data: {
+            url: 'https://cdn/b?sig=1',
+            expiresAt: this.expiresIn(30_000),
+          },
+        },
+        {
+          data: {
+            url: 'https://cdn/c?sig=1',
+            expiresAt: this.expiresIn(-1_000),
+          },
+        },
+      );
+      await this.service.getMediaUrl('row-a');
+      await this.service.getMediaUrl('row-b');
+      await this.service.getMediaUrl('row-c');
+
+      assert.strictEqual(
+        this.service.peekMediaUrl('row-a'),
+        'https://cdn/a?sig=1',
+      );
+      assert.strictEqual(
+        this.service.peekMediaUrl('row-b'),
+        null,
+        'under a minute',
+      );
+      assert.true(this.service._mediaUrls.has('row-b'), 'still valid, kept');
+      assert.strictEqual(this.service.peekMediaUrl('row-c'), null);
+      assert.false(
+        this.service._mediaUrls.has('row-c'),
+        'expired entry pruned',
+      );
+    });
+
+    test('logout clears the URL cache and the viewer, and an in-flight URL is not cached for the next user', async function (assert) {
+      this.responses.push({
+        data: {
+          url: 'https://cdn/a?sig=1',
+          expiresAt: this.expiresIn(600_000),
+        },
+      });
+      await this.service.getMediaUrl('row-1');
+      this.service.openMediaViewer({ uuid: 'row-1' });
+
+      let release;
+      this.owner.lookup('service:auth').fetchJson = () =>
+        new Promise((resolve) => (release = resolve));
+      const inFlight = this.service.getMediaUrl('row-2');
+
+      this.service.disconnectSocket();
+      assert.strictEqual(this.service._mediaUrls.size, 0);
+      assert.strictEqual(this.service._mediaUrlRequests.size, 0);
+      assert.strictEqual(this.service.viewerMessage, null);
+
+      release({
+        data: {
+          url: 'https://cdn/b?sig=1',
+          expiresAt: this.expiresIn(600_000),
+        },
+      });
+      await inFlight;
+      assert.false(this.service._mediaUrls.has('row-2'));
+    });
+
+    test('deleteMedia posts the reason and drops the cached URL', async function (assert) {
+      this.responses.push(
+        {
+          data: {
+            url: 'https://cdn/a?sig=1',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+        null,
+        {
+          data: {
+            url: 'https://cdn/a?sig=3',
+            expiresAt: this.expiresIn(600_000),
+          },
+        },
+      );
+
+      await this.service.getMediaUrl('row-1');
+      await this.service.deleteMedia('row-1', 'Wrong chat');
+
+      assert.strictEqual(
+        this.calls[1].path,
+        '/whatsapp/messages/row-1/delete-media',
+      );
+      assert.strictEqual(this.calls[1].options.method, 'POST');
+      assert.deepEqual(JSON.parse(this.calls[1].options.body), {
+        reason: 'Wrong chat',
+      });
+      await this.service.getMediaUrl('row-1');
+      assert.strictEqual(this.calls.length, 3, 'cache dropped after delete');
     });
   });
 });

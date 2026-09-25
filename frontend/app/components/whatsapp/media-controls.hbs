@@ -1,0 +1,68 @@
+<div class="wa-controls" data-test-wa-controls>
+  <Nuvo::Button
+    @variant="ghost"
+    @shape="circle"
+    @size="sm"
+    @icon={{if @playback.playing "pause" "play"}}
+    @disabled={{@disabled}}
+    @onClick={{@onToggle}}
+    aria-label={{if @playback.playing "Pause" "Play"}}
+    data-test-wa-play
+  />
+  <input
+    class="wa-controls__seek"
+    type="range"
+    min="0"
+    max={{@playback.max}}
+    step="1"
+    value={{@playback.current}}
+    disabled={{@disabled}}
+    aria-label={{if @label (concat "Seek " @label) "Seek"}}
+    aria-valuetext={{@playback.currentLabel}}
+    data-test-wa-seek
+    {{on "input" @playback.onSeekInput}}
+    {{on "change" @playback.onSeekEnd}}
+    {{on "pointerup" @playback.onSeekEnd}}
+    {{on "pointercancel" @playback.onSeekEnd}}
+  />
+  <Nuvo::Text
+    class="wa-controls__time whitespace-nowrap"
+    @tag="span"
+    @size="xs"
+    @muted={{true}}
+    data-test-wa-time
+  >{{@playback.currentLabel}} / {{@playback.durationLabel}}</Nuvo::Text>
+  <Nuvo::Button
+    @variant="ghost"
+    @size="xs"
+    @text={{@playback.speedLabel}}
+    @disabled={{@disabled}}
+    @onClick={{@playback.cycleSpeed}}
+    aria-label="Playback speed {{@playback.speedLabel}}"
+    data-test-wa-speed
+  />
+  {{#if @showMute}}
+    <Nuvo::Button
+      @variant="ghost"
+      @shape="circle"
+      @size="sm"
+      @icon={{if @playback.muted "speaker-slash" "speaker-high"}}
+      @disabled={{@disabled}}
+      @onClick={{@playback.toggleMute}}
+      aria-label={{if @playback.muted "Unmute" "Mute"}}
+      aria-pressed={{if @playback.muted "true" "false"}}
+      data-test-wa-mute
+    />
+  {{/if}}
+  {{#if @onFullscreen}}
+    <Nuvo::Button
+      @variant="ghost"
+      @shape="circle"
+      @size="sm"
+      @icon={{if @isFullscreen "corners-in" "corners-out"}}
+      @onClick={{@onFullscreen}}
+      aria-label={{if @isFullscreen "Exit full screen" "Full screen"}}
+      data-test-wa-fullscreen
+    />
+  {{/if}}
+</div>

@@ -14,6 +14,7 @@ export enum StoragePurgeStatus {
 export enum StorageBucketKind {
   MEDIA = 'MEDIA',
   DOCUMENTS = 'DOCUMENTS',
+  WHATSAPP = 'WHATSAPP',
 }
 
 // No FK on company_id: the outbox row must outlive the company and its files.

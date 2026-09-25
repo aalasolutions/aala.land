@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
+import { WA_QUOTA_EXEMPT_MEDIA_TYPE } from '../whatsapp/wa-media.util';
 
-/** Recomputes storage_used_bytes from media and document rows; single scheduler assumed. */
+/** Recomputes storage_used_bytes from media, document and stored WhatsApp media rows; single scheduler assumed. */
 @Injectable()
 export class StorageQuotaReconcileCron {
   private readonly logger = new Logger(StorageQuotaReconcileCron.name);
@@ -13,7 +14,8 @@ export class StorageQuotaReconcileCron {
   async run(): Promise<void> {
     // WITH ... SELECT so the driver returns plain rows, not [rows, count].
     const rows: Array<{ id: string; old_bytes: string; new_bytes: string }> =
-      await this.dataSource.query(`
+      await this.dataSource.query(
+        `
         WITH actual AS (
           SELECT c.id,
             c.storage_used_bytes AS old_bytes,
@@ -27,6 +29,12 @@ export class StorageQuotaReconcileCron {
               SELECT COALESCE(SUM(COALESCE(pd.file_size, 0)), 0)
               FROM "property_documents" pd
               WHERE pd.company_id = c.id
+            ) + (
+              SELECT COALESCE(SUM(COALESCE(wm.media_size_bytes, 0)), 0)
+              FROM "whatsapp_messages" wm
+              WHERE wm.company_id = c.id
+                AND wm.media_status = 'STORED'
+                AND wm.media_type <> $1
             ) AS new_bytes
           FROM "companies" c
         ),
@@ -38,7 +46,9 @@ export class StorageQuotaReconcileCron {
           RETURNING a.id, a.old_bytes, a.new_bytes
         )
         SELECT id, old_bytes, new_bytes FROM updated
-      `);
+      `,
+        [WA_QUOTA_EXEMPT_MEDIA_TYPE],
+      );
 
     if (rows.length === 0) return;
 

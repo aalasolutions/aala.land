@@ -1,8 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, LessThan, Or, Repository } from 'typeorm';
+import { In, IsNull, LessThan, Or, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import { WaMessage, WaChat, WaMessageWindow, WaUnreadState } from './wa-types';
+import {
+  WaMessage,
+  WaMessageInsert,
+  WaChat,
+  WaMessageWindow,
+  WaMediaStatus,
+  WaUnreadState,
+  WA_PLACEHOLDER_BODIES,
+} from './wa-types';
 import {
   WhatsappMessage,
   WhatsappMessageStatus,
@@ -17,7 +25,7 @@ const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
 export const REPLY_WINDOW_S = 24 * 60 * 60;
-// About 20 bind parameters per row; 500 rows stays well under Postgres's 65535 limit.
+// About 26 bind parameters per row; 500 rows stays well under Postgres's 65535 limit.
 const HISTORY_INSERT_CHUNK = 500;
 
 // Delivery ladder, forward only: failed tops it so a redelivered sent cannot resurrect.
@@ -34,8 +42,17 @@ const ALWAYS_WRITE_STATUSES: WhatsappMessageStatus[] = [
   WhatsappMessageStatus.FAILED,
 ];
 
+// A caption-less media row keeps an empty body, so the chat list shows its type label instead.
+function chatPreviewBody(msg: WaMessageInsert): string {
+  if (msg.body || !msg.hasMedia) return msg.body ?? '';
+  return (
+    WA_PLACEHOLDER_BODIES[msg.mediaType] ??
+    WA_PLACEHOLDER_BODIES.media_placeholder
+  );
+}
+
 export interface HistoryMessage {
-  msg: WaMessage;
+  msg: WaMessageInsert;
   status?: WhatsappMessageStatus;
   statusAt?: Date;
 }
@@ -110,8 +127,15 @@ export class MessageStoreService {
     return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
   }
 
+  private toIsoString(value: Date | null | undefined): string | null {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(String(value));
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+
   private toWaMessage(row: WhatsappMessage): WaMessage {
     return {
+      uuid: row.id,
       id: row.waMessageId,
       chatId: row.chatId,
       senderId: row.senderId,
@@ -121,7 +145,13 @@ export class MessageStoreService {
       body: row.body,
       hasMedia: row.hasMedia,
       mediaType: row.mediaType,
-      mediaUrls: row.mediaUrls ?? [],
+      mediaMime: row.mediaMime ?? null,
+      mediaFileName: row.mediaFileName ?? null,
+      mediaSizeBytes: row.mediaSizeBytes ?? null,
+      mediaStatus: row.mediaStatus ?? null,
+      mediaStoredAt: this.toIsoString(row.mediaStoredAt),
+      mediaDeletedAt: this.toIsoString(row.mediaDeletedAt),
+      mediaDeletedBy: row.mediaDeletedBy ?? null,
       mentionedIds: row.mentionedIds ?? [],
       quotedParticipant: row.quotedParticipant,
       fromMe: row.fromMe,
@@ -141,12 +171,13 @@ export class MessageStoreService {
   private toInsertValues(
     companyId: string,
     userId: string,
-    msg: WaMessage,
+    msg: WaMessageInsert,
     phoneNumberId: string | null | undefined,
     safeTs: string,
     insertStatus: { status?: WhatsappMessageStatus; statusAt?: Date },
   ): QueryDeepPartialEntity<WhatsappMessage> {
     return {
+      ...(msg.uuid ? { id: msg.uuid } : {}),
       companyId,
       userId,
       originUserId: userId,
@@ -159,7 +190,12 @@ export class MessageStoreService {
       body: msg.body ?? '',
       hasMedia: msg.hasMedia ?? false,
       mediaType: msg.mediaType ?? '',
-      mediaUrls: msg.mediaUrls ?? [],
+      mediaMetaId: msg.mediaMetaId ?? null,
+      mediaMime: msg.mediaMime ?? null,
+      mediaFileName: msg.mediaFileName ?? null,
+      mediaSizeBytes: msg.mediaSizeBytes ?? null,
+      mediaSha256: msg.mediaSha256 ?? null,
+      mediaStatus: msg.mediaStatus ?? null,
       mentionedIds: msg.mentionedIds ?? [],
       quotedParticipant: msg.quotedParticipant ?? '',
       fromMe: msg.fromMe ?? false,
@@ -179,7 +215,7 @@ export class MessageStoreService {
   async addMessage(
     companyId: string,
     userId: string,
-    msg: WaMessage,
+    msg: WaMessageInsert,
     phoneNumberId?: string | null,
     // Passive store: never unread; opens Meta's reply window only when under 24h old.
     options: {
@@ -235,7 +271,7 @@ export class MessageStoreService {
           msg.chatId,
           msg.chatName || msg.chatId,
           msg.isGroup ?? false,
-          msg.body ?? '',
+          chatPreviewBody(msg),
           safeTs,
           msg.fromMe ?? false,
           phoneNumberId ?? null,
@@ -334,7 +370,7 @@ export class MessageStoreService {
         chatId,
         chatName || chatId,
         isGroup,
-        newest.item.msg.body ?? '',
+        chatPreviewBody(newest.item.msg),
         newest.safeTs,
         newest.item.msg.fromMe ?? false,
         phoneNumberId ?? null,
@@ -465,6 +501,67 @@ export class MessageStoreService {
       where: { companyId, userId, waMessageId },
     });
     return row ? this.toWaMessage(row) : null;
+  }
+
+  // Row lookup by primary key; no user filter, so the caller must authorize the result.
+  async findRowByUuid(
+    companyId: string,
+    uuid: string,
+  ): Promise<WhatsappMessage | null> {
+    return this.messages.findOne({ where: { companyId, id: uuid } });
+  }
+
+  async getMessageByUuid(
+    companyId: string,
+    uuid: string,
+  ): Promise<WaMessage | null> {
+    const row = await this.findRowByUuid(companyId, uuid);
+    return row ? this.toWaMessage(row) : null;
+  }
+
+  // Lands only on a PENDING row, so a revoke that already set DELETED is never overwritten.
+  async markPendingMediaFailed(
+    companyId: string,
+    uuid: string,
+  ): Promise<boolean> {
+    const result = await this.messages.update(
+      { companyId, id: uuid, mediaStatus: WaMediaStatus.PENDING },
+      { mediaStatus: WaMediaStatus.FAILED },
+    );
+    return (result.affected ?? 0) > 0;
+  }
+
+  async findPendingMediaUuids(
+    companyId: string,
+    userId: string,
+    waMessageIds: string[],
+  ): Promise<string[]> {
+    if (waMessageIds.length === 0) return [];
+    const rows = await this.messages.find({
+      select: { id: true },
+      where: {
+        companyId,
+        userId,
+        waMessageId: In(waMessageIds),
+        mediaStatus: WaMediaStatus.PENDING,
+      },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  // Oldest first, so a resumed backlog downloads in the order the messages arrived.
+  async findPendingMediaUuidsForUser(
+    companyId: string,
+    userId: string,
+    limit = 500,
+  ): Promise<string[]> {
+    const rows = await this.messages.find({
+      select: { id: true },
+      where: { companyId, userId, mediaStatus: WaMediaStatus.PENDING },
+      order: { timestamp: 'ASC' },
+      take: limit,
+    });
+    return rows.map((row) => row.id);
   }
 
   // Each side may only change its own messages, never a deleted one, never an older edit over a newer one.

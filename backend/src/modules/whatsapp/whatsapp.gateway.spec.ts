@@ -194,6 +194,18 @@ describe('WhatsappGateway', () => {
     });
   });
 
+  it('emitMessageUpdate re-pushes a row on whatsapp:message-update to the user room only', () => {
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    gateway.server = { to } as never;
+    const message = { id: 'wamid.1', uuid: 'row-1' } as never;
+
+    gateway.emitMessageUpdate('user-1', message);
+
+    expect(to).toHaveBeenCalledWith('user:user-1');
+    expect(emit).toHaveBeenCalledWith('whatsapp:message-update', message);
+  });
+
   it('emitConnection pushes the connection status to the user room only', () => {
     const emit = jest.fn();
     const to = jest.fn().mockReturnValue({ emit });

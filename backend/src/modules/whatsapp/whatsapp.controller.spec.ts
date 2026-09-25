@@ -14,11 +14,15 @@ import { GRAPH_VERSION } from './wa-types';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
 import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
 import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
+import { DeleteWaMediaDto } from './dto/delete-wa-media.dto';
+import { WhatsappMediaService } from './whatsapp-media.service';
+import { HTTP_CODE_METADATA } from '@nestjs/common/constants';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
   let wa: jest.Mocked<WhatsappService>;
   let signup: jest.Mocked<WhatsappSignupService>;
+  let media: jest.Mocked<WhatsappMediaService>;
 
   const makeReq = (userId: string, companyId: string | null) =>
     ({
@@ -53,12 +57,17 @@ describe('WhatsappController', () => {
             disconnect: jest.fn(),
           },
         },
+        {
+          provide: WhatsappMediaService,
+          useValue: { signUrl: jest.fn(), deleteStoredMedia: jest.fn() },
+        },
       ],
     }).compile();
 
     controller = module.get(WhatsappController);
     wa = module.get(WhatsappService);
     signup = module.get(WhatsappSignupService);
+    media = module.get(WhatsappMediaService);
   });
 
   describe('Embedded Signup', () => {
@@ -397,6 +406,84 @@ describe('WhatsappController', () => {
         controller.getAiHistory(makeReq('u1', 'c1'), params),
       ).resolves.toEqual({ chatId: '971501234567', history: [] });
       expect(wa.getAiHistory).toHaveBeenCalledWith('u1', '971501234567');
+    });
+  });
+  describe('message media', () => {
+    const UUID = 'a0000000-0000-4000-8000-000000000001';
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+
+    it('signs media for the caller company, user and role', async () => {
+      const signedUrl = {
+        url: 'https://signed.example/x',
+        expiresAt: '2026-09-25T10:10:00.000Z',
+        mime: 'image/jpeg',
+        sizeBytes: 10,
+        fileName: null,
+      };
+      media.signUrl.mockResolvedValue(signedUrl);
+
+      await expect(
+        controller.getMedia(makeReq('u1', 'c1'), UUID),
+      ).resolves.toBe(signedUrl);
+      expect(media.signUrl).toHaveBeenCalledWith(
+        'c1',
+        { userId: 'u1', role: Role.COMPANY_ADMIN },
+        UUID,
+      );
+    });
+
+    it('deletes media as the caller with the reason and answers 204', async () => {
+      media.deleteStoredMedia.mockResolvedValue(undefined);
+
+      await expect(
+        controller.deleteMedia(makeReq('u1', 'c1'), UUID, {
+          reason: 'Wrong file',
+        }),
+      ).resolves.toBeUndefined();
+      expect(media.deleteStoredMedia).toHaveBeenCalledWith('c1', UUID, 'u1', {
+        companyId: 'c1',
+        userId: 'u1',
+        role: Role.COMPANY_ADMIN,
+        reason: 'Wrong file',
+      });
+      expect(
+        Reflect.getMetadata(HTTP_CODE_METADATA, controller.deleteMedia),
+      ).toBe(204);
+    });
+
+    it('rejects both media routes without a company before calling the service', () => {
+      expect(() => controller.getMedia(makeReq('s1', null), UUID)).toThrow(
+        ForbiddenException,
+      );
+      expect(() =>
+        controller.deleteMedia(makeReq('s1', null), UUID, { reason: 'x' }),
+      ).toThrow(ForbiddenException);
+      expect(media.signUrl).not.toHaveBeenCalled();
+      expect(media.deleteStoredMedia).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      {},
+      { reason: '' },
+      { reason: '   ' },
+      { reason: 'x'.repeat(501) },
+    ])('rejects an invalid delete reason with 400 (%p)', async (body) => {
+      await expect(
+        pipe.transform(body, { type: 'body', metatype: DeleteWaMediaDto }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('trims the delete reason', async () => {
+      await expect(
+        pipe.transform(
+          { reason: '  Wrong file  ' },
+          { type: 'body', metatype: DeleteWaMediaDto },
+        ),
+      ).resolves.toMatchObject({ reason: 'Wrong file' });
     });
   });
 });
