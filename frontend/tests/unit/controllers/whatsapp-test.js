@@ -966,6 +966,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(Object.keys(whatsapp.listeners).sort(), [
       'ai',
       'chats',
+      'connection',
       'history',
       'message',
       'status',
@@ -2312,6 +2313,20 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.strictEqual(controller.connection.historySyncStatus, 'complete');
     assert.strictEqual(controller.historySyncText, '');
+  });
+
+  test('a connection push refreshes the connection card', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected' };
+    controller.whatsapp.getConnection = async () => ({
+      data: { status: 'disconnected' },
+    });
+
+    controller._socketHandlers.connection({ status: 'disconnected' });
+    await settled();
+
+    assert.strictEqual(controller.connectionStatus, 'disconnected');
+    assert.false(controller.isConnected);
   });
 
   test('a connection refresh never overwrites a newer push that landed first', async function (assert) {

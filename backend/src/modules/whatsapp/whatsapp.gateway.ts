@@ -19,7 +19,12 @@ import { errorMessage } from '@shared/utils/error.util';
 import { envList } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
-import { WaHistorySyncState, WaMessage, WaUnreadState } from './wa-types';
+import {
+  WaConnectionState,
+  WaHistorySyncState,
+  WaMessage,
+  WaUnreadState,
+} from './wa-types';
 import { MessageStoreService } from './message-store.service';
 import { MarkWaChatReadDto } from './dto/mark-wa-chat-read.dto';
 
@@ -153,6 +158,9 @@ export class WhatsappGateway
   }
   emitHistory(userId: string, data: WaHistorySyncState) {
     this.server?.to('user:' + userId).emit('whatsapp:history', data);
+  }
+  emitConnection(userId: string, data: WaConnectionState) {
+    this.server?.to('user:' + userId).emit('whatsapp:connection', data);
   }
   emitAi(userId: string, data: Record<string, unknown>) {
     this.server?.to('user:' + userId).emit('whatsapp:ai', data);

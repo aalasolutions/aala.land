@@ -72,6 +72,8 @@ interface WebhookValue {
   event?: string;
   phone_number?: string;
   disconnection_info?: { reason?: string; initiated_by?: string };
+  // PARTNER_* events only; their entry.id is the partner business, not the WABA.
+  waba_info?: { waba_id?: string; owner_business_id?: string };
 }
 
 interface CloudError {
@@ -327,20 +329,20 @@ export class WhatsappWebhookService {
   private async dispatchValue(
     value: WebhookValue,
     field?: string,
-    wabaId?: string,
+    entryId?: string,
     entryTime?: number,
     isRetryAttempt = false,
   ): Promise<void> {
     // account_update has no phone_number_id, so it must branch off before the guard below.
     if (field === 'account_update') {
-      await this.handleAccountUpdate(value, wabaId, parseEpochDate(entryTime));
+      await this.handleAccountUpdate(value, entryId, parseEpochDate(entryTime));
       return;
     }
 
     if (field === 'history' || field === 'smb_message_echoes') {
       const connection = await this.resolveConnection(
         value.metadata?.phone_number_id,
-        wabaId,
+        entryId,
       );
       if (!connection) return;
       if (field === 'history') await this.persistHistory(connection, value);
@@ -362,7 +364,7 @@ export class WhatsappWebhookService {
       return;
     }
 
-    const connection = await this.resolveConnection(phoneNumberId, wabaId);
+    const connection = await this.resolveConnection(phoneNumberId, entryId);
     if (!connection) return;
 
     // Both branches run even if one throws, so a status failure can't cost the messages too.
@@ -782,10 +784,14 @@ export class WhatsappWebhookService {
   // Mapping is explicit; an unrecognised event changes nothing so guessing never loses a number.
   private async handleAccountUpdate(
     value: WebhookValue,
-    wabaId: string | undefined,
+    entryId: string | undefined,
     eventAt: Date,
   ): Promise<void> {
     const event = value.event;
+    const wabaId = value.waba_info?.waba_id ?? entryId;
+    this.logger.log(
+      `account_update ${event ?? 'none'}: entry=${entryId ?? 'none'} waba=${wabaId ?? 'none'} phone=${value.phone_number ?? 'none'}`,
+    );
     if (!wabaId || !event) {
       this.logger.warn('account_update with no WABA id or no event; ignored');
       return;
@@ -837,6 +843,10 @@ export class WhatsappWebhookService {
             },
           );
           if (ignoredAsStale(result)) return;
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.CONNECTED,
+          );
         }
         this.logger.log(
           `account_update PARTNER_ADDED for WABA ${wabaId} (${connection.phoneNumberId})`,
@@ -855,6 +865,10 @@ export class WhatsappWebhookService {
           },
         );
         if (ignoredAsStale(result)) return;
+        this.pushConnectionChange(
+          connection,
+          WhatsappConnectionStatus.DISCONNECTED,
+        );
         this.logger.warn(
           `WhatsApp connection ${connection.phoneNumberId} disconnected by Meta: ${reason}`,
         );
@@ -875,6 +889,10 @@ export class WhatsappWebhookService {
           },
         );
         if (result.affected) {
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.FLAGGED,
+          );
           this.logger.warn(
             `WhatsApp connection ${connection.phoneNumberId} offboarded; awaiting ACCOUNT_RECONNECTED`,
           );
@@ -909,6 +927,10 @@ export class WhatsappWebhookService {
           },
         );
         if (result.affected) {
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.CONNECTED,
+          );
           this.logger.log(
             `WhatsApp connection ${connection.phoneNumberId} reconnected`,
           );
@@ -923,6 +945,21 @@ export class WhatsappWebhookService {
         this.logger.warn(
           `Unhandled account_update event "${event}" for WABA ${wabaId}; no status changed`,
         );
+    }
+  }
+
+  // A live push failure is log-only; the status is already stored.
+  private pushConnectionChange(
+    connection: WhatsappConnection,
+    status: WhatsappConnectionStatus,
+  ): void {
+    try {
+      this.gateway.emitConnection(connection.userId, { status });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push connection status ${status} for user ${connection.userId}`,
+        errorMessage(err, true),
+      );
     }
   }
 

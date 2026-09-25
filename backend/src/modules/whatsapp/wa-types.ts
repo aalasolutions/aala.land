@@ -83,6 +83,10 @@ export interface WaHistorySyncState {
   progress: number | null;
 }
 
+export interface WaConnectionState {
+  status: WhatsappConnectionStatus;
+}
+
 export interface AiCreditAgentUsage {
   userId: string;
   name: string;

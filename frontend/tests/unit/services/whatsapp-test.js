@@ -373,12 +373,27 @@ module('Unit | Service | whatsapp', function (hooks) {
       'connect_error',
       'disconnect',
       'whatsapp:ai',
+      'whatsapp:connection',
       'whatsapp:history',
       'whatsapp:message',
       'whatsapp:ready',
       'whatsapp:status',
       'whatsapp:unread',
     ]);
+  });
+
+  test('a whatsapp:connection push reaches connection listeners', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    const socket = fakeSocket();
+    service._openSocket = () => socket;
+    const emitted = [];
+    service.on('connection', (data) => emitted.push(data));
+
+    service.connectSocket();
+    socket.fire('whatsapp:connection', { status: 'disconnected' });
+
+    assert.deepEqual(emitted, [{ status: 'disconnected' }]);
+    service.disconnectSocket();
   });
 
   test('connectSocket replaces a socket the server closed', function (assert) {

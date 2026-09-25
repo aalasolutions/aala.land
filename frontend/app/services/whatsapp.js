@@ -43,6 +43,7 @@ export default class WhatsappService extends Service {
     ai: new Set(),
     chats: new Set(),
     history: new Set(),
+    connection: new Set(),
   };
 
   get apiUrl() {
@@ -81,6 +82,7 @@ export default class WhatsappService extends Service {
     socket.on('whatsapp:unread', (data) => this._applyUnread(data));
     socket.on('whatsapp:ready', (payload) => this._onReady(payload));
     socket.on('whatsapp:history', (data) => this._onHistory(data));
+    socket.on('whatsapp:connection', (data) => this._emit('connection', data));
 
     return socket;
   }

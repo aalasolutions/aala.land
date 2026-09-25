@@ -153,6 +153,7 @@ describe('WhatsappWebhookService', () => {
     emitStatus: jest.Mock;
     emitUnread: jest.Mock;
     emitHistory: jest.Mock;
+    emitConnection: jest.Mock;
   };
   let queue: { add: jest.Mock };
   let redisStore: Map<string, unknown>;
@@ -183,6 +184,7 @@ describe('WhatsappWebhookService', () => {
       emitStatus: jest.fn(),
       emitUnread: jest.fn(),
       emitHistory: jest.fn(),
+      emitConnection: jest.fn(),
     };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
     redisStore = new Map();
@@ -1002,7 +1004,7 @@ describe('WhatsappWebhookService', () => {
     });
   });
 
-  // account_update carries no metadata.phone_number_id, so it is routed off entry.id.
+  // account_update carries no metadata.phone_number_id, so it is routed off waba_info.waba_id, else entry.id.
   describe('account_update', () => {
     // A real CONNECTED or FLAGGED row always holds a token; handlers refuse to promote one without.
     const rowFor = (overrides: Partial<WhatsappConnection> = {}) =>
@@ -1029,6 +1031,53 @@ describe('WhatsappWebhookService', () => {
       expect(where).toEqual({ id: 'conn-1', lifecycleEventAt: expect.anything() });
       expect(patch.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
       expect(patch.disconnectReason).toBe('PRIMARY_INACTIVITY');
+    });
+
+    it('finds the connection by waba_info when entry.id is the partner business', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope(
+          {
+            event: 'PARTNER_REMOVED',
+            waba_info: { waba_id: 'waba-1', owner_business_id: 'owner-1' },
+          },
+          'partner-business-1',
+        ),
+      );
+
+      expect(repo.find.mock.calls[0][0].where).toMatchObject({
+        wabaId: 'waba-1',
+      });
+      expect(statusWrites()[0][1].status).toBe(
+        WhatsappConnectionStatus.DISCONNECTED,
+      );
+    });
+
+    it('pushes each status change to the connection owner', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
+      );
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(gateway.emitConnection.mock.calls).toEqual([
+        ['user-1', { status: WhatsappConnectionStatus.FLAGGED }],
+        ['user-1', { status: WhatsappConnectionStatus.DISCONNECTED }],
+      ]);
+    });
+
+    it('pushes nothing when a stale event changes no row', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+      repo.update.mockResolvedValue({ affected: 0 });
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(gateway.emitConnection).not.toHaveBeenCalled();
     });
 
     it('falls back to the event name when no disconnection reason is sent', async () => {

@@ -142,6 +142,7 @@ export default class WhatsappController extends Controller {
     ai: (data) => this.applyAi(data),
     chats: (chats) => this.applyResyncChats(chats),
     history: (data) => this.applyHistorySync(data),
+    connection: () => this._refreshConnection(),
   };
 
 
