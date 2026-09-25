@@ -11,6 +11,7 @@ import {
 import { REPLY_WINDOW_MS, formatRemaining } from 'land/utils/reply-window';
 import { isIgnoredChat } from 'land/services/whatsapp';
 import { mediaLabel } from 'land/utils/wa-media-label';
+import { isRetryableSend } from 'land/utils/wa-outbound-media';
 
 const PAGE_SIZE = 50;
 const AROUND_LIMIT = 100;
@@ -83,6 +84,7 @@ export default class WhatsappController extends Controller {
   @service notifications;
   @service embeddedSignup;
   @service session;
+  @service waAttachments;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -127,6 +129,8 @@ export default class WhatsappController extends Controller {
   @tracked mediaDeleteReason = '';
   @tracked mediaReasonError = '';
   @tracked isDeletingMedia = false;
+  // Replaced on write.
+  @tracked retryingUuids = new Set();
 
   _setupGeneration = 0;
   _clockTimer = null;
@@ -138,6 +142,7 @@ export default class WhatsappController extends Controller {
   _pendingLive = [];
   _owedReloadChatId = null;
   _onVisibilityChange = () => this._markVisibleRead();
+  _onMediaSent = (row, chatId) => this._ingestOwnSend(chatId, row);
 
   // Stable refs for off().
   _socketHandlers = {
@@ -160,6 +165,7 @@ export default class WhatsappController extends Controller {
     return (
       !this.currentChatId ||
       this.isSending ||
+      this.waAttachments.isSending ||
       !this.isConnected ||
       !this.replyWindow?.open
     );
@@ -344,6 +350,7 @@ export default class WhatsappController extends Controller {
       this.whatsapp.on(type, fn);
     }
     document.addEventListener('visibilitychange', this._onVisibilityChange);
+    this.waAttachments.onSent = this._onMediaSent;
     const seedTicket = this.whatsapp.beginUnreadSeed();
 
     try {
@@ -396,6 +403,9 @@ export default class WhatsappController extends Controller {
     this.mediaToDelete = null;
     this.mediaDeleteReason = '';
     this.mediaReasonError = '';
+    this.waAttachments.clear();
+    this.waAttachments.onSent = null;
+    this.retryingUuids = new Set();
     this.currentChatId = null;
     this.whatsapp.activeChatId = null;
     this.unreadMarkerId = null;
@@ -763,14 +773,35 @@ export default class WhatsappController extends Controller {
         changed = true;
       }
     }
+    // A retried send swaps its local id for the wamid and starts its delivery state over.
+    if (incoming.id && incoming.id !== existing.id) {
+      return {
+        ...merged,
+        id: incoming.id,
+        status: incoming.status ?? null,
+        statusAt: incoming.statusAt ?? null,
+        errorCode: incoming.errorCode ?? null,
+      };
+    }
     return changed ? merged : null;
   }
 
-  _replaceInThread(chatId, merged) {
+  // uuid first: a retried send keeps its uuid while its id changes.
+  _matchRow(list, msg) {
+    return (
+      (msg.uuid && list.find((m) => m.uuid === msg.uuid)) ||
+      list.find((m) => m.id === msg.id)
+    );
+  }
+
+  _replaceInThread(chatId, merged, previousId = merged.id) {
     const thread = this.threads.get(chatId);
+    const swap = (id) => (id === previousId ? merged.id : id);
     this._setThread(chatId, {
       ...thread,
-      messages: thread.messages.map((m) => (m.id === merged.id ? merged : m)),
+      messages: thread.messages.map((m) => (m.id === previousId ? merged : m)),
+      oldestId: swap(thread.oldestId),
+      newestId: swap(thread.newestId),
     });
   }
 
@@ -795,11 +826,11 @@ export default class WhatsappController extends Controller {
     const chatId = normalized.chatId;
     const thread =
       chatId === this.currentChatId ? this.threads.get(chatId) : null;
-    const existing = thread?.messages.find((m) => m.id === normalized.id);
+    const existing = thread && this._matchRow(thread.messages, normalized);
 
     if (existing) {
       const merged = this._mergeExisting(existing, normalized);
-      if (merged) this._replaceInThread(chatId, merged);
+      if (merged) this._replaceInThread(chatId, merged, existing.id);
       return;
     }
     // Updates to unloaded messages.
@@ -828,23 +859,30 @@ export default class WhatsappController extends Controller {
     if (!msg?.id || isIgnoredChat(msg)) return;
     const normalized = this._normalizeMessage(msg);
     const chatId = normalized.chatId;
-    if (this.whatsapp.isChatLastMessage(normalized)) {
+    const isOpen = chatId === this.currentChatId;
+    const existing = isOpen
+      ? this._matchRow(this.threads.get(chatId)?.messages ?? [], normalized)
+      : null;
+    const parked =
+      isOpen && !existing
+        ? this._matchRow(this._pendingLive, normalized)
+        : null;
+    const previousId = (existing ?? parked)?.id ?? normalized.id;
+    if (
+      this.whatsapp.isChatLastMessage(normalized) ||
+      this.whatsapp.isChatLastMessage({ ...normalized, id: previousId })
+    ) {
       this.whatsapp.updateChat(
         normalized.deletedAt
           ? { ...normalized, body: DELETED_PREVIEW }
           : normalized,
       );
     }
-    if (chatId !== this.currentChatId) return;
-    const existing = this.threads
-      .get(chatId)
-      ?.messages.find((m) => m.id === normalized.id);
     if (existing) {
       const merged = this._mergeExisting(existing, normalized);
-      if (merged) this._replaceInThread(chatId, merged);
+      if (merged) this._replaceInThread(chatId, merged, existing.id);
       return;
     }
-    const parked = this._pendingLive.find((m) => m.id === normalized.id);
     const merged = parked && this._mergeExisting(parked, normalized);
     if (merged) {
       this._pendingLive = this._pendingLive.map((m) =>
@@ -930,6 +968,7 @@ export default class WhatsappController extends Controller {
       this._disconnectReadObserver();
       this._cancelSave();
       if (previous) this._setThread(previous, null);
+      this.waAttachments.clear();
     }
     this._pendingLive = [];
     this.currentChatId = chatId;
@@ -1168,22 +1207,62 @@ export default class WhatsappController extends Controller {
       const chatId = this.currentChatId;
       const result = await this.whatsapp.sendMessage(chatId, body);
       this.messageText = '';
-      if (chatId !== this.currentChatId) return;
-      if (this.threads.get(chatId)?.hasMoreNewer) {
-        // Jump to latest.
-        this.whatsapp.updateChat(this._normalizeMessage(result.data ?? result));
-        if ((await this.loadWindow(chatId)) === 'ok') {
-          this._scrollToBottom(chatId);
-        }
-        return;
-      }
-      // Dedupes a later socket echo.
-      this.ingestMessage(result.data ?? result);
-      this._scrollToBottom(chatId);
+      await this._ingestOwnSend(chatId, result.data ?? result);
     } catch (err) {
       this.notifications.error(err.message);
     } finally {
       this.isSending = false;
+    }
+  }
+
+  async _ingestOwnSend(chatId, row) {
+    if (chatId !== this.currentChatId) return;
+    if (this.threads.get(chatId)?.hasMoreNewer) {
+      // Jump to latest.
+      this.whatsapp.updateChat(this._normalizeMessage(row));
+      if ((await this.loadWindow(chatId)) === 'ok') {
+        this._scrollToBottom(chatId);
+      }
+      return;
+    }
+    // Dedupes a later socket echo.
+    this.ingestMessage(row);
+    this._scrollToBottom(chatId);
+  }
+
+  @action
+  addAttachments(files) {
+    if (this.composerDisabled) return;
+    this.waAttachments.add(files);
+  }
+
+  @action
+  sendAttachments() {
+    return this.waAttachments.sendAll(this.currentChatId);
+  }
+
+  canRetrySend = (msg) => isRetryableSend(msg);
+
+  isRetryingSend = (msg) => this.retryingUuids.has(msg.uuid);
+
+  @action
+  async retrySend(msg) {
+    const uuid = msg?.uuid;
+    if (!uuid || this.retryingUuids.has(uuid)) return;
+    this.retryingUuids = new Set([...this.retryingUuids, uuid]);
+    try {
+      const result = await this.whatsapp.retrySend(uuid);
+      const row = result?.data ?? result;
+      if (row) this.ingestMessageUpdate(row);
+      if (row?.status === 'failed') {
+        this.notifications.error('WhatsApp still could not send this file');
+      }
+    } catch (err) {
+      this.notifications.error(err.message);
+    } finally {
+      const next = new Set(this.retryingUuids);
+      next.delete(uuid);
+      this.retryingUuids = next;
     }
   }
 

@@ -1,4 +1,7 @@
 import { randomBytes } from 'crypto';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Not } from 'typeorm';
 import {
   WhatsappCloudApiService,
@@ -729,6 +732,211 @@ describe('WhatsappCloudApiService', () => {
       expect(err).toBeInstanceOf(WhatsappMediaFetchError);
       expect((err as WhatsappMediaFetchError).isMediaGone).toBe(false);
       expect(cancel).toHaveBeenCalled();
+    });
+  });
+  describe('uploadMedia', () => {
+    let dir: string;
+    let path: string;
+
+    beforeEach(async () => {
+      dir = await mkdtemp(join(tmpdir(), 'wa-cloud-spec-'));
+      path = join(dir, 'upload');
+      await writeFile(path, 'jpeg bytes');
+    });
+
+    afterEach(() => {
+      delete process.env.WHATSAPP_MEDIA_UPLOAD_TIMEOUT_MS;
+    });
+
+    it('posts the file as multipart with the product, type and file name, and returns the media id', async () => {
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify({ id: 'media-1' }), { status: 200 }),
+      );
+
+      const id = await service.uploadMedia(connection, 'token-1', {
+        path,
+        mime: 'image/jpeg',
+        fileName: 'photo.jpg',
+      });
+
+      expect(id).toBe('media-1');
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe(
+        `https://graph.facebook.com/${GRAPH_VERSION}/pnid-1/media`,
+      );
+      expect(init.method).toBe('POST');
+      expect(init.headers).toEqual({ Authorization: 'Bearer token-1' });
+      const form = init.body as FormData;
+      expect(form.get('messaging_product')).toBe('whatsapp');
+      expect(form.get('type')).toBe('image/jpeg');
+      const file = form.get('file') as File;
+      expect(file.name).toBe('photo.jpg');
+      expect(file.type).toBe('image/jpeg');
+      expect(await file.text()).toBe('jpeg bytes');
+    });
+
+    it('aborts on its own timeout, not the send timeout', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      process.env.WHATSAPP_SEND_TIMEOUT_MS = '1';
+      process.env.WHATSAPP_MEDIA_UPLOAD_TIMEOUT_MS = '30';
+      let abortedAt5ms: boolean | null = null;
+      fetchMock.mockImplementation(async (_url: string, init: any) => {
+        const signal = init.signal as AbortSignal;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        abortedAt5ms = signal.aborted;
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        if (signal.aborted) throw new Error('This operation was aborted');
+        return new Response(JSON.stringify({ id: 'media-1' }), {
+          status: 200,
+        });
+      });
+
+      await expect(
+        service.uploadMedia(connection, 'token-1', {
+          path,
+          mime: 'image/jpeg',
+          fileName: 'photo.jpg',
+        }),
+      ).rejects.toBeInstanceOf(WhatsappSendError);
+      expect(abortedAt5ms).toBe(false);
+    });
+
+    it('flags the connection on code 190 and throws a send error with the Graph code', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        graphError(400, 190, 'Error validating access token'),
+      );
+
+      await expect(
+        service.uploadMedia(connection, 'token-1', {
+          path,
+          mime: 'image/jpeg',
+          fileName: 'photo.jpg',
+        }),
+      ).rejects.toMatchObject({ status: 400, graphCode: 190 });
+      expect(connections.update).toHaveBeenCalledWith(
+        { id: 'conn-1', status: Not('flagged') },
+        { status: 'flagged', disconnectReason: 'token_invalid_190' },
+      );
+    });
+
+    it('throws when Meta returns no media id', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(new Response('{}', { status: 200 }));
+
+      await expect(
+        service.uploadMedia(connection, 'token-1', {
+          path,
+          mime: 'image/jpeg',
+          fileName: 'photo.jpg',
+        }),
+      ).rejects.toThrow('no media id');
+    });
+  });
+
+  describe('sendMedia', () => {
+    const sent = () =>
+      JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<
+        string,
+        unknown
+      >;
+
+    beforeEach(() => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ messages: [{ id: 'wamid.m1' }] }),
+      });
+    });
+
+    it('sends an image with its caption', async () => {
+      await expect(
+        service.sendMedia(connection, '971501234567', {
+          type: 'image',
+          mediaId: 'media-1',
+          caption: 'Front door',
+          fileName: 'image-1.jpg',
+        }),
+      ).resolves.toEqual({ messageId: 'wamid.m1' });
+      expect(sent()).toEqual({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: '971501234567',
+        type: 'image',
+        image: { id: 'media-1', caption: 'Front door' },
+      });
+    });
+
+    it('sends a document with its caption and file name', async () => {
+      await service.sendMedia(connection, '971501234567', {
+        type: 'document',
+        mediaId: 'media-1',
+        caption: 'Lease',
+        fileName: 'lease.pdf',
+      });
+      expect(sent()).toMatchObject({
+        type: 'document',
+        document: { id: 'media-1', caption: 'Lease', filename: 'lease.pdf' },
+      });
+    });
+
+    it('sends a voice note as audio with voice set, never a caption', async () => {
+      await service.sendMedia(connection, '971501234567', {
+        type: 'audio',
+        mediaId: 'media-1',
+        caption: 'ignored',
+        voice: true,
+      });
+      expect(sent()).toMatchObject({
+        type: 'audio',
+        audio: { id: 'media-1', voice: true },
+      });
+    });
+
+    it('sends a video with a caption and a sticker with only its id', async () => {
+      await service.sendMedia(connection, '971501234567', {
+        type: 'video',
+        mediaId: 'media-1',
+        caption: 'Tour',
+      });
+      expect(sent()).toMatchObject({
+        type: 'video',
+        video: { id: 'media-1', caption: 'Tour' },
+      });
+
+      fetchMock.mockClear();
+      await service.sendMedia(connection, '971501234567', {
+        type: 'sticker',
+        mediaId: 'media-2',
+        caption: 'ignored',
+        fileName: 'sticker.webp',
+      });
+      expect(sent()).toMatchObject({
+        type: 'sticker',
+        sticker: { id: 'media-2' },
+      });
+    });
+
+    it('maps a closed window like the text send', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        graphError(400, 131047, 'Re-engagement message'),
+      );
+
+      const err = (await service
+        .sendMedia(connection, '971501234567', {
+          type: 'image',
+          mediaId: 'media-1',
+        })
+        .catch((e: unknown) => e)) as WhatsappSendError;
+      expect(err.windowClosed).toBe(true);
     });
   });
 });

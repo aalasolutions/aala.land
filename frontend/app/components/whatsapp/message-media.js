@@ -5,17 +5,13 @@ import { service } from '@ember/service';
 import { isDestroying, isDestroyed } from '@ember/destroyable';
 import { modifier } from 'ember-modifier';
 import { formatBytes } from 'land/helpers/format-bytes';
-import { mediaLabel, mediaTypeLabel } from 'land/utils/wa-media-label';
+import {
+  mediaLabel,
+  mediaTypeIcon,
+  mediaTypeLabel,
+} from 'land/utils/wa-media-label';
 import { formatClock, reloadElement } from 'land/utils/media-playback';
 import { openSignedDownload } from 'land/utils/media-download';
-
-const TYPE_ICONS = {
-  image: 'image',
-  video: 'video-camera',
-  audio: 'microphone',
-  document: 'file-text',
-  sticker: 'sticker',
-};
 
 const INLINE_TYPES = new Set(['image', 'video', 'audio', 'sticker']);
 const SIZE_BELOW_KINDS = new Set(['image', 'video']);
@@ -103,7 +99,7 @@ export default class WhatsappMessageMediaComponent extends Component {
   }
 
   get typeIcon() {
-    return TYPE_ICONS[this.type] ?? 'paperclip';
+    return mediaTypeIcon(this.type);
   }
 
   get fileName() {

@@ -38,6 +38,7 @@ import { WhatsappMediaService } from './whatsapp-media.service';
 import { WhatsappMediaIngestService } from './whatsapp-media-ingest.service';
 import { WhatsappMediaProcessor } from './whatsapp-media.processor';
 import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
+import { WhatsappMediaSendService } from './whatsapp-media-send.service';
 import {
   WA_AI_DEBOUNCE_QUEUE,
   WA_MEDIA_QUEUE,
@@ -123,6 +124,7 @@ import {
     WhatsappMediaService,
     WhatsappMediaIngestService,
     WhatsappMediaProcessor,
+    WhatsappMediaSendService,
   ],
   exports: [
     WhatsappService,

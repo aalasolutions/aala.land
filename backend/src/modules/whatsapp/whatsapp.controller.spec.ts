@@ -4,6 +4,7 @@ import {
   BadGatewayException,
   BadRequestException,
   ForbiddenException,
+  RequestMethod,
   ValidationPipe,
 } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
@@ -16,13 +17,21 @@ import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
 import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
 import { DeleteWaMediaDto } from './dto/delete-wa-media.dto';
 import { WhatsappMediaService } from './whatsapp-media.service';
-import { HTTP_CODE_METADATA } from '@nestjs/common/constants';
+import {
+  HTTP_CODE_METADATA,
+  INTERCEPTORS_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+} from '@nestjs/common/constants';
+import { SendWaMediaDto } from './dto/send-wa-media.dto';
+import { WhatsappMediaSendService } from './whatsapp-media-send.service';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
   let wa: jest.Mocked<WhatsappService>;
   let signup: jest.Mocked<WhatsappSignupService>;
   let media: jest.Mocked<WhatsappMediaService>;
+  let mediaSend: jest.Mocked<WhatsappMediaSendService>;
 
   const makeReq = (userId: string, companyId: string | null) =>
     ({
@@ -61,6 +70,10 @@ describe('WhatsappController', () => {
           provide: WhatsappMediaService,
           useValue: { signUrl: jest.fn(), deleteStoredMedia: jest.fn() },
         },
+        {
+          provide: WhatsappMediaSendService,
+          useValue: { sendFile: jest.fn(), retry: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -68,6 +81,7 @@ describe('WhatsappController', () => {
     wa = module.get(WhatsappService);
     signup = module.get(WhatsappSignupService);
     media = module.get(WhatsappMediaService);
+    mediaSend = module.get(WhatsappMediaSendService);
   });
 
   describe('Embedded Signup', () => {
@@ -484,6 +498,102 @@ describe('WhatsappController', () => {
           { type: 'body', metatype: DeleteWaMediaDto },
         ),
       ).resolves.toMatchObject({ reason: 'Wrong file' });
+    });
+  });
+  describe('outbound media', () => {
+    const UUID = 'a0000000-0000-4000-8000-000000000001';
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const file = { path: '/tmp/x', size: 10 } as Express.Multer.File;
+
+    it('routes POST chats/:chatId/media through a file interceptor', () => {
+      expect(Reflect.getMetadata(PATH_METADATA, controller.sendMedia)).toBe(
+        'chats/:chatId/media',
+      );
+      expect(Reflect.getMetadata(METHOD_METADATA, controller.sendMedia)).toBe(
+        RequestMethod.POST,
+      );
+      expect(
+        Reflect.getMetadata(INTERCEPTORS_METADATA, controller.sendMedia),
+      ).toHaveLength(1);
+    });
+
+    it('sends the file as the caller with the caption and voice flag', async () => {
+      const row = { uuid: UUID, id: 'wamid.1' };
+      mediaSend.sendFile.mockResolvedValue(row as any);
+
+      await expect(
+        controller.sendMedia(
+          makeReq('u1', 'c1'),
+          { chatId: '971501234567' },
+          file,
+          { caption: 'Hi', voice: false },
+        ),
+      ).resolves.toBe(row);
+      expect(mediaSend.sendFile).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        '971501234567',
+        file,
+        { caption: 'Hi', voice: false },
+      );
+    });
+
+    it('answers 400 when no file was sent', () => {
+      expect(() =>
+        controller.sendMedia(
+          makeReq('u1', 'c1'),
+          { chatId: '971501234567' },
+          undefined,
+          {},
+        ),
+      ).toThrow(BadRequestException);
+      expect(mediaSend.sendFile).not.toHaveBeenCalled();
+    });
+
+    it('routes POST messages/:uuid/retry with 200 and the caller role', async () => {
+      expect(Reflect.getMetadata(PATH_METADATA, controller.retryMedia)).toBe(
+        'messages/:uuid/retry',
+      );
+      expect(
+        Reflect.getMetadata(HTTP_CODE_METADATA, controller.retryMedia),
+      ).toBe(200);
+      mediaSend.retry.mockResolvedValue({ uuid: UUID } as any);
+
+      await controller.retryMedia(makeReq('u1', 'c1'), UUID);
+      expect(mediaSend.retry).toHaveBeenCalledWith(
+        'c1',
+        { userId: 'u1', role: Role.COMPANY_ADMIN },
+        UUID,
+      );
+    });
+
+    it('turns the multipart voice string into a boolean and trims the caption', async () => {
+      await expect(
+        pipe.transform(
+          { caption: '  Front door  ', voice: 'true' },
+          { type: 'body', metatype: SendWaMediaDto },
+        ),
+      ).resolves.toMatchObject({ caption: 'Front door', voice: true });
+      await expect(
+        pipe.transform(
+          { voice: 'false' },
+          { type: 'body', metatype: SendWaMediaDto },
+        ),
+      ).resolves.toMatchObject({ voice: false });
+    });
+
+    it.each([
+      { voice: 'yes' },
+      { caption: 'x'.repeat(1025) },
+      { caption: 'ok', extra: 'field' },
+    ])('rejects an invalid media body with 400 (%p)', async (body) => {
+      await expect(
+        pipe.transform(body, { type: 'body', metatype: SendWaMediaDto }),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 });

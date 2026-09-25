@@ -75,8 +75,7 @@ export const WA_MESSAGE_NO_STORED_MEDIA = {
   mediaDeletedBy: null,
 } as const satisfies Partial<WaMessage>;
 
-// Shape callers pass to MessageStoreService inserts. uuid, when given, becomes the row id, so a
-// payload emitted before the insert carries the same id; omitted, Postgres generates it.
+// Insert shape: a given uuid becomes the row id so a payload emitted before the insert matches it.
 export type WaMessageInsert = Omit<WaMessage, WaMessageOutputOnly> & {
   uuid?: string;
   mediaMetaId?: string | null;
@@ -85,6 +84,10 @@ export type WaMessageInsert = Omit<WaMessage, WaMessageOutputOnly> & {
   mediaSizeBytes?: number | null;
   mediaSha256?: string | null;
   mediaStatus?: WaMediaStatus | null;
+  // Bucket object key; set on insert only for outbound media stored before the send.
+  mediaKey?: string | null;
+  // ISO string, as on WaMessage.
+  mediaStoredAt?: string | null;
 };
 
 export interface WaChat {
@@ -205,6 +208,9 @@ export interface WaMediaJobData {
   messageUuid: string;
   companyId: string;
 }
+
+// wa_message_id of an outbound row Meta never accepted; a retry replaces it with the real wamid.
+export const WA_LOCAL_ID_PREFIX = 'local-';
 
 // Labels a message by type where its body is empty: stored media, or a placeholder row.
 export const WA_PLACEHOLDER_BODIES: Record<string, string> = {

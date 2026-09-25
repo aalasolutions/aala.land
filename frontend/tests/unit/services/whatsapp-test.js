@@ -1329,4 +1329,49 @@ module('Unit | Service | whatsapp', function (hooks) {
       assert.strictEqual(this.calls.length, 3, 'cache dropped after delete');
     });
   });
+
+  test('sendMediaFile uploads one file with its caption; retrySend posts the uuid', async function (assert) {
+    const uploads = [];
+    const calls = [];
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        uploadWithProgress(path, formData, onProgress) {
+          uploads.push({ path, formData, onProgress });
+          return Promise.resolve({ success: true, data: { id: 'wamid.1' } });
+        }
+        fetchJson(path, options) {
+          calls.push({ path, options });
+          return Promise.resolve({ success: true, data: { id: 'wamid.2' } });
+        }
+      },
+    );
+    const service = this.owner.lookup('service:whatsapp');
+    const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' });
+    const onProgress = () => {};
+
+    await service.sendMediaFile('9715', file, { caption: 'Hi', onProgress });
+    await service.sendMediaFile('9715', file);
+    await service.retrySend('row-1');
+
+    assert.strictEqual(uploads[0].path, '/whatsapp/chats/9715/media');
+    assert.strictEqual(uploads[0].formData.get('file').name, 'a.jpg');
+    assert.strictEqual(uploads[0].formData.get('caption'), 'Hi');
+    assert.false(uploads[0].formData.has('voice'));
+    assert.strictEqual(uploads[0].onProgress, onProgress);
+    assert.false(uploads[1].formData.has('caption'), 'no empty caption');
+    assert.deepEqual(calls, [
+      { path: '/whatsapp/messages/row-1/retry', options: { method: 'POST' } },
+    ]);
+  });
+
+  test('a user change clears the attachment queue', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    const attachments = this.owner.lookup('service:wa-attachments');
+    attachments.add([new File(['x'], 'a.jpg', { type: 'image/jpeg' })]);
+
+    service.disconnectSocket();
+
+    assert.deepEqual(attachments.items, []);
+  });
 });

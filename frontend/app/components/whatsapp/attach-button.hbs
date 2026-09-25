@@ -1,0 +1,24 @@
+<Nuvo::Button
+  @variant="ghost"
+  @shape="circle"
+  @icon="paperclip"
+  @disabled={{@disabled}}
+  @onClick={{this.openPicker}}
+  aria-label="Attach files"
+  title="Attach files"
+  data-test-wa-attach
+  ...attributes
+/>
+<input
+  class="sr-only"
+  type="file"
+  multiple
+  accept={{this.accept}}
+  tabindex="-1"
+  aria-label="Attach files"
+  aria-hidden="true"
+  disabled={{@disabled}}
+  data-test-wa-attach-input
+  {{this.registerInput}}
+  {{on "change" this.onChange}}
+/>

@@ -89,3 +89,21 @@ export async function addStorageUsage(
     .setParameters({ bytes })
     .execute();
 }
+
+// Floors at zero so a release can never drive usage negative.
+export async function releaseStorage(
+  companyRepository: Repository<Company>,
+  companyId: string,
+  bytes: number,
+): Promise<void> {
+  if (bytes <= 0) return;
+  await companyRepository
+    .createQueryBuilder()
+    .update(Company)
+    .set({
+      storageUsedBytes: () => 'GREATEST("storage_used_bytes" - :bytes, 0)',
+    })
+    .setParameter('bytes', bytes)
+    .where('id = :companyId', { companyId })
+    .execute();
+}

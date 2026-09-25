@@ -34,8 +34,8 @@ import {
   safeWaMessageId,
 } from './wa-media.util';
 
-const PART_SIZE_BYTES = 8 * 1024 * 1024;
-const UPLOAD_QUEUE_SIZE = 2;
+export const PART_SIZE_BYTES = 8 * 1024 * 1024;
+export const UPLOAD_QUEUE_SIZE = 2;
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
 // Meta sends the hash base64 in webhooks; hex is accepted too, and 64 hex chars never decode to 32 base64 bytes.

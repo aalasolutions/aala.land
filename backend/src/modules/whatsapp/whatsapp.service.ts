@@ -152,17 +152,12 @@ export class WhatsappService {
     chatId: string,
     body: string,
   ): Promise<WaMessage> {
-    const connection = await this.connections.findOne({
-      where: { userId, companyId, status: WhatsappConnectionStatus.CONNECTED },
-    });
-    if (!connection) {
-      throw new BadRequestException(
-        'No connected WhatsApp number for this user. Connect a number before sending.',
-      );
-    }
-
     // Checked before the AI pause so a send refused here leaves the AI state untouched.
-    await this.assertReplyWindowOpen(companyId, userId, chatId);
+    const connection = await this.findSendableConnection(
+      userId,
+      companyId,
+      chatId,
+    );
 
     // Cancels any queued AI turn first so it can't fire after the human spoke; a failed send below then leaves it off.
     await this.ai.recordHumanReply(userId, chatId);
@@ -224,6 +219,24 @@ export class WhatsappService {
     }
     this.gateway.emitMessage(userId, msg);
     return msg;
+  }
+
+  // Every operator send path: the caller's connected number, refused with 409 once the reply window has closed.
+  async findSendableConnection(
+    userId: string,
+    companyId: string,
+    chatId: string,
+  ): Promise<WhatsappConnection> {
+    const connection = await this.connections.findOne({
+      where: { userId, companyId, status: WhatsappConnectionStatus.CONNECTED },
+    });
+    if (!connection) {
+      throw new BadRequestException(
+        'No connected WhatsApp number for this user. Connect a number before sending.',
+      );
+    }
+    await this.assertReplyWindowOpen(companyId, userId, chatId);
+    return connection;
   }
 
   private async assertReplyWindowOpen(
