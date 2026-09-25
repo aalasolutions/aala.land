@@ -263,7 +263,7 @@ describe('DocumentsService', () => {
 
     it('calls mediaService.uploadDocumentToStorage and creates a document record', async () => {
       const mockUploadResult = {
-        url: 'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/doc.pdf',
+        url: 'https://storage.example.com/test-bucket/companies/c1/doc.pdf',
         s3Key: 'companies/c1/documents/123-doc.pdf',
         fileSize: 51200,
       };
