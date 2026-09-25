@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import { Not } from 'typeorm';
 import {
   WhatsappCloudApiService,
+  WhatsappMediaFetchError,
   WhatsappSendError,
 } from './whatsapp-cloud-api.service';
 import { WhatsappConnection } from './entities/whatsapp-connection.entity';
@@ -564,6 +565,170 @@ describe('WhatsappCloudApiService', () => {
       await flushAsync();
 
       expect(gateway.emitAi).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getMedia', () => {
+    it('asks Graph for the media with the bearer token and the phone number id', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          url: 'https://lookaside.example/media',
+          file_size: '2048',
+          mime_type: 'image/jpeg',
+          sha256: 'abc=',
+          id: 'media-1',
+        }),
+      });
+
+      const info = await service.getMedia(connection, 'token-1', 'media-1');
+
+      expect(info).toEqual({
+        url: 'https://lookaside.example/media',
+        file_size: 2048,
+        mime_type: 'image/jpeg',
+        sha256: 'abc=',
+      });
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe(
+        `https://graph.facebook.com/${GRAPH_VERSION}/media-1?phone_number_id=pnid-1`,
+      );
+      expect(init.headers).toEqual({ Authorization: 'Bearer token-1' });
+      expect(init.signal).toBeDefined();
+    });
+
+    it('reports an unknown media id (code 100, subcode 33) as gone', async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () =>
+          JSON.stringify({ error: { code: 100, error_subcode: 33 } }),
+      });
+
+      const err = await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(WhatsappMediaFetchError);
+      expect((err as WhatsappMediaFetchError).isMediaGone).toBe(true);
+    });
+
+    it('reports a 404 as gone', async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => '',
+      });
+
+      const err = await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch((e: unknown) => e);
+
+      expect((err as WhatsappMediaFetchError).isMediaGone).toBe(true);
+    });
+
+    it('treats any other Graph failure as retryable', async () => {
+      fetchMock.mockResolvedValue(graphError(500, 2, 'temporary'));
+
+      const err = await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(WhatsappMediaFetchError);
+      expect((err as WhatsappMediaFetchError).isMediaGone).toBe(false);
+    });
+
+    it('flags the connection on a 401 and throws a retryable error', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        graphError(401, 190, 'Error validating access token'),
+      );
+
+      const err = await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(WhatsappMediaFetchError);
+      expect((err as WhatsappMediaFetchError).isMediaGone).toBe(false);
+      expect((err as WhatsappMediaFetchError).graphCode).toBe(190);
+      expect(connections.update).toHaveBeenCalledWith(
+        { id: 'conn-1', status: Not('flagged') },
+        { status: 'flagged', disconnectReason: 'token_invalid_190' },
+      );
+    });
+
+    it('flags the connection on code 190 even without a 401 status', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(graphError(400, 190, 'Token expired'));
+
+      await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch(() => undefined);
+
+      expect(connections.update).toHaveBeenCalled();
+    });
+
+    it('does not flag the connection on other Graph failures', async () => {
+      fetchMock.mockResolvedValue(graphError(500, 2, 'temporary'));
+
+      await service
+        .getMedia(connection, 'token-1', 'media-1')
+        .catch(() => undefined);
+
+      expect(connections.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a response without a url', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      });
+
+      await expect(
+        service.getMedia(connection, 'token-1', 'media-1'),
+      ).rejects.toThrow('no url');
+    });
+  });
+
+  describe('openMediaDownload', () => {
+    it('streams the url with the bearer token and the caller signal', async () => {
+      const res = { ok: true, status: 200, body: {} };
+      fetchMock.mockResolvedValue(res);
+      const controller = new AbortController();
+
+      await expect(
+        service.openMediaDownload(
+          'token-1',
+          'https://lookaside.example/media',
+          controller.signal,
+        ),
+      ).resolves.toBe(res);
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://lookaside.example/media',
+        {
+          headers: { Authorization: 'Bearer token-1' },
+          signal: controller.signal,
+        },
+      );
+    });
+
+    it('throws a retryable error and releases the body on a failed download', async () => {
+      const cancel = jest.fn().mockResolvedValue(undefined);
+      fetchMock.mockResolvedValue({ ok: false, status: 401, body: { cancel } });
+
+      const err = await service
+        .openMediaDownload('token-1', 'https://lookaside.example/media')
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(WhatsappMediaFetchError);
+      expect((err as WhatsappMediaFetchError).isMediaGone).toBe(false);
+      expect(cancel).toHaveBeenCalled();
     });
   });
 });

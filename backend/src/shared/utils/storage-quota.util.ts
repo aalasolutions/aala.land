@@ -70,3 +70,22 @@ export async function reserveStorage(
     );
   }
 }
+
+// Unconditional: customer WhatsApp media is always stored, so usage may exceed quota.
+export async function addStorageUsage(
+  companyRepository: Repository<Company>,
+  companyId: string,
+  bytes: number,
+): Promise<void> {
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    throw new Error(`addStorageUsage: invalid byte count ${bytes}`);
+  }
+  if (bytes === 0) return;
+  await companyRepository
+    .createQueryBuilder()
+    .update(Company)
+    .set({ storageUsedBytes: () => '"storage_used_bytes" + :bytes' })
+    .where('id = :companyId', { companyId })
+    .setParameters({ bytes })
+    .execute();
+}

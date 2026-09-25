@@ -46,6 +46,14 @@ export function buildDocumentsClient(): S3Client {
   );
 }
 
+export function buildWhatsappClient(): S3Client {
+  return buildS3Client(
+    envString('AWS_WHATSAPP_ACCESS_KEY_ID'),
+    envString('AWS_WHATSAPP_SECRET_ACCESS_KEY'),
+    'AWS_WHATSAPP_ACCESS_KEY_ID and AWS_WHATSAPP_SECRET_ACCESS_KEY',
+  );
+}
+
 // Public, property photos/thumbnails only.
 export function getMediaBucket(): string {
   const bucket = envString('AWS_S3_BUCKET');
@@ -59,6 +67,14 @@ export function getDocumentsBucket(): string {
   const bucket = envString('AWS_S3_DOCUMENTS_BUCKET');
   if (!bucket)
     throw new BadRequestException('AWS_S3_DOCUMENTS_BUCKET is not configured.');
+  return bucket;
+}
+
+// Private bucket; served only via short-lived signed URLs after a row access check.
+export function getWhatsappBucket(): string {
+  const bucket = envString('AWS_S3_WHATSAPP_BUCKET');
+  if (!bucket)
+    throw new BadRequestException('AWS_S3_WHATSAPP_BUCKET is not configured.');
   return bucket;
 }
 

@@ -27,13 +27,22 @@ import { EmailModule } from '../email/email.module';
 import { BillingModule } from '../billing/billing.module';
 import { RedisModule } from '../redis/redis.module';
 import { EncryptionModule } from '../encryption/encryption.module';
+import { RecordHistoryModule } from '../record-history/record-history.module';
 import { WhatsappBillingListener } from './whatsapp-billing.listener';
 import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
 import { WhatsappAiDebounceProcessor } from './whatsapp-ai-debounce.processor';
 import { WhatsappCloudApiService } from './whatsapp-cloud-api.service';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { WhatsappWebhookProcessor } from './whatsapp-webhook.processor';
-import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
+import { WhatsappMediaService } from './whatsapp-media.service';
+import { WhatsappMediaIngestService } from './whatsapp-media-ingest.service';
+import { WhatsappMediaProcessor } from './whatsapp-media.processor';
+import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
+import {
+  WA_AI_DEBOUNCE_QUEUE,
+  WA_MEDIA_QUEUE,
+  WA_WEBHOOK_EVENTS_QUEUE,
+} from './wa-types';
 
 @Module({
   imports: [
@@ -41,6 +50,8 @@ import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
     BillingModule,
     RedisModule,
     EncryptionModule,
+    RecordHistoryModule,
+    StoragePurgeModule,
     BullModule.registerQueue({
       name: WA_AI_DEBOUNCE_QUEUE,
       defaultJobOptions: {
@@ -56,6 +67,16 @@ import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
         // Safe to retry: the wamid dedupe and the ranked status update are both idempotent.
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: { age: 604800, count: 1000 },
+      },
+    }),
+    BullModule.registerQueue({
+      name: WA_MEDIA_QUEUE,
+      defaultJobOptions: {
+        // Each attempt fetches a fresh Meta URL; five fit well inside the 7-day media id life.
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10000 },
         removeOnComplete: true,
         removeOnFail: { age: 604800, count: 1000 },
       },
@@ -99,12 +120,16 @@ import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
     AiConversationRetentionCron,
     WhatsappAiDebounceProcessor,
     WhatsappWebhookProcessor,
+    WhatsappMediaService,
+    WhatsappMediaIngestService,
+    WhatsappMediaProcessor,
   ],
   exports: [
     WhatsappService,
     WhatsappSignupService,
     MessageStoreService,
     WhatsappGateway,
+    WhatsappMediaService,
   ],
 })
 export class WhatsappModule {}

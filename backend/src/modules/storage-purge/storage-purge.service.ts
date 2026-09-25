@@ -18,9 +18,18 @@ import {
 } from './storage-purge.constants';
 import { getThumbnailKey } from './storage-targets.util';
 
+export interface WhatsappPurgeItem {
+  companyId: string;
+  s3Key: string;
+  bytes: number;
+  sourceId: string;
+}
+
 export interface StoragePurgeFiles {
   media?: PropertyMedia[];
   documents?: PropertyDocument[];
+  // The message row is kept; only its stored object and quota bytes are released.
+  whatsapp?: WhatsappPurgeItem[];
 }
 
 @Injectable()
@@ -39,7 +48,9 @@ export class StoragePurgeService {
   ): Promise<string[]> {
     const media = files.media ?? [];
     const documents = files.documents ?? [];
-    if (media.length === 0 && documents.length === 0) return [];
+    const whatsapp = files.whatsapp ?? [];
+    if (media.length === 0 && documents.length === 0 && whatsapp.length === 0)
+      return [];
 
     const outbox: Partial<StoragePurgeJob>[] = [];
     const bytesByCompany = new Map<string, number>();
@@ -80,6 +91,18 @@ export class StoragePurgeService {
         bytes: d.fileSize ?? 0,
         sourceType: 'PropertyDocument',
         sourceId: d.id,
+      });
+    }
+
+    for (const w of whatsapp) {
+      addBytes(w.companyId, w.bytes);
+      outbox.push({
+        companyId: w.companyId,
+        bucketKind: StorageBucketKind.WHATSAPP,
+        s3Key: w.s3Key,
+        bytes: w.bytes,
+        sourceType: 'WhatsappMessage',
+        sourceId: w.sourceId,
       });
     }
 

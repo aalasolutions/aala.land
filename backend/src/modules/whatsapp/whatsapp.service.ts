@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
 import { MessageStoreService, REPLY_WINDOW_S } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappGateway } from './whatsapp.gateway';
@@ -25,6 +26,7 @@ import {
   AiHistoryMessage,
   WaChat,
   WaConnectionInfo,
+  WA_MESSAGE_NO_STORED_MEDIA,
   WaMessage,
   WaMessageWindow,
 } from './wa-types';
@@ -187,6 +189,8 @@ export class WhatsappService {
     }
 
     const msg: WaMessage = {
+      uuid: randomUUID(),
+      ...WA_MESSAGE_NO_STORED_MEDIA,
       id: sent.messageId,
       chatId,
       senderId: connection.displayPhoneNumber,
@@ -196,7 +200,6 @@ export class WhatsappService {
       body,
       hasMedia: false,
       mediaType: 'text',
-      mediaUrls: [],
       mentionedIds: [],
       quotedParticipant: '',
       fromMe: true,

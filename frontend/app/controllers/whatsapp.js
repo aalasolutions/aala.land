@@ -10,6 +10,7 @@ import {
 } from 'land/utils/whatsapp-disconnect-reasons';
 import { REPLY_WINDOW_MS, formatRemaining } from 'land/utils/reply-window';
 import { isIgnoredChat } from 'land/services/whatsapp';
+import { mediaLabel } from 'land/utils/wa-media-label';
 
 const PAGE_SIZE = 50;
 const AROUND_LIMIT = 100;
@@ -19,6 +20,8 @@ const LOAD_NEWER_THRESHOLD_PX = 40;
 const STICK_TO_BOTTOM_PX = 80;
 const MARKER_TOP_OFFSET_PX = 24;
 const READ_VISIBLE_RATIO = 0.6;
+// Mirrors the server's chat preview for a revoked last message.
+const DELETED_PREVIEW = 'This message was deleted';
 
 // Fields a later delivery of the same wa message id may legitimately change.
 const MUTABLE_MESSAGE_FIELDS = [
@@ -28,6 +31,13 @@ const MUTABLE_MESSAGE_FIELDS = [
   'errorCode',
   'editedAt',
   'deletedAt',
+  'mediaStatus',
+  'mediaSizeBytes',
+  'mediaMime',
+  'mediaFileName',
+  'mediaStoredAt',
+  'mediaDeletedAt',
+  'mediaDeletedBy',
 ];
 
 const HISTORY_SYNC_COPY = {
@@ -113,6 +123,11 @@ export default class WhatsappController extends Controller {
   @tracked messageText = '';
   @tracked isSending = false;
 
+  @tracked mediaToDelete = null;
+  @tracked mediaDeleteReason = '';
+  @tracked mediaReasonError = '';
+  @tracked isDeletingMedia = false;
+
   _setupGeneration = 0;
   _clockTimer = null;
   _saveTimer = null;
@@ -127,6 +142,7 @@ export default class WhatsappController extends Controller {
   // Stable refs for off().
   _socketHandlers = {
     message: (data) => this.ingestMessage(data),
+    'message-update': (data) => this.ingestMessageUpdate(data),
     status: (data) => this.applyStatus(data),
     ai: (data) => this.applyAi(data),
     chats: () => this.applyResyncChats(),
@@ -376,6 +392,10 @@ export default class WhatsappController extends Controller {
     document.removeEventListener('visibilitychange', this._onVisibilityChange);
     this.stopClock();
     this._disconnectReadObserver();
+    this.whatsapp.closeMediaViewer();
+    this.mediaToDelete = null;
+    this.mediaDeleteReason = '';
+    this.mediaReasonError = '';
     this.currentChatId = null;
     this.whatsapp.activeChatId = null;
     this.unreadMarkerId = null;
@@ -803,6 +823,36 @@ export default class WhatsappController extends Controller {
     if (stick) this._scrollToBottom(chatId);
   }
 
+  // A re-push of an existing row: merged into the loaded or parked copy, never added.
+  ingestMessageUpdate(msg) {
+    if (!msg?.id || isIgnoredChat(msg)) return;
+    const normalized = this._normalizeMessage(msg);
+    const chatId = normalized.chatId;
+    if (this.whatsapp.isChatLastMessage(normalized)) {
+      this.whatsapp.updateChat(
+        normalized.deletedAt
+          ? { ...normalized, body: DELETED_PREVIEW }
+          : normalized,
+      );
+    }
+    if (chatId !== this.currentChatId) return;
+    const existing = this.threads
+      .get(chatId)
+      ?.messages.find((m) => m.id === normalized.id);
+    if (existing) {
+      const merged = this._mergeExisting(existing, normalized);
+      if (merged) this._replaceInThread(chatId, merged);
+      return;
+    }
+    const parked = this._pendingLive.find((m) => m.id === normalized.id);
+    const merged = parked && this._mergeExisting(parked, normalized);
+    if (merged) {
+      this._pendingLive = this._pendingLive.map((m) =>
+        m === parked ? merged : m,
+      );
+    }
+  }
+
   // Meta's exchange code lives only 30 seconds, so the POST fires immediately after the flow finishes.
   @action
   async connectWhatsapp() {
@@ -959,6 +1009,60 @@ export default class WhatsappController extends Controller {
   retryLoadNewer() {
     const chatId = this.currentChatId;
     if (chatId) return this.loadEdgePage(chatId, { older: false });
+  }
+
+  // ── Media ─────────────────────────────────────────────────────────────
+
+  get mediaToDeleteLabel() {
+    return this.mediaToDelete ? mediaLabel(this.mediaToDelete) : '';
+  }
+
+  @action
+  openDeleteMedia(msg) {
+    this.mediaDeleteReason = '';
+    this.mediaReasonError = '';
+    this.mediaToDelete = msg;
+  }
+
+  @action
+  closeDeleteMedia() {
+    this.mediaToDelete = null;
+  }
+
+  @action
+  setMediaDeleteReason(value) {
+    this.mediaDeleteReason = value;
+  }
+
+  // The socket confirms with the server copy; the local patch repaints the bubble at once.
+  @action
+  async confirmDeleteMedia() {
+    const target = this.mediaToDelete;
+    if (!target || this.isDeletingMedia) return;
+    const reason = this.mediaDeleteReason.trim();
+    if (!reason) {
+      this.mediaReasonError = 'Reason is required.';
+      return;
+    }
+    this.isDeletingMedia = true;
+    try {
+      await this.whatsapp.deleteMedia(target.uuid, reason);
+      const chatId = this.currentChatId;
+      const current = this.currentChatMessages.find((m) => m.id === target.id);
+      if (current) {
+        this._replaceInThread(chatId, {
+          ...current,
+          mediaStatus: 'DELETED',
+          mediaDeletedAt: current.mediaDeletedAt ?? new Date().toISOString(),
+        });
+      }
+      this.notifications.success('Media deleted');
+      this.mediaToDelete = null;
+    } catch (err) {
+      this.notifications.error(err.message);
+    } finally {
+      this.isDeletingMedia = false;
+    }
   }
 
   // ── Read tracking ─────────────────────────────────────────────────────

@@ -1,0 +1,30 @@
+<Nuvo::ListItem data-test-wa-audio-player>
+  <:main>
+    {{#if @src}}
+      {{! template-lint-disable require-media-caption }}
+      <audio
+        src={{@src}}
+        preload="metadata"
+        hidden
+        data-test-wa-media-audio
+        {{this.attach}}
+      ></audio>
+    {{/if}}
+    <Whatsapp::MediaControls
+      @playback={{this.playback}}
+      @onToggle={{this.toggle}}
+      @disabled={{not this.isReady}}
+      @label={{@label}}
+    />
+  </:main>
+  <:actions>
+    {{#if @sizeLabel}}
+      <Nuvo::Badge
+        @size="sm"
+        @quiet={{true}}
+        @text={{@sizeLabel}}
+        data-test-wa-media-size
+      />
+    {{/if}}
+  </:actions>
+</Nuvo::ListItem>

@@ -8,9 +8,21 @@ import ENV from 'land/config/environment';
 const REOPEN_DELAYS_MS = [2000, 5000, 15000, 30000, 60000];
 const READ_THROTTLE_MS = 1000;
 const LAST_CHAT_KEY_PREFIX = 'wa:lastChat:';
+const MEDIA_URL_MIN_REMAINING_MS = 60_000;
 
 export function isIgnoredChat(item) {
   return Boolean(item.isGroup);
+}
+
+// Signed media URLs are only ever http(s); anything else is refused, never cached.
+function httpUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'https:' || protocol === 'http:' ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 export default class WhatsappService extends Service {
@@ -21,6 +33,8 @@ export default class WhatsappService extends Service {
   @tracked unread = new Map();
   // Replaced on write.
   @tracked chats = [];
+  // Message shown in the page-level media viewer.
+  @tracked viewerMessage = null;
   // Chat open on the WhatsApp page.
   activeChatId = null;
   _toastIds = new Map();
@@ -35,6 +49,11 @@ export default class WhatsappService extends Service {
   // chatId to write number.
   _liveUnreadWrites = new Map();
   _lastChatLocked = false;
+  // uuid to { url, expiresAt } in epoch ms.
+  _mediaUrls = new Map();
+  _mediaUrlRequests = new Map();
+  // Bumped on user change so an in-flight URL never lands in the next user's cache.
+  _mediaUrlGeneration = 0;
 
   _socket = null;
   _resyncGeneration = 0;
@@ -45,6 +64,7 @@ export default class WhatsappService extends Service {
   _reopenAttempts = 0;
   _listeners = {
     message: new Set(),
+    'message-update': new Set(),
     status: new Set(),
     ai: new Set(),
     chats: new Set(),
@@ -84,6 +104,9 @@ export default class WhatsappService extends Service {
       this._toastInbound(data);
       this._emit('message', data);
     });
+    socket.on('whatsapp:message-update', (data) =>
+      this._emit('message-update', data),
+    );
     socket.on('whatsapp:ai', (data) => this._emit('ai', data));
     socket.on('whatsapp:unread', (data) => this._applyUnread(data));
     socket.on('whatsapp:ready', (payload) => this._onReady(payload));
@@ -148,6 +171,7 @@ export default class WhatsappService extends Service {
             lastBody: prev.lastBody,
             lastTs: prev.lastTs,
             lastFromMe: prev.lastFromMe,
+            lastMessageId: prev.lastMessageId,
             lastInboundAt:
               Math.max(prev.lastInboundAt ?? 0, next.lastInboundAt ?? 0) ||
               null,
@@ -188,6 +212,7 @@ export default class WhatsappService extends Service {
         lastBody: msg.body,
         lastTs: msg.timestamp,
         lastFromMe: msg.fromMe,
+        lastMessageId: msg.id ?? null,
         lastInboundAt:
           Math.max(inboundAt ?? 0, current.lastInboundAt ?? 0) || null,
       };
@@ -201,11 +226,21 @@ export default class WhatsappService extends Service {
           lastBody: msg.body,
           lastTs: msg.timestamp,
           lastFromMe: msg.fromMe,
+          lastMessageId: msg.id ?? null,
           lastInboundAt: inboundAt,
         },
         ...this.chats,
       ];
     }
+  }
+
+  // A seeded chat carries no message id, so its preview timestamp identifies the last message.
+  isChatLastMessage(msg) {
+    const chat = this.chats.find((c) => c.chatId === msg?.chatId);
+    if (!chat) return false;
+    return chat.lastMessageId
+      ? chat.lastMessageId === msg.id
+      : Boolean(chat.lastTs) && chat.lastTs === msg.timestamp;
   }
 
   _markSeeded() {
@@ -369,6 +404,10 @@ export default class WhatsappService extends Service {
       for (const id of this._toastIds.values()) this.notifications.remove(id);
       this._toastIds.clear();
     }
+    this._mediaUrlGeneration++;
+    this._mediaUrls.clear();
+    this._mediaUrlRequests.clear();
+    this.viewerMessage = null;
     this.activeChatId = null;
     this.clearLastChat();
   }
@@ -504,6 +543,62 @@ export default class WhatsappService extends Service {
       method: 'POST',
       body: JSON.stringify({ chatId, body }),
     });
+  }
+
+  // A cached URL with more than a minute left, else null; an expired entry is pruned.
+  peekMediaUrl(uuid) {
+    const cached = this._mediaUrls.get(uuid);
+    if (!cached) return null;
+    const remaining = cached.expiresAt - Date.now();
+    if (remaining <= 0) this._mediaUrls.delete(uuid);
+    return remaining > MEDIA_URL_MIN_REMAINING_MS ? cached.url : null;
+  }
+
+  // Signed URLs expire, so a cached one is reused only while more than a minute is left.
+  getMediaUrl(uuid, { fresh = false } = {}) {
+    const cached = fresh ? null : this.peekMediaUrl(uuid);
+    if (cached) return Promise.resolve(cached);
+    const inFlight = this._mediaUrlRequests.get(uuid);
+    if (inFlight && !fresh) return inFlight;
+
+    const generation = this._mediaUrlGeneration;
+    const request = this.auth
+      .fetchJson(`/whatsapp/messages/${encodeURIComponent(uuid)}/media`)
+      .then((result) => {
+        const data = result?.data ?? result;
+        const url = httpUrl(data?.url);
+        if (!url) throw new Error('Invalid media URL');
+        if (generation === this._mediaUrlGeneration) {
+          this._mediaUrls.set(uuid, {
+            url,
+            expiresAt: Date.parse(data.expiresAt) || 0,
+          });
+        }
+        return url;
+      })
+      .finally(() => {
+        if (this._mediaUrlRequests.get(uuid) === request) {
+          this._mediaUrlRequests.delete(uuid);
+        }
+      });
+    this._mediaUrlRequests.set(uuid, request);
+    return request;
+  }
+
+  openMediaViewer(msg) {
+    this.viewerMessage = msg ?? null;
+  }
+
+  closeMediaViewer() {
+    this.viewerMessage = null;
+  }
+
+  async deleteMedia(uuid, reason) {
+    await this.auth.fetchJson(
+      `/whatsapp/messages/${encodeURIComponent(uuid)}/delete-media`,
+      { method: 'POST', body: JSON.stringify({ reason }) },
+    );
+    this._mediaUrls.delete(uuid);
   }
 
   toggleAi(enabled) {

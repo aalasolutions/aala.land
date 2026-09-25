@@ -1,0 +1,233 @@
+<div class="wa-media-block flex col gap-1">
+  <div
+    class="wa-media m-{{this.kind}} {{if this.canDelete 'has-action'}}"
+    data-test-wa-media={{this.type}}
+    data-test-wa-media-status={{this.status}}
+  >
+    {{#if this.isStored}}
+      {{#if this.loadFailed}}
+        <div class="flex x-center gap-1 wrap" data-test-wa-media-load-failed>
+          <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
+          <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>Could not load</Nuvo::Text>
+          <Nuvo::Button
+            @variant="ghost"
+            @size="xs"
+            @text="Retry"
+            @onClick={{this.retryLoad}}
+            data-test-wa-media-retry
+          />
+        </div>
+      {{else if (eq this.kind "image")}}
+        <button
+          type="button"
+          class="wa-media__frame"
+          aria-label="Open photo"
+          data-test-wa-media-open
+          {{this.observeMedia this.loadUrl}}
+          {{on "click" this.openViewer}}
+        >
+          {{#if this.url}}
+            <img
+              class="wa-media__image"
+              src={{this.url}}
+              alt={{this.fileName}}
+              data-test-wa-media-image
+              {{on "error" this.onMediaError}}
+            />
+          {{/if}}
+        </button>
+      {{else if (eq this.kind "sticker")}}
+        <div class="wa-media__sticker" {{this.observeMedia this.loadUrl}}>
+          {{#if this.url}}
+            <img
+              src={{this.url}}
+              alt="Sticker"
+              data-test-wa-media-sticker
+              {{on "error" this.onMediaError}}
+            />
+          {{/if}}
+        </div>
+      {{else if (eq this.kind "video")}}
+        <button
+          type="button"
+          class="wa-media__frame m-video"
+          aria-label="Play video"
+          data-test-wa-media-video-open
+          {{this.observeMedia this.loadUrl}}
+          {{on "click" this.openViewer}}
+        >
+          {{#if this.url}}
+            {{! template-lint-disable require-media-caption }}
+            <video
+              class="wa-media__video"
+              src={{this.posterSrc}}
+              preload="metadata"
+              muted
+              playsinline
+              aria-hidden="true"
+              data-test-wa-media-video
+              {{on "loadedmetadata" this.onVideoMetadata}}
+              {{on "error" this.onMediaError}}
+            ></video>
+          {{/if}}
+          <span class="wa-media__play" aria-hidden="true"><Nuvo::Icon
+              @icon="play"
+            /></span>
+          {{#if this.videoDurationLabel}}
+            <Nuvo::Badge
+              class="wa-media__badge"
+              @size="sm"
+              @text={{this.videoDurationLabel}}
+              data-test-wa-media-video-duration
+            />
+          {{/if}}
+        </button>
+      {{else if (eq this.kind "audio")}}
+        <div {{this.observeMedia this.loadUrl}}>
+          <Whatsapp::AudioPlayer
+            @src={{this.url}}
+            @label={{this.fileName}}
+            @sizeLabel={{this.sizeLabel}}
+            @onError={{this.onMediaError}}
+            @onPlayIntent={{this.onPlayIntent}}
+          />
+        </div>
+      {{else}}
+        <Nuvo::ListItem
+          data-test-wa-media-document
+          {{this.observeMedia this.loadUrl}}
+        >
+          <:main>
+            <Nuvo::Icon
+              @icon={{this.typeIcon}}
+              @size="1.5rem"
+              aria-hidden="true"
+            />
+            <div class="flex col min-w-0p">
+              <Nuvo::Text
+                @tag="span"
+                @size="sm"
+                @truncate={{true}}
+                data-test-wa-media-file-name
+              ><bdi>{{this.fileName}}</bdi></Nuvo::Text>
+              {{#if this.sizeLabel}}
+                <Nuvo::Badge
+                  @size="sm"
+                  @quiet={{true}}
+                  @text={{this.sizeLabel}}
+                  data-test-wa-media-size
+                />
+              {{/if}}
+            </div>
+          </:main>
+          <:actions>
+            <a
+              class="nu-btn m-ghost m-sm m-circle"
+              href={{this.url}}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Download {{this.fileName}}"
+              title="Download"
+              data-test-wa-media-download
+              {{on "click" this.onDownloadClick}}
+            ><Nuvo::Icon @icon="download-simple" aria-hidden="true" /></a>
+          </:actions>
+        </Nuvo::ListItem>
+      {{/if}}
+
+      {{#if this.showsSizeBadge}}
+        <Nuvo::Badge
+          @size="sm"
+          @quiet={{true}}
+          @text={{this.sizeLabel}}
+          data-test-wa-media-size
+        />
+      {{/if}}
+
+      {{#if this.canDelete}}
+        <Nuvo::Button
+          class="wa-media__delete"
+          @variant="ghost"
+          @shape="circle"
+          @size="xs"
+          @icon="trash"
+          @onClick={{this.deleteMedia}}
+          aria-label="Delete media"
+          title="Delete media"
+          data-test-wa-media-delete
+        />
+      {{/if}}
+    {{else if (eq this.status "DELETED")}}
+      <Nuvo::Text
+        class="break-words"
+        @size="xs"
+        @muted={{true}}
+        data-test-wa-media-record
+      >
+        <Nuvo::Icon @icon="trash" aria-hidden="true" />
+        <bdi>{{this.fileName}}</bdi>
+        {{#if this.sizeLabel}}
+          ·
+          {{this.sizeLabel}}
+        {{/if}}
+        ·
+        {{if @message.fromMe "Sent" "Received"}}
+        on
+        {{format-date-time @message.timestamp}}
+        ·
+        {{#if @message.mediaDeletedAt}}
+          Media deleted on
+          {{format-date-time @message.mediaDeletedAt}}
+        {{else}}
+          Media deleted
+        {{/if}}
+      </Nuvo::Text>
+    {{else if (eq this.status "FAILED")}}
+      <div class="flex x-center gap-1" data-test-wa-media-failed>
+        <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
+        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>Media could not be
+          received</Nuvo::Text>
+      </div>
+    {{else if (eq this.status "TOO_LARGE")}}
+      <div class="flex x-center gap-1" data-test-wa-media-too-large>
+        <Nuvo::Icon @icon="file-x" aria-hidden="true" />
+        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>File too large to
+          receive</Nuvo::Text>
+      </div>
+    {{else}}
+      <div class="flex x-center gap-1 wrap" data-test-wa-media-pending>
+        <Nuvo::Spinner @size="xs" />
+        <Nuvo::Text
+          @tag="span"
+          @size="sm"
+          @muted={{true}}
+        >{{this.typeLabel}}</Nuvo::Text>
+        {{#if this.sizeLabel}}
+          <Nuvo::Badge
+            @size="sm"
+            @quiet={{true}}
+            @text={{this.sizeLabel}}
+            data-test-wa-media-size
+          />
+        {{/if}}
+        <Nuvo::Text
+          @tag="span"
+          @size="xs"
+          @muted={{true}}
+        >Receiving</Nuvo::Text>
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if this.caption}}
+    <div
+      class="wa-bubble"
+      dir="auto"
+      data-test-wa-media-caption
+    ><Whatsapp::MessageText
+        @text={{this.caption}}
+        @isExternal={{not @message.fromMe}}
+      /></div>
+  {{/if}}
+</div>

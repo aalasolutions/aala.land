@@ -43,6 +43,9 @@ describe('StoragePurgeProcessor', () => {
       AWS_DOCUMENTS_ACCESS_KEY_ID: 'documents-key',
       AWS_DOCUMENTS_SECRET_ACCESS_KEY: 'documents-secret',
       AWS_S3_DOCUMENTS_BUCKET: 'test-documents-bucket',
+      AWS_WHATSAPP_ACCESS_KEY_ID: 'whatsapp-key',
+      AWS_WHATSAPP_SECRET_ACCESS_KEY: 'whatsapp-secret',
+      AWS_S3_WHATSAPP_BUCKET: 'test-whatsapp-bucket',
     };
     mockSend.mockResolvedValue({});
     repo = {
@@ -88,6 +91,27 @@ describe('StoragePurgeProcessor', () => {
       Bucket: 'test-documents-bucket',
       Key: 'land/doc.pdf',
     });
+  });
+
+  it('deletes a WhatsApp object from the WhatsApp bucket with its own credentials', async () => {
+    const { S3Client } = jest.requireMock('@aws-sdk/client-s3');
+    repo.findOne.mockResolvedValue(
+      row({ bucketKind: StorageBucketKind.WHATSAPP, s3Key: 'whatsapp/c1/m1' }),
+    );
+
+    await processor.process(job());
+    await processor.process(job());
+
+    expect(DeleteObjectCommand).toHaveBeenCalledWith({
+      Bucket: 'test-whatsapp-bucket',
+      Key: 'whatsapp/c1/m1',
+    });
+    expect(S3Client).toHaveBeenCalledTimes(1);
+    expect(S3Client.mock.calls[0][0].credentials).toEqual({
+      accessKeyId: 'whatsapp-key',
+      secretAccessKey: 'whatsapp-secret',
+    });
+    expect(repo.delete).toHaveBeenCalledWith('purge-1');
   });
 
   it('skips a job whose outbox row no longer exists', async () => {

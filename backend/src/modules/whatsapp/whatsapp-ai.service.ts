@@ -307,13 +307,21 @@ export class WhatsappAiService {
       isGroup: boolean;
       timestamp: number;
       senderId: string;
+      hasMedia?: boolean;
+      mediaType?: string;
     },
     companyId: string,
     userId: string,
   ): Promise<void> {
     if (!envString('OLLAMA_API_KEY')) return;
     if (!(await this.isEnabledFor(companyId))) return;
-    if (evt.fromMe || evt.isGroup || !(evt.body ?? '').trim()) return;
+    const text = evt.hasMedia
+      ? this.promptBuilder.buildMediaTurnText(
+          evt.mediaType ?? '',
+          evt.body ?? '',
+        )
+      : (evt.body ?? '');
+    if (evt.fromMe || evt.isGroup || !text.trim()) return;
 
     const maxAge = envInt('AI_MESSAGE_MAX_AGE_S', 120, 1);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
@@ -327,7 +335,7 @@ export class WhatsappAiService {
     const maxPending = envInt('AI_PENDING_MAX', 20, 1);
     const maxBodyChars = envInt('AI_MESSAGE_MAX_CHARS', 4000, 1);
     const pendKey = this.pendKey(userId, evt.chatId);
-    const body = evt.body.slice(0, maxBodyChars);
+    const body = text.slice(0, maxBodyChars);
 
     // Buffered first: a mid-write claim already advanced the sequence, so this schedules a fresh turn.
     if ((await this.redis.listLength(pendKey)) < maxPending) {

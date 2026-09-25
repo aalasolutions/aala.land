@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   Index,
 } from 'typeorm';
+import type { WaMediaStatus } from '../wa-types';
 
 export enum WhatsappMessageStatus {
   SENT = 'sent',
@@ -65,9 +66,46 @@ export class WhatsappMessage {
   @Column({ name: 'media_type', type: 'varchar', length: 32, default: '' })
   mediaType: string;
 
-  // Bare filenames on local disk, not object-storage keys.
-  @Column({ name: 'media_urls', type: 'jsonb', default: () => `'[]'` })
-  mediaUrls: string[];
+  // Meta media id, valid for 7 days; the download job reads it.
+  @Column({ name: 'media_meta_id', type: 'varchar', nullable: true })
+  mediaMetaId: string | null;
+
+  @Column({ name: 'media_mime', type: 'varchar', nullable: true })
+  mediaMime: string | null;
+
+  @Column({ name: 'media_file_name', type: 'varchar', nullable: true })
+  mediaFileName: string | null;
+
+  @Column({
+    name: 'media_size_bytes',
+    type: 'bigint',
+    nullable: true,
+    transformer: {
+      to: (v: number | null) => v,
+      from: (v: string | null) => (v === null ? null : Number(v)),
+    },
+  })
+  mediaSizeBytes: number | null;
+
+  @Column({ name: 'media_sha256', type: 'varchar', nullable: true })
+  mediaSha256: string | null;
+
+  // Object key in the WhatsApp bucket; kept on DELETED rows as the audit record of the purged object.
+  @Column({ name: 'media_key', type: 'varchar', nullable: true })
+  mediaKey: string | null;
+
+  @Column({ name: 'media_status', type: 'varchar', length: 16, nullable: true })
+  mediaStatus: WaMediaStatus | null;
+
+  @Column({ name: 'media_stored_at', type: 'timestamptz', nullable: true })
+  mediaStoredAt: Date | null;
+
+  @Column({ name: 'media_deleted_at', type: 'timestamptz', nullable: true })
+  mediaDeletedAt: Date | null;
+
+  // A user id, or a WA_MEDIA_DELETED_BY value.
+  @Column({ name: 'media_deleted_by', type: 'varchar', nullable: true })
+  mediaDeletedBy: string | null;
 
   @Column({ name: 'mentioned_ids', type: 'jsonb', default: () => `'[]'` })
   mentionedIds: string[];

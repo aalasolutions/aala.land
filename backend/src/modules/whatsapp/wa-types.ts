@@ -4,7 +4,23 @@ import {
 } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 
+export enum WaMediaStatus {
+  PENDING = 'PENDING',
+  STORED = 'STORED',
+  FAILED = 'FAILED',
+  TOO_LARGE = 'TOO_LARGE',
+  DELETED = 'DELETED',
+}
+
+// media_deleted_by holds a user id, or one of these when WhatsApp itself revoked the message.
+export const WA_MEDIA_DELETED_BY = {
+  CUSTOMER_REVOKE: 'CUSTOMER_REVOKE',
+  BUSINESS_APP_REVOKE: 'BUSINESS_APP_REVOKE',
+} as const;
+
 export interface WaMessage {
+  // Row primary key; id below is the WhatsApp message id.
+  uuid: string;
   id: string;
   chatId: string;
   senderId: string;
@@ -14,7 +30,14 @@ export interface WaMessage {
   body: string;
   hasMedia: boolean;
   mediaType: string;
-  mediaUrls: string[];
+  mediaMime: string | null;
+  mediaFileName: string | null;
+  mediaSizeBytes: number | null;
+  mediaStatus: WaMediaStatus | null;
+  // ISO strings, unlike the epoch-second fields below.
+  mediaStoredAt: string | null;
+  mediaDeletedAt: string | null;
+  mediaDeletedBy: string | null;
   mentionedIds: string[];
   quotedParticipant: string;
   fromMe: boolean;
@@ -30,6 +53,39 @@ export interface WaMessage {
   // Set means Meta revoked the message; the row and its stub are still returned.
   deletedAt?: number | null;
 }
+
+type WaMessageOutputOnly =
+  | 'uuid'
+  | 'mediaMime'
+  | 'mediaFileName'
+  | 'mediaSizeBytes'
+  | 'mediaStatus'
+  | 'mediaStoredAt'
+  | 'mediaDeletedAt'
+  | 'mediaDeletedBy';
+
+// No stored media yet: the output media fields of a message built before its row exists.
+export const WA_MESSAGE_NO_STORED_MEDIA = {
+  mediaMime: null,
+  mediaFileName: null,
+  mediaSizeBytes: null,
+  mediaStatus: null,
+  mediaStoredAt: null,
+  mediaDeletedAt: null,
+  mediaDeletedBy: null,
+} as const satisfies Partial<WaMessage>;
+
+// Shape callers pass to MessageStoreService inserts. uuid, when given, becomes the row id, so a
+// payload emitted before the insert carries the same id; omitted, Postgres generates it.
+export type WaMessageInsert = Omit<WaMessage, WaMessageOutputOnly> & {
+  uuid?: string;
+  mediaMetaId?: string | null;
+  mediaMime?: string | null;
+  mediaFileName?: string | null;
+  mediaSizeBytes?: number | null;
+  mediaSha256?: string | null;
+  mediaStatus?: WaMediaStatus | null;
+};
 
 export interface WaChat {
   chatId: string;
@@ -140,3 +196,24 @@ export interface WaWebhookJobData {
   // Parsed Meta envelope, signature already verified at the HTTP edge.
   envelope: unknown;
 }
+
+export const WA_MEDIA_QUEUE = 'wa-media';
+export const WA_MEDIA_INGEST_JOB = 'ingest';
+
+export interface WaMediaJobData {
+  // whatsapp_messages row id.
+  messageUuid: string;
+  companyId: string;
+}
+
+// Labels a message by type where its body is empty: stored media, or a placeholder row.
+export const WA_PLACEHOLDER_BODIES: Record<string, string> = {
+  image: '[Image]',
+  video: '[Video]',
+  audio: '[Voice message]',
+  document: '[Document]',
+  sticker: '[Sticker]',
+  location: '[Location]',
+  contacts: '[Contact card]',
+  media_placeholder: '[Media]',
+};

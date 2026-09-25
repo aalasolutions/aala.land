@@ -17,7 +17,7 @@ import {
   Repository,
   UpdateResult,
 } from 'typeorm';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -27,12 +27,27 @@ import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { HistoryMessage, MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
+import { WhatsappMediaService } from './whatsapp-media.service';
 import {
+  WA_MEDIA_INGEST_JOB,
+  WA_MEDIA_QUEUE,
+  WA_MESSAGE_NO_STORED_MEDIA,
+  WA_PLACEHOLDER_BODIES,
+  WaMediaJobData,
+  WaMediaStatus,
   WaMessage,
+  WaMessageInsert,
   WaUnreadState,
   WaWebhookJobData,
   WA_WEBHOOK_EVENTS_QUEUE,
 } from './wa-types';
+import {
+  CloudMedia,
+  InboundMedia,
+  resolveInboundMedia,
+  revokeMediaDeletedBy,
+  toWireMessage,
+} from './wa-media.util';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
 import { RedisService } from '@modules/redis/redis.service';
 import { errorMessage } from '@shared/utils/error.util';
@@ -78,6 +93,8 @@ interface WebhookValue {
 
 interface CloudError {
   code?: number | string;
+  title?: string;
+  message?: string;
 }
 
 interface CloudMessage {
@@ -88,6 +105,12 @@ interface CloudMessage {
   timestamp?: string;
   type?: string;
   text?: { body?: string };
+  image?: CloudMedia;
+  video?: CloudMedia;
+  audio?: CloudMedia;
+  document?: CloudMedia;
+  sticker?: CloudMedia;
+  errors?: CloudError[];
   edit?: { original_message_id?: string; message?: CloudMessage };
   revoke?: { original_message_id?: string };
   // history only.
@@ -113,17 +136,8 @@ const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
 // Meta's error when the business turned history sharing off in the WhatsApp Business app.
 const HISTORY_DECLINED_CODE = '2593109';
 
-// Media is not stored yet, so non-text messages keep their place in the thread as a label.
-const PLACEHOLDER_BODIES: Record<string, string> = {
-  image: '[Image]',
-  video: '[Video]',
-  audio: '[Voice message]',
-  document: '[Document]',
-  sticker: '[Sticker]',
-  location: '[Location]',
-  contacts: '[Contact card]',
-  media_placeholder: '[Media]',
-};
+// History media older than this keeps a placeholder row; Meta sends no media id for older history.
+const HISTORY_MEDIA_MAX_AGE_S = 14 * 24 * 60 * 60;
 
 // Long enough for a racing original to land; edits and deletes of messages we never stored just expire.
 const PENDING_CHANGE_TTL_MS = 15 * 60 * 1000;
@@ -146,7 +160,7 @@ function resolveStorableBody(message: CloudMessage | undefined): string | null {
     const body = message.text?.body ?? '';
     return body.trim() ? body : null;
   }
-  return PLACEHOLDER_BODIES[message.type] ?? null;
+  return WA_PLACEHOLDER_BODIES[message.type] ?? null;
 }
 
 function parseEpochSeconds(value: string | number | undefined): number | null {
@@ -190,28 +204,44 @@ function historyStatusFor(progress: number): WhatsappHistorySyncStatus {
     : WhatsappHistorySyncStatus.IN_PROGRESS;
 }
 
-// Cloud API one-to-one message; only the identity, direction and body differ per caller.
-function buildCloudWaMessage(fields: {
-  id: string;
-  chatId: string;
-  senderId: string;
-  senderName?: string;
-  body: string;
-  mediaType: string;
-  fromMe: boolean;
-  timestamp: number;
-  originUserId: string;
-}): WaMessage {
+// Cloud API one-to-one message; only the identity, direction, body and media differ per caller.
+function buildCloudWaMessage(
+  fields: {
+    id: string;
+    chatId: string;
+    senderId: string;
+    senderName?: string;
+    body: string;
+    mediaType: string;
+    fromMe: boolean;
+    timestamp: number;
+    originUserId: string;
+  },
+  media: InboundMedia | null = null,
+): WaMessage & WaMessageInsert {
   return {
     ...fields,
+    uuid: randomUUID(),
+    ...WA_MESSAGE_NO_STORED_MEDIA,
     senderName: fields.senderName ?? '',
     chatName: fields.senderName ?? '',
     isGroup: false,
     hasMedia: false,
-    mediaUrls: [],
     mentionedIds: [],
     quotedParticipant: '',
     aiGenerated: false,
+    ...(media
+      ? {
+          body: media.body,
+          hasMedia: true,
+          mediaType: media.mediaType,
+          mediaStatus: media.mediaStatus,
+          mediaMetaId: media.mediaMetaId,
+          mediaMime: media.mediaMime,
+          mediaSha256: media.mediaSha256,
+          mediaFileName: media.mediaFileName,
+        }
+      : {}),
   };
 }
 
@@ -240,7 +270,22 @@ export class WhatsappWebhookService {
     private readonly redis: RedisService,
     @InjectQueue(WA_WEBHOOK_EVENTS_QUEUE)
     private readonly webhookQueue: Queue<WaWebhookJobData>,
+    @InjectQueue(WA_MEDIA_QUEUE)
+    private readonly mediaQueue: Queue<WaMediaJobData>,
+    private readonly media: WhatsappMediaService,
   ) {}
+
+  // jobId is the row id, so a redelivery or our own retry never queues a second download.
+  private async enqueueMedia(
+    companyId: string,
+    messageUuid: string,
+  ): Promise<void> {
+    await this.mediaQueue.add(
+      WA_MEDIA_INGEST_JOB,
+      { messageUuid, companyId },
+      { jobId: messageUuid },
+    );
+  }
 
   verifyWebhook(query: WebhookVerifyDto): string {
     const expected = envString('WHATSAPP_VERIFY_TOKEN');
@@ -491,20 +536,34 @@ export class WhatsappWebhookService {
     const chatId = thread.id;
     if (!chatId) return null;
     const items: HistoryMessage[] = [];
+    const pendingMediaIds: string[] = [];
+    const mediaCutoffS =
+      Math.floor(Date.now() / 1000) - HISTORY_MEDIA_MAX_AGE_S;
     for (const message of thread.messages ?? []) {
-      const body = resolveStorableBody(message);
       const timestamp = parseEpochSeconds(message.timestamp);
-      if (!message.id || !body || !timestamp) continue;
-      const evt = buildCloudWaMessage({
-        id: message.id,
-        chatId,
-        senderId: message.from ?? '',
-        body,
-        mediaType: message.type ?? 'text',
-        fromMe: isHistoryMessageFromBusiness(message, chatId),
-        timestamp,
-        originUserId: connection.userId,
-      });
+      const media =
+        timestamp && timestamp >= mediaCutoffS
+          ? resolveInboundMedia(message)
+          : null;
+      const body = media ? media.body : resolveStorableBody(message);
+      if (!message.id || body === null || (!media && !body) || !timestamp)
+        continue;
+      const evt = buildCloudWaMessage(
+        {
+          id: message.id,
+          chatId,
+          senderId: message.from ?? '',
+          body,
+          mediaType: message.type ?? 'text',
+          fromMe: isHistoryMessageFromBusiness(message, chatId),
+          timestamp,
+          originUserId: connection.userId,
+        },
+        media,
+      );
+      if (media?.mediaStatus === WaMediaStatus.PENDING) {
+        pendingMediaIds.push(evt.id);
+      }
       const status = evt.fromMe ? historyMessageStatus(message) : null;
       items.push({
         msg: evt,
@@ -541,7 +600,42 @@ export class WhatsappWebhookService {
         );
       }
     }
-    return firstError;
+    return (
+      (await this.enqueueHistoryMedia(connection, chatId, pendingMediaIds)) ??
+      firstError
+    );
+  }
+
+  // Read from the stored rows, not this call's inserts, so a chunk retried after a failed enqueue queues again.
+  private async enqueueHistoryMedia(
+    connection: WhatsappConnection,
+    chatId: string,
+    waMessageIds: string[],
+  ): Promise<Error | null> {
+    if (waMessageIds.length === 0) return null;
+    try {
+      const uuids = await this.store.findPendingMediaUuids(
+        connection.companyId,
+        connection.userId,
+        waMessageIds,
+      );
+      if (uuids.length === 0) return null;
+      // jobId is the row id, so a retried chunk never queues a second download.
+      await this.mediaQueue.addBulk(
+        uuids.map((uuid) => ({
+          name: WA_MEDIA_INGEST_JOB,
+          data: { messageUuid: uuid, companyId: connection.companyId },
+          opts: { jobId: uuid },
+        })),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to queue the pending media of history thread ${chatId}`,
+        errorMessage(err, true),
+      );
+      return toError(err);
+    }
+    return null;
   }
 
   // Progress only moves forward and a decline never overwrites complete, since Meta does not guarantee order.
@@ -701,8 +795,39 @@ export class WhatsappWebhookService {
         change.fromMe,
       );
     }
+    if (isApplied && change.kind === 'revoke') {
+      await this.deleteRevokedMedia(connection, waMessageId, change.fromMe);
+    }
     if (isApplied) await this.pushUpdatedMessage(connection, waMessageId);
     return isApplied;
+  }
+
+  // A revoke must still land when the purge fails, so this is log-only.
+  private async deleteRevokedMedia(
+    connection: WhatsappConnection,
+    waMessageId: string,
+    fromMe: boolean,
+  ): Promise<void> {
+    const { companyId } = connection;
+    try {
+      const row = await this.store.getMessage(
+        companyId,
+        connection.userId,
+        waMessageId,
+      );
+      // A text row never gains media, so it skips the row lock.
+      if (!row?.mediaStatus) return;
+      await this.media.deleteStoredMedia(
+        companyId,
+        row.uuid,
+        revokeMediaDeletedBy(fromMe),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to delete the stored media of revoked message ${waMessageId}`,
+        errorMessage(err, true),
+      );
+    }
   }
 
   // The open chat merges body, editedAt and deletedAt into the row it already shows.
@@ -716,7 +841,7 @@ export class WhatsappWebhookService {
         connection.userId,
         waMessageId,
       );
-      if (updated) this.gateway.emitMessage(connection.userId, updated);
+      if (updated) this.gateway.emitMessageUpdate(connection.userId, updated);
     } catch (err) {
       this.logger.error(
         `Failed to push the updated WhatsApp message ${waMessageId}`,
@@ -776,19 +901,24 @@ export class WhatsappWebhookService {
     isRetryAttempt: boolean,
   ): Promise<void> {
     const { companyId, userId } = connection;
-    const body = resolveStorableBody(echo);
+    const media = resolveInboundMedia(echo);
+    const body = media ? media.body : resolveStorableBody(echo);
     const timestamp = parseEpochSeconds(echo.timestamp);
-    if (!echo.id || !echo.to || !body || !timestamp) return;
-    const evt = buildCloudWaMessage({
-      id: echo.id,
-      chatId: echo.to,
-      senderId: echo.from ?? '',
-      body,
-      mediaType: echo.type ?? 'text',
-      fromMe: true,
-      timestamp,
-      originUserId: userId,
-    });
+    if (!echo.id || !echo.to || body === null || (!media && !body)) return;
+    if (!timestamp) return;
+    const evt = buildCloudWaMessage(
+      {
+        id: echo.id,
+        chatId: echo.to,
+        senderId: echo.from ?? '',
+        body,
+        mediaType: echo.type ?? 'text',
+        fromMe: true,
+        timestamp,
+        originUserId: userId,
+      },
+      media,
+    );
     const { inserted } = await this.store.addMessage(
       companyId,
       userId,
@@ -799,7 +929,7 @@ export class WhatsappWebhookService {
     if (!inserted && !isRetryAttempt) return;
     if (inserted) {
       try {
-        this.gateway.emitMessage(userId, evt);
+        this.gateway.emitMessage(userId, toWireMessage(evt));
       } catch (err) {
         this.logger.error(
           `Failed to push echoed WhatsApp message ${evt.id}`,
@@ -807,9 +937,26 @@ export class WhatsappWebhookService {
         );
       }
     }
+    let mediaError: Error | null = null;
+    if (media?.mediaStatus === WaMediaStatus.PENDING) {
+      try {
+        // On a conflict the stored row's id differs from the one built here.
+        const rowUuid = inserted
+          ? evt.uuid
+          : (await this.store.getMessage(companyId, userId, evt.id))?.uuid;
+        if (rowUuid) await this.enqueueMedia(companyId, rowUuid);
+      } catch (err) {
+        mediaError = toError(err);
+        this.logger.error(
+          `Failed to queue the media download for echo ${evt.id}`,
+          errorMessage(err, true),
+        );
+      }
+    }
     // After the push, so the parked change reaches the UI as an update; our retry redoes it.
     await this.applyPendingChange(connection, evt.id);
     await this.ai.recordHumanReply(userId, evt.chatId, timestamp * 1000);
+    if (mediaError) throw mediaError;
   }
 
   // Mapping is explicit; an unrecognised event changes nothing so guessing never loses a number.
@@ -964,6 +1111,10 @@ export class WhatsappWebhookService {
           );
           this.logger.log(
             `WhatsApp connection ${connection.phoneNumberId} reconnected`,
+          );
+          await this.media.resumePendingMedia(
+            connection.companyId,
+            connection.userId,
           );
         } else {
           this.logger.log(
@@ -1127,9 +1278,11 @@ export class WhatsappWebhookService {
           }
           continue;
         }
-        if (message.type !== 'text' || !message.id || !message.from) continue;
-        const body = message.text?.body ?? '';
-        if (!body.trim()) continue;
+        if (!message.id || !message.from) continue;
+        const media = resolveInboundMedia(message);
+        if (!media && message.type !== 'text') continue;
+        const body = media ? media.body : (message.text?.body ?? '');
+        if (!media && !body.trim()) continue;
 
         // Cloud API sends seconds; handleIncomingMessage compares against seconds.
         const timestamp = parseEpochSeconds(message.timestamp);
@@ -1140,17 +1293,20 @@ export class WhatsappWebhookService {
           continue;
         }
 
-        const evt = buildCloudWaMessage({
-          id: message.id,
-          chatId: message.from,
-          senderId: message.from,
-          senderName: names.get(message.from) ?? '',
-          body,
-          mediaType: 'text',
-          fromMe: false,
-          timestamp,
-          originUserId: connection.userId,
-        });
+        const evt = buildCloudWaMessage(
+          {
+            id: message.id,
+            chatId: message.from,
+            senderId: message.from,
+            senderName: names.get(message.from) ?? '',
+            body,
+            mediaType: 'text',
+            fromMe: false,
+            timestamp,
+            originUserId: connection.userId,
+          },
+          media,
+        );
 
         // Persist first; a store failure propagates for BullMQ retry.
         let firstDelivery: boolean;
@@ -1179,7 +1335,7 @@ export class WhatsappWebhookService {
         if (firstDelivery) {
           // A live push failure is log-only; the AI turn must still run.
           try {
-            this.gateway.emitMessage(connection.userId, evt);
+            this.gateway.emitMessage(connection.userId, toWireMessage(evt));
           } catch (err) {
             this.logger.error(
               `Failed to push WhatsApp message ${evt.id}`,
@@ -1212,9 +1368,23 @@ export class WhatsappWebhookService {
           );
           continue;
         }
+        // The read-back row, never evt: on a conflict the stored row id is not the one built here.
+        if (current?.mediaStatus === WaMediaStatus.PENDING) {
+          try {
+            await this.enqueueMedia(connection.companyId, current.uuid);
+          } catch (err) {
+            firstError = firstError ?? toError(err);
+            this.logger.error(
+              `Failed to queue the media download for ${evt.id}`,
+              errorMessage(err, true),
+            );
+          }
+        }
         // Read back so a customer delete or edit that already landed is what the AI sees.
         if (current?.deletedAt) continue;
-        const aiEvt = current ? { ...evt, body: current.body } : evt;
+        const aiEvt = toWireMessage(
+          current ? { ...evt, body: current.body } : evt,
+        );
         // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
         if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
           this.logger.debug(

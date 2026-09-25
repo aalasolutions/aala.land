@@ -17,7 +17,8 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsappWebhookService } from './whatsapp-webhook.service';
-import { WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
+import { WhatsappMediaService } from './whatsapp-media.service';
+import { WA_MEDIA_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
 
 const APP_SECRET = 'test-app-secret';
 const VERIFY_TOKEN = 'test-verify-token';
@@ -76,7 +77,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
   let app: NestExpressApplication;
   let ai: { handleIncomingMessage: jest.Mock };
   let store: { addMessage: jest.Mock; applyMessageStatus: jest.Mock };
-  let gateway: { emitMessage: jest.Mock };
+  let gateway: { emitMessage: jest.Mock; emitMessageUpdate: jest.Mock };
   let repo: { findOne: jest.Mock };
   let queue: { add: jest.Mock };
 
@@ -88,7 +89,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
       addMessage: jest.fn().mockResolvedValue(true),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
     };
-    gateway = { emitMessage: jest.fn() };
+    gateway = { emitMessage: jest.fn(), emitMessageUpdate: jest.fn() };
     repo = { findOne: jest.fn().mockResolvedValue(connectionRow()) };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
 
@@ -105,6 +106,14 @@ describe('WhatsappWebhookController (HTTP)', () => {
           useValue: { getJson: jest.fn(), setJson: jest.fn(), del: jest.fn() },
         },
         { provide: getQueueToken(WA_WEBHOOK_EVENTS_QUEUE), useValue: queue },
+        {
+          provide: getQueueToken(WA_MEDIA_QUEUE),
+          useValue: { add: jest.fn() },
+        },
+        {
+          provide: WhatsappMediaService,
+          useValue: { deleteStoredMedia: jest.fn() },
+        },
       ],
     }).compile();
 

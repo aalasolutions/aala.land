@@ -199,6 +199,56 @@ describe('StoragePurgeService', () => {
       expect(qbs).toHaveLength(0);
     });
 
+    it('writes a WhatsApp outbox row and releases its bytes without deleting any row', async () => {
+      const ids = await service.purge(manager, {
+        whatsapp: [
+          {
+            companyId: COMPANY_A,
+            s3Key: 'whatsapp/a/msg-1',
+            bytes: 4096,
+            sourceId: 'msg-1',
+          },
+        ],
+      });
+
+      expect(ids).toEqual(['purge-1']);
+      const [entity, rows] = manager.save.mock.calls[0];
+      expect(entity).toBe(StoragePurgeJob);
+      expect(rows).toEqual([
+        expect.objectContaining({
+          companyId: COMPANY_A,
+          bucketKind: StorageBucketKind.WHATSAPP,
+          s3Key: 'whatsapp/a/msg-1',
+          bytes: 4096,
+          sourceType: 'WhatsappMessage',
+          sourceId: 'msg-1',
+        }),
+      ]);
+      expect(manager.delete).not.toHaveBeenCalled();
+      expect(qbs).toHaveLength(1);
+      expect(qbs[0].update).toHaveBeenCalledWith(Company);
+      expect(qbs[0].setParameter).toHaveBeenCalledWith('bytes', 4096);
+      expect(qbs[0].where).toHaveBeenCalledWith('id = :companyId', {
+        companyId: COMPANY_A,
+      });
+    });
+
+    it('queues a zero-byte WhatsApp item without touching quota', async () => {
+      await service.purge(manager, {
+        whatsapp: [
+          {
+            companyId: COMPANY_A,
+            s3Key: 'whatsapp/a/st',
+            bytes: 0,
+            sourceId: 'st',
+          },
+        ],
+      });
+
+      expect(manager.save).toHaveBeenCalledTimes(1);
+      expect(qbs).toHaveLength(0);
+    });
+
     it('does nothing for an empty file set', async () => {
       await expect(service.purge(manager, {})).resolves.toEqual([]);
       expect(manager.save).not.toHaveBeenCalled();

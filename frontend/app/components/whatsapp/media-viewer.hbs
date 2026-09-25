@@ -1,0 +1,106 @@
+<Nuvo::Modal
+  class="wa-viewer"
+  @open={{if this.message true false}}
+  @size="full"
+  @onClose={{this.close}}
+  data-test-wa-viewer={{this.message.mediaType}}
+>
+  <:header as |titleId|>
+    <div class="flex col grow min-w-0p">
+      <Nuvo::Text
+        id={{titleId}}
+        @tag="span"
+        @size="sm"
+        @weight="semibold"
+        @truncate={{true}}
+        data-test-wa-viewer-title
+      ><bdi>{{this.title}}</bdi></Nuvo::Text>
+      {{#if this.sizeLabel}}
+        <Nuvo::Text
+          @tag="span"
+          @size="xs"
+          @muted={{true}}
+          data-test-wa-viewer-size
+        >{{this.sizeLabel}}</Nuvo::Text>
+      {{/if}}
+    </div>
+    <div class="flex x-center gap-1">
+      {{#if this.url}}
+        <a
+          class="nu-btn m-ghost m-circle"
+          href={{this.url}}
+          download
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Download {{this.title}}"
+          title="Download"
+          data-test-wa-viewer-download
+          {{on "click" this.onDownloadClick}}
+        ><Nuvo::Icon @icon="download-simple" aria-hidden="true" /></a>
+      {{/if}}
+      <Nuvo::Button
+        @variant="ghost"
+        @shape="circle"
+        @icon="x"
+        @onClick={{this.close}}
+        aria-label="Close"
+        title="Close"
+        data-test-wa-viewer-close
+      />
+    </div>
+  </:header>
+  <:body>
+    <div
+      class="flex col x-center center gap-2 h-full"
+      {{this.load this.message}}
+      {{this.keys}}
+    >
+      {{#if this.loadFailed}}
+        <div class="flex x-center gap-2" data-test-wa-viewer-load-failed>
+          <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
+          <Nuvo::Text @tag="span" @size="sm">Could not load</Nuvo::Text>
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
+            @text="Retry"
+            @onClick={{this.retry}}
+            data-test-wa-viewer-retry
+          />
+        </div>
+      {{else if this.url}}
+        {{#if this.isVideo}}
+          {{! template-lint-disable require-media-caption }}
+          <video
+            class="wa-viewer__media"
+            src={{this.url}}
+            preload="metadata"
+            playsinline
+            data-test-wa-viewer-video
+            {{this.attachPlayback}}
+            {{on "error" this.onMediaError}}
+          ></video>
+          <div class="flex w-full">
+            <Whatsapp::MediaControls
+              @playback={{this.playback}}
+              @onToggle={{this.playback.toggle}}
+              @label={{this.title}}
+              @showMute={{true}}
+              @onFullscreen={{this.toggleFullscreen}}
+              @isFullscreen={{this.isFullscreen}}
+            />
+          </div>
+        {{else}}
+          <img
+            class="wa-viewer__media"
+            src={{this.url}}
+            alt={{this.title}}
+            data-test-wa-viewer-image
+            {{on "error" this.onMediaError}}
+          />
+        {{/if}}
+      {{else}}
+        <Nuvo::Spinner @size="sm" data-test-wa-viewer-loading />
+      {{/if}}
+    </div>
+  </:body>
+</Nuvo::Modal>

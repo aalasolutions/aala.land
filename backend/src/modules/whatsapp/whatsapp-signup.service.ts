@@ -17,6 +17,7 @@ import {
 } from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
 import { WhatsappService } from './whatsapp.service';
+import { WhatsappMediaService } from './whatsapp-media.service';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { GRAPH_VERSION, WaConnectionInfo, WaSignupConfig } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
@@ -43,6 +44,7 @@ export class WhatsappSignupService {
     private readonly connections: Repository<WhatsappConnection>,
     private readonly encryption: EncryptionService,
     private readonly wa: WhatsappService,
+    private readonly media: WhatsappMediaService,
   ) {}
 
   // Both values are public; served here so a config change never needs a frontend rebuild.
@@ -204,6 +206,7 @@ export class WhatsappSignupService {
     this.logger.log(
       `WhatsApp connected for user ${userId}: phone_number_id ${dto.phoneNumberId} on WABA ${dto.wabaId}`,
     );
+    await this.media.resumePendingMedia(companyId, userId);
 
     if (dto.isCoexistence) {
       await this.requestHistorySync(

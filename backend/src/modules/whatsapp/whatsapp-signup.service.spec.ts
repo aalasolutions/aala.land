@@ -59,6 +59,7 @@ describe('WhatsappSignupService', () => {
     count: jest.Mock;
   };
   let wa: { getConnection: jest.Mock; disconnect: jest.Mock };
+  let media: { resumePendingMedia: jest.Mock };
   let encryption: EncryptionService;
   let fetchMock: jest.Mock;
   const savedEnv: Record<string, string | undefined> = {};
@@ -96,6 +97,7 @@ describe('WhatsappSignupService', () => {
       getConnection: jest.fn().mockResolvedValue(connectedInfo),
       disconnect: jest.fn().mockResolvedValue({ success: true }),
     };
+    media = { resumePendingMedia: jest.fn().mockResolvedValue(undefined) };
     fetchMock = jest.fn();
     jest.spyOn(global, 'fetch').mockImplementation(fetchMock as any);
 
@@ -103,6 +105,7 @@ describe('WhatsappSignupService', () => {
       connections as any,
       encryption,
       wa as any,
+      media as any,
     );
   });
 
@@ -186,6 +189,20 @@ describe('WhatsappSignupService', () => {
       expect(saved.lifecycleEventAt).toEqual(saved.connectedAt);
 
       expect(result).toBe(connectedInfo);
+    });
+
+    it('resumes the pending media of the agent once the row is CONNECTED', async () => {
+      happyPathFetches();
+
+      await service.connect('user-1', 'company-1', dto);
+
+      expect(media.resumePendingMedia).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+      );
+      expect(connections.insert.mock.invocationCallOrder[0]).toBeLessThan(
+        media.resumePendingMedia.mock.invocationCallOrder[0],
+      );
     });
 
     it('requests the one-time history sync after storing the connection', async () => {
@@ -487,6 +504,7 @@ describe('WhatsappSignupService', () => {
       ).rejects.toBeInstanceOf(BadGatewayException);
       expect(connections.insert).not.toHaveBeenCalled();
       expect(connections.update).not.toHaveBeenCalled();
+      expect(media.resumePendingMedia).not.toHaveBeenCalled();
     });
 
     // A failed subscription must not leave a connection that looks healthy but never receives webhooks.

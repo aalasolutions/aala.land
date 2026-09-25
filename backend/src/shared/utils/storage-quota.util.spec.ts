@@ -1,4 +1,8 @@
-import { getStorageQuotaBytes, reserveStorage } from './storage-quota.util';
+import {
+  addStorageUsage,
+  getStorageQuotaBytes,
+  reserveStorage,
+} from './storage-quota.util';
 import {
   Company,
   SubscriptionTier,
@@ -140,5 +144,51 @@ describe('reserveStorage', () => {
     await expect(reserveStorage(repo as any, 'bad-id', 100)).rejects.toThrow(
       'Company not found',
     );
+  });
+});
+
+describe('addStorageUsage', () => {
+  const makeRepo = () => {
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      setParameters: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    return { qb, repo: { createQueryBuilder: jest.fn(() => qb) } };
+  };
+
+  it('increments usage in one UPDATE with no quota condition', async () => {
+    const { qb, repo } = makeRepo();
+
+    await addStorageUsage(repo as any, 'company-1', 2048);
+
+    const setArg = qb.set.mock.calls[0][0];
+    expect(setArg.storageUsedBytes()).toBe('"storage_used_bytes" + :bytes');
+    expect(qb.where).toHaveBeenCalledWith('id = :companyId', {
+      companyId: 'company-1',
+    });
+    expect(qb.andWhere).not.toHaveBeenCalled();
+    expect(qb.setParameters).toHaveBeenCalledWith({ bytes: 2048 });
+    expect(qb.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the query for zero bytes', async () => {
+    const { qb, repo } = makeRepo();
+
+    await addStorageUsage(repo as any, 'company-1', 0);
+
+    expect(qb.execute).not.toHaveBeenCalled();
+  });
+
+  it.each([-1, NaN, Infinity])('rejects %p bytes', async (bytes) => {
+    const { qb, repo } = makeRepo();
+
+    await expect(
+      addStorageUsage(repo as any, 'company-1', bytes),
+    ).rejects.toThrow('invalid byte count');
+    expect(qb.execute).not.toHaveBeenCalled();
   });
 });

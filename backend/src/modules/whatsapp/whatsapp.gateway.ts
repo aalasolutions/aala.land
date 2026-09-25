@@ -153,6 +153,11 @@ export class WhatsappGateway
   emitMessage(userId: string, data: WaMessage) {
     this.server?.to('user:' + userId).emit('whatsapp:message', data);
   }
+
+  // Re-push of a row the client may already hold (edit, revoke, media state), never a new message.
+  emitMessageUpdate(userId: string, data: WaMessage) {
+    this.server?.to('user:' + userId).emit('whatsapp:message-update', data);
+  }
   emitUnread(userId: string, data: WaUnreadState) {
     this.server?.to('user:' + userId).emit('whatsapp:unread', data);
   }
