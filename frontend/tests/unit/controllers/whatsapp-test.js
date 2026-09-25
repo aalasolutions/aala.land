@@ -1,6 +1,7 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import { settled } from '@ember/test-helpers';
+import WhatsappService from 'land/services/whatsapp';
 
 // sendMessage relies on ingestMessage, the socket handler's path, so a later echo is deduped.
 module('Unit | Controller | whatsapp', function (hooks) {
@@ -81,6 +82,8 @@ module('Unit | Controller | whatsapp', function (hooks) {
     let capturedChatId;
     let capturedBody;
     controller.whatsapp = {
+      ...fakeWhatsappService(),
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage(chatId, body) {
         capturedChatId = chatId;
         capturedBody = body;
@@ -119,7 +122,15 @@ module('Unit | Controller | whatsapp', function (hooks) {
       timestamp: 1000,
     });
 
+    const errors = [];
+    controller.notifications = {
+      error: (m) => errors.push(m),
+      success() {},
+      info() {},
+    };
     controller.whatsapp = {
+      ...fakeWhatsappService(),
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         return Promise.resolve({
           data: {
@@ -135,6 +146,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     await controller.sendMessage();
     assert.deepEqual(ids(controller), ['m-1'], 'no duplicate message');
+    assert.deepEqual(errors, [], 'the dedupe path raises no error');
   });
 
   test('sendMessage surfaces a failure via notifications.error and resets isSending', async function (assert) {
@@ -150,6 +162,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
       },
     };
     controller.whatsapp = {
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         return Promise.reject(new Error('No connected WhatsApp number'));
       },
@@ -163,9 +176,17 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.false(controller.isSending, 'isSending reset');
   });
 
+  function withOpenWindow(controller, chatId = 'chat-1') {
+    controller.now = Date.now();
+    controller.whatsapp.chats = [
+      { chatId, chatName: 'Layla', lastInboundAt: controller.now },
+    ];
+  }
+
   test('composerDisabled is true with no chat selected or while sending', function (assert) {
     const controller = makeController(this);
     controller.connection = { status: 'connected' };
+    withOpenWindow(controller);
     controller.currentChatId = null;
     assert.true(controller.composerDisabled);
 
@@ -179,6 +200,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('composerDisabled is true with no connected number, even with a chat open', function (assert) {
     const controller = makeController(this);
+    withOpenWindow(controller);
     controller.currentChatId = 'chat-1';
     controller.isSending = false;
 
@@ -202,7 +224,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   function withChat(controller, lastInboundAt) {
     controller.now = NOW;
-    controller.chats = [
+    controller.whatsapp.chats = [
       { chatId: 'chat-1', chatName: 'Layla', lastTs: NOW, lastInboundAt },
     ];
     controller.currentChatId = 'chat-1';
@@ -295,13 +317,25 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
-  test('a closed window never disables the composer: the backend is the enforcement point', function (assert) {
+  test('a closed reply window disables the composer', function (assert) {
     const controller = makeController(this);
-    withChat(controller, NOW - 30 * HOUR);
     controller.connection = { status: 'connected' };
 
+    withChat(controller, NOW - 30 * HOUR);
     assert.false(controller.replyWindow.open);
-    assert.false(controller.composerDisabled, 'composer stays usable');
+    assert.true(controller.composerDisabled, 'expired window');
+
+    withChat(controller, null);
+    assert.true(controller.composerDisabled, 'customer never wrote');
+  });
+
+  test('an open reply window leaves the composer enabled', function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    withChat(controller, NOW - 2 * HOUR);
+
+    assert.true(controller.replyWindow.open);
+    assert.false(controller.composerDisabled);
   });
 
   test('an inbound message reopens the window without a chat-list refetch', function (assert) {
@@ -899,6 +933,8 @@ module('Unit | Controller | whatsapp', function (hooks) {
       disconnects: 0,
       activeChatId: null,
       unread: new Map(),
+      chats: [],
+      updateChat: WhatsappService.prototype.updateChat,
       on(type, fn) {
         (listeners[type] ??= new Set()).add(fn);
       },
@@ -916,6 +952,10 @@ module('Unit | Controller | whatsapp', function (hooks) {
       },
       beginUnreadSeed: () => ({ seq: 1, since: 0 }),
       seedUnread() {},
+      seedChats(list, ticket) {
+        this.seedUnread(list, ticket);
+        this.chats = list;
+      },
       saveLastChat(entry) {
         saves.push(entry);
       },
@@ -966,6 +1006,8 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(Object.keys(whatsapp.listeners).sort(), [
       'ai',
       'chats',
+      'connection',
+      'history',
       'message',
       'status',
     ]);
@@ -1016,7 +1058,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(seeded, chats, 'unread seeded from chats');
     assert.strictEqual(whatsapp.calls.length, 0, 'no message reads');
     assert.strictEqual(whatsapp.getAllMessages, undefined);
-    assert.strictEqual(controller.chats.length, 1);
+    assert.strictEqual(whatsapp.chats.length, 1);
   });
 
   // ── Opening a chat ──
@@ -1326,6 +1368,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     });
     let resolvePage;
     controller.whatsapp = {
+      ...fakeWhatsappService(),
       getMessages: () => new Promise((resolve) => (resolvePage = resolve)),
     };
 
@@ -1348,7 +1391,9 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('a live message for the open chat is hidden while hasMoreNewer, shown once the window is at the newest', function (assert) {
     const controller = makeController(this);
-    controller.chats = [{ chatId: 'chat-1', chatName: 'Layla', lastTs: 0 }];
+    controller.whatsapp.chats = [
+      { chatId: 'chat-1', chatName: 'Layla', lastTs: 0 },
+    ];
     openThread(controller, {
       messages: [controller._normalizeMessage(msg('m-1', 100))],
       oldestId: 'm-1',
@@ -1358,7 +1403,11 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     controller.ingestMessage(msg('m-9', 900));
     assert.deepEqual(ids(controller), ['m-1'], 'not in the thread');
-    assert.strictEqual(controller.chats[0].lastBody, 'm-9', 'preview updates');
+    assert.strictEqual(
+      controller.whatsapp.chats[0].lastBody,
+      'm-9',
+      'preview updates',
+    );
 
     openThread(controller, {
       messages: [controller._normalizeMessage(msg('m-1', 100))],
@@ -1378,7 +1427,11 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.false(controller.threads.has('chat-2'));
     assert.deepEqual(ids(controller), []);
-    assert.strictEqual(controller.chats[0].chatId, 'chat-2', 'list updates');
+    assert.strictEqual(
+      controller.whatsapp.chats[0].chatId,
+      'chat-2',
+      'list updates',
+    );
   });
 
   test('a live message racing the latest page is appended once when the page lands', async function (assert) {
@@ -1428,6 +1481,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     });
     whatsapp.sendMessage = () =>
       Promise.resolve({ data: { ...msg('m-9', 900), fromMe: true } });
+    whatsapp.chats = [{ chatId: 'chat-1', lastInboundAt: Date.now() }];
     controller.whatsapp = whatsapp;
     controller.messageText = 'hi';
 
@@ -1436,6 +1490,11 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(whatsapp.calls[0].opts, { limit: 50 });
     assert.deepEqual(ids(controller), ['m-8', 'm-9']);
     assert.false(controller.threads.get('chat-1').hasMoreNewer);
+    assert.strictEqual(
+      controller.whatsapp.chats.find((c) => c.chatId === 'chat-1')?.lastBody,
+      'm-9',
+      'chat list reflects the sent message',
+    );
   });
 
   // ── Read tracking ──
@@ -1444,6 +1503,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const controller = makeController(this);
     const marked = [];
     controller.whatsapp = {
+      ...fakeWhatsappService(),
       unread: new Map([
         ['chat-1', { unreadCount: 2, lastReadMessageId: 'm-2' }],
       ]),
@@ -1509,7 +1569,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
       { id: 'm-6', top: 30 },
     ];
 
-    whatsapp.emit('chats', [{ chatId: 'chat-1', chatName: 'Layla' }]);
+    whatsapp.emit('chats');
     el.rows = [{ id: 'm-6', top: 130 }];
     await settled();
 
@@ -1519,7 +1579,6 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.deepEqual(ids(controller), ['m-5', 'm-6', 'm-7']);
     assert.true(controller.threads.get('chat-1').hasMoreNewer);
     assert.strictEqual(el.scrollTop, 100, 'anchor row back at its offset');
-    assert.strictEqual(controller.chats[0].chatName, 'Layla', 'list replaced');
     controller.teardown();
   });
 
@@ -1540,7 +1599,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
       clientHeight: 400,
     });
 
-    whatsapp.emit('chats', []);
+    whatsapp.emit('chats');
     await settled();
 
     assert.deepEqual(whatsapp.calls[0].opts, { limit: 50 });
@@ -1575,7 +1634,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     });
     el.rows = [{ id: 'm-5', top: 10 }];
 
-    whatsapp.emit('chats', []);
+    whatsapp.emit('chats');
     await settled();
 
     assert.deepEqual(
@@ -1612,11 +1671,10 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const setup = controller.setup();
     await settled();
     assert.true(controller.currentChatLoadingWindow);
-    whatsapp.emit('chats', [{ chatId: 'chat-1', chatName: 'Layla' }]);
+    whatsapp.emit('chats');
     await settled();
 
     assert.strictEqual(whatsapp.calls.length, 1, 'no reload');
-    assert.strictEqual(controller.chats[0].chatName, 'Layla', 'list refreshed');
 
     el.scrollHeight = 3000;
     el.rows = [{ id: 'm-5', top: 240 }];
@@ -1636,33 +1694,10 @@ module('Unit | Controller | whatsapp', function (hooks) {
     await controller.setup();
     controller.stopClock();
 
-    whatsapp.emit('chats', [{ chatId: 'c-1', chatName: 'Layla', lastTs: 10 }]);
+    whatsapp.emit('chats');
     await settled();
 
     assert.strictEqual(whatsapp.calls.length, 0);
-    controller.teardown();
-  });
-
-  test('a chats event replaces the list with the setup filtering', async function (assert) {
-    const controller = makeController(this);
-    const whatsapp = fakeWhatsappService();
-    controller.whatsapp = whatsapp;
-    await controller.setup();
-    controller.stopClock();
-
-    whatsapp.emit('chats', [
-      { chatId: 'c-1', chatName: 'Layla', lastTs: 10, lastInboundAt: 5 },
-      { chatId: 'g-1', isGroup: true, lastTs: 20 },
-    ]);
-
-    assert.deepEqual(controller.chats, [
-      {
-        chatId: 'c-1',
-        chatName: 'Layla',
-        lastTs: 10000,
-        lastInboundAt: 5000,
-      },
-    ]);
     controller.teardown();
   });
 
@@ -1676,6 +1711,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const whatsapp = fakeWhatsappService();
     let resolveSend;
     whatsapp.sendMessage = () => new Promise((r) => (resolveSend = r));
+    whatsapp.chats = [{ chatId: 'chat-1', lastInboundAt: Date.now() }];
     controller.whatsapp = whatsapp;
     controller.messageText = 'hi';
 
@@ -1725,7 +1761,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     const setup = controller.setup();
     await settled();
-    whatsapp.emit('chats', [{ chatId: 'chat-1' }]);
+    whatsapp.emit('chats');
     await settled();
     assert.strictEqual(whatsapp.calls.length, 1, 'skipped while loading');
 
@@ -1767,7 +1803,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     });
     controller.whatsapp = whatsapp;
 
-    await controller.applyResyncChats([]);
+    await controller.applyResyncChats();
     assert.strictEqual(controller._owedReloadChatId, 'chat-1');
 
     await controller.selectChat('chat-2');
@@ -1809,7 +1845,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     const originalError = console.error;
     console.error = () => {};
     try {
-      const reload = controller.applyResyncChats([]);
+      const reload = controller.applyResyncChats();
       controller.ingestMessage(msg('m-7', 700));
       rejectPage(new Error('down'));
       await reload;
@@ -1838,7 +1874,9 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('edits, deletes and status pushes for messages outside the window are ignored', function (assert) {
     const controller = makeController(this);
-    controller.chats = [{ chatId: 'chat-1', lastBody: 'm-5', lastTs: 500000 }];
+    controller.whatsapp.chats = [
+      { chatId: 'chat-1', lastBody: 'm-5', lastTs: 500000 },
+    ];
     openThread(controller, {
       messages: [controller._normalizeMessage(msg('m-5', 500))],
       newestId: 'm-5',
@@ -1849,7 +1887,11 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.applyStatus({ id: 'm-3', status: 'read', statusAt: 970 });
     assert.deepEqual(ids(controller), ['m-5']);
     assert.strictEqual(controller.threads.get('chat-1').newestId, 'm-5');
-    assert.strictEqual(controller.chats[0].lastBody, 'm-5', 'preview kept');
+    assert.strictEqual(
+      controller.whatsapp.chats[0].lastBody,
+      'm-5',
+      'preview kept',
+    );
 
     openThread(controller, { loading: 'window' });
     controller.ingestMessage({ ...msg('m-1', 100), editedAt: 990 });
@@ -2074,6 +2116,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     // @action getter-binds sendMessage; spy on the service call instead of replacing the bound action.
     let sendCalled = 0;
     controller.whatsapp = {
+      chats: [{ chatId: 'chat-1', lastInboundAt: Date.now() }],
       sendMessage() {
         sendCalled++;
         return Promise.resolve({ data: { id: `m-${sendCalled}` } });
@@ -2196,40 +2239,12 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   // ── JID residue (Cloud API chat ids are bare E.164 digits, never Baileys JIDs) ──
 
-  test('_isIgnoredChat only filters groups now that Baileys JIDs are gone', function (assert) {
-    const controller = makeController(this);
-
-    assert.true(controller._isIgnoredChat({ isGroup: true }));
-    assert.false(controller._isIgnoredChat({ isGroup: false }));
-    // Cloud API chat ids can never look like the old Baileys newsletter suffix; none is special-cased.
-    assert.false(
-      controller._isIgnoredChat({
-        isGroup: false,
-        chatId: '971500000000@newsletter',
-      }),
-    );
-  });
-
   test('currentChatName falls back to the raw chatId, not a Baileys-style split', function (assert) {
     const controller = makeController(this);
-    controller.chats = [];
+    controller.whatsapp.chats = [];
     controller.currentChatId = '971500000000';
 
     assert.strictEqual(controller.currentChatName, '971500000000');
-  });
-
-  test('_updateChat names a new chat with the raw chatId when no chatName is given', function (assert) {
-    const controller = makeController(this);
-    controller.ingestMessage({
-      id: 'm-1',
-      chatId: '971500000000',
-      body: 'hi',
-      fromMe: false,
-      timestamp: 100,
-    });
-
-    assert.strictEqual(controller.chats[0].chatId, '971500000000');
-    assert.strictEqual(controller.chats[0].chatName, '971500000000');
   });
 
   test('setup surfaces a failure via notifications.error, not just the console', async function (assert) {
@@ -2262,5 +2277,107 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.stopClock();
 
     assert.strictEqual(errorMessage, 'Could not load WhatsApp data');
+  });
+
+  test('historySyncText follows the sync state pushed over the socket', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected', historySyncStatus: null };
+    assert.strictEqual(controller.historySyncText, '');
+
+    controller.applyHistorySync({ status: 'in_progress', progress: 40 });
+    assert.strictEqual(
+      controller.historySyncText,
+      'Syncing chat history... 40%',
+    );
+
+    controller.applyHistorySync({ status: 'declined', progress: null });
+    assert.strictEqual(
+      controller.historySyncText,
+      'Chat history sharing is turned off in the WhatsApp Business app',
+    );
+
+    controller.applyHistorySync({ status: 'complete', progress: 100 });
+    assert.strictEqual(controller.historySyncText, '');
+  });
+
+  test('applyHistorySync ignores a push when there is no connection', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = null;
+    controller.applyHistorySync({ status: 'in_progress', progress: 10 });
+    assert.strictEqual(controller.connection, null);
+  });
+
+  test('a chat resync also refreshes the connection card', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = {
+      status: 'connected',
+      historySyncStatus: 'requested',
+    };
+    controller.whatsapp.getConnection = async () => ({
+      data: {
+        status: 'connected',
+        historySyncStatus: 'complete',
+        historySyncProgress: 100,
+      },
+    });
+
+    await controller.applyResyncChats();
+    await settled();
+
+    assert.strictEqual(controller.connection.historySyncStatus, 'complete');
+    assert.strictEqual(controller.historySyncText, '');
+  });
+
+  test('a connection push refreshes the connection card', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected' };
+    controller.whatsapp.getConnection = async () => ({
+      data: { status: 'disconnected' },
+    });
+
+    controller._socketHandlers.connection({ status: 'disconnected' });
+    await settled();
+
+    assert.strictEqual(controller.connectionStatus, 'disconnected');
+    assert.false(controller.isConnected);
+  });
+
+  test('a connection refresh never overwrites a newer push that landed first', async function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    controller.connection = { status: 'connected', historySyncStatus: null };
+    let release;
+    controller.whatsapp.getConnection = () =>
+      new Promise((resolve) => {
+        release = () =>
+          resolve({
+            data: { status: 'connected', historySyncStatus: 'requested' },
+          });
+      });
+
+    const refresh = controller.applyResyncChats();
+    controller.applyHistorySync({ status: 'complete', progress: 100 });
+    release();
+    await refresh;
+    await settled();
+
+    assert.strictEqual(controller.connection.historySyncStatus, 'complete');
+  });
+
+  test('a late pre-edit copy never puts the old text back', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    const edited = { id: 'm-1', body: 'TWO', editedAt: 200 };
+
+    assert.strictEqual(
+      controller._mergeExisting(edited, { id: 'm-1', body: 'ONE' }),
+      null,
+    );
+    assert.deepEqual(
+      controller._mergeExisting(edited, {
+        id: 'm-1',
+        body: 'THREE',
+        editedAt: 300,
+      }),
+      { id: 'm-1', body: 'THREE', editedAt: 300 },
+    );
   });
 });

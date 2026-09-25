@@ -477,7 +477,6 @@ export class PropertiesService {
       .addSelect([
         'a.id',
         'a.name',
-        'a.propertyType',
         'loc.id',
         'loc.name',
         'o.id',

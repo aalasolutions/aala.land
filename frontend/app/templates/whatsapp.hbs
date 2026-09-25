@@ -23,6 +23,11 @@
           {{this.connectionDetail}}
         </span>
       {{/if}}
+      {{#if this.historySyncText}}
+        <span class="wa-connection__detail" data-test-wa-history-sync>
+          {{this.historySyncText}}
+        </span>
+      {{/if}}
     </div>
 
     {{#if this.isConnected}}
@@ -93,45 +98,12 @@
         </div>
       {{/if}}
 
-      <div class="wa-chat-list">
-        {{#each this.chats as |chat|}}
-          <button
-            type="button"
-            class="wa-chat-item
-              {{if (eq this.currentChatId chat.chatId) 'is-active'}}"
-            data-test-wa-chat={{chat.chatId}}
-            {{on "click" (fn this.selectChat chat.chatId)}}
-          >
-            <div class="flex between x-center">
-              <span class="wa-chat-name">
-                {{#if chat.isGroup}}
-                  <Nuvo::Tag @size="sm" @text="group" />
-                {{/if}}
-                {{chat.chatName}}
-              </span>
-              <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
-            </div>
-            <div class="wa-chat-preview-row">
-              <p class="wa-chat-preview">
-                {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
-              </p>
-              {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
-                {{#if unreadCount}}
-                  <Nuvo::Badge
-                    class="wa-chat-unread"
-                    @count={{true}}
-                    @value={{unreadCount}}
-                    @max={{99}}
-                    data-test-wa-chat-unread
-                  />
-                {{/if}}
-              {{/let}}
-            </div>
-          </button>
-        {{else}}
-          <Nuvo::EmptyState @title="No chats yet" />
-        {{/each}}
-      </div>
+      <Whatsapp::ChatList
+        @chats={{this.whatsapp.chats}}
+        @currentChatId={{this.currentChatId}}
+        @onSelect={{this.selectChat}}
+        @now={{this.now}}
+      />
 
     </aside>
 
@@ -140,8 +112,16 @@
       {{#if this.currentChatId}}
 
         <div class="wa-chat-header">
-          <div class="wa-chat-header-name">{{this.currentChatName}}</div>
-          <div class="wa-chat-header-id">{{this.currentChatId}}</div>
+          <Nuvo::Avatar
+            @initials={{initials this.currentChatName}}
+            @size="md"
+            aria-hidden="true"
+          />
+          <div class="wa-chat-header-text">
+            <div class="wa-chat-header-name">{{this.currentChatName}}</div>
+            <div class="wa-chat-header-id"><bdi
+              >{{this.currentChatId}}</bdi></div>
+          </div>
         </div>
 
         <div
@@ -189,9 +169,9 @@
               data-test-wa-message={{msg.id}}
               {{this.observeMessageRow msg.fromMe}}
             >
-              {{#unless msg.fromMe}}
+              {{#if (and this.currentChat.isGroup (not msg.fromMe))}}
                 <div class="wa-sender-tag">{{msg.senderName}}</div>
-              {{/unless}}
+              {{/if}}
 
               {{#if msg.deletedAt}}
                 <div class="wa-bubble is-deleted" data-test-wa-message-deleted>
@@ -199,7 +179,10 @@
                   This message was deleted
                 </div>
               {{else}}
-                <div class="wa-bubble" dir="auto">{{msg.body}}</div>
+                <div class="wa-bubble" dir="auto"><Whatsapp::MessageText
+                    @text={{msg.body}}
+                    @isExternal={{not msg.fromMe}}
+                  /></div>
               {{/if}}
 
               <div class="wa-meta">
@@ -216,7 +199,7 @@
                   {{#if msg.aiGenerated}}
                     <Nuvo::Tag @variant="info" @size="sm" @text="AI" />
                   {{else}}
-                    <span>You</span>
+                    <Nuvo::Tag @variant="primary" @size="sm" @text="You" />
                   {{/if}}
 
                   {{! No status yet means Meta hasn't called back; it reads as pending, not failed. }}
@@ -343,7 +326,7 @@
           @size="lg"
           @title="Select a chat to view its messages"
         >
-          <:icon><Ui::Ph @icon="whatsapp-logo" /></:icon>
+          <:icon><Ui::Ph @icon="chats-circle" /></:icon>
         </Nuvo::EmptyState>
 
       {{/if}}

@@ -32,6 +32,7 @@
           class="nu-sidebar__link"
           data-tooltip={{if this.desktopCollapsed "Dashboard"}}
           data-tooltip-position="end"
+          data-tooltip-light
           data-test-nav-dashboard
         >
           <Ui::Ph @icon="gauge" />
@@ -70,7 +71,7 @@
                 <LinkTo
                   @route="properties"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "All Properties"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "All Properties"}}
                   data-tooltip-position="end"
                   data-test-nav-properties
                 >
@@ -80,7 +81,7 @@
                 <LinkTo
                   @route="leases"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Leases"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "Leases"}}
                   data-tooltip-position="end"
                   data-test-nav-leases
                 >
@@ -118,7 +119,7 @@
                 <LinkTo
                   @route="contacts"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Contacts"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Contacts"}}
                   data-tooltip-position="end"
                   data-test-nav-contacts
                 >
@@ -128,7 +129,7 @@
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Lead Pipeline"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Lead Pipeline"}}
                   data-tooltip-position="end"
                   data-test-nav-leads
                 >
@@ -146,6 +147,7 @@
             class="nu-sidebar__link"
             data-tooltip={{if this.desktopCollapsed "Documents"}}
             data-tooltip-position="end"
+            data-tooltip-light
             data-test-nav-documents
           >
             <Ui::Ph @icon="files" />
@@ -182,7 +184,7 @@
                 <LinkTo
                   @route="financials"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Transactions"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Transactions"}}
                   data-tooltip-position="end"
                   data-test-nav-financials
                 >
@@ -192,7 +194,7 @@
                 <LinkTo
                   @route="cheques"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Cheques Received"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Cheques Received"}}
                   data-tooltip-position="end"
                   data-test-nav-cheques
                 >
@@ -202,7 +204,7 @@
                 <LinkTo
                   @route="commissions"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Commissions"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Commissions"}}
                   data-tooltip-position="end"
                   data-test-nav-commissions
                 >
@@ -223,6 +225,7 @@
               tabindex="0"
               data-tooltip={{this.whatsappTooltip}}
               data-tooltip-position="end"
+              data-tooltip-light
               data-test-nav-whatsapp
               data-test-nav-whatsapp-disabled
             >
@@ -235,6 +238,7 @@
               class="nu-sidebar__link"
               data-tooltip={{this.whatsappTooltip}}
               data-tooltip-position="end"
+              data-tooltip-light
               data-test-nav-whatsapp
             >
               <Ui::Ph @icon="whatsapp-logo" />
@@ -283,7 +287,7 @@
                 <LinkTo
                   @route="maintenance"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Maintenance"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Maintenance"}}
                   data-tooltip-position="end"
                   data-test-nav-maintenance
                 >
@@ -293,7 +297,7 @@
                 <LinkTo
                   @route="vendors"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Vendors"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Vendors"}}
                   data-tooltip-position="end"
                   data-test-nav-vendors
                 >
@@ -311,6 +315,7 @@
             class="nu-sidebar__link"
             data-tooltip={{if this.desktopCollapsed "Reports"}}
             data-tooltip-position="end"
+            data-tooltip-light
             data-test-nav-reports
           >
             <Ui::Ph @icon="chart-bar" />
@@ -325,6 +330,7 @@
               class="nu-sidebar__link"
               data-tooltip={{if this.desktopCollapsed "Team"}}
               data-tooltip-position="end"
+              data-tooltip-light
               data-test-nav-team
             >
               <Ui::Ph @icon="users-three" />
@@ -340,6 +346,7 @@
               class="nu-sidebar__link"
               data-tooltip={{if this.desktopCollapsed "History"}}
               data-tooltip-position="end"
+              data-tooltip-light
               data-test-nav-history
             >
               <Ui::Ph @icon="clock-counter-clockwise" />
@@ -376,7 +383,7 @@
                 <LinkTo
                   @route="admin.overview"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Overview"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Overview"}}
                   data-tooltip-position="end"
                   data-test-nav-overview
                 >
@@ -386,7 +393,7 @@
                 <LinkTo
                   @route="admin.companies"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Companies"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Companies"}}
                   data-tooltip-position="end"
                   data-test-nav-companies
                 >
@@ -396,7 +403,7 @@
                 <LinkTo
                   @route="admin.marketers"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Marketers"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Marketers"}}
                   data-tooltip-position="end"
                   data-test-nav-marketers
                 >
@@ -406,7 +413,7 @@
                 <LinkTo
                   @route="team"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Team"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Team"}}
                   data-tooltip-position="end"
                   data-test-nav-team
                 >
@@ -416,7 +423,7 @@
                 <LinkTo
                   @route="documents"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Documents"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Documents"}}
                   data-tooltip-position="end"
                   data-test-nav-documents
                 >
@@ -426,7 +433,7 @@
                 <LinkTo
                   @route="audit"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Audit Log"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Audit Log"}}
                   data-tooltip-position="end"
                   data-test-nav-audit
                 >
@@ -436,7 +443,7 @@
                 <LinkTo
                   @route="admin.system"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "System"}}
+                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "System"}}
                   data-tooltip-position="end"
                   data-test-nav-system
                 >

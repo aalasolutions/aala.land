@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -18,7 +18,10 @@ const DEFAULT_SEND_TIMEOUT_MS = 15000;
 // Meta's code for an invalid or expired access token.
 const GRAPH_TOKEN_INVALID_CODE = 190;
 
-// A reply that never reached Meta; thrown so the turn's catch skips writing delivery record or history.
+// Meta's code for a free-form send outside the 24h customer service window.
+export const GRAPH_REPLY_WINDOW_CLOSED_CODE = 131047;
+
+// A reply Meta did not accept; thrown so the turn's catch skips writing delivery record or history.
 export class WhatsappSendError extends Error {
   constructor(
     message: string,
@@ -29,6 +32,10 @@ export class WhatsappSendError extends Error {
   ) {
     super(message);
     this.name = 'WhatsappSendError';
+  }
+
+  get windowClosed(): boolean {
+    return this.graphCode === GRAPH_REPLY_WINDOW_CLOSED_CODE;
   }
 }
 
@@ -213,8 +220,9 @@ export class WhatsappCloudApiService {
       ? `token_invalid_${graphCode}`
       : `token_invalid_http_${status}`;
     try {
-      await this.connections.update(
-        { id: connection.id },
+      // Scoped to unflagged rows, so a repeat failure changes nothing and pushes nothing.
+      const result = await this.connections.update(
+        { id: connection.id, status: Not(WhatsappConnectionStatus.FLAGGED) },
         {
           status: WhatsappConnectionStatus.FLAGGED,
           disconnectReason: reason,
@@ -223,10 +231,25 @@ export class WhatsappCloudApiService {
       this.logger.error(
         `Connection ${connection.phoneNumberId} flagged (${reason}); it needs reconnecting`,
       );
+      if (result.affected) this.pushConnectionChange(connection);
     } catch (err) {
       this.logger.error(
         'Failed to flag the WhatsApp connection',
         errorMessage(err),
+      );
+    }
+  }
+
+  // A live push failure is log-only; the status is already stored.
+  private pushConnectionChange(connection: WhatsappConnection): void {
+    try {
+      this.gateway.emitConnection(connection.userId, {
+        status: WhatsappConnectionStatus.FLAGGED,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push connection status ${WhatsappConnectionStatus.FLAGGED} for user ${connection.userId}`,
+        errorMessage(err, true),
       );
     }
   }

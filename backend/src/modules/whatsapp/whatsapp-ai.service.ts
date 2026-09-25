@@ -263,13 +263,18 @@ export class WhatsappAiService {
     await this.redis.delByPattern(this.humanKey(userId, '*'));
   }
 
-  // Called on a manual operator send; cancels any pending debounced AI response.
-  async recordHumanReply(userId: string, chatId: string): Promise<void> {
-    await this.redis.setNumber(
-      this.humanKey(userId, chatId),
-      Date.now(),
-      this.AI_STATE_TTL_MS,
-    );
+  // Called on a human reply; cancels any pending debounced AI response. A replayed older reply changes nothing.
+  async recordHumanReply(
+    userId: string,
+    chatId: string,
+    at = Date.now(),
+  ): Promise<void> {
+    // Clamped so a phone clock running ahead can never block a later dashboard reply.
+    const stamp = Math.min(at, Date.now());
+    const key = this.humanKey(userId, chatId);
+    const existing = await this.redis.getNumber(key);
+    if (existing !== null && existing >= stamp) return;
+    await this.redis.setNumber(key, stamp, this.AI_STATE_TTL_MS);
     await this.cancelPending(userId, chatId);
   }
 

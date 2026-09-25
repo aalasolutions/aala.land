@@ -286,6 +286,400 @@ describe('MessageStoreService', () => {
     });
   });
 
+  describe('addMessage passive (synced history)', () => {
+    it('never counts a history message as unread', async () => {
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][10]).toBe(0);
+    });
+
+    it('writes a given status only as part of the insert', async () => {
+      const statusAt = new Date(1700000000 * 1000);
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true }),
+        'phone-1',
+        { isPassive: true, status: WhatsappMessageStatus.READ, statusAt },
+      );
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      const [withStatus, without] = insertBuilder.values.mock.calls.map(
+        (c) => c[0],
+      );
+      expect(withStatus).toMatchObject({ status: 'read', statusAt });
+      expect(without).not.toHaveProperty('status');
+      expect(insertBuilder.orIgnore).toHaveBeenCalled();
+    });
+
+    it('never opens the reply-window clock for a history message over 24h old', async () => {
+      const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false, timestamp: twoDaysAgo }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][9]).toBeNull();
+    });
+
+    it('opens the reply-window clock for a customer history message under 24h old', async () => {
+      const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: false, timestamp: hourAgo }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      const lastInboundAt = txManager.query.mock.calls[0][1][9] as Date;
+      expect(lastInboundAt.getTime()).toBe(hourAgo * 1000);
+      expect(txManager.query.mock.calls[0][1][10]).toBe(0);
+    });
+
+    it('never opens the reply-window clock for our own recent history message', async () => {
+      const hourAgo = Math.floor(Date.now() / 1000) - 60 * 60;
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true, timestamp: hourAgo }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      expect(txManager.query.mock.calls[0][1][9]).toBeNull();
+    });
+  });
+
+  describe('addHistoryMessages', () => {
+    const hourAgo = () => Math.floor(Date.now() / 1000) - 60 * 60;
+    const chatParams = () => txManager.query.mock.calls[0][1];
+
+    beforeEach(() => {
+      insertBuilder.returning = jest.fn().mockReturnThis();
+      insertBuilder.updateEntity = jest.fn().mockReturnThis();
+      insertBuilder.execute = jest.fn(() =>
+        Promise.resolve({
+          raw: insertBuilder.values.mock.calls
+            .at(-1)[0]
+            .map((row: { waMessageId: string }) => ({
+              wa_message_id: row.waMessageId,
+            })),
+        }),
+      );
+    });
+
+    it('stores the whole thread in one transaction and returns the inserted ids', async () => {
+      const ids = await service.addHistoryMessages(
+        'co-1',
+        'user-a',
+        'phone-1',
+        [{ msg: makeMsg({ id: 'h1' }) }, { msg: makeMsg({ id: 'h2' }) }],
+      );
+
+      expect(ids).toEqual(['h1', 'h2']);
+      expect(messagesRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(insertBuilder.values).toHaveBeenCalledTimes(1);
+      expect(insertBuilder.orIgnore).toHaveBeenCalled();
+      expect(insertBuilder.returning).toHaveBeenCalledWith('"wa_message_id"');
+    });
+
+    it('returns no ids when the unique index already held every row', async () => {
+      insertBuilder.execute = jest.fn().mockResolvedValue({ raw: [] });
+
+      const ids = await service.addHistoryMessages(
+        'co-1',
+        'user-a',
+        'phone-1',
+        [{ msg: makeMsg({ id: 'h1' }) }],
+      );
+
+      expect(ids).toEqual([]);
+    });
+
+    it('writes a given status only as part of the insert', async () => {
+      const statusAt = new Date(1700000000 * 1000);
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        {
+          msg: makeMsg({ id: 'ours', fromMe: true }),
+          status: WhatsappMessageStatus.READ,
+          statusAt,
+        },
+        { msg: makeMsg({ id: 'theirs' }) },
+      ]);
+
+      const [ours, theirs] = insertBuilder.values.mock.calls[0][0];
+      expect(ours).toMatchObject({ status: 'read', statusAt });
+      expect(theirs).not.toHaveProperty('status');
+      expect(insertBuilder.orIgnore).toHaveBeenCalled();
+    });
+
+    it('splits a large thread into chunked inserts inside the same transaction', async () => {
+      const items = Array.from({ length: 1201 }, (_, i) => ({
+        msg: makeMsg({ id: `h${i}` }),
+      }));
+
+      const ids = await service.addHistoryMessages(
+        'co-1',
+        'user-a',
+        'phone-1',
+        items,
+      );
+
+      const sizes = insertBuilder.values.mock.calls.map((c) => c[0].length);
+      expect(sizes).toEqual([500, 500, 201]);
+      expect(ids).toHaveLength(1201);
+      expect(messagesRepo.manager.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('upserts the chat once with the newest message as the preview and no unread', async () => {
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h2', body: 'newest', timestamp: 1700000200 }) },
+        { msg: makeMsg({ id: 'h1', body: 'older', timestamp: 1700000100 }) },
+      ]);
+
+      const upserts = txManager.query.mock.calls.filter((c) =>
+        String(c[0]).includes('INSERT INTO "whatsapp_chats"'),
+      );
+      expect(upserts).toHaveLength(1);
+      const params = chatParams();
+      expect(params[5]).toBe('newest');
+      expect(params[6]).toBe('1700000200');
+      expect(params[8]).toBe('phone-1');
+      expect(params[10]).toBe(0);
+    });
+
+    it('breaks a timestamp tie toward the later message, as sequential upserts do', async () => {
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h1', body: 'first', timestamp: 1700000000 }) },
+        {
+          msg: makeMsg({
+            id: 'h2',
+            body: 'second',
+            fromMe: true,
+            timestamp: 1700000000,
+          }),
+        },
+      ]);
+
+      expect(chatParams()[5]).toBe('second');
+      expect(chatParams()[7]).toBe(true);
+    });
+
+    it('clamps a future timestamp before it can freeze the preview', async () => {
+      const future = Math.floor(Date.now() / 1000) + 10 * 24 * 60 * 60;
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h1', timestamp: future }) },
+      ]);
+
+      const stored = Number(insertBuilder.values.mock.calls[0][0][0].timestamp);
+      expect(stored).toBeLessThanOrEqual(Math.floor(Date.now() / 1000) + 300);
+      expect(chatParams()[6]).toBe(String(stored));
+    });
+
+    it('opens the reply window from the newest customer message under 24h old only', async () => {
+      const recent = hourAgo();
+      const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'old', timestamp: twoDaysAgo }) },
+        { msg: makeMsg({ id: 'recent', timestamp: recent - 60 }) },
+        { msg: makeMsg({ id: 'newer', timestamp: recent }) },
+        { msg: makeMsg({ id: 'ours', fromMe: true, timestamp: recent + 60 }) },
+      ]);
+
+      expect((chatParams()[9] as Date).getTime()).toBe(recent * 1000);
+    });
+
+    it('never opens the reply window for old or own history', async () => {
+      const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'old', timestamp: twoDaysAgo }) },
+        { msg: makeMsg({ id: 'ours', fromMe: true, timestamp: hourAgo() }) },
+      ]);
+
+      expect(chatParams()[9]).toBeNull();
+    });
+
+    it('keeps the first meaningful chat name and falls back to the chat id', async () => {
+      const chatId = '971501234567';
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h1', chatId, chatName: '' }) },
+        { msg: makeMsg({ id: 'h2', chatId, chatName: 'Ahmed' }) },
+        { msg: makeMsg({ id: 'h3', chatId, chatName: 'Later' }) },
+      ]);
+      expect(chatParams()[3]).toBe('Ahmed');
+
+      txManager.query.mockClear();
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h4', chatId, chatName: '' }) },
+      ]);
+      expect(chatParams()[3]).toBe(chatId);
+    });
+
+    it('resolves the contact for a one-to-one chat', async () => {
+      await service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+        { msg: makeMsg({ id: 'h1' }) },
+      ]);
+
+      expect(txManager.query).toHaveBeenCalledTimes(2);
+      expect(txManager.query.mock.calls[1][0]).toContain('"contact_id"');
+    });
+
+    it('rejects messages from more than one chat', async () => {
+      await expect(
+        service.addHistoryMessages('co-1', 'user-a', 'phone-1', [
+          { msg: makeMsg({ id: 'h1', chatId: 'a' }) },
+          { msg: makeMsg({ id: 'h2', chatId: 'b' }) },
+        ]),
+      ).rejects.toThrow('one chat');
+      expect(messagesRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+
+    it('does nothing for an empty thread', async () => {
+      await expect(
+        service.addHistoryMessages('co-1', 'user-a', 'phone-1', []),
+      ).resolves.toEqual([]);
+      expect(messagesRepo.manager.transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('echo edit and revoke', () => {
+    beforeEach(() => {
+      messagesRepo.update = jest.fn().mockResolvedValue({ affected: 1 });
+    });
+
+    it('applyEdit rewrites only our own live row, never over a newer edit', async () => {
+      const at = new Date(1761000200 * 1000);
+
+      await expect(
+        service.applyEdit('co-1', 'user-a', 'wamid.1', 'new text', at, true),
+      ).resolves.toBe(true);
+      const [where, patch] = messagesRepo.update.mock.calls[0];
+      expect(where).toMatchObject({
+        companyId: 'co-1',
+        userId: 'user-a',
+        waMessageId: 'wamid.1',
+        fromMe: true,
+      });
+      expect(where.deletedAt).toBeDefined();
+      expect(where.editedAt).toBeDefined();
+      expect(patch).toEqual({ body: 'new text', editedAt: at });
+    });
+
+    it('getMessage reads one message inside the caller company and agent', async () => {
+      messagesRepo.findOne.mockResolvedValue(makeRow({ waMessageId: 'msg-1' }));
+
+      const msg = await service.getMessage('co-1', 'user-a', 'msg-1');
+
+      expect(messagesRepo.findOne).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', userId: 'user-a', waMessageId: 'msg-1' },
+      });
+      expect(msg?.id).toBe('msg-1');
+    });
+
+    it('hasMessage checks inside the caller company and agent', async () => {
+      messagesRepo.exists = jest.fn().mockResolvedValue(true);
+
+      await expect(
+        service.hasMessage('co-1', 'user-a', 'wamid.1'),
+      ).resolves.toBe(true);
+      expect(messagesRepo.exists).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', userId: 'user-a', waMessageId: 'wamid.1' },
+      });
+    });
+
+    it('markDeleted stamps deleted_at once and keeps the row', async () => {
+      const at = new Date(1761000200 * 1000);
+
+      await service.markDeleted('co-1', 'user-a', 'wamid.1', at, false);
+
+      const [where, patch] = messagesRepo.update.mock.calls[0];
+      expect(where).toMatchObject({
+        companyId: 'co-1',
+        userId: 'user-a',
+        waMessageId: 'wamid.1',
+        fromMe: false,
+      });
+      expect(where.deletedAt).toBeDefined();
+      expect(patch).toEqual({ deletedAt: at });
+    });
+
+    it('an applied delete refreshes the chat preview only if it was the latest message', async () => {
+      await service.markDeleted('co-1', 'user-a', 'wamid.1', new Date(), false);
+
+      const [sql, params] = chatsRepo.query.mock.calls[0];
+      expect(sql).toContain('c."last_ts" = m."timestamp"');
+      expect(params).toEqual([
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'This message was deleted',
+      ]);
+    });
+
+    it('an applied edit puts the new text in the chat preview', async () => {
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+        new Date(),
+        false,
+      );
+
+      expect(chatsRepo.query.mock.calls[0][1]).toEqual([
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+      ]);
+    });
+
+    it('a change that matched no row leaves the chat preview alone', async () => {
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'TWO',
+        new Date(),
+        false,
+      );
+
+      expect(chatsRepo.query).not.toHaveBeenCalled();
+    });
+
+    it('reports false when no stored message matched', async () => {
+      messagesRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.markDeleted(
+          'co-1',
+          'user-a',
+          'wamid.missing',
+          new Date(),
+          true,
+        ),
+      ).resolves.toBe(false);
+    });
+  });
+
   describe('markChatRead', () => {
     const target = { timestamp: '500', wa_message_id: 'wamid.X' };
 

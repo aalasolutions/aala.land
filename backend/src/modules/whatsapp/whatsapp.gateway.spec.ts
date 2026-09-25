@@ -10,6 +10,10 @@ import { WsAckExceptionFilter } from '@shared/filters/ws-ack-exception.filter';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { MessageStoreService } from './message-store.service';
 import { MarkWaChatReadDto } from './dto/mark-wa-chat-read.dto';
+import {
+  WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
+} from './entities/whatsapp-connection.entity';
 
 type Middleware = (socket: Socket, next: (err?: Error) => void) => void;
 
@@ -171,6 +175,38 @@ describe('WhatsappGateway', () => {
 
     expect(inRoom).toHaveBeenCalledWith('user:user-1');
     expect(disconnectSockets).toHaveBeenCalledWith(true);
+  });
+
+  it('emitHistory pushes the sync state to the user room only', () => {
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    gateway.server = { to } as never;
+
+    gateway.emitHistory('user-1', {
+      status: WhatsappHistorySyncStatus.COMPLETE,
+      progress: 100,
+    });
+
+    expect(to).toHaveBeenCalledWith('user:user-1');
+    expect(emit).toHaveBeenCalledWith('whatsapp:history', {
+      status: 'complete',
+      progress: 100,
+    });
+  });
+
+  it('emitConnection pushes the connection status to the user room only', () => {
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    gateway.server = { to } as never;
+
+    gateway.emitConnection('user-1', {
+      status: WhatsappConnectionStatus.DISCONNECTED,
+    });
+
+    expect(to).toHaveBeenCalledWith('user:user-1');
+    expect(emit).toHaveBeenCalledWith('whatsapp:connection', {
+      status: 'disconnected',
+    });
   });
 
   describe('whatsapp:read', () => {

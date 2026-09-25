@@ -12,6 +12,7 @@ import {
   WhatsappConnectionStatus,
 } from './entities/whatsapp-connection.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
+import { RedisService } from '@modules/redis/redis.service';
 import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
@@ -99,6 +100,10 @@ describe('WhatsappWebhookController (HTTP)', () => {
         { provide: MessageStoreService, useValue: store },
         { provide: WhatsappGateway, useValue: gateway },
         { provide: WhatsappAiService, useValue: ai },
+        {
+          provide: RedisService,
+          useValue: { getJson: jest.fn(), setJson: jest.fn(), del: jest.fn() },
+        },
         { provide: getQueueToken(WA_WEBHOOK_EVENTS_QUEUE), useValue: queue },
       ],
     }).compile();

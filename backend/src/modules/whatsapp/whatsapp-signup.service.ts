@@ -13,6 +13,7 @@ import { Not, QueryFailedError, Repository } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
 } from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
 import { WhatsappService } from './whatsapp.service';
@@ -142,6 +143,12 @@ export class WhatsappSignupService {
             disconnectReason: null,
             // Millisecond stamp refuses any Meta lifecycle event from before this connect.
             lifecycleEventAt: now,
+            // A different number starts with no history state of its own.
+            ...(existing.phoneNumberId !== dto.phoneNumberId && {
+              historySyncStatus: null,
+              historySyncProgress: null,
+              historySyncRequestedAt: null,
+            }),
           },
         );
       } else {
@@ -197,6 +204,16 @@ export class WhatsappSignupService {
     this.logger.log(
       `WhatsApp connected for user ${userId}: phone_number_id ${dto.phoneNumberId} on WABA ${dto.wabaId}`,
     );
+
+    if (dto.isCoexistence) {
+      await this.requestHistorySync(
+        userId,
+        companyId,
+        dto.phoneNumberId,
+        token,
+        existing?.phoneNumberId === dto.phoneNumberId ? existing : null,
+      );
+    }
 
     const info = await this.wa.getConnection(userId, companyId);
     if (!info) {
@@ -280,6 +297,93 @@ export class WhatsappSignupService {
         `Graph accepted the subscription for WABA ${wabaId} but did not confirm success`,
       );
       throw new BadGatewayException('WhatsApp app subscription was not confirmed');
+    }
+  }
+
+  // Meta allows this once per onboarding, within 24h of it; a refusal restores the previous state, never throws.
+  private async requestHistorySync(
+    userId: string,
+    companyId: string,
+    phoneNumberId: string,
+    token: string,
+    previous: WhatsappConnection | null,
+  ): Promise<void> {
+    // Recorded first, so an early history chunk is never reset by this write.
+    await this.setHistorySyncStatus(
+      userId,
+      companyId,
+      WhatsappHistorySyncStatus.REQUESTED,
+      { historySyncProgress: null, historySyncRequestedAt: new Date() },
+    );
+    const isAccepted = await this.postHistorySyncRequest(phoneNumberId, token);
+    if (isAccepted) return;
+    // A re-auth of an already synced number is refused by Meta; it keeps its earlier result.
+    const previousStatus = previous?.historySyncStatus ?? null;
+    const isSettled =
+      previousStatus === WhatsappHistorySyncStatus.COMPLETE ||
+      previousStatus === WhatsappHistorySyncStatus.DECLINED;
+    await this.setHistorySyncStatus(
+      userId,
+      companyId,
+      isSettled && previousStatus
+        ? previousStatus
+        : WhatsappHistorySyncStatus.FAILED,
+      isSettled
+        ? {
+            historySyncProgress: previous?.historySyncProgress ?? null,
+            historySyncRequestedAt: previous?.historySyncRequestedAt ?? null,
+          }
+        : {},
+      WhatsappHistorySyncStatus.REQUESTED,
+    );
+  }
+
+  private async postHistorySyncRequest(
+    phoneNumberId: string,
+    token: string,
+  ): Promise<boolean> {
+    try {
+      await this.graphFetch<{ success?: boolean }>(
+        `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/smb_app_data`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            sync_type: 'history',
+          }),
+        },
+        'history sync request',
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Bookkeeping only: a failed write is logged and never fails the connect.
+  private async setHistorySyncStatus(
+    userId: string,
+    companyId: string,
+    status: WhatsappHistorySyncStatus,
+    extra: Partial<WhatsappConnection>,
+    onlyFrom?: WhatsappHistorySyncStatus,
+  ): Promise<void> {
+    const where = onlyFrom
+      ? { userId, companyId, historySyncStatus: onlyFrom }
+      : { userId, companyId };
+    try {
+      await this.connections.update(where, {
+        historySyncStatus: status,
+        ...extra,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Could not record history sync state for user ${userId}: ${errorMessage(err)}`,
+      );
     }
   }
 

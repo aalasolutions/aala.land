@@ -1,4 +1,8 @@
-import { BadGatewayException, BadRequestException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappSendError } from './whatsapp-cloud-api.service';
 import { WhatsappConnection } from './entities/whatsapp-connection.entity';
@@ -15,6 +19,7 @@ const connection = {
 describe('WhatsappService', () => {
   let service: WhatsappService;
   let connections: { findOne: jest.Mock; update: jest.Mock };
+  let chats: { findOne: jest.Mock };
   let store: { addMessage: jest.Mock };
   let ai: {
     recordHumanReply: jest.Mock;
@@ -32,6 +37,12 @@ describe('WhatsappService', () => {
       findOne: jest.fn().mockResolvedValue(connection),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    chats = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'chat-row-1',
+        lastInboundAt: new Date(Date.now() - 60 * 60 * 1000),
+      }),
+    };
     store = { addMessage: jest.fn().mockResolvedValue(true) };
     ai = {
       recordHumanReply: jest.fn().mockResolvedValue(undefined),
@@ -47,6 +58,7 @@ describe('WhatsappService', () => {
     };
     service = new WhatsappService(
       connections as any,
+      chats as any,
       store as any,
       ai as any,
       gateway as any,
@@ -95,6 +107,24 @@ describe('WhatsappService', () => {
         connectedAt: '2026-08-01T10:00:00.000Z',
         disconnectedAt: '2026-08-05T09:30:00.000Z',
         disconnectReason: 'PARTNER_REMOVED',
+        historySyncStatus: null,
+        historySyncProgress: null,
+      });
+    });
+
+    it('passes the history sync state through', async () => {
+      connections.findOne.mockResolvedValue({
+        ...connection,
+        status: 'connected',
+        historySyncStatus: 'in_progress',
+        historySyncProgress: 40,
+      });
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).toMatchObject({
+        historySyncStatus: 'in_progress',
+        historySyncProgress: 40,
       });
     });
 
@@ -115,6 +145,8 @@ describe('WhatsappService', () => {
         connectedAt: null,
         disconnectedAt: null,
         disconnectReason: null,
+        historySyncStatus: null,
+        historySyncProgress: null,
       });
     });
   });
@@ -256,6 +288,65 @@ describe('WhatsappService', () => {
       expect(err.message).toBe(
         'WhatsApp could not be reached; the message was not sent',
       );
+    });
+
+    it("checks the reply window on the caller's own chat row before sending", async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
+
+      expect(chats.findOne).toHaveBeenCalledWith({
+        where: {
+          companyId: 'company-1',
+          userId: 'user-1',
+          chatId: '971501234567',
+        },
+        select: { id: true, lastInboundAt: true },
+      });
+      expect(chats.findOne.mock.invocationCallOrder[0]).toBeLessThan(
+        cloud.sendText.mock.invocationCallOrder[0],
+      );
+    });
+
+    it.each([
+      [
+        'the window closed',
+        { lastInboundAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+      ],
+      [
+        'the window closes exactly at 24h',
+        { lastInboundAt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      ],
+      ['the customer never wrote', { lastInboundAt: null }],
+      ['there is no chat row', null],
+    ])('refuses with a 409 and sends nothing when %s', async (_label, row) => {
+      chats.findOne.mockResolvedValue(row);
+
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
+
+      expect(err).toBeInstanceOf(ConflictException);
+      expect(err.message).toBe(
+        'The 24-hour reply window is closed. The customer must message first.',
+      );
+      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(cloud.sendText).not.toHaveBeenCalled();
+      expect(store.addMessage).not.toHaveBeenCalled();
+    });
+
+    it('maps Meta window-closed code 131047 to the same 409', async () => {
+      cloud.sendText.mockRejectedValue(
+        new WhatsappSendError('Cloud API send failed 400', 400, 131047),
+      );
+
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
+
+      expect(err).toBeInstanceOf(ConflictException);
+      expect(err.message).toBe(
+        'The 24-hour reply window is closed. The customer must message first.',
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
     });
 
     it('rethrows anything that is not a send failure untouched', async () => {

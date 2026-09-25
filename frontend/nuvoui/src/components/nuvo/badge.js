@@ -67,14 +67,14 @@ export default class NuBadgeComponent extends Component {
     return Boolean(this.args.hidden) || (!this.hasValue && !this.args.isDot);
   }
 
+  // Only a number above @max is capped to "N+"; text labels pass through untouched.
+  get isOverflow() {
+    const numericValue = Number(this.resolvedValue);
+    const numericMax = Number(this.args.max);
+    return Number.isFinite(numericValue) && Number.isFinite(numericMax) && numericValue > numericMax;
+  }
+
   get displayValue() {
-    const value = this.resolvedValue;
-    const max = this.args.max;
-    const numericValue = Number(value);
-    const numericMax = Number(max);
-    if (Number.isFinite(numericValue) && Number.isFinite(numericMax) && numericValue > numericMax) {
-      return `${numericMax}+`;
-    }
-    return value;
+    return this.isOverflow ? `${Number(this.args.max)}+` : this.resolvedValue;
   }
 }

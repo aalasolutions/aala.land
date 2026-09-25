@@ -10,6 +10,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
   IsNull,
+  LessThan,
   LessThanOrEqual,
   Not,
   Or,
@@ -20,10 +21,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
+  WhatsappHistorySyncStatus,
 } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { WhatsappAiService } from './whatsapp-ai.service';
-import { MessageStoreService } from './message-store.service';
+import { HistoryMessage, MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import {
   WaMessage,
@@ -32,6 +34,7 @@ import {
   WA_WEBHOOK_EVENTS_QUEUE,
 } from './wa-types';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
+import { RedisService } from '@modules/redis/redis.service';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
 
@@ -43,7 +46,7 @@ interface CloudWebhookEnvelope {
 }
 
 interface WebhookEntry {
-  // The WABA id: the only routing key account_update carries (no metadata.phone_number_id).
+  // Usually the WABA id; PARTNER_* account_update events send the partner business id instead, with the WABA in waba_info.
   id?: string;
   // Unix seconds.
   time?: number;
@@ -60,29 +63,157 @@ interface WebhookValue {
   contacts?: { profile?: { name?: string }; wa_id?: string }[];
   messages?: CloudMessage[];
   statuses?: CloudStatus[];
+  // history only.
+  history?: HistoryChunk[];
+  // smb_message_echoes only.
+  message_echoes?: CloudMessage[];
+  errors?: CloudError[];
   // account_update only.
   event?: string;
   phone_number?: string;
   disconnection_info?: { reason?: string; initiated_by?: string };
+  // PARTNER_* events only; their entry.id is the partner business, not the WABA.
+  waba_info?: { waba_id?: string; owner_business_id?: string };
+}
+
+interface CloudError {
+  code?: number | string;
 }
 
 interface CloudMessage {
   id?: string;
   from?: string;
+  // Present on echoes; history messages omit it.
+  to?: string;
   timestamp?: string;
   type?: string;
   text?: { body?: string };
+  edit?: { original_message_id?: string; message?: CloudMessage };
+  revoke?: { original_message_id?: string };
+  // history only.
+  history_context?: { status?: string };
+}
+
+interface HistoryChunk {
+  metadata?: { phase?: number; chunk_order?: number; progress?: number };
+  threads?: { id?: string; messages?: CloudMessage[] }[];
+  errors?: CloudError[];
 }
 
 interface CloudStatus {
   id?: string;
   status?: string;
   timestamp?: string;
-  errors?: { code?: number | string }[];
+  errors?: CloudError[];
 }
 
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
+
+// Meta's error when the business turned history sharing off in the WhatsApp Business app.
+const HISTORY_DECLINED_CODE = '2593109';
+
+// Media is not stored yet, so non-text messages keep their place in the thread as a label.
+const PLACEHOLDER_BODIES: Record<string, string> = {
+  image: '[Image]',
+  video: '[Video]',
+  audio: '[Voice message]',
+  document: '[Document]',
+  sticker: '[Sticker]',
+  location: '[Location]',
+  contacts: '[Contact card]',
+  media_placeholder: '[Media]',
+};
+
+// Long enough for a racing original to land; edits and deletes of messages we never stored just expire.
+const PENDING_CHANGE_TTL_MS = 15 * 60 * 1000;
+
+// An edit or delete for a stored message; fromMe says whose message it may touch.
+interface MessageChange {
+  kind: 'edit' | 'revoke';
+  body?: string;
+  at: number;
+  fromMe: boolean;
+}
+
+// History that arrives this long after our request belongs to an earlier owner of the number.
+const HISTORY_ACCEPT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+// Null means no row: reactions, empty text and unknown types.
+function resolveStorableBody(message: CloudMessage | undefined): string | null {
+  if (!message?.type) return null;
+  if (message.type === 'text') {
+    const body = message.text?.body ?? '';
+    return body.trim() ? body : null;
+  }
+  return PLACEHOLDER_BODIES[message.type] ?? null;
+}
+
+function parseEpochSeconds(value: string | number | undefined): number | null {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+// Falls back to now when Meta sent no usable time.
+function parseEpochDate(value: string | number | undefined): Date {
+  const seconds = parseEpochSeconds(value);
+  return seconds ? new Date(seconds * 1000) : new Date();
+}
+
+function digitsOnly(value: string | undefined): string {
+  return (value ?? '').replace(/\D/g, '');
+}
+
+// The thread id is the customer, so anything not from the customer was sent by the business.
+function isHistoryMessageFromBusiness(
+  message: CloudMessage,
+  customerId: string,
+): boolean {
+  if (message.to) return true;
+  const sender = digitsOnly(message.from);
+  return sender !== '' && sender !== digitsOnly(customerId);
+}
+
+// Meta's own delivery state for a synced message; ERROR is failed, PENDING stores nothing, absent reads as delivered.
+function historyMessageStatus(
+  message: CloudMessage,
+): WhatsappMessageStatus | null {
+  const value = message.history_context?.status?.toLowerCase();
+  if (!value) return WhatsappMessageStatus.DELIVERED;
+  if (value === 'error') return WhatsappMessageStatus.FAILED;
+  return META_STATUSES.has(value) ? (value as WhatsappMessageStatus) : null;
+}
+
+function historyStatusFor(progress: number): WhatsappHistorySyncStatus {
+  return progress >= 100
+    ? WhatsappHistorySyncStatus.COMPLETE
+    : WhatsappHistorySyncStatus.IN_PROGRESS;
+}
+
+// Cloud API one-to-one message; only the identity, direction and body differ per caller.
+function buildCloudWaMessage(fields: {
+  id: string;
+  chatId: string;
+  senderId: string;
+  senderName?: string;
+  body: string;
+  mediaType: string;
+  fromMe: boolean;
+  timestamp: number;
+  originUserId: string;
+}): WaMessage {
+  return {
+    ...fields,
+    senderName: fields.senderName ?? '',
+    chatName: fields.senderName ?? '',
+    isGroup: false,
+    hasMedia: false,
+    mediaUrls: [],
+    mentionedIds: [],
+    quotedParticipant: '',
+    aiGenerated: false,
+  };
+}
 
 const LIFECYCLE_EVENTS = new Set<string>([
   'PARTNER_ADDED',
@@ -106,6 +237,7 @@ export class WhatsappWebhookService {
     private readonly store: MessageStoreService,
     private readonly gateway: WhatsappGateway,
     private readonly ai: WhatsappAiService,
+    private readonly redis: RedisService,
     @InjectQueue(WA_WEBHOOK_EVENTS_QUEUE)
     private readonly webhookQueue: Queue<WaWebhookJobData>,
   ) {}
@@ -172,7 +304,7 @@ export class WhatsappWebhookService {
         try {
           if (VERBOSE_WEBHOOK_LOGS) {
             this.logger.log(
-              `Webhook change received: field=${change.field ?? 'none'} waba=${entry.id ?? 'none'}`,
+              `Webhook change received: field=${change.field ?? 'none'} entry=${entry.id ?? 'none'}`,
             );
           }
           await this.dispatchValue(
@@ -209,18 +341,24 @@ export class WhatsappWebhookService {
   private async dispatchValue(
     value: WebhookValue,
     field?: string,
-    wabaId?: string,
+    entryId?: string,
     entryTime?: number,
     isRetryAttempt = false,
   ): Promise<void> {
     // account_update has no phone_number_id, so it must branch off before the guard below.
     if (field === 'account_update') {
-      const seconds = Number(entryTime);
-      const eventAt =
-        Number.isFinite(seconds) && seconds > 0
-          ? new Date(seconds * 1000)
-          : new Date();
-      await this.handleAccountUpdate(value, wabaId, eventAt);
+      await this.handleAccountUpdate(value, entryId, parseEpochDate(entryTime));
+      return;
+    }
+
+    if (field === 'history' || field === 'smb_message_echoes') {
+      const connection = await this.resolveConnection(
+        value.metadata?.phone_number_id,
+        entryId,
+      );
+      if (!connection) return;
+      if (field === 'history') await this.persistHistory(connection, value);
+      else await this.persistEchoes(connection, value, isRetryAttempt);
       return;
     }
 
@@ -238,27 +376,8 @@ export class WhatsappWebhookService {
       return;
     }
 
-    // FLAGGED breaks outbound only and Meta keeps delivering inbound, so it is kept here.
-    const connection = await this.connections.findOne({
-      where: [
-        { phoneNumberId, status: WhatsappConnectionStatus.CONNECTED },
-        { phoneNumberId, status: WhatsappConnectionStatus.FLAGGED },
-      ],
-    });
-    if (!connection) {
-      this.logger.warn(
-        `Webhook for unknown or disconnected phone_number_id ${phoneNumberId}`,
-      );
-      return;
-    }
-
-    // A WABA mismatch would route messages to the wrong tenant, so it is rejected outright.
-    if (wabaId && connection.wabaId !== wabaId) {
-      this.logger.error(
-        `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
-      );
-      return;
-    }
+    const connection = await this.resolveConnection(phoneNumberId, entryId);
+    if (!connection) return;
 
     // Both branches run even if one throws, so a status failure can't cost the messages too.
     let firstError: Error | null = null;
@@ -285,13 +404,425 @@ export class WhatsappWebhookService {
     if (firstError) throw firstError;
   }
 
+  private async resolveConnection(
+    phoneNumberId: string | undefined,
+    wabaId: string | undefined,
+  ): Promise<WhatsappConnection | null> {
+    if (!phoneNumberId) return null;
+    // FLAGGED breaks outbound only and Meta keeps delivering inbound, so it is kept here.
+    const connection = await this.connections.findOne({
+      where: [
+        { phoneNumberId, status: WhatsappConnectionStatus.CONNECTED },
+        { phoneNumberId, status: WhatsappConnectionStatus.FLAGGED },
+      ],
+    });
+    if (!connection) {
+      this.logger.warn(
+        `Webhook for unknown or disconnected phone_number_id ${phoneNumberId}`,
+      );
+      return null;
+    }
+
+    // A WABA mismatch would route messages to the wrong tenant, so it is rejected outright.
+    if (wabaId && connection.wabaId !== wabaId) {
+      this.logger.error(
+        `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
+      );
+      return null;
+    }
+    return connection;
+  }
+
+  // Stored passively: never unread and never reaches the AI; a customer message under 24h old still opens the reply window.
+  private async persistHistory(
+    connection: WhatsappConnection,
+    value: WebhookValue,
+  ): Promise<void> {
+    const requestedAt = connection.historySyncRequestedAt?.getTime();
+    if (!requestedAt || Date.now() - requestedAt > HISTORY_ACCEPT_WINDOW_MS) {
+      this.logger.warn(
+        `Ignoring history for connection ${connection.id}: no recent history request`,
+      );
+      return;
+    }
+
+    const chunks = value.history ?? [];
+    const errors = [
+      ...(value.errors ?? []),
+      ...chunks.flatMap((chunk) => chunk.errors ?? []),
+    ];
+    if (errors.some((error) => String(error.code) === HISTORY_DECLINED_CODE)) {
+      await this.recordHistorySync(
+        connection,
+        WhatsappHistorySyncStatus.DECLINED,
+        null,
+      );
+      return;
+    }
+
+    let firstError: Error | null = null;
+    let progress: number | null = null;
+    for (const chunk of chunks) {
+      for (const thread of chunk.threads ?? []) {
+        const threadError = await this.persistHistoryThread(connection, thread);
+        firstError = firstError ?? threadError;
+      }
+      const chunkProgress = Number(chunk.metadata?.progress);
+      if (Number.isFinite(chunkProgress)) {
+        progress = Math.max(progress ?? 0, Math.min(chunkProgress, 100));
+      }
+    }
+
+    // A chunk with a failed thread is retried whole, so its progress waits for that retry.
+    if (firstError) throw firstError;
+    if (progress !== null) {
+      await this.recordHistorySync(
+        connection,
+        historyStatusFor(progress),
+        progress,
+      );
+    }
+  }
+
+  private async persistHistoryThread(
+    connection: WhatsappConnection,
+    thread: { id?: string; messages?: CloudMessage[] },
+  ): Promise<Error | null> {
+    const chatId = thread.id;
+    if (!chatId) return null;
+    const items: HistoryMessage[] = [];
+    for (const message of thread.messages ?? []) {
+      const body = resolveStorableBody(message);
+      const timestamp = parseEpochSeconds(message.timestamp);
+      if (!message.id || !body || !timestamp) continue;
+      const evt = buildCloudWaMessage({
+        id: message.id,
+        chatId,
+        senderId: message.from ?? '',
+        body,
+        mediaType: message.type ?? 'text',
+        fromMe: isHistoryMessageFromBusiness(message, chatId),
+        timestamp,
+        originUserId: connection.userId,
+      });
+      const status = evt.fromMe ? historyMessageStatus(message) : null;
+      items.push({
+        msg: evt,
+        ...(status ? { status, statusAt: new Date(timestamp * 1000) } : {}),
+      });
+    }
+    if (items.length === 0) return null;
+
+    let insertedIds: string[];
+    try {
+      insertedIds = await this.store.addHistoryMessages(
+        connection.companyId,
+        connection.userId,
+        connection.phoneNumberId,
+        items,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to persist history thread ${chatId}`,
+        errorMessage(err, true),
+      );
+      return toError(err);
+    }
+
+    let firstError: Error | null = null;
+    for (const waMessageId of insertedIds) {
+      try {
+        await this.applyPendingChange(connection, waMessageId);
+      } catch (err) {
+        firstError = firstError ?? toError(err);
+        this.logger.error(
+          `Failed to apply pending change for history message ${waMessageId}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    return firstError;
+  }
+
+  // Progress only moves forward and a decline never overwrites complete, since Meta does not guarantee order.
+  private async recordHistorySync(
+    connection: WhatsappConnection,
+    status: WhatsappHistorySyncStatus,
+    progress: number | null,
+  ): Promise<void> {
+    const where =
+      progress === null
+        ? {
+            id: connection.id,
+            historySyncStatus: Or(
+              IsNull(),
+              Not(WhatsappHistorySyncStatus.COMPLETE),
+            ),
+          }
+        : {
+            id: connection.id,
+            historySyncProgress: Or(IsNull(), LessThan(progress)),
+          };
+    const result = await this.connections.update(where, {
+      historySyncStatus: status,
+      historySyncProgress: progress,
+    });
+    if ((result.affected ?? 0) === 0) return;
+    try {
+      this.gateway.emitHistory(connection.userId, { status, progress });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push history sync state for user ${connection.userId}`,
+        errorMessage(err, true),
+      );
+    }
+  }
+
+  // Replies, edits and deletes made in the WhatsApp Business app; a new reply pauses the AI.
+  private async persistEchoes(
+    connection: WhatsappConnection,
+    value: WebhookValue,
+    isRetryAttempt = false,
+  ): Promise<void> {
+    let firstError: Error | null = null;
+    for (const echo of value.message_echoes ?? []) {
+      try {
+        if (echo.type === 'revoke') {
+          await this.applyEchoRevoke(connection, echo);
+        } else if (echo.type === 'edit') {
+          await this.applyEchoEdit(connection, echo);
+        } else {
+          await this.persistEchoReply(connection, echo, isRetryAttempt);
+        }
+      } catch (err) {
+        firstError = firstError ?? toError(err);
+        this.logger.error(
+          `Failed to process WhatsApp echo ${echo.id ?? 'unknown'}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    if (firstError) throw firstError;
+  }
+
+  private async applyEchoRevoke(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+  ): Promise<void> {
+    const originalId = echo.revoke?.original_message_id;
+    if (!originalId) return;
+    await this.changeOrPark(connection, originalId, {
+      kind: 'revoke',
+      at: parseEpochDate(echo.timestamp).getTime(),
+      fromMe: true,
+    });
+  }
+
+  private async applyEchoEdit(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+  ): Promise<void> {
+    const originalId = echo.edit?.original_message_id;
+    const body = resolveStorableBody(echo.edit?.message);
+    if (!originalId || !body) return;
+    await this.changeOrPark(connection, originalId, {
+      kind: 'edit',
+      body,
+      at: parseEpochDate(echo.timestamp).getTime(),
+      fromMe: true,
+    });
+  }
+
+  // A customer delete (Coexistence) or edit; it can only touch the customer's own messages.
+  private async applyInboundChange(
+    connection: WhatsappConnection,
+    message: CloudMessage,
+  ): Promise<void> {
+    const at = parseEpochDate(message.timestamp).getTime();
+    if (message.type === 'revoke') {
+      const originalId = message.revoke?.original_message_id;
+      if (!originalId) return;
+      await this.changeOrPark(connection, originalId, {
+        kind: 'revoke',
+        at,
+        fromMe: false,
+      });
+      return;
+    }
+    const originalId = message.edit?.original_message_id;
+    const body = resolveStorableBody(message.edit?.message);
+    if (!originalId || !body) return;
+    await this.changeOrPark(connection, originalId, {
+      kind: 'edit',
+      body,
+      at,
+      fromMe: false,
+    });
+  }
+
+  private async changeOrPark(
+    connection: WhatsappConnection,
+    originalId: string,
+    change: MessageChange,
+  ): Promise<void> {
+    const isApplied = await this.applyMessageChange(
+      connection,
+      originalId,
+      change,
+    );
+    if (!isApplied) {
+      await this.parkIfOriginalMissing(connection, originalId, change);
+    }
+  }
+
+  private async applyMessageChange(
+    connection: WhatsappConnection,
+    waMessageId: string,
+    change: MessageChange,
+  ): Promise<boolean> {
+    const { companyId, userId } = connection;
+    const at = new Date(change.at);
+    let isApplied = false;
+    if (change.kind === 'revoke') {
+      isApplied = await this.store.markDeleted(
+        companyId,
+        userId,
+        waMessageId,
+        at,
+        change.fromMe,
+      );
+    } else if (change.body) {
+      isApplied = await this.store.applyEdit(
+        companyId,
+        userId,
+        waMessageId,
+        change.body,
+        at,
+        change.fromMe,
+      );
+    }
+    if (isApplied) await this.pushUpdatedMessage(connection, waMessageId);
+    return isApplied;
+  }
+
+  // The open chat merges body, editedAt and deletedAt into the row it already shows.
+  private async pushUpdatedMessage(
+    connection: WhatsappConnection,
+    waMessageId: string,
+  ): Promise<void> {
+    try {
+      const updated = await this.store.getMessage(
+        connection.companyId,
+        connection.userId,
+        waMessageId,
+      );
+      if (updated) this.gateway.emitMessage(connection.userId, updated);
+    } catch (err) {
+      this.logger.error(
+        `Failed to push the updated WhatsApp message ${waMessageId}`,
+        errorMessage(err, true),
+      );
+    }
+  }
+
+  private pendingChangeKey(
+    connection: WhatsappConnection,
+    originalId: string,
+  ): string {
+    return `wa:msg:pending:${connection.companyId}:${connection.userId}:${originalId}`;
+  }
+
+  // Envelopes run concurrently, so a change can beat its original; it waits here instead of failing the job.
+  private async parkIfOriginalMissing(
+    connection: WhatsappConnection,
+    originalId: string,
+    change: MessageChange,
+  ): Promise<void> {
+    const isStored = await this.store.hasMessage(
+      connection.companyId,
+      connection.userId,
+      originalId,
+    );
+    if (isStored) return;
+    const key = this.pendingChangeKey(connection, originalId);
+    const current = await this.redis.getJson<MessageChange>(key);
+    // A delete outranks any edit; between edits the newer one wins.
+    if (current?.kind === 'revoke') return;
+    if (current && change.kind === 'edit' && current.at >= change.at) return;
+    await this.redis.setJson(key, change, PENDING_CHANGE_TTL_MS);
+    // Closes the gap where the original landed between the check above and the park.
+    const isStoredNow = await this.store.hasMessage(
+      connection.companyId,
+      connection.userId,
+      originalId,
+    );
+    if (isStoredNow) await this.applyPendingChange(connection, originalId);
+  }
+
+  private async applyPendingChange(
+    connection: WhatsappConnection,
+    waMessageId: string,
+  ): Promise<void> {
+    const key = this.pendingChangeKey(connection, waMessageId);
+    const pending = await this.redis.getJson<MessageChange>(key);
+    if (!pending) return;
+    await this.applyMessageChange(connection, waMessageId, pending);
+    await this.redis.del(key);
+  }
+
+  private async persistEchoReply(
+    connection: WhatsappConnection,
+    echo: CloudMessage,
+    isRetryAttempt: boolean,
+  ): Promise<void> {
+    const { companyId, userId } = connection;
+    const body = resolveStorableBody(echo);
+    const timestamp = parseEpochSeconds(echo.timestamp);
+    if (!echo.id || !echo.to || !body || !timestamp) return;
+    const evt = buildCloudWaMessage({
+      id: echo.id,
+      chatId: echo.to,
+      senderId: echo.from ?? '',
+      body,
+      mediaType: echo.type ?? 'text',
+      fromMe: true,
+      timestamp,
+      originUserId: userId,
+    });
+    const { inserted } = await this.store.addMessage(
+      companyId,
+      userId,
+      evt,
+      connection.phoneNumberId,
+    );
+    // Only our own retry may redo the AI pause for a stored echo; a Meta redelivery must not.
+    if (!inserted && !isRetryAttempt) return;
+    if (inserted) {
+      try {
+        this.gateway.emitMessage(userId, evt);
+      } catch (err) {
+        this.logger.error(
+          `Failed to push echoed WhatsApp message ${evt.id}`,
+          errorMessage(err, true),
+        );
+      }
+    }
+    // After the push, so the parked change reaches the UI as an update; our retry redoes it.
+    await this.applyPendingChange(connection, evt.id);
+    await this.ai.recordHumanReply(userId, evt.chatId, timestamp * 1000);
+  }
+
   // Mapping is explicit; an unrecognised event changes nothing so guessing never loses a number.
   private async handleAccountUpdate(
     value: WebhookValue,
-    wabaId: string | undefined,
+    entryId: string | undefined,
     eventAt: Date,
   ): Promise<void> {
     const event = value.event;
+    const wabaId = value.waba_info?.waba_id ?? entryId;
+    this.logger.log(
+      `account_update ${event ?? 'none'}: entry=${entryId ?? 'none'} waba=${wabaId ?? 'none'} phone=${value.phone_number ?? 'none'}`,
+    );
     if (!wabaId || !event) {
       this.logger.warn('account_update with no WABA id or no event; ignored');
       return;
@@ -343,6 +874,10 @@ export class WhatsappWebhookService {
             },
           );
           if (ignoredAsStale(result)) return;
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.CONNECTED,
+          );
         }
         this.logger.log(
           `account_update PARTNER_ADDED for WABA ${wabaId} (${connection.phoneNumberId})`,
@@ -361,6 +896,10 @@ export class WhatsappWebhookService {
           },
         );
         if (ignoredAsStale(result)) return;
+        this.pushConnectionChange(
+          connection,
+          WhatsappConnectionStatus.DISCONNECTED,
+        );
         this.logger.warn(
           `WhatsApp connection ${connection.phoneNumberId} disconnected by Meta: ${reason}`,
         );
@@ -381,6 +920,10 @@ export class WhatsappWebhookService {
           },
         );
         if (result.affected) {
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.FLAGGED,
+          );
           this.logger.warn(
             `WhatsApp connection ${connection.phoneNumberId} offboarded; awaiting ACCOUNT_RECONNECTED`,
           );
@@ -415,6 +958,10 @@ export class WhatsappWebhookService {
           },
         );
         if (result.affected) {
+          this.pushConnectionChange(
+            connection,
+            WhatsappConnectionStatus.CONNECTED,
+          );
           this.logger.log(
             `WhatsApp connection ${connection.phoneNumberId} reconnected`,
           );
@@ -429,6 +976,21 @@ export class WhatsappWebhookService {
         this.logger.warn(
           `Unhandled account_update event "${event}" for WABA ${wabaId}; no status changed`,
         );
+    }
+  }
+
+  // A live push failure is log-only; the status is already stored.
+  private pushConnectionChange(
+    connection: WhatsappConnection,
+    status: WhatsappConnectionStatus,
+  ): void {
+    try {
+      this.gateway.emitConnection(connection.userId, { status });
+    } catch (err) {
+      this.logger.error(
+        `Failed to push connection status ${status} for user ${connection.userId}`,
+        errorMessage(err, true),
+      );
     }
   }
 
@@ -491,11 +1053,7 @@ export class WhatsappWebhookService {
           continue;
         }
         const mapped = value as WhatsappMessageStatus;
-        const seconds = Number(status.timestamp);
-        const statusAt =
-          Number.isFinite(seconds) && seconds > 0
-            ? new Date(seconds * 1000)
-            : new Date();
+        const statusAt = parseEpochDate(status.timestamp);
         const failureCode = status.errors?.[0]?.code;
         const errorCode =
           mapped === WhatsappMessageStatus.FAILED && failureCode != null
@@ -557,37 +1115,42 @@ export class WhatsappWebhookService {
     for (const message of messages) {
       // One poisoned message must not cost us the rest of the batch.
       try {
+        if (message.type === 'revoke' || message.type === 'edit') {
+          try {
+            await this.applyInboundChange(connection, message);
+          } catch (err) {
+            firstError = firstError ?? toError(err);
+            this.logger.error(
+              `Failed to apply the customer change ${message.id ?? 'unknown'}`,
+              errorMessage(err, true),
+            );
+          }
+          continue;
+        }
         if (message.type !== 'text' || !message.id || !message.from) continue;
         const body = message.text?.body ?? '';
         if (!body.trim()) continue;
 
         // Cloud API sends seconds; handleIncomingMessage compares against seconds.
-        const timestamp = Number(message.timestamp);
-        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+        const timestamp = parseEpochSeconds(message.timestamp);
+        if (!timestamp) {
           this.logger.warn(
             `Skipping message ${message.id} with a missing or non-numeric timestamp`,
           );
           continue;
         }
 
-        const evt: WaMessage = {
+        const evt = buildCloudWaMessage({
           id: message.id,
           chatId: message.from,
           senderId: message.from,
           senderName: names.get(message.from) ?? '',
-          chatName: names.get(message.from) ?? '',
-          isGroup: false,
           body,
-          hasMedia: false,
           mediaType: 'text',
-          mediaUrls: [],
-          mentionedIds: [],
-          quotedParticipant: '',
           fromMe: false,
-          aiGenerated: false,
           timestamp,
           originUserId: connection.userId,
-        };
+        });
 
         // Persist first; a store failure propagates for BullMQ retry.
         let firstDelivery: boolean;
@@ -632,6 +1195,26 @@ export class WhatsappWebhookService {
             );
           }
         }
+        // Runs on our retry too, so a failed apply is not lost once the row exists.
+        let current: WaMessage | null;
+        try {
+          await this.applyPendingChange(connection, evt.id);
+          current = await this.store.getMessage(
+            connection.companyId,
+            connection.userId,
+            evt.id,
+          );
+        } catch (err) {
+          firstError = firstError ?? toError(err);
+          this.logger.error(
+            `Failed to apply a parked change to ${evt.id}`,
+            errorMessage(err, true),
+          );
+          continue;
+        }
+        // Read back so a customer delete or edit that already landed is what the AI sees.
+        if (current?.deletedAt) continue;
+        const aiEvt = current ? { ...evt, body: current.body } : evt;
         // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
         if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
           this.logger.debug(
@@ -641,7 +1224,7 @@ export class WhatsappWebhookService {
         }
         try {
           await this.ai.handleIncomingMessage(
-            evt,
+            aiEvt,
             connection.companyId,
             connection.userId,
           );
@@ -653,7 +1236,7 @@ export class WhatsappWebhookService {
           );
         }
       } catch (err) {
-        // Unexpected per-message failure is log-only; the message is already stored.
+        // Unexpected per-message failure is log-only.
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
           errorMessage(err, true),

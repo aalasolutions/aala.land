@@ -1128,6 +1128,38 @@ describe('WhatsappAiService', () => {
     });
   });
 
+  describe('recordHumanReply ordering', () => {
+    const humanKey = 'wa:ai:human:u1:c1';
+    let redis: ReturnType<typeof makeMockRedis>;
+
+    beforeEach(() => {
+      redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+    });
+
+    it('keeps the newer human reply when an older one is replayed', async () => {
+      const now = Date.now();
+      await service.recordHumanReply('u1', 'c1', now - 1000);
+      await service.recordHumanReply('u1', 'c1', now - 5000);
+
+      expect(await redis.getNumber(humanKey)).toBe(now - 1000);
+    });
+
+    it('clamps a phone clock running ahead to now', async () => {
+      const now = Date.now();
+      await service.recordHumanReply('u1', 'c1', now + 60_000);
+
+      expect(await redis.getNumber(humanKey)).toBeLessThanOrEqual(Date.now());
+    });
+  });
+
   describe('handleIncomingMessage with LLM', () => {
     beforeEach(() => {
       process.env.OLLAMA_API_KEY = 'test-key';

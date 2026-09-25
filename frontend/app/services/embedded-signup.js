@@ -17,6 +17,14 @@ const SESSION_INFO_TIMEOUT_MS = 20 * 1000;
 // A script that neither loads nor errors must not wedge the button forever.
 const SDK_LOAD_TIMEOUT_MS = 20 * 1000;
 
+const COEXISTENCE_FINISH = 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+
+const FINISH_EVENTS = new Set([
+  'FINISH',
+  'FINISH_ONLY_WABA',
+  COEXISTENCE_FINISH,
+]);
+
 class SignupCancelled extends Error {
   constructor(step) {
     super(
@@ -120,6 +128,7 @@ export default class EmbeddedSignupService extends Service {
           code,
           wabaId: sessionInfo.wabaId,
           phoneNumberId: sessionInfo.phoneNumberId,
+          isCoexistence: sessionInfo.isCoexistence,
         });
       };
 
@@ -135,8 +144,9 @@ export default class EmbeddedSignupService extends Service {
         }
         if (payload?.type !== 'WA_EMBEDDED_SIGNUP') return;
 
+        // Meta sends the event name top-level; only the ids and step details sit under data.
         const data = payload.data ?? {};
-        if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
+        if (FINISH_EVENTS.has(payload.event)) {
           if (!data.waba_id || !data.phone_number_id) {
             settle(
               reject,
@@ -147,15 +157,22 @@ export default class EmbeddedSignupService extends Service {
           sessionInfo = {
             wabaId: data.waba_id,
             phoneNumberId: data.phone_number_id,
+            isCoexistence: payload.event === COEXISTENCE_FINISH,
           };
           maybeResolve();
           return;
         }
-        if (data.event === 'CANCEL') {
-          settle(reject, new SignupCancelled(data.current_step));
+        // Meta also reports user-facing errors as CANCEL, carrying error_message.
+        if (payload.event === 'CANCEL') {
+          settle(
+            reject,
+            data.error_message
+              ? new Error(data.error_message)
+              : new SignupCancelled(data.current_step),
+          );
           return;
         }
-        if (data.event === 'ERROR') {
+        if (payload.event === 'ERROR') {
           settle(
             reject,
             new Error(data.error_message ?? 'Meta reported a signup error'),

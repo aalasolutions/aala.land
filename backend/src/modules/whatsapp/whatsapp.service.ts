@@ -1,13 +1,14 @@
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MessageStoreService } from './message-store.service';
+import { MessageStoreService, REPLY_WINDOW_S } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import {
@@ -18,6 +19,7 @@ import {
   WhatsappConnection,
   WhatsappConnectionStatus,
 } from './entities/whatsapp-connection.entity';
+import { WhatsappChat } from './entities/whatsapp-chat.entity';
 import {
   AiCreditUsageWithAgents,
   AiHistoryMessage,
@@ -29,6 +31,9 @@ import {
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
 
+const REPLY_WINDOW_CLOSED_MESSAGE =
+  'The 24-hour reply window is closed. The customer must message first.';
+
 @Injectable()
 export class WhatsappService {
   private readonly logger = new Logger(WhatsappService.name);
@@ -36,6 +41,8 @@ export class WhatsappService {
   constructor(
     @InjectRepository(WhatsappConnection)
     private readonly connections: Repository<WhatsappConnection>,
+    @InjectRepository(WhatsappChat)
+    private readonly chats: Repository<WhatsappChat>,
     private readonly store: MessageStoreService,
     private readonly ai: WhatsappAiService,
     private readonly gateway: WhatsappGateway,
@@ -57,6 +64,8 @@ export class WhatsappService {
         ? row.disconnectedAt.toISOString()
         : null,
       disconnectReason: row.disconnectReason ?? null,
+      historySyncStatus: row.historySyncStatus ?? null,
+      historySyncProgress: row.historySyncProgress ?? null,
     };
   }
 
@@ -150,6 +159,9 @@ export class WhatsappService {
       );
     }
 
+    // Checked before the AI pause so a send refused here leaves the AI state untouched.
+    await this.assertReplyWindowOpen(companyId, userId, chatId);
+
     // Cancels any queued AI turn first so it can't fire after the human spoke; a failed send below then leaves it off.
     await this.ai.recordHumanReply(userId, chatId);
 
@@ -158,6 +170,9 @@ export class WhatsappService {
       sent = await this.cloud.sendText(connection, chatId, body);
     } catch (err) {
       if (!(err instanceof WhatsappSendError)) throw err;
+      if (err.windowClosed) {
+        throw new ConflictException(REPLY_WINDOW_CLOSED_MESSAGE);
+      }
       if (err.needsReconnect) {
         throw new ServiceUnavailableException(
           'This WhatsApp connection needs reconnecting; the message was not sent',
@@ -206,6 +221,21 @@ export class WhatsappService {
     }
     this.gateway.emitMessage(userId, msg);
     return msg;
+  }
+
+  private async assertReplyWindowOpen(
+    companyId: string,
+    userId: string,
+    chatId: string,
+  ): Promise<void> {
+    const chat = await this.chats.findOne({
+      where: { companyId, userId, chatId },
+      select: { id: true, lastInboundAt: true },
+    });
+    const lastInboundAt = chat?.lastInboundAt?.getTime();
+    if (!lastInboundAt || Date.now() - lastInboundAt >= REPLY_WINDOW_S * 1000) {
+      throw new ConflictException(REPLY_WINDOW_CLOSED_MESSAGE);
+    }
   }
 
   getAiConfig(companyId: string) {

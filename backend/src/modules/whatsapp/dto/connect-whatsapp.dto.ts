@@ -1,6 +1,13 @@
 // backend/src/modules/whatsapp/dto/connect-whatsapp.dto.ts
-import { IsString, IsNotEmpty, Matches, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 const trimmed = ({ value }: { value: unknown }) =>
@@ -41,4 +48,12 @@ export class ConnectWhatsappDto {
     message: 'phoneNumberId must be a numeric Meta node id',
   })
   phoneNumberId: string;
+
+  // Only a WhatsApp Business app onboarding has chat history to sync.
+  @ApiPropertyOptional({
+    description: 'True when Embedded Signup finished a Coexistence onboarding',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isCoexistence?: boolean;
 }

@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import { Not } from 'typeorm';
 import {
   WhatsappCloudApiService,
   WhatsappSendError,
@@ -25,7 +26,11 @@ describe('WhatsappCloudApiService', () => {
   let service: WhatsappCloudApiService;
   let connections: { findOne: jest.Mock; update: jest.Mock };
   let store: { addMessage: jest.Mock };
-  let gateway: { emitMessage: jest.Mock; emitAi: jest.Mock };
+  let gateway: {
+    emitMessage: jest.Mock;
+    emitAi: jest.Mock;
+    emitConnection: jest.Mock;
+  };
   let ai: { getCreditUsage: jest.Mock };
   let encryption: EncryptionService;
   let fetchMock: jest.Mock;
@@ -48,7 +53,11 @@ describe('WhatsappCloudApiService', () => {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     store = { addMessage: jest.fn().mockResolvedValue(undefined) };
-    gateway = { emitMessage: jest.fn(), emitAi: jest.fn() };
+    gateway = {
+      emitMessage: jest.fn(),
+      emitAi: jest.fn(),
+      emitConnection: jest.fn(),
+    };
     ai = { getCreditUsage: jest.fn() };
     fetchMock = jest.fn();
     jest.spyOn(global, 'fetch').mockImplementation(fetchMock as any);
@@ -186,6 +195,35 @@ describe('WhatsappCloudApiService', () => {
       expect(connections.update).not.toHaveBeenCalled();
     });
 
+    it('marks a Graph 131047 as a closed reply window without flagging', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      fetchMock.mockResolvedValue(
+        graphError(400, 131047, 'Re-engagement message'),
+      );
+
+      const err = (await service
+        .sendText(connection, '+923001234567', 'hello')
+        .catch((e: unknown) => e)) as WhatsappSendError;
+
+      expect(err).toBeInstanceOf(WhatsappSendError);
+      expect(err.graphCode).toBe(131047);
+      expect(err.windowClosed).toBe(true);
+      expect(err.needsReconnect).toBeFalsy();
+      expect(connections.update).not.toHaveBeenCalled();
+    });
+
+    it('does not read other Graph failures as a closed window', () => {
+      expect(
+        new WhatsappSendError('Cloud API send failed 400', 400, 131042)
+          .windowClosed,
+      ).toBe(false);
+      expect(new WhatsappSendError('Cloud API send error').windowClosed).toBe(
+        false,
+      );
+    });
+
     it('throws and flags the connection on a 401', async () => {
       jest
         .spyOn((service as any).logger, 'error')
@@ -199,8 +237,48 @@ describe('WhatsappCloudApiService', () => {
       ).rejects.toBeInstanceOf(WhatsappSendError);
 
       expect(connections.update).toHaveBeenCalledWith(
-        { id: 'conn-1' },
+        { id: 'conn-1', status: Not('flagged') },
         { status: 'flagged', disconnectReason: 'token_invalid_190' },
+      );
+      expect(gateway.emitConnection).toHaveBeenCalledWith('user-1', {
+        status: 'flagged',
+      });
+    });
+
+    it('does not push a connection update when the row was already flagged', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      connections.update.mockResolvedValue({ affected: 0 });
+      fetchMock.mockResolvedValue(
+        graphError(401, 190, 'Error validating access token'),
+      );
+
+      await expect(
+        service.sendText(connection, '+923001234567', 'hello'),
+      ).rejects.toBeInstanceOf(WhatsappSendError);
+
+      expect(gateway.emitConnection).not.toHaveBeenCalled();
+    });
+
+    it('still rejects with the send error when the connection push fails', async () => {
+      const error = jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      gateway.emitConnection.mockImplementation(() => {
+        throw new Error('socket down');
+      });
+      fetchMock.mockResolvedValue(
+        graphError(401, 190, 'Error validating access token'),
+      );
+
+      await expect(
+        service.sendText(connection, '+923001234567', 'hello'),
+      ).rejects.toBeInstanceOf(WhatsappSendError);
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to push connection status'),
+        expect.stringContaining('socket down'),
       );
     });
 
