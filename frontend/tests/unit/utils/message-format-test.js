@@ -92,6 +92,38 @@ module('Unit | Utility | message-format', function () {
     ]);
   });
 
+  test('an italic link stays a link', function (assert) {
+    for (const url of ['https://x.co', 'www.x.com']) {
+      const [node] = parseMessageText(`_${url}_`);
+      assert.strictEqual(node.type, 'italic', url);
+      assert.strictEqual(node.children[0].type, 'link', url);
+      assert.strictEqual(node.children[0].value, url, url);
+    }
+  });
+
+  test('a link inside code stays plain text', function (assert) {
+    assert.deepEqual(parseMessageText('`https://x.co/a`'), [
+      { type: 'code', value: 'https://x.co/a' },
+    ]);
+  });
+
+  test('letters with diacritics or outside the basic plane are word edges', function (assert) {
+    for (const plain of ['كَتَبَ*x*', 'नमस्ते*x*', '𠀀*x*']) {
+      assert.deepEqual(parseMessageText(plain), [text(plain)], plain);
+    }
+  });
+
+  test('crafted unclosed markers and links parse in linear time', function (assert) {
+    const crafted = ' *a _a https://a.co/_a_a '.repeat(700);
+    const started = performance.now();
+    const nodes = parseMessageText(crafted);
+    assert.true(
+      performance.now() - started < 100,
+      'under 100 ms for 17K chars',
+    );
+    assert.true(nodes.some((node) => node.type === 'link'));
+  });
+
   test('works in right-to-left text', function (assert) {
     assert.deepEqual(parseMessageText('مرحبا *أهلا*'), [
       text('مرحبا '),

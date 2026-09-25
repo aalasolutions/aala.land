@@ -2,117 +2,141 @@ import { splitMessageLinks } from 'land/utils/message-links';
 
 const EMPHASIS = { '*': 'bold', _: 'italic', '~': 'strike', '`': 'code' };
 const FENCE = '```';
-const WORD_CHAR = /[\p{L}\p{N}]/u;
+const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
 const SPACE = /\s/;
+
+// Whole code points, so a letter outside the basic plane still counts as a word edge.
+function charBefore(text, index) {
+  const code = text.charCodeAt(index - 1);
+  return code >= 0xdc00 && code <= 0xdfff && index >= 2
+    ? text.slice(index - 2, index)
+    : text[index - 1];
+}
+
+function charAfter(text, index) {
+  const code = text.codePointAt(index + 1);
+  return code === undefined ? undefined : String.fromCodePoint(code);
+}
 
 function isWordChar(char) {
   return char !== undefined && WORD_CHAR.test(char);
 }
 
-// Links are atomic: a marker inside a URL never formats, and a span never cuts a link in half.
-function linkRanges(text) {
-  const ranges = [];
+// Links are atomic, so a marker inside a URL never formats; linkIndex maps each character to its link or -1.
+function indexLinks(text) {
+  const links = [];
+  const linkIndex = new Int32Array(text.length).fill(-1);
   let offset = 0;
   for (const part of splitMessageLinks(text)) {
+    const end = offset + part.value.length;
     if (part.isLink) {
-      ranges.push({ start: offset, end: offset + part.value.length, part });
+      linkIndex.fill(links.length, offset, end);
+      links.push({ end, part });
     }
-    offset += part.value.length;
+    offset = end;
   }
-  return ranges;
+  return { text, links, linkIndex };
 }
 
-function linkAt(links, index) {
-  return links.find((link) => index >= link.start && index < link.end);
+function linkAt(ctx, index) {
+  const at = ctx.linkIndex[index];
+  return at >= 0 ? ctx.links[at] : null;
 }
 
-function cutsLink(links, start, end) {
-  return links.some(
-    (link) =>
-      link.start < end &&
-      link.end > start &&
-      (link.start < start || link.end > end),
-  );
-}
-
-function pushPlain(nodes, text, start, end, links) {
+function pushPlain(ctx, nodes, start, end) {
   let cursor = start;
-  for (const link of links) {
-    if (link.end <= start || link.start >= end) continue;
-    if (link.start > cursor) {
-      nodes.push({ type: 'text', value: text.slice(cursor, link.start) });
+  for (let i = start; i < end; i++) {
+    const link = linkAt(ctx, i);
+    if (!link) continue;
+    if (i > cursor) {
+      nodes.push({ type: 'text', value: ctx.text.slice(cursor, i) });
     }
     const { value, href, host } = link.part;
     nodes.push({ type: 'link', value, href, host });
     cursor = link.end;
+    i = link.end - 1;
   }
   if (end > cursor) {
-    nodes.push({ type: 'text', value: text.slice(cursor, end) });
+    nodes.push({ type: 'text', value: ctx.text.slice(cursor, end) });
   }
 }
 
-function fenceEnd(text, start, end, links) {
-  if (!text.startsWith(FENCE, start)) return -1;
-  const close = text.indexOf(FENCE, start + FENCE.length + 1);
-  if (close < 0 || close + FENCE.length > end) return -1;
-  return cutsLink(links, start, close + FENCE.length) ? -1 : close;
+function fenceEnd(ctx, start, end) {
+  if (!ctx.text.startsWith(FENCE, start)) return { close: -1 };
+  const close = ctx.text.indexOf(FENCE, start + FENCE.length + 1);
+  return close >= 0 && close + FENCE.length <= end
+    ? { close }
+    : { close: -1, scannedTo: end };
 }
 
 // WhatsApp's rule: markers hug the text and sit at word edges, so 2*3*4 and snake_case stay plain.
-function emphasisEnd(text, start, end, links) {
+function emphasisEnd(ctx, start, end) {
+  const { text } = ctx;
   const marker = text[start];
   const first = text[start + 1];
-  if (isWordChar(text[start - 1])) return -1;
-  if (start + 1 >= end || SPACE.test(first) || first === marker) return -1;
-  for (let i = start + 2; i < end; i++) {
-    const char = text[i];
-    if (char === '\n') return -1;
-    if (char !== marker || linkAt(links, i)) continue;
-    if (SPACE.test(text[i - 1]) || isWordChar(text[i + 1])) continue;
-    return cutsLink(links, start, i + 1) ? -1 : i;
+  if (isWordChar(charBefore(text, start))) return { close: -1 };
+  if (start + 1 >= end || SPACE.test(first) || first === marker) {
+    return { close: -1 };
   }
-  return -1;
+  let i = start + 2;
+  for (; i < end; i++) {
+    const char = text[i];
+    if (char === '\n') break;
+    if (char !== marker || linkAt(ctx, i)) continue;
+    if (SPACE.test(text[i - 1]) || isWordChar(charAfter(text, i))) continue;
+    return { close: i };
+  }
+  return { close: -1, scannedTo: i };
 }
 
-function parseRange(text, start, end, links) {
+function parseRange(ctx, start, end) {
   const nodes = [];
+  // A failed closing search is remembered per marker: any later opener before that point fails the same way.
+  const scanned = {};
   let plainStart = start;
   let i = start;
   while (i < end) {
-    const link = linkAt(links, i);
+    const link = linkAt(ctx, i);
     if (link) {
       i = link.end;
       continue;
     }
-    const fence = fenceEnd(text, i, end, links);
-    if (fence >= 0) {
-      pushPlain(nodes, text, plainStart, i, links);
-      nodes.push({ type: 'pre', value: text.slice(i + FENCE.length, fence) });
-      i = fence + FENCE.length;
+    const fence = scanned[FENCE] > i ? { close: -1 } : fenceEnd(ctx, i, end);
+    if (fence.scannedTo !== undefined) scanned[FENCE] = fence.scannedTo;
+    if (fence.close >= 0) {
+      pushPlain(ctx, nodes, plainStart, i);
+      nodes.push({
+        type: 'pre',
+        value: ctx.text.slice(i + FENCE.length, fence.close),
+      });
+      i = fence.close + FENCE.length;
       plainStart = i;
       continue;
     }
-    const type = EMPHASIS[text[i]];
-    const close = type ? emphasisEnd(text, i, end, links) : -1;
-    if (close < 0) {
+    const marker = ctx.text[i];
+    const type = EMPHASIS[marker];
+    const found =
+      type && !(scanned[marker] > i) ? emphasisEnd(ctx, i, end) : { close: -1 };
+    if (found.scannedTo !== undefined) scanned[marker] = found.scannedTo;
+    if (found.close < 0) {
       i++;
       continue;
     }
-    pushPlain(nodes, text, plainStart, i, links);
+    pushPlain(ctx, nodes, plainStart, i);
     nodes.push(
       type === 'code'
-        ? { type, value: text.slice(i + 1, close) }
-        : { type, children: parseRange(text, i + 1, close, links) },
+        ? { type, value: ctx.text.slice(i + 1, found.close) }
+        : { type, children: parseRange(ctx, i + 1, found.close) },
     );
-    i = close + 1;
+    i = found.close + 1;
     plainStart = i;
   }
-  pushPlain(nodes, text, plainStart, end, links);
+  pushPlain(ctx, nodes, plainStart, end);
   return nodes;
 }
 
 // Parses WhatsApp formatting into a node tree; the text itself is never turned into HTML.
 export function parseMessageText(text) {
   if (!text) return [];
-  return parseRange(text, 0, text.length, linkRanges(text));
+  return parseRange(indexLinks(text), 0, text.length);
 }

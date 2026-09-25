@@ -1,6 +1,6 @@
 // Only web links become clickable; javascript:, data: and every other scheme stays plain text.
-// The prefix group stands in for a lookbehind, which older iOS webviews cannot parse.
-const LINK_PATTERN = /(^|[^\w.@])((?:https?:\/\/|www\.)[^\s<>"'`]+)/gi;
+// The prefix group stands in for a lookbehind, which older iOS webviews cannot parse; _ allows _italic_ links.
+const LINK_PATTERN = /(^|[^\w.@]|_)((?:https?:\/\/|www\.)[^\s<>"'`]+)/gi;
 const TRAILING_PUNCTUATION = /[.,!?;:'"*_~\]]+$/;
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 

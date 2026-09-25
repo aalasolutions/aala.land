@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import Service from '@ember/service';
 import { settled } from '@ember/test-helpers';
+import { isIgnoredChat } from 'land/services/whatsapp';
 
 module('Unit | Service | whatsapp', function (hooks) {
   setupTest(hooks);
@@ -189,6 +190,29 @@ module('Unit | Service | whatsapp', function (hooks) {
       assert.strictEqual(this.service.totalUnread, 2);
     });
 
+    test('a resync replaces the chat list, drops groups, converts times to ms', async function (assert) {
+      this.service.chats = [{ chatId: 'c-old' }];
+      this.service._onReady({ recovered: false });
+      this.fetches[0].resolve({
+        data: {
+          chats: [
+            { chatId: 'c-1', chatName: 'Layla', lastTs: 10, lastInboundAt: 5 },
+            { chatId: 'g-1', isGroup: true, lastTs: 20 },
+          ],
+        },
+      });
+      await settled();
+
+      assert.deepEqual(this.service.chats, [
+        {
+          chatId: 'c-1',
+          chatName: 'Layla',
+          lastTs: 10000,
+          lastInboundAt: 5000,
+        },
+      ]);
+    });
+
     test('a ready during a resync queues exactly one more after it finishes', async function (assert) {
       this.service._onReady({ recovered: false });
       this.service._onReady({ recovered: false });
@@ -274,6 +298,145 @@ module('Unit | Service | whatsapp', function (hooks) {
       assert.deepEqual(this.emittedChats, []);
       assert.false(this.service._resyncInFlight);
     });
+  });
+
+  test('isIgnoredChat only filters groups now that Baileys JIDs are gone', function (assert) {
+    assert.true(isIgnoredChat({ isGroup: true }));
+    assert.false(isIgnoredChat({ isGroup: false }));
+    // Cloud API chat ids can never look like the old Baileys newsletter suffix; none is special-cased.
+    assert.false(
+      isIgnoredChat({
+        isGroup: false,
+        chatId: '971500000000@newsletter',
+      }),
+    );
+  });
+
+  test('updateChat names a new chat with the raw chatId when no chatName is given', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.updateChat({
+      id: 'm-1',
+      chatId: '971500000000',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 100000,
+    });
+
+    assert.strictEqual(service.chats[0].chatId, '971500000000');
+    assert.strictEqual(service.chats[0].chatName, '971500000000');
+  });
+
+  test('updateChat gives a number-only chat the name a live message carries', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.chats = [
+      { chatId: '971500000000', chatName: '971500000000', lastTs: 100000 },
+      { chatId: '971511111111', chatName: '', lastTs: 300000 },
+    ];
+
+    service.updateChat({
+      chatId: '971500000000',
+      chatName: 'Layla',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 200000,
+    });
+    service.updateChat({
+      chatId: '971511111111',
+      chatName: 'Omar',
+      body: 'older',
+      fromMe: false,
+      timestamp: 50000,
+    });
+
+    const byId = Object.fromEntries(service.chats.map((c) => [c.chatId, c]));
+    assert.strictEqual(byId['971500000000'].chatName, 'Layla');
+    assert.strictEqual(byId['971511111111'].chatName, 'Omar', 'older message');
+    assert.strictEqual(byId['971511111111'].lastBody, undefined);
+  });
+
+  test('updateChat keeps a real chat name', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.chats = [
+      { chatId: '971500000000', chatName: 'Layla', lastTs: 100000 },
+    ];
+
+    service.updateChat({
+      chatId: '971500000000',
+      chatName: 'Layla Phone',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 200000,
+    });
+
+    assert.strictEqual(service.chats[0].chatName, 'Layla');
+  });
+
+  test('seedChats with an older ticket leaves both the list and unread alone', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    const older = service.beginUnreadSeed();
+    const newer = service.beginUnreadSeed();
+
+    service.seedChats([{ chatId: 'c-2', unreadCount: 1 }], newer);
+    service.seedChats([{ chatId: 'c-1', unreadCount: 4 }], older);
+
+    assert.deepEqual(
+      service.chats.map((c) => c.chatId),
+      ['c-2'],
+    );
+    assert.deepEqual([...service.unread.keys()], ['c-2']);
+  });
+
+  test('a newer seed keeps a newer local preview and the later inbound time', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.seedChats(
+      [
+        { chatId: 'c-1', lastBody: 'a', lastTs: 100, lastInboundAt: 100 },
+        { chatId: 'c-2', lastBody: 'b', lastTs: 100, lastInboundAt: 100 },
+      ],
+      service.beginUnreadSeed(),
+    );
+    service.updateChat({
+      chatId: 'c-1',
+      body: 'live in',
+      fromMe: false,
+      timestamp: 300000,
+    });
+    service.updateChat({
+      chatId: 'c-2',
+      body: 'live out',
+      fromMe: true,
+      timestamp: 300000,
+    });
+
+    service.seedChats(
+      [
+        {
+          chatId: 'c-1',
+          lastBody: 'stale',
+          lastTs: 200,
+          lastFromMe: true,
+          lastInboundAt: 150,
+        },
+        {
+          chatId: 'c-2',
+          lastBody: 'stale',
+          lastTs: 200,
+          lastFromMe: false,
+          lastInboundAt: 200,
+        },
+      ],
+      service.beginUnreadSeed(),
+    );
+
+    const byId = Object.fromEntries(service.chats.map((c) => [c.chatId, c]));
+    assert.strictEqual(byId['c-1'].lastBody, 'live in');
+    assert.strictEqual(byId['c-1'].lastTs, 300000);
+    assert.false(byId['c-1'].lastFromMe);
+    assert.strictEqual(byId['c-1'].lastInboundAt, 300000, 'local is later');
+    assert.strictEqual(byId['c-2'].lastBody, 'live out');
+    assert.strictEqual(byId['c-2'].lastTs, 300000);
+    assert.true(byId['c-2'].lastFromMe);
+    assert.strictEqual(byId['c-2'].lastInboundAt, 200000, 'seed is later');
   });
 
   test('the last chat is stored per user and survives bad storage', function (assert) {
@@ -754,6 +917,11 @@ module('Unit | Service | whatsapp', function (hooks) {
       this.service.saveLastChat({ chatId: 'c-1', atBottom: true });
       this.socket.fire('whatsapp:ready', { recovered: false });
       await settled();
+      assert.deepEqual(
+        this.service.chats.map((c) => c.chatId),
+        ['c-1', 'c-2'],
+        'ready filled the chat list',
+      );
       this.socket.fire('whatsapp:message', {
         id: 'm-3',
         chatId: 'c-2',
@@ -771,6 +939,7 @@ module('Unit | Service | whatsapp', function (hooks) {
 
       this.service.disconnectSocket();
       assert.strictEqual(this.service.unread.size, 0);
+      assert.deepEqual(this.service.chats, [], 'chat list cleared');
       assert.deepEqual(this.removed, [1], 'toast removed');
       assert.strictEqual(this.service._toastIds.size, 0);
       assert.strictEqual(
@@ -803,6 +972,15 @@ module('Unit | Service | whatsapp', function (hooks) {
       this.service.seedUnread([{ chatId: 'c-3', unreadCount: 5 }], older);
       assert.false(this.service.unread.has('c-3'), 'older request skipped');
       assert.deepEqual([...this.service.unread.keys()], ['c-4']);
+    });
+
+    test('a setup response landing after logout never refills the list', function (assert) {
+      const ticket = this.service.beginUnreadSeed();
+      this.service.disconnectSocket();
+      this.service.seedChats([{ chatId: 'c-1', unreadCount: 2 }], ticket);
+
+      assert.deepEqual(this.service.chats, []);
+      assert.strictEqual(this.service.unread.size, 0);
     });
 
     test('a newer request still applies when an older request resolves first', function (assert) {

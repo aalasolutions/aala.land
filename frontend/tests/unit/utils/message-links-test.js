@@ -79,4 +79,13 @@ module('Unit | Utility | message-links', function () {
       ),
     );
   });
+
+  test('a link right after an underscore is still found', function (assert) {
+    const parts = splitMessageLinks('_https://x.co_');
+    assert.deepEqual(
+      parts.map((part) => part.value),
+      ['_', 'https://x.co', '_'],
+    );
+    assert.true(parts[1].isLink);
+  });
 });

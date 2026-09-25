@@ -9,6 +9,7 @@ import {
   isTokenInvalidReason,
 } from 'land/utils/whatsapp-disconnect-reasons';
 import { REPLY_WINDOW_MS, formatRemaining } from 'land/utils/reply-window';
+import { isIgnoredChat } from 'land/services/whatsapp';
 
 const PAGE_SIZE = 50;
 const AROUND_LIMIT = 100;
@@ -89,7 +90,6 @@ export default class WhatsappController extends Controller {
   }
 
 
-  @tracked chats = [];
   @tracked currentChatId = null;
   // chatId to thread state; replaced on write.
   @tracked threads = new Map();
@@ -129,7 +129,7 @@ export default class WhatsappController extends Controller {
     message: (data) => this.ingestMessage(data),
     status: (data) => this.applyStatus(data),
     ai: (data) => this.applyAi(data),
-    chats: (chats) => this.applyResyncChats(chats),
+    chats: () => this.applyResyncChats(),
     history: (data) => this.applyHistorySync(data),
     connection: () => this._refreshConnection(),
   };
@@ -180,7 +180,9 @@ export default class WhatsappController extends Controller {
 
   get currentChat() {
     if (!this.currentChatId) return null;
-    return this.chats.find((c) => c.chatId === this.currentChatId) ?? null;
+    return (
+      this.whatsapp.chats.find((c) => c.chatId === this.currentChatId) ?? null
+    );
   }
 
   get currentChatName() {
@@ -338,8 +340,7 @@ export default class WhatsappController extends Controller {
       this.signupConfig = signupData ? (signupData.data ?? signupData) : null;
 
       const chats = chatsData.data?.chats ?? chatsData.chats ?? [];
-      this.whatsapp.seedUnread(chats, seedTicket);
-      this._setChats(chats);
+      this.whatsapp.seedChats(chats, seedTicket);
 
       const ai = aiData.data ?? aiData;
       this.aiEnabled = ai.enabled ?? false;
@@ -355,7 +356,7 @@ export default class WhatsappController extends Controller {
     }
 
     const saved = this.whatsapp.readLastChat();
-    if (saved && this.chats.some((c) => c.chatId === saved.chatId)) {
+    if (saved && this.whatsapp.chats.some((c) => c.chatId === saved.chatId)) {
       await this._openChat(saved.chatId, { restore: saved });
     }
   }
@@ -400,7 +401,7 @@ export default class WhatsappController extends Controller {
 
   _pageMessages(raw) {
     return raw
-      .filter((m) => this._isRenderable(m) && !this._isIgnoredChat(m))
+      .filter((m) => this._isRenderable(m) && !isIgnoredChat(m))
       .map((m) => this._normalizeMessage(m));
   }
 
@@ -569,8 +570,7 @@ export default class WhatsappController extends Controller {
 
   // Reconnect: refresh open chat.
   // A resync means pushes may have been missed, the history sync state included.
-  async applyResyncChats(chats) {
-    this._setChats(chats);
+  async applyResyncChats() {
     this._refreshConnection();
     if (this.currentChatId) await this._reloadWindow(this.currentChatId);
   }
@@ -617,29 +617,6 @@ export default class WhatsappController extends Controller {
     if (this.threads.get(chatId)?.loading === 'window') return;
     this._owedReloadChatId = null;
     this._reloadWindow(chatId);
-  }
-
-  _setChats(chats) {
-    const current = new Map(this.chats.map((c) => [c.chatId, c]));
-    this.chats = chats
-      .filter((c) => !this._isIgnoredChat(c))
-      .map((c) => {
-        const next = this._normalizeChat(c);
-        const prev = current.get(next.chatId);
-        // Keep a newer local preview.
-        if (prev && (prev.lastTs ?? 0) > (next.lastTs ?? 0)) {
-          return {
-            ...next,
-            lastBody: prev.lastBody,
-            lastTs: prev.lastTs,
-            lastFromMe: prev.lastFromMe,
-            lastInboundAt:
-              Math.max(prev.lastInboundAt ?? 0, next.lastInboundAt ?? 0) ||
-              null,
-          };
-        }
-        return next;
-      });
   }
 
   _threadElement() {
@@ -747,14 +724,6 @@ export default class WhatsappController extends Controller {
     };
   }
 
-  _normalizeChat(chat) {
-    return {
-      ...chat,
-      lastTs: chat.lastTs ? chat.lastTs * 1000 : chat.lastTs,
-      lastInboundAt: chat.lastInboundAt ? chat.lastInboundAt * 1000 : null,
-    };
-  }
-
   // Merges mutable fields from a later delivery of the same message id (status/edit/delete).
   _mergeExisting(existing, incoming) {
     let changed = false;
@@ -796,7 +765,7 @@ export default class WhatsappController extends Controller {
   // Only the open chat's loaded window holds messages.
   ingestMessage(msg) {
     if (!this._isRenderable(msg)) return;
-    if (this._isIgnoredChat(msg)) return;
+    if (isIgnoredChat(msg)) return;
     const normalized = this._normalizeMessage(msg);
     const chatId = normalized.chatId;
     const thread =
@@ -811,7 +780,7 @@ export default class WhatsappController extends Controller {
     // Updates to unloaded messages.
     if (normalized.editedAt || normalized.deletedAt) return;
 
-    this._updateChat(normalized);
+    this.whatsapp.updateChat(normalized);
     if (!thread) return;
     if (thread.loading === 'window' || thread.loading === 'newer') {
       this._pendingLive = [...this._pendingLive, normalized];
@@ -827,53 +796,6 @@ export default class WhatsappController extends Controller {
       newestId: normalized.id,
     });
     if (stick) this._scrollToBottom(chatId);
-  }
-
-  _isIgnoredChat(msg) {
-    return Boolean(msg.isGroup);
-  }
-
-  _updateChat(msg) {
-    const existingIdx = this.chats.findIndex((c) => c.chatId === msg.chatId);
-    const isNewer =
-      (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
-    // An inbound message reopens Meta's window; an outbound one never does.
-    const inboundAt = msg.fromMe ? null : (msg.timestamp ?? null);
-
-    // Mirrors the chat upsert: a real name is kept, a missing or number-only one takes the message's.
-    const current = this.chats[existingIdx];
-    const nameMissing =
-      !current?.chatName || current.chatName === current.chatId;
-    if (existingIdx >= 0 && !isNewer && nameMissing && msg.chatName) {
-      const updated = [...this.chats];
-      updated[existingIdx] = { ...current, chatName: msg.chatName };
-      this.chats = updated;
-    } else if (existingIdx >= 0 && isNewer) {
-      const updated = [...this.chats];
-      updated[existingIdx] = {
-        ...current,
-        chatName: nameMissing && msg.chatName ? msg.chatName : current.chatName,
-        lastBody: msg.body,
-        lastTs: msg.timestamp,
-        lastFromMe: msg.fromMe,
-        lastInboundAt:
-          Math.max(inboundAt ?? 0, current.lastInboundAt ?? 0) || null,
-      };
-      this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
-    } else if (existingIdx < 0) {
-      this.chats = [
-        {
-          chatId: msg.chatId,
-          chatName: msg.chatName || msg.chatId,
-          isGroup: msg.isGroup ?? false,
-          lastBody: msg.body,
-          lastTs: msg.timestamp,
-          lastFromMe: msg.fromMe,
-          lastInboundAt: inboundAt,
-        },
-        ...this.chats,
-      ];
-    }
   }
 
   // Meta's exchange code lives only 30 seconds, so the POST fires immediately after the flow finishes.
@@ -1140,7 +1062,7 @@ export default class WhatsappController extends Controller {
       if (chatId !== this.currentChatId) return;
       if (this.threads.get(chatId)?.hasMoreNewer) {
         // Jump to latest.
-        this._updateChat(this._normalizeMessage(result.data ?? result));
+        this.whatsapp.updateChat(this._normalizeMessage(result.data ?? result));
         if ((await this.loadWindow(chatId)) === 'ok') {
           this._scrollToBottom(chatId);
         }

@@ -9,12 +9,18 @@ const REOPEN_DELAYS_MS = [2000, 5000, 15000, 30000, 60000];
 const READ_THROTTLE_MS = 1000;
 const LAST_CHAT_KEY_PREFIX = 'wa:lastChat:';
 
+export function isIgnoredChat(item) {
+  return Boolean(item.isGroup);
+}
+
 export default class WhatsappService extends Service {
   @service auth;
   @service notifications;
 
   // Replaced on write.
   @tracked unread = new Map();
+  // Replaced on write.
+  @tracked chats = [];
   // Chat open on the WhatsApp page.
   activeChatId = null;
   _toastIds = new Map();
@@ -119,6 +125,87 @@ export default class WhatsappService extends Service {
     }
     this._appliedSeedSeq = ticket.seq;
     this.unread = next;
+  }
+
+  // One response feeds the list and the unread map, so a stale ticket skips both.
+  seedChats(chats, ticket) {
+    if (ticket.seq < this._appliedSeedSeq) return;
+    this.seedUnread(chats, ticket);
+    this._setChats(chats);
+  }
+
+  _setChats(chats) {
+    const current = new Map(this.chats.map((c) => [c.chatId, c]));
+    this.chats = chats
+      .filter((c) => !isIgnoredChat(c))
+      .map((c) => {
+        const next = this._normalizeChat(c);
+        const prev = current.get(next.chatId);
+        // Keep a newer local preview.
+        if (prev && (prev.lastTs ?? 0) > (next.lastTs ?? 0)) {
+          return {
+            ...next,
+            lastBody: prev.lastBody,
+            lastTs: prev.lastTs,
+            lastFromMe: prev.lastFromMe,
+            lastInboundAt:
+              Math.max(prev.lastInboundAt ?? 0, next.lastInboundAt ?? 0) ||
+              null,
+          };
+        }
+        return next;
+      });
+  }
+
+  _normalizeChat(chat) {
+    return {
+      ...chat,
+      lastTs: chat.lastTs ? chat.lastTs * 1000 : chat.lastTs,
+      lastInboundAt: chat.lastInboundAt ? chat.lastInboundAt * 1000 : null,
+    };
+  }
+
+  updateChat(msg) {
+    const existingIdx = this.chats.findIndex((c) => c.chatId === msg.chatId);
+    const isNewer =
+      (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
+    // An inbound message reopens Meta's window; an outbound one never does.
+    const inboundAt = msg.fromMe ? null : (msg.timestamp ?? null);
+
+    // Mirrors the chat upsert: a real name is kept, a missing or number-only one takes the message's.
+    const current = this.chats[existingIdx];
+    const nameMissing =
+      !current?.chatName || current.chatName === current.chatId;
+    if (existingIdx >= 0 && !isNewer && nameMissing && msg.chatName) {
+      const updated = [...this.chats];
+      updated[existingIdx] = { ...current, chatName: msg.chatName };
+      this.chats = updated;
+    } else if (existingIdx >= 0 && isNewer) {
+      const updated = [...this.chats];
+      updated[existingIdx] = {
+        ...current,
+        chatName: nameMissing && msg.chatName ? msg.chatName : current.chatName,
+        lastBody: msg.body,
+        lastTs: msg.timestamp,
+        lastFromMe: msg.fromMe,
+        lastInboundAt:
+          Math.max(inboundAt ?? 0, current.lastInboundAt ?? 0) || null,
+      };
+      this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
+    } else if (existingIdx < 0) {
+      this.chats = [
+        {
+          chatId: msg.chatId,
+          chatName: msg.chatName || msg.chatId,
+          isGroup: msg.isGroup ?? false,
+          lastBody: msg.body,
+          lastTs: msg.timestamp,
+          lastFromMe: msg.fromMe,
+          lastInboundAt: inboundAt,
+        },
+        ...this.chats,
+      ];
+    }
   }
 
   _markSeeded() {
@@ -277,6 +364,7 @@ export default class WhatsappService extends Service {
   _clearUserState() {
     this._markSeeded();
     if (this.unread.size) this.unread = new Map();
+    if (this.chats.length) this.chats = [];
     if (this._toastIds.size) {
       for (const id of this._toastIds.values()) this.notifications.remove(id);
       this._toastIds.clear();
@@ -362,7 +450,7 @@ export default class WhatsappService extends Service {
       const chats = await this.getChats();
       if (generation !== this._resyncGeneration) return;
       const list = chats?.data?.chats ?? chats?.chats ?? [];
-      this.seedUnread(list, seedTicket);
+      this.seedChats(list, seedTicket);
       this._emit('chats', list);
     } catch (err) {
       console.error('WhatsApp resync failed', err);

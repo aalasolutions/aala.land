@@ -298,10 +298,16 @@ $wa-message-max-width: 70%;
   word-break: break-all;
 }
 
+// Code never reflows with the message direction, matching nu-code-block.
+.wa-bubble .nu-code {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
 .wa-message-pre {
   display: block;
   margin-block: nu-space(1);
-  white-space: pre-wrap;
+  text-align: start;
 }
 
 // A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.
