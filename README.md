@@ -43,7 +43,7 @@ Manage properties, leads, leases, maintenance, cheques, commissions and teams fr
 | Frontend | Ember.js 6, NuvoUI SCSS |
 | Database | PostgreSQL 18 |
 | Cache and queues | Valkey (Redis-compatible), BullMQ |
-| Storage | Any S3-compatible bucket (Backblaze B2 in production) |
+| Storage | Any S3-compatible bucket |
 | Mobile | Capacitor, shared codebase |
 
 ## Quick start
