@@ -133,6 +133,7 @@ $wa-message-max-width: 70%;
   text-align: start;
   background: transparent;
   border: 0;
+  border-inline-start: 3px solid transparent;
   border-radius: 0;
   cursor: pointer;
   transition: background nu-duration(fast) $nu-ease;
@@ -147,6 +148,7 @@ $wa-message-max-width: 70%;
 
   &.is-active {
     background: var(--wa-row-active);
+    border-inline-start-color: var(--primary);
   }
 
   // Inset, because the list clips anything drawn outside a full-width row.
@@ -216,9 +218,6 @@ $wa-message-max-width: 70%;
 }
 
 .wa-chat-unread {
-  --nu-badge-count--BackgroundColor: var(--wa-accent);
-  --nu-badge-count--Color: var(--text-color);
-
   flex-shrink: 0;
 }
 

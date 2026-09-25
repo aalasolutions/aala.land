@@ -299,6 +299,31 @@ describe('MessageStoreService', () => {
       expect(txManager.query.mock.calls[0][1][10]).toBe(0);
     });
 
+    it('writes a given status only as part of the insert', async () => {
+      const statusAt = new Date(1700000000 * 1000);
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true }),
+        'phone-1',
+        { isPassive: true, status: WhatsappMessageStatus.READ, statusAt },
+      );
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ fromMe: true }),
+        'phone-1',
+        { isPassive: true },
+      );
+
+      const [withStatus, without] = insertBuilder.values.mock.calls.map(
+        (c) => c[0],
+      );
+      expect(withStatus).toMatchObject({ status: 'read', statusAt });
+      expect(without).not.toHaveProperty('status');
+      expect(insertBuilder.orIgnore).toHaveBeenCalled();
+    });
+
     it('never opens the reply-window clock for a history message over 24h old', async () => {
       const twoDaysAgo = Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
       await service.addMessage(

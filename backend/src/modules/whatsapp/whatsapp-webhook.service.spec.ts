@@ -1540,7 +1540,61 @@ describe('WhatsappWebhookService', () => {
       });
       expect(calls[1][2]).toMatchObject({ id: 'wamid.h2', fromMe: true });
       expect(calls[2][2]).toMatchObject({ id: 'wamid.h3', body: '[Media]' });
-      for (const call of calls) expect(call[4]).toEqual({ isPassive: true });
+      for (const call of calls)
+        expect(call[4]).toMatchObject({ isPassive: true });
+    });
+
+    it("inserts Meta's delivery state on our own history messages only", async () => {
+      const ours = (id: string, status?: string) => ({
+        from: '15550001111',
+        id,
+        timestamp: '1761000060',
+        type: 'text',
+        text: { body: id },
+        ...(status ? { history_context: { status } } : {}),
+      });
+      await service.processEnvelope(
+        coexistenceEnvelope('history', {
+          history: [
+            {
+              metadata: { phase: 0, chunk_order: 1, progress: 40 },
+              threads: [
+                {
+                  id: '971501234567',
+                  messages: [
+                    ours('wamid.read', 'READ'),
+                    ours('wamid.error', 'ERROR'),
+                    ours('wamid.pending', 'PENDING'),
+                    ours('wamid.none'),
+                    {
+                      from: '971501234567',
+                      id: 'wamid.theirs',
+                      timestamp: '1761000120',
+                      type: 'text',
+                      text: { body: 'hi' },
+                      history_context: { status: 'READ' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      );
+
+      const options = Object.fromEntries(
+        store.addMessage.mock.calls.map((c) => [c[2].id, c[4]]),
+      );
+      expect(options['wamid.read']).toEqual({
+        isPassive: true,
+        status: 'read',
+        statusAt: new Date(1761000060 * 1000),
+      });
+      expect(options['wamid.error'].status).toBe('failed');
+      expect(options['wamid.none'].status).toBe('delivered');
+      expect(options['wamid.pending']).toEqual({ isPassive: true });
+      expect(options['wamid.theirs']).toEqual({ isPassive: true });
+      expect(store.applyMessageStatus).not.toHaveBeenCalled();
     });
 
     it('treats a history message from the business number as ours even without a to field', async () => {

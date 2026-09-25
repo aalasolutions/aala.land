@@ -90,7 +90,12 @@ export class MessageStoreService {
     msg: WaMessage,
     phoneNumberId?: string | null,
     // Synced history: never unread; opens Meta's reply window only when under 24h old.
-    options: { isPassive?: boolean } = {},
+    options: {
+      isPassive?: boolean;
+      // Written only when this call inserts the row, so a live row's status is never overwritten.
+      status?: WhatsappMessageStatus;
+      statusAt?: Date;
+    } = {},
   ): Promise<{ inserted: boolean; unread: WaUnreadState }> {
     const isPassive = options.isPassive ?? false;
     const safeTs = String(
@@ -138,6 +143,9 @@ export class MessageStoreService {
           aiGenerated: msg.aiGenerated ?? false,
           phoneNumberId: phoneNumberId ?? null,
           timestamp: safeTs,
+          ...(options.status
+            ? { status: options.status, statusAt: options.statusAt ?? null }
+            : {}),
         })
         .orIgnore()
         .execute();

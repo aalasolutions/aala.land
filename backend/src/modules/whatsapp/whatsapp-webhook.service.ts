@@ -83,13 +83,15 @@ interface CloudError {
 interface CloudMessage {
   id?: string;
   from?: string;
-  // Present only on a message the business sent (echoes and history).
+  // Present on echoes; history messages omit it.
   to?: string;
   timestamp?: string;
   type?: string;
   text?: { body?: string };
   edit?: { original_message_id?: string; message?: CloudMessage };
   revoke?: { original_message_id?: string };
+  // history only.
+  history_context?: { status?: string };
 }
 
 interface HistoryChunk {
@@ -170,6 +172,16 @@ function isHistoryMessageFromBusiness(
   if (message.to) return true;
   const sender = digitsOnly(message.from);
   return sender !== '' && sender !== digitsOnly(customerId);
+}
+
+// Meta's own delivery state for a synced message; ERROR is failed, PENDING stores nothing, absent reads as delivered.
+function historyMessageStatus(
+  message: CloudMessage,
+): WhatsappMessageStatus | null {
+  const value = message.history_context?.status?.toLowerCase();
+  if (!value) return WhatsappMessageStatus.DELIVERED;
+  if (value === 'error') return WhatsappMessageStatus.FAILED;
+  return META_STATUSES.has(value) ? (value as WhatsappMessageStatus) : null;
 }
 
 function historyStatusFor(progress: number): WhatsappHistorySyncStatus {
@@ -493,13 +505,17 @@ export class WhatsappWebhookService {
         timestamp,
         originUserId: connection.userId,
       });
+      const status = evt.fromMe ? historyMessageStatus(message) : null;
       try {
         const { inserted } = await this.store.addMessage(
           connection.companyId,
           connection.userId,
           evt,
           connection.phoneNumberId,
-          { isPassive: true },
+          {
+            isPassive: true,
+            ...(status ? { status, statusAt: new Date(timestamp * 1000) } : {}),
+          },
         );
         if (inserted) await this.applyPendingChange(connection, evt.id);
       } catch (err) {
