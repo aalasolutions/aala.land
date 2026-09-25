@@ -12,7 +12,6 @@ import {
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from './unit.entity';
-import { PropertyType } from './property-type.enum';
 
 @Entity('assets')
 @Index('IDX_assets_locality_normalized_name_unique', { synchronize: false })
@@ -49,14 +48,6 @@ export class Asset {
 
   @Column({ type: 'text', nullable: true })
   address: string | null;
-
-  @Column({
-    name: 'property_type',
-    type: 'enum',
-    enum: PropertyType,
-    default: PropertyType.RENTAL,
-  })
-  propertyType: PropertyType;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
