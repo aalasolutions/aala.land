@@ -1,16 +1,10 @@
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { htmlSafe } from '@ember/template';
+import { initialsOf } from 'land/utils/initials';
 
 const VISIBLE_AGENT_ROWS = 6;
 const VISIBLE_IDLE_AVATARS = 8;
-
-function initialsOf(name) {
-  const words = (name || '').trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  const letters = words.slice(0, 2).map((word) => word[0]);
-  return letters.join('').toUpperCase();
-}
 
 function stageWord(stage) {
   return String(stage).toLowerCase();

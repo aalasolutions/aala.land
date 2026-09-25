@@ -6,41 +6,50 @@
       data-test-wa-chat={{chat.chatId}}
       {{on "click" (fn @onSelect chat.chatId)}}
     >
-      <div class="flex between x-center">
-        <span class="wa-chat-name">
-          {{#if chat.isGroup}}
-            <Nuvo::Tag @size="sm" @text="group" />
-          {{/if}}
-          {{chat.chatName}}
-        </span>
-        <span class="wa-chat-time">
-          {{#let (this.windowFor chat) as |window|}}
-            {{#if window}}
-              <span
-                class="wa-chat-window {{if window.open 'is-open' 'is-closed'}}"
-                data-tooltip={{window.tooltip}}
-                data-test-wa-chat-window={{if window.open "open" "closed"}}
-              ><Ui::Ph @icon="clock" /></span>
+      <Nuvo::Avatar
+        @initials={{initials chat.chatName}}
+        @size="lg"
+        aria-hidden="true"
+        data-test-wa-chat-avatar
+      />
+      <div class="wa-chat-body">
+        <div class="flex between x-center">
+          <span class="wa-chat-name">
+            {{#if chat.isGroup}}
+              <Nuvo::Tag @size="sm" @text="group" />
+            {{/if}}
+            {{chat.chatName}}
+          </span>
+          <span class="wa-chat-time">
+            {{#let (this.windowFor chat) as |window|}}
+              {{#if window}}
+                <span
+                  class="wa-chat-window
+                    {{if window.open 'is-open' 'is-closed'}}"
+                  data-tooltip={{window.tooltip}}
+                  data-test-wa-chat-window={{if window.open "open" "closed"}}
+                ><Ui::Ph @icon="clock" /></span>
+              {{/if}}
+            {{/let}}
+            {{format-date-time chat.lastTs}}
+          </span>
+        </div>
+        <div class="wa-chat-preview-row">
+          <p class="wa-chat-preview">
+            {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
+          </p>
+          {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
+            {{#if unreadCount}}
+              <Nuvo::Badge
+                class="wa-chat-unread"
+                @count={{true}}
+                @value={{unreadCount}}
+                @max={{99}}
+                data-test-wa-chat-unread
+              />
             {{/if}}
           {{/let}}
-          {{format-date-time chat.lastTs}}
-        </span>
-      </div>
-      <div class="wa-chat-preview-row">
-        <p class="wa-chat-preview">
-          {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
-        </p>
-        {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
-          {{#if unreadCount}}
-            <Nuvo::Badge
-              class="wa-chat-unread"
-              @count={{true}}
-              @value={{unreadCount}}
-              @max={{99}}
-              data-test-wa-chat-unread
-            />
-          {{/if}}
-        {{/let}}
+        </div>
       </div>
     </button>
   {{else}}

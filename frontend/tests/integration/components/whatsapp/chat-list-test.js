@@ -91,6 +91,9 @@ module('Integration | Component | whatsapp/chat-list', function (hooks) {
 
     assert.dom('[data-test-wa-chat="c-open"]').hasClass('is-active');
     assert
+      .dom('[data-test-wa-chat="c-open"] [data-test-wa-chat-avatar]')
+      .hasText('L', 'the row avatar shows the chat initials');
+    assert
       .dom('[data-test-wa-chat="c-open"] [data-test-wa-chat-unread]')
       .exists();
     assert

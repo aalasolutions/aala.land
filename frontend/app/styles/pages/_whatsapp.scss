@@ -3,7 +3,7 @@
 @use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // No NuvoUI size token covers these.
-$wa-sidebar-width: 22.5rem;
+$wa-sidebar-width: clamp(22.5rem, 35%, 26.25rem);
 $wa-message-max-width: 70%;
 
 // `:has()` outranks the bare `.content-area` rule, so no `!important` is needed here.
@@ -13,6 +13,18 @@ $wa-message-max-width: 70%;
 }
 
 .wa-shell {
+  --wa-bar-bg: var(--bg-alternate);
+  --wa-row-hover: var(--bg-base);
+  --wa-row-active: color-mix(in srgb, var(--primary) 8%, var(--bg-alternate));
+  --wa-thread-bg: color-mix(in srgb, var(--primary) 6%, var(--border-base));
+  --wa-thread-dot: #{nu-tint(primary, 14%)};
+  --wa-bubble-in: var(--bg-surface);
+  --wa-bubble-out: var(--primary-50);
+  --wa-bubble-ai: var(--info-50);
+  --wa-meta: color-mix(in srgb, var(--text-muted) 70%, var(--text-color));
+  --wa-accent: var(--primary);
+  --wa-accent-text: var(--primary-800);
+
   display: flex;
   flex-direction: column;
   block-size: 100%;
@@ -83,9 +95,11 @@ $wa-message-max-width: 70%;
   align-items: center;
   justify-content: space-between;
   gap: nu-space(2);
-  padding: nu-space(3) nu-space(4);
+  min-block-size: 3.75rem;
+  padding: nu-space(2) nu-space(4);
+  background: var(--wa-bar-bg);
   border-block-end: 1px solid var(--border-base);
-  font-size: nu-font-size(sm);
+  font-size: nu-font-size(md);
   font-weight: nu-font-weight(semibold);
   color: var(--text-color);
 }
@@ -111,14 +125,14 @@ $wa-message-max-width: 70%;
 }
 
 .wa-chat-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
   inline-size: 100%;
-  padding: nu-space(3) nu-space(4);
+  padding-inline: nu-space(4);
   text-align: start;
   background: transparent;
   border: 0;
-  border-block-end: 1px solid var(--border-base);
-  border-inline-start: 3px solid transparent;
   border-radius: 0;
   cursor: pointer;
   transition: background nu-duration(fast) $nu-ease;
@@ -128,12 +142,40 @@ $wa-message-max-width: 70%;
   }
 
   &:hover {
-    background: var(--bg-alternate);
+    background: var(--wa-row-hover);
   }
 
   &.is-active {
-    background: var(--bg-alternate);
-    border-inline-start-color: var(--primary);
+    background: var(--wa-row-active);
+  }
+
+  // Inset, because the list clips anything drawn outside a full-width row.
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 3px nu-tint(primary, 35%);
+  }
+}
+
+// Placeholder avatars stay neutral so the fill never reads as a status colour.
+.wa-shell .nu-avatar {
+  --nu-avatar--BackgroundColor: color-mix(
+    in srgb,
+    var(--text-muted) 25%,
+    var(--bg-surface)
+  );
+  --nu-avatar--Color: var(--wa-meta);
+}
+
+// Carries the divider so it starts after the avatar, not at the row edge.
+.wa-chat-body {
+  flex: 1;
+  min-inline-size: 0;
+  padding-block: nu-space(3);
+  border-block-end: 1px solid var(--border-base);
+
+  .wa-chat-item:hover &,
+  .wa-chat-item.is-active & {
+    border-block-end-color: transparent;
   }
 }
 
@@ -141,16 +183,16 @@ $wa-message-max-width: 70%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
+  font-size: nu-font-size(md);
+  font-weight: nu-font-weight(normal);
   color: var(--text-color);
 }
 
 .wa-chat-time {
   flex-shrink: 0;
   margin-inline-start: nu-space(2);
-  font-size: nu-font-size(2xs);
-  color: var(--text-muted);
+  font-size: nu-font-size(xs);
+  color: var(--wa-meta);
 }
 
 .wa-chat-window {
@@ -162,7 +204,7 @@ $wa-message-max-width: 70%;
   }
 
   &.is-closed {
-    color: var(--warning);
+    color: var(--warning-600);
   }
 }
 
@@ -174,6 +216,9 @@ $wa-message-max-width: 70%;
 }
 
 .wa-chat-unread {
+  --nu-badge-count--BackgroundColor: var(--wa-accent);
+  --nu-badge-count--Color: var(--text-color);
+
   flex-shrink: 0;
 }
 
@@ -183,8 +228,18 @@ $wa-message-max-width: 70%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  font-size: nu-font-size(sm);
+  color: var(--wa-meta);
+}
+
+.wa-chat-item:has(.wa-chat-unread) {
+  .wa-chat-time {
+    color: var(--wa-accent-text);
+  }
+
+  .wa-chat-preview {
+    color: var(--text-color);
+  }
 }
 
 .wa-chat-area {
@@ -196,33 +251,65 @@ $wa-message-max-width: 70%;
   background: var(--bg-base);
 }
 
+// No chat selected: the pane reads as one placeholder panel, not a card on the page.
+.wa-chat-area > .nu-empty-state {
+  --nu-empty-state--BorderRadius: 0;
+  --nu-empty-state--BackgroundColor: var(--wa-bar-bg);
+
+  border-block-end: nu-space(1) solid var(--wa-accent);
+}
+
 .wa-chat-header {
+  display: flex;
   flex-shrink: 0;
-  padding: nu-space(3) nu-space(5);
-  background: var(--bg-surface);
+  align-items: center;
+  gap: nu-space(3);
+  min-block-size: 3.75rem;
+  padding: nu-space(2) nu-space(4);
+  background: var(--wa-bar-bg);
   border-block-end: 1px solid var(--border-base);
 }
 
+.wa-chat-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-inline-size: 0;
+}
+
 .wa-chat-header-name {
-  font-size: nu-font-size(sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: nu-font-size(md);
   font-weight: nu-font-weight(semibold);
   color: var(--text-color);
 }
 
 .wa-chat-header-id {
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--wa-meta);
 }
 
+// Dot grid drawn in CSS, so no image asset; it stays put while messages scroll.
 .wa-messages {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: nu-space(2);
-  padding: nu-space(5);
+  gap: nu-space(1);
+  padding-block: nu-space(5);
+  padding-inline: clamp(#{nu-space(4)}, 5%, #{nu-space(16)});
   overflow-y: auto;
   overflow-anchor: none;
   overscroll-behavior: contain;
+  background-color: var(--wa-thread-bg);
+  background-image:
+    radial-gradient(circle, var(--wa-thread-dot) 1px, transparent 1.5px),
+    radial-gradient(circle, var(--wa-thread-dot) 1px, transparent 1.5px);
+  background-size: 1.5rem 1.5rem;
+  background-position:
+    0 0,
+    0.75rem 0.75rem;
 }
 
 .wa-load-older {
@@ -234,62 +321,105 @@ $wa-message-max-width: 70%;
   align-items: center;
   align-self: center;
   gap: nu-space(2);
+  padding: nu-space(1) nu-space(3);
+  border-radius: nu-radius(lg);
+  background: var(--wa-bubble-in);
+  box-shadow: nu-shadow(sm);
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--wa-meta);
 }
 
 .wa-unread-divider {
-  display: flex;
-  align-items: center;
-  gap: nu-space(3);
+  align-self: center;
+  padding: nu-space(1) nu-space(3);
+  border-radius: nu-radius(lg);
+  background: var(--wa-bubble-in);
+  box-shadow: nu-shadow(sm);
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(medium);
-  color: var(--success);
-
-  &::before,
-  &::after {
-    content: "";
-    flex: 1;
-    border-block-start: 1px solid currentColor;
-  }
+  color: var(--wa-accent-text);
 }
 
+// The wrapper is the bubble, so time and ticks sit inside it and wrap below long text.
 .wa-message {
+  --wa-fill: var(--wa-bubble-in);
+
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: nu-space(2);
   max-inline-size: $wa-message-max-width;
+  padding-block: nu-space(2) nu-space(1);
+  padding-inline: nu-space(3) nu-space(2);
+  border-radius: nu-radius(lg);
+  background: var(--wa-fill);
+  box-shadow: nu-shadow(sm);
+
+  // Tail: a triangle off the square top corner, drawn only at the start of a run.
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    border-block-start: 0.5rem solid var(--wa-fill);
+  }
 
   &.m-incoming {
     align-self: flex-start;
+    border-start-start-radius: 0;
+
+    &::before {
+      inset-inline-start: -0.5rem;
+      border-inline-start: 0.5rem solid transparent;
+    }
   }
 
   &.m-outgoing {
+    --wa-fill: var(--wa-bubble-out);
+
     align-self: flex-end;
+    border-start-end-radius: 0;
+
+    &::before {
+      inset-inline-end: -0.5rem;
+      border-inline-end: 0.5rem solid transparent;
+    }
+  }
+
+  &.m-incoming + &.m-incoming {
+    border-start-start-radius: nu-radius(lg);
+  }
+
+  &.m-outgoing + &.m-outgoing {
+    border-start-end-radius: nu-radius(lg);
+  }
+
+  &.m-incoming + &.m-incoming::before,
+  &.m-outgoing + &.m-outgoing::before {
+    content: none;
+  }
+
+  &.m-incoming + &.m-outgoing,
+  &.m-outgoing + &.m-incoming {
+    margin-block-start: nu-space(2);
+  }
+
+  // AI and team fills differ by hue only, so the stripe carries the distinction.
+  &.m-ai {
+    --wa-fill: var(--wa-bubble-ai);
+
+    border-inline-start: 2px solid var(--info);
   }
 }
 
+// Without min-inline-size, a long unbroken string overflows the bubble.
 .wa-bubble {
-  padding: nu-space(2) nu-space(3);
-  border-radius: nu-radius(lg);
+  min-inline-size: 0;
   font-size: nu-font-size(sm);
   line-height: 1.4;
+  color: var(--text-color);
   overflow-wrap: break-word;
   white-space: pre-wrap;
-
-  .m-incoming & {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-base);
-    color: var(--text-color);
-  }
-
-  .m-outgoing & {
-    background: var(--primary);
-    color: var(--text-inverted);
-  }
-
-  // AI reply is still outgoing, but must look distinguishable from a human team reply.
-  .m-outgoing.m-ai & {
-    background: var(--info);
-    color: var(--text-inverted);
-  }
 }
 
 .wa-message-link {
@@ -310,20 +440,14 @@ $wa-message-max-width: 70%;
   text-align: start;
 }
 
-// A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.
+// A revoked message keeps its bubble but goes muted and italic, so it reads as deleted, not normal.
 .wa-bubble.is-deleted {
   display: flex;
   align-items: center;
   gap: nu-space(1);
-  background: transparent;
-  border: 1px dashed var(--border-base);
-  color: var(--text-muted);
+  color: var(--wa-meta);
   font-style: italic;
-
-  .m-outgoing & {
-    background: transparent;
-    color: var(--text-muted);
-  }
+  white-space: normal;
 }
 
 .wa-edited {
@@ -345,30 +469,27 @@ $wa-message-max-width: 70%;
 }
 
 .wa-sender-tag {
+  flex-basis: 100%;
   margin-block-end: nu-space(1);
-  padding-inline: nu-space(1);
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  font-weight: nu-font-weight(semibold);
+  color: var(--wa-accent-text);
 }
 
 .wa-meta {
   display: flex;
   align-items: center;
   gap: nu-space(1);
-  padding: nu-space(1) nu-space(1) 0;
+  margin-inline-start: auto;
   font-size: nu-font-size(2xs);
-  color: var(--text-muted);
-
-  .m-outgoing & {
-    justify-content: flex-end;
-  }
+  white-space: nowrap;
+  color: var(--wa-meta);
 }
 
 .wa-input-area {
   flex-shrink: 0;
   padding: nu-space(3) nu-space(4);
-  background: var(--bg-surface);
-  border-block-start: 1px solid var(--border-base);
+  background: var(--wa-bar-bg);
 }
 
 // Sits above the composer so window state is read before typing, not after a send is refused.
@@ -381,16 +502,16 @@ $wa-message-max-width: 70%;
   color: var(--text-muted);
 
   &.is-open {
-    color: var(--success);
+    color: var(--success-700);
   }
 
   &.is-closed {
-    color: var(--warning);
+    color: var(--warning-700);
   }
 }
 
 .wa-window__detail {
-  color: var(--text-muted);
+  color: var(--wa-meta);
 }
 
 .wa-input-row {
@@ -401,8 +522,17 @@ $wa-message-max-width: 70%;
 
 // Kit textarea defaults to form-field size; composer needs one line that grows to a few.
 .wa-input-row .nu-textarea {
+  --nu-input--BackgroundColor: var(--bg-surface);
+  --nu-input--BorderColor: transparent;
+  --nu-input--BorderRadius: #{nu-radius(lg)};
+
   flex: 1;
   min-block-size: 2.5rem;
   max-block-size: 7.5rem;
   resize: none;
+
+  // The kit's disabled fill matches the bar, so the field would vanish.
+  &:disabled {
+    background-color: var(--bg-surface);
+  }
 }
