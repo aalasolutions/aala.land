@@ -382,7 +382,10 @@ export default class PropertiesIndexController extends Controller {
         ? { bathrooms: parseInt(this.newUnitBathrooms, 10) }
         : {}),
       ...(this.ownerSelection.contactId
-        ? { ownerId: this.ownerSelection.contactId }
+        ? {
+            ownerId: this.ownerSelection.contactId,
+            ...this.ownerSelection.verifyPhoneField('ownerVerifyPhone'),
+          }
         : { owner: this.ownerSelection.cleanIdentity }),
     };
 
@@ -395,7 +398,9 @@ export default class PropertiesIndexController extends Controller {
       this.closeNewUnitModal();
       this.router.refresh('properties.index');
     } catch (e) {
-      this.newUnitError = e.message;
+      this.newUnitError = this.ownerSelection.takeConflict(e)
+        ? 'Contact already added'
+        : e.message;
     } finally {
       this.isSavingNewUnit = false;
     }

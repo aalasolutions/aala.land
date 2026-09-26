@@ -153,6 +153,7 @@ export default class ApplicationController extends Controller {
     documents: 'documents',
     leads: 'crm',
     contacts: 'crm',
+    'access-requests': 'crm',
     financials: 'finance',
     cheques: 'finance',
     commissions: 'finance',
@@ -407,7 +408,15 @@ export default class ApplicationController extends Controller {
     this.showNotifications = false;
     const { entityType, type } = notification;
 
-    if (entityType === 'lead' || type.includes('LEAD')) {
+    if (entityType === 'ContactAccessRequest') {
+      if (type === 'CONTACT_ACCESS_REQUESTED') {
+        this.router.transitionTo('access-requests');
+      } else {
+        this.router.transitionTo('contacts.index', {
+          queryParams: { tab: 'requests' },
+        });
+      }
+    } else if (entityType === 'lead' || type.includes('LEAD')) {
       this.router.transitionTo('leads');
     } else if (entityType === 'cheque' || type.includes('CHEQUE')) {
       this.router.transitionTo('cheques');

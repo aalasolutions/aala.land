@@ -2,6 +2,17 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { guidFor } from '@ember/object/internals';
+import {
+  contactEmail,
+  contactName,
+  contactPhone,
+  isLimited,
+} from '../../utils/contact-display';
+
+// Search results carry no shared label field: FULL has displayName, LIMITED only name parts.
+function withPickerLabel(contact) {
+  return { ...contact, pickerLabel: contactName(contact) };
+}
 
 // Parent decides whether the result becomes an id or inline details.
 export default class ContactPickerComponent extends Component {
@@ -26,20 +37,44 @@ export default class ContactPickerComponent extends Component {
     return Boolean(this.contact);
   }
 
+  // Picking a person searches the whole company, whatever region the topbar shows.
   get searchUrl() {
-    return '/contacts';
+    return '/contacts?allRegions=true';
+  }
+
+  mapItem = withPickerLabel;
+
+  get isLimited() {
+    return isLimited(this.contact);
   }
 
   // Relation-loaded contacts lack displayName; fall back like the backend serializer.
   get selectedName() {
     const contact = this.contact;
     if (!contact) return '';
-    if (contact.displayName) return contact.displayName;
-    const name = [contact.firstName, contact.lastName]
-      .filter(Boolean)
-      .join(' ')
-      .trim();
-    return name || contact.phone || contact.email || '';
+    return (
+      contactName(contact) || contactPhone(contact) || contactEmail(contact)
+    );
+  }
+
+  get attachedLastName() {
+    return this.isLimited ? this.contact.lastInitial : this.contact?.lastName;
+  }
+
+  get attachedPhone() {
+    return contactPhone(this.contact);
+  }
+
+  get conflict() {
+    return this.args.conflict ?? null;
+  }
+
+  get conflictName() {
+    return contactName(this.conflict);
+  }
+
+  get conflictPhone() {
+    return contactPhone(this.conflict);
   }
 
   get notes() {
@@ -67,6 +102,16 @@ export default class ContactPickerComponent extends Component {
   @action
   setIdentity(field, value) {
     this.args.onIdentityChange?.(field, value);
+  }
+
+  @action
+  useConflict() {
+    this.select(this.conflict);
+  }
+
+  @action
+  setVerifyPhone(value) {
+    this.args.onVerifyPhoneChange?.(value);
   }
 
   @action

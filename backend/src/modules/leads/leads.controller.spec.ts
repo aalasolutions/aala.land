@@ -107,6 +107,7 @@ describe('LeadsController', () => {
         20,
         undefined,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(paginated);
     });
@@ -121,7 +122,7 @@ describe('LeadsController', () => {
       expect(service.findOne).toHaveBeenCalledWith(
         'lead-uuid-1',
         companyId,
-        caller,
+        mockReq.user,
       );
     });
   });

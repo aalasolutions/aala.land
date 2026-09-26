@@ -12,6 +12,7 @@ import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { ContactsModule } from '../contacts/contacts.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { Contact } from '../contacts/entities/contact.entity';
       User,
       Contact,
     ]),
+    ContactsModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService],

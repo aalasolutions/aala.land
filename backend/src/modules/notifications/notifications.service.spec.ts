@@ -1412,4 +1412,121 @@ describe('NotificationsService', () => {
       repo.save.mockReset();
     });
   });
+  describe('contact access notifications', () => {
+    const input = {
+      companyId,
+      requestId: 'req-uuid-1',
+      requesterId: 'agent-uuid-1',
+      requesterName: 'Test Agent',
+      contactName: 'Test Client',
+      regionCode: 'dubai',
+    };
+
+    beforeEach(() => {
+      repo.create.mockImplementation(
+        (dto) => ({ id: 'notif-x', ...dto }) as Notification,
+      );
+      repo.save.mockImplementation((n) => Promise.resolve(n as Notification));
+    });
+
+    it('notifies in-region managers and admins plus every company admin', async () => {
+      const userRepo = module.get(getRepositoryToken(User));
+      (userRepo.find as jest.Mock).mockResolvedValue([
+        { id: 'mgr-in', role: 'manager', regionCodes: ['dubai'] },
+        { id: 'mgr-out', role: 'manager', regionCodes: ['sharjah'] },
+        { id: 'admin-in', role: 'admin', regionCodes: ['sharjah', 'dubai'] },
+        { id: 'company-admin-1', role: 'company_admin', regionCodes: [] },
+        { id: 'agent-uuid-1', role: 'manager', regionCodes: ['dubai'] },
+      ]);
+
+      const count = await service.notifyContactAccessRequested(input);
+
+      expect(userRepo.find).toHaveBeenCalledWith({
+        where: {
+          companyId,
+          role: In(['manager', 'admin', 'company_admin']),
+          isActive: true,
+          deletedAt: IsNull(),
+        },
+        select: { id: true, role: true, regionCodes: true },
+      });
+      const recipients = repo.create.mock.calls.map(
+        (call) => (call[0] as { userId: string }).userId,
+      );
+      expect(recipients).toEqual(['mgr-in', 'admin-in', 'company-admin-1']);
+      expect(count).toBe(3);
+      expect(repo.create).toHaveBeenCalledWith({
+        userId: 'mgr-in',
+        title: 'Contact access requested',
+        message: 'Test Agent asked for access to Test Client',
+        type: NotificationType.CONTACT_ACCESS_REQUESTED,
+        entityType: 'ContactAccessRequest',
+        entityId: 'req-uuid-1',
+        regionCode: 'dubai',
+        companyId,
+      });
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledTimes(3);
+    });
+
+    it('falls back to company admins when the region has no approver', async () => {
+      const userRepo = module.get(getRepositoryToken(User));
+      (userRepo.find as jest.Mock).mockResolvedValue([
+        { id: 'mgr-out', role: 'manager', regionCodes: ['sharjah'] },
+        { id: 'company-admin-1', role: 'company_admin', regionCodes: null },
+      ]);
+
+      await service.notifyContactAccessRequested(input);
+
+      expect(repo.create).toHaveBeenCalledTimes(1);
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'company-admin-1' }),
+      );
+    });
+
+    it.each([
+      [
+        'approved',
+        undefined,
+        'Your access request for Test Client was approved',
+      ],
+      [
+        'rejected',
+        'not needed',
+        'Your access request for Test Client was rejected. Reason: not needed',
+      ],
+      [
+        'revoked',
+        'left team',
+        'Your access to Test Client was revoked. Reason: left team',
+      ],
+    ] as const)(
+      'tells the requester the request was %s',
+      async (decision, reason, message) => {
+        await service.notifyContactAccessDecided({
+          companyId,
+          requestId: 'req-uuid-1',
+          requesterId: 'agent-uuid-1',
+          contactName: 'Test Client',
+          regionCode: 'dubai',
+          decision,
+          reason,
+        });
+
+        expect(repo.create).toHaveBeenCalledWith({
+          userId: 'agent-uuid-1',
+          title: `Contact access ${decision}`,
+          message,
+          type: NotificationType.CONTACT_ACCESS_DECIDED,
+          entityType: 'ContactAccessRequest',
+          entityId: 'req-uuid-1',
+          regionCode: 'dubai',
+          companyId,
+        });
+        expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(
+          'agent-uuid-1',
+          expect.objectContaining({ message }),
+        );
+      },
+    );
+  });
 });

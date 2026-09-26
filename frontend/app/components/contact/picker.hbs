@@ -3,7 +3,8 @@
     <RemoteAutocomplete
       @searchUrl={{this.searchUrl}}
       @searchParam="search"
-      @labelKey="displayName"
+      @labelKey="pickerLabel"
+      @mapItem={{this.mapItem}}
       @placeholder="Search name, phone or email..."
       @selectedName={{this.selectedName}}
       @onSelect={{this.select}}
@@ -12,6 +13,40 @@
       data-test-contact-search
     />
   </Nuvo::Field>
+
+  {{#if (and this.conflict (not this.isAttached))}}
+    <Nuvo::Panel
+      @compact={{true}}
+      class="flex col gap-2"
+      data-test-contact-conflict
+    >
+      <p class="text-sm font-bold">Contact already added</p>
+      <div class="flex between x-center gap-3 wrap">
+        <div class="flex col">
+          <span data-test-contact-conflict-name>{{this.conflictName}}</span>
+          {{#if this.conflictPhone}}
+            <span
+              class="text-muted text-sm"
+              data-test-contact-conflict-phone
+            ><bdi dir="ltr">{{this.conflictPhone}}</bdi></span>
+          {{/if}}
+          {{#if this.conflict.createdByName}}
+            <span
+              class="text-muted text-sm"
+              data-test-contact-conflict-added-by
+            >Added by {{this.conflict.createdByName}}</span>
+          {{/if}}
+        </div>
+        <Nuvo::Button
+          @variant="primary"
+          @size="sm"
+          @text="Use this contact"
+          @onClick={{this.useConflict}}
+          data-test-contact-use-existing
+        />
+      </div>
+    </Nuvo::Panel>
+  {{/if}}
 
   {{#unless this.isAttached}}
     {{#unless this.isCreating}}
@@ -52,7 +87,7 @@
             @placeholder="e.g. Al Mansouri"
             @value={{if
               this.isAttached
-              this.contact.lastName
+              this.attachedLastName
               this.identity.lastName
             }}
             @onInput={{fn this.setIdentity "lastName"}}
@@ -70,27 +105,46 @@
             id="{{this.fieldPrefix}}-phone"
             @type="text"
             @placeholder="+971501234567"
-            @value={{if this.isAttached this.contact.phone this.identity.phone}}
+            @value={{if this.isAttached this.attachedPhone this.identity.phone}}
             @onInput={{fn this.setIdentity "phone"}}
             @readonly={{this.isAttached}}
             data-test-contact-phone
           />
         </Nuvo::Field>
       </div>
-      <div class="grow">
-        <Nuvo::Field @label="Email">
-          <Nuvo::Input
-            id="{{this.fieldPrefix}}-email"
-            @type="email"
-            @placeholder="ahmed@example.com"
-            @value={{if this.isAttached this.contact.email this.identity.email}}
-            @onInput={{fn this.setIdentity "email"}}
-            @readonly={{this.isAttached}}
-            data-test-contact-email
-          />
-        </Nuvo::Field>
-      </div>
+      {{#unless this.isLimited}}
+        <div class="grow">
+          <Nuvo::Field @label="Email">
+            <Nuvo::Input
+              id="{{this.fieldPrefix}}-email"
+              @type="email"
+              @placeholder="ahmed@example.com"
+              @value={{if
+                this.isAttached
+                this.contact.email
+                this.identity.email
+              }}
+              @onInput={{fn this.setIdentity "email"}}
+              @readonly={{this.isAttached}}
+              data-test-contact-email
+            />
+          </Nuvo::Field>
+        </div>
+      {{/unless}}
     </div>
+
+    {{#if this.isLimited}}
+      <Nuvo::Field @label="Enter their number to unlock details">
+        <Nuvo::Input
+          id="{{this.fieldPrefix}}-verify-phone"
+          @type="tel"
+          @placeholder="+971501234567"
+          @value={{@verifyPhone}}
+          @onInput={{this.setVerifyPhone}}
+          data-test-contact-verify-phone
+        />
+      </Nuvo::Field>
+    {{/if}}
 
     {{#if this.isAttached}}
       {{#if this.contact.isWhatsapp}}

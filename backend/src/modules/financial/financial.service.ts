@@ -22,6 +22,7 @@ import {
   resolveRegionCode,
 } from '../../shared/utils/resolve-region-code.util';
 import { Company } from '../companies/entities/company.entity';
+import { ContactViewer } from '../contacts/contact-privacy.service';
 import {
   effectiveRegionCodes,
   scopedRegionCodes,
@@ -334,7 +335,7 @@ export class FinancialService {
   getDepositReminders(
     companyId: string,
     regionCode?: string,
-    caller?: RegionScope,
+    caller?: ContactViewer,
   ): Promise<DepositReminders> {
     return this.analytics.getDepositReminders(companyId, regionCode, caller);
   }

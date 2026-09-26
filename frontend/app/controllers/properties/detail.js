@@ -6,6 +6,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { formatCalendarDate } from '../../utils/local-date';
+import { contactName } from '../../utils/contact-display';
 import {
   AMENITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
@@ -79,7 +80,7 @@ export default class PropertiesDetailController extends Controller {
             lease.status === 'EXPIRED' || lease.status === 'TERMINATED',
         )
         .map((lease) => ({
-          tenantName: lease.contact?.displayName ?? 'Unknown tenant',
+          tenantName: contactName(lease.contact) || 'Unknown tenant',
           startDate: lease.startDate
             ? formatCalendarDate(lease.startDate)
             : 'N/A',
@@ -397,7 +398,10 @@ export default class PropertiesDetailController extends Controller {
         ? { bathrooms: parseInt(this.formUnitBathrooms, 10) }
         : {}),
       ...(this.ownerSelection.contactId
-        ? { ownerId: this.ownerSelection.contactId }
+        ? {
+            ownerId: this.ownerSelection.contactId,
+            ...this.ownerSelection.verifyPhoneField('ownerVerifyPhone'),
+          }
         : { owner: this.ownerSelection.cleanIdentity }),
       amenities: this.formUnitAmenities,
     };
@@ -413,7 +417,9 @@ export default class PropertiesDetailController extends Controller {
       this.closeUnitModal();
       this.router.refresh('properties.detail');
     } catch (e) {
-      this.unitError = e.message;
+      this.unitError = this.ownerSelection.takeConflict(e)
+        ? 'Contact already added'
+        : e.message;
     } finally {
       this.isSavingUnit = false;
     }

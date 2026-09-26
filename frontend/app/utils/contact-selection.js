@@ -1,4 +1,5 @@
 import { tracked } from '@glimmer/tracking';
+import { isLimited } from './contact-display';
 
 export const CONTACT_REQUIRED_ERROR =
   'Select a contact, or enter a name, phone or email to create one.';
@@ -10,15 +11,35 @@ export const OWNER_REQUIRED_ERROR =
 export default class ContactSelection {
   @tracked contact = null;
   @tracked identity = {};
+  @tracked verifyPhone = '';
+  @tracked conflict = null;
 
   attach = (contact) => {
     this.contact = contact ?? null;
     this.identity = {};
+    this.verifyPhone = '';
+    this.conflict = null;
   };
 
   clear = () => {
     this.contact = null;
     this.identity = {};
+    this.verifyPhone = '';
+    this.conflict = null;
+  };
+
+  setVerifyPhone = (value) => {
+    this.verifyPhone = value ?? '';
+  };
+
+  // Keeps the presented match of a 409 CONTACT_EXISTS; returns whether the error was one.
+  takeConflict = (error) => {
+    const match =
+      error?.status === 409 && error.body?.code === 'CONTACT_EXISTS'
+        ? error.body.contact
+        : null;
+    this.conflict = match ?? null;
+    return Boolean(match);
   };
 
   reset = () => {
@@ -31,6 +52,18 @@ export default class ContactSelection {
 
   get contactId() {
     return this.contact?.id ?? null;
+  }
+
+  // Sent only beside a LIMITED contact; the backend compares it with the stored number.
+  get cleanVerifyPhone() {
+    if (!isLimited(this.contact)) return '';
+    return this.verifyPhone.trim();
+  }
+
+  // Spread beside the picked id; empty unless a LIMITED pick has a typed number.
+  verifyPhoneField(key) {
+    const phone = this.cleanVerifyPhone;
+    return phone ? { [key]: phone } : {};
   }
 
   get hasIdentity() {

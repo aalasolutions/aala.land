@@ -87,6 +87,89 @@ module('Unit | Controller | leads', function (hooks) {
     });
     assert.false('localityId' in payload);
   });
+
+  module('contact access', function () {
+    const LIMITED = { id: 'c-9', accessLevel: 'LIMITED', firstName: 'Omar' };
+
+    async function createWith(
+      ctx,
+      { contact, verifyPhone = '', response = {} },
+    ) {
+      const controller = makeController(ctx);
+      const toasts = [];
+      controller.notifications = {
+        success: (message) => toasts.push(['success', message]),
+        info: (message) => toasts.push(['info', message]),
+        error: (message) => toasts.push(['error', message]),
+      };
+      let captured;
+      controller.auth = {
+        fetchJson(_path, options) {
+          captured = JSON.parse(options.body);
+          return response instanceof Error
+            ? Promise.reject(response)
+            : Promise.resolve(response);
+        },
+      };
+      controller.editLead = null;
+      controller.contactSelection.attach(contact);
+      controller.contactSelection.setVerifyPhone(verifyPhone);
+      await controller.saveLead({ preventDefault() {} });
+      return { payload: captured, toasts, controller };
+    }
+
+    test('a limited pick sends the typed number beside the contact id', async function (assert) {
+      const { payload } = await createWith(this, {
+        contact: LIMITED,
+        verifyPhone: ' 0501234567 ',
+      });
+      assert.strictEqual(payload.contactId, 'c-9');
+      assert.strictEqual(payload.contactVerifyPhone, '0501234567');
+    });
+
+    test('no number, or a full contact, sends no contactVerifyPhone', async function (assert) {
+      const skipped = await createWith(this, { contact: LIMITED });
+      assert.false('contactVerifyPhone' in skipped.payload);
+
+      const full = await createWith(this, {
+        contact: { id: 'c-1', accessLevel: 'FULL' },
+        verifyPhone: '0501234567',
+      });
+      assert.false('contactVerifyPhone' in full.payload);
+    });
+
+    test('a pending contact access is announced after the lead is created', async function (assert) {
+      const { toasts } = await createWith(this, {
+        contact: LIMITED,
+        response: { data: { id: 'lead-1', contactAccess: 'PENDING' } },
+      });
+      assert.deepEqual(toasts, [
+        ['success', 'Lead created'],
+        ['info', 'Access pending: an approver has been asked'],
+      ]);
+    });
+
+    test('full access needs no extra toast', async function (assert) {
+      const { toasts } = await createWith(this, {
+        contact: LIMITED,
+        verifyPhone: '0501234567',
+        response: { data: { id: 'lead-1', contactAccess: 'FULL' } },
+      });
+      assert.deepEqual(toasts, [['success', 'Lead created']]);
+    });
+
+    test('a CONTACT_EXISTS answer is handed to the picker', async function (assert) {
+      const error = new Error('Contact already added');
+      error.status = 409;
+      error.body = { code: 'CONTACT_EXISTS', contact: LIMITED };
+      const { controller } = await createWith(this, {
+        contact: { id: 'c-1', accessLevel: 'FULL' },
+        response: error,
+      });
+      assert.strictEqual(controller.contactSelection.conflict, LIMITED);
+      assert.strictEqual(controller.errorMsg, 'Contact already added');
+    });
+  });
   module('drag sort', function () {
     const leads = [
       { id: 'a', status: 'NEW' },

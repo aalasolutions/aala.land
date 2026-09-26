@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import {
   ROLES,
   canAccessWhatsapp,
+  canApproveContactAccess,
   canManageFinancials,
   canManageRegions,
   canManageUsers,
@@ -10,6 +11,8 @@ import {
   getVisibleGroups,
   isAdminRole,
   isSuperAdmin,
+  listsAllRegionsByDefault,
+  resolveAllRegions,
 } from 'land/utils/roles';
 
 // Each gate is pinned against every role, not just the one that inspired it.
@@ -29,6 +32,8 @@ module('Unit | Utility | roles', function () {
       canManageFinancials,
       canManageRegions,
       canViewReports,
+      canApproveContactAccess,
+      listsAllRegionsByDefault,
     ]) {
       assert.false(predicate(undefined), `${predicate.name} on nothing`);
       assert.false(predicate('not-a-role'), `${predicate.name} on a stranger`);
@@ -102,6 +107,7 @@ module('Unit | Utility | roles', function () {
     const groups = getVisibleGroups(ROLES.AGENT);
 
     assert.deepEqual(Object.keys(groups).sort(), [
+      'accessRequests',
       'admin',
       'crm',
       'documents',
@@ -123,6 +129,40 @@ module('Unit | Utility | roles', function () {
     assert.true(getVisibleGroups(ROLES.SUPER_ADMIN).admin);
     assert.false(getVisibleGroups(ROLES.COMPANY_ADMIN).admin);
     assert.true(getVisibleGroups(ROLES.COMPANY_ADMIN).team);
+  });
+
+  // Same list as the backend approve endpoint; the route and the sidebar both read it.
+  test('contact access is decided by manager and above', function (assert) {
+    const approvers = [
+      ROLES.SUPER_ADMIN,
+      ROLES.COMPANY_ADMIN,
+      ROLES.ADMIN,
+      ROLES.MANAGER,
+    ];
+    assert.deepEqual(allowed(canApproveContactAccess), approvers);
+    assert.deepEqual(
+      allowed((role) => getVisibleGroups(role).accessRequests),
+      approvers,
+    );
+  });
+
+  test('only the company owner and the operator list every region by default', function (assert) {
+    assert.deepEqual(allowed(listsAllRegionsByDefault), [
+      ROLES.SUPER_ADMIN,
+      ROLES.COMPANY_ADMIN,
+    ]);
+  });
+
+  test('an explicit allRegions value beats the role default', function (assert) {
+    assert.true(resolveAllRegions('true', ROLES.AGENT));
+    assert.false(resolveAllRegions('false', ROLES.COMPANY_ADMIN));
+    assert.true(resolveAllRegions('', ROLES.COMPANY_ADMIN));
+    assert.false(resolveAllRegions('', ROLES.MANAGER));
+    assert.false(resolveAllRegions(undefined, undefined));
+    assert.false(
+      resolveAllRegions('yes', ROLES.AGENT),
+      'junk falls back to the role',
+    );
   });
 
   test('no role sees nothing at all', function (assert) {

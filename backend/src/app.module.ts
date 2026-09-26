@@ -24,6 +24,7 @@ import { ReportsModule } from '@modules/reports/reports.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { EmailTemplatesModule } from '@modules/email-templates/email-templates.module';
 import { ContactsModule } from '@modules/contacts/contacts.module';
+import { ContactAccessRequestsModule } from '@modules/contact-access-requests/contact-access-requests.module';
 import { VendorsModule } from '@modules/vendors/vendors.module';
 import { ReminderRulesModule } from '@modules/reminder-rules/reminder-rules.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
@@ -79,6 +80,7 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     AuditModule,
     EmailTemplatesModule,
     ContactsModule,
+    ContactAccessRequestsModule,
     VendorsModule,
     ReminderRulesModule,
     DocumentsModule,

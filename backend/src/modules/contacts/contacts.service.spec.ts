@@ -1,9 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@shared/enums/roles.enum';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager, In } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  Repository,
+  WhereExpressionBuilder,
+} from 'typeorm';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ContactsService } from './contacts.service';
+import {
+  ContactPrivacyService,
+  FullContactView,
+  LimitedContactView,
+} from './contact-privacy.service';
+import { User } from '../users/entities/user.entity';
+import { ContactAccessRequest } from '../contact-access-requests/entities/contact-access-request.entity';
+import { ContactAccessRequestsService } from '../contact-access-requests/contact-access-requests.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 import { Contact } from './entities/contact.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
@@ -54,9 +75,28 @@ describe('ContactsService', () => {
   let chatRepo: jest.Mocked<Repository<WhatsappChat>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let dataSource: { transaction: jest.Mock };
+  let userRepo: { find: jest.Mock };
+  let accessRepo: { find: jest.Mock };
+  let accessRequests: {
+    grantedContactIds: jest.Mock;
+    verifyPhone: jest.Mock;
+  };
+  let audit: { log: jest.Mock };
 
   const companyId = 'company-uuid-1';
   const adminCaller = { role: 'company_admin', regionCodes: ['dubai'] };
+  const LIMITED_KEYS = [
+    'accessLevel',
+    'accessPending',
+    'createdAt',
+    'createdBy',
+    'createdByName',
+    'firstName',
+    'id',
+    'lastInitial',
+    'phoneMasked',
+    'regionCode',
+  ];
 
   const mockContact = {
     id: 'contact-uuid-1',
@@ -72,6 +112,7 @@ describe('ContactsService', () => {
     jobTitle: 'Property Manager',
     address: 'Business Bay, Dubai',
     notes: 'VIP client',
+    regionCode: 'dubai',
     createdBy: 'user-uuid-1',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -86,6 +127,19 @@ describe('ContactsService', () => {
       record: jest.fn().mockResolvedValue(undefined),
       resolveActorName: jest.fn().mockResolvedValue('Admin User'),
     };
+    userRepo = {
+      find: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'user-uuid-1', name: 'Test User', email: 'user@example.com' },
+        ]),
+    };
+    accessRepo = { find: jest.fn().mockResolvedValue([]) };
+    accessRequests = {
+      grantedContactIds: jest.fn().mockResolvedValue(new Set()),
+      verifyPhone: jest.fn(),
+    };
+    audit = { log: jest.fn().mockResolvedValue(undefined) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContactsService,
@@ -131,6 +185,14 @@ describe('ContactsService', () => {
         },
         { provide: DataSource, useValue: { transaction: jest.fn() } },
         { provide: RecordHistoryService, useValue: recordHistory },
+        ContactPrivacyService,
+        { provide: getRepositoryToken(User), useValue: userRepo },
+        {
+          provide: getRepositoryToken(ContactAccessRequest),
+          useValue: accessRepo,
+        },
+        { provide: ContactAccessRequestsService, useValue: accessRequests },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -185,6 +247,8 @@ describe('ContactsService', () => {
         ...mockContact,
         tags: [],
         displayName: 'Ahmed Al-Rashid',
+        accessLevel: 'FULL',
+        createdByName: 'Test User',
       });
     });
 
@@ -212,7 +276,7 @@ describe('ContactsService', () => {
       const result = await service.resolveOrCreate(companyId, {
         contactId: 'contact-uuid-1',
       });
-      expect(result).toEqual(mockContact);
+      expect(result).toEqual({ contact: mockContact, existing: true });
     });
 
     it('resolves by phone suffix when the number is already a contact', async () => {
@@ -222,7 +286,8 @@ describe('ContactsService', () => {
         firstName: 'Ahmed',
         phone: '+971501234567',
       });
-      expect(result.id).toBe('contact-uuid-1');
+      expect(result.contact.id).toBe('contact-uuid-1');
+      expect(result.existing).toBe(true);
       expect(repo.create).not.toHaveBeenCalled();
     });
 
@@ -235,7 +300,7 @@ describe('ContactsService', () => {
         phone: '+971555000111',
       });
       expect(repo.save).toHaveBeenCalled();
-      expect(result).toEqual(mockContact);
+      expect(result).toEqual({ contact: mockContact, existing: false });
     });
 
     it('creates when neither phone nor email is present', async () => {
@@ -245,7 +310,7 @@ describe('ContactsService', () => {
         firstName: 'Anon',
       });
       expect(repo.save).toHaveBeenCalled();
-      expect(result).toEqual(mockContact);
+      expect(result).toEqual({ contact: mockContact, existing: false });
     });
   });
 
@@ -262,8 +327,12 @@ describe('ContactsService', () => {
         qbMock({ getRawMany: [] }) as any,
       );
 
-      const result = await service.findOne('contact-uuid-1', companyId);
+      const result = (await service.findOne('contact-uuid-1', companyId, {
+        userId: 'user-uuid-1',
+        ...adminCaller,
+      })) as FullContactView;
 
+      expect(result.accessLevel).toBe('FULL');
       expect(result.tags).toContain('lead');
       expect(result.displayName).toBe('Ahmed Al-Rashid');
     });
@@ -287,6 +356,7 @@ describe('ContactsService', () => {
       const qb = arrangeList();
 
       await service.findAll(companyId, 1, 20, undefined, undefined, undefined, {
+        userId: 'agent-uuid-1',
         role: Role.AGENT,
         regionCodes: ['makkah', 'punjab'],
       });
@@ -307,7 +377,11 @@ describe('ContactsService', () => {
         undefined,
         undefined,
         { regionCode: 'makkah' },
-        { role: Role.AGENT, regionCodes: ['makkah', 'punjab'] },
+        {
+          userId: 'agent-uuid-1',
+          role: Role.AGENT,
+          regionCodes: ['makkah', 'punjab'],
+        },
       );
 
       expect(qb.andWhere).toHaveBeenCalledWith(
@@ -326,7 +400,7 @@ describe('ContactsService', () => {
         undefined,
         undefined,
         { regionCode: 'punjab' },
-        { role: Role.AGENT, regionCodes: ['makkah'] },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
       );
 
       expect(result.data).toEqual([]);
@@ -344,7 +418,7 @@ describe('ContactsService', () => {
         undefined,
         undefined,
         undefined,
-        { role: Role.AGENT, regionCodes: [] },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: [] },
       );
 
       expect(result.data).toEqual([]);
@@ -355,6 +429,7 @@ describe('ContactsService', () => {
       const qb = arrangeList();
 
       await service.findAll(companyId, 1, 20, undefined, undefined, undefined, {
+        userId: 'admin-uuid-1',
         role: Role.COMPANY_ADMIN,
         regionCodes: [],
       });
@@ -363,6 +438,116 @@ describe('ContactsService', () => {
         String(c[0]).includes('region_code'),
       );
       expect(regionCalls).toHaveLength(0);
+    });
+
+    const regionClauses = (qb: Record<string, jest.Mock>) =>
+      qb.andWhere.mock.calls.filter((c) =>
+        String(c[0]).includes('region_code'),
+      );
+
+    it('searches the whole company and ignores the regionCode the client sent', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        'Ahmed',
+        undefined,
+        { regionCode: 'makkah' },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+      );
+
+      expect(regionClauses(qb)).toHaveLength(0);
+      expect(repo.createQueryBuilder).toHaveBeenCalled();
+    });
+
+    it('lists every region when allRegions is set, even for a caller with no region', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        { regionCode: 'makkah', allRegions: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: [] },
+      );
+
+      expect(regionClauses(qb)).toHaveLength(0);
+    });
+
+    function searchWhere(qb: ReturnType<typeof qbMock>) {
+      const bracket = (qb.andWhere as jest.Mock).mock.calls
+        .map((call: unknown[]) => call[0])
+        .find((arg) => arg instanceof Brackets) as Brackets;
+      const where = jest.fn().mockReturnThis();
+      const orWhere = jest.fn().mockReturnThis();
+      bracket.whereFactory({
+        where,
+        orWhere,
+      } as unknown as WhereExpressionBuilder);
+      return { where, orWhere };
+    }
+
+    it('matches a phone term on the whole subscriber number, never a substring', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, '+971 50 123 4567');
+
+      const { where, orWhere } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith(
+        expect.stringContaining('RIGHT(regexp_replace(c.phone'),
+        { phoneDigits: '501234567' },
+      );
+      expect(orWhere).not.toHaveBeenCalled();
+    });
+
+    it('matches an email term exactly, case-insensitively', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, 'Ali@Example.com');
+
+      const { where, orWhere } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith('LOWER(c.email) = :emailExact', {
+        emailExact: 'ali@example.com',
+      });
+      expect(orWhere).not.toHaveBeenCalled();
+    });
+
+    it('matches a name term on first and last name by substring only', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, 'Ahm');
+
+      const { where, orWhere } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith('c.first_name ILIKE :s', {
+        s: '%Ahm%',
+      });
+      expect(orWhere).toHaveBeenCalledWith('c.last_name ILIKE :s');
+    });
+
+    it('keeps the region clause for a blank search', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, '   ', undefined, undefined, {
+        userId: 'agent-uuid-1',
+        role: Role.AGENT,
+        regionCodes: ['makkah'],
+      });
+
+      expect(regionClauses(qb)).toHaveLength(1);
+    });
+
+    it('caps a page at 100 rows and reports the applied limit', async () => {
+      const qb = arrangeList();
+
+      const result = await service.findAll(companyId, 2, 500);
+
+      expect(qb.take).toHaveBeenCalledWith(100);
+      expect(qb.skip).toHaveBeenCalledWith(100);
+      expect(result.limit).toBe(100);
     });
   });
 
@@ -588,9 +773,12 @@ describe('ContactsService', () => {
       );
     });
 
-    it('scopes the transfer target to the caller regions', async () => {
+    it('looks the transfer target up company-wide', async () => {
       const target = { ...mockContact, id: 'contact-uuid-2' } as Contact;
-      repo.findOne.mockResolvedValue(mockContact);
+      repo.findOne.mockResolvedValue({
+        ...mockContact,
+        regionCode: 'makkah',
+      } as Contact);
       leadRepo.count.mockResolvedValue(1);
       unitRepo.count.mockResolvedValue(0);
       leaseRepo.count.mockResolvedValue(0);
@@ -614,11 +802,7 @@ describe('ContactsService', () => {
       );
 
       expect(manager.findOne).toHaveBeenCalledWith(Contact, {
-        where: {
-          id: 'contact-uuid-2',
-          companyId,
-          regionCode: In(['makkah']),
-        },
+        where: { id: 'contact-uuid-2', companyId },
       });
     });
 
@@ -680,19 +864,44 @@ describe('ContactsService', () => {
     }
 
     describe('by-id reads', () => {
-      it('denies findOne on a contact outside the caller assigned regions', async () => {
+      const makkahViewer = { userId: 'manager-uuid-1', ...makkahManager };
+
+      it('finds a contact outside the caller regions but presents it LIMITED', async () => {
         seedContactInRegion('punjab');
 
-        await expect(
-          service.findOne('contact-uuid-1', companyId, makkahManager),
-        ).rejects.toThrow(NotFoundException);
+        const result = await service.findOne(
+          'contact-uuid-1',
+          companyId,
+          makkahViewer,
+        );
+
+        expect(result.accessLevel).toBe('LIMITED');
+        expect(Object.keys(result).sort()).toEqual(LIMITED_KEYS);
+        expect(result).toMatchObject({
+          firstName: 'Ahmed',
+          lastInitial: 'A.',
+          phoneMasked: '+971 50 *** **67',
+          createdByName: 'Test User',
+          accessPending: false,
+        });
       });
 
-      it('denies findOneEntity on a contact outside the caller assigned regions', async () => {
+      it('no longer gates findOneEntity on region', async () => {
         seedContactInRegion('punjab');
 
+        const result = await service.findOneEntity('contact-uuid-1', companyId);
+
+        expect(result.id).toBe('contact-uuid-1');
+        expect(repo.findOne).toHaveBeenCalledWith({
+          where: { id: 'contact-uuid-1', companyId },
+        });
+      });
+
+      it('still 404s a contact of another company', async () => {
+        repo.findOne.mockResolvedValue(null);
+
         await expect(
-          service.findOneEntity('contact-uuid-1', companyId, makkahManager),
+          service.findOneEntity('contact-uuid-1', 'other-company'),
         ).rejects.toThrow(NotFoundException);
       });
 
@@ -704,9 +913,9 @@ describe('ContactsService', () => {
             'contact-uuid-1',
             companyId,
             { firstName: 'Khalid' },
-            makkahManager,
+            makkahViewer,
           ),
-        ).rejects.toThrow(NotFoundException);
+        ).rejects.toThrow(ForbiddenException);
         expect(repo.save).not.toHaveBeenCalled();
       });
 
@@ -725,48 +934,26 @@ describe('ContactsService', () => {
         expect(repo.delete).not.toHaveBeenCalled();
       });
 
-      it('denies every by-id read when the caller has no assigned region', async () => {
-        seedContactInRegion('makkah');
-
-        await expect(
-          service.findOne('contact-uuid-1', companyId, {
-            role: 'manager',
-            regionCodes: [],
-          }),
-        ).rejects.toThrow(NotFoundException);
-        expect(repo.findOne).not.toHaveBeenCalled();
-      });
-
-      it('allows a by-id read in any region the caller is assigned to', async () => {
+      it('presents FULL in any region the caller is assigned to', async () => {
         seedContactInRegion('punjab');
 
-        const result = await service.findOne(
-          'contact-uuid-1',
-          companyId,
-          twoRegionManager,
-        );
+        const result = await service.findOne('contact-uuid-1', companyId, {
+          userId: 'manager-uuid-1',
+          ...twoRegionManager,
+        });
 
-        expect(result.id).toBe('contact-uuid-1');
+        expect(result.accessLevel).toBe('FULL');
       });
 
-      it('leaves admins unconfined by their own assignments', async () => {
+      it('presents FULL to a company admin in every region', async () => {
         seedContactInRegion('punjab');
 
-        const result = await service.findOne(
-          'contact-uuid-1',
-          companyId,
-          admin,
-        );
+        const result = await service.findOne('contact-uuid-1', companyId, {
+          userId: 'admin-uuid-1',
+          ...admin,
+        });
 
-        expect(result.id).toBe('contact-uuid-1');
-      });
-
-      it('stays unscoped when no caller is supplied', async () => {
-        seedContactInRegion('punjab');
-
-        const result = await service.findOneEntity('contact-uuid-1', companyId);
-
-        expect(result.id).toBe('contact-uuid-1');
+        expect(result.accessLevel).toBe('FULL');
       });
     });
 
@@ -846,6 +1033,351 @@ describe('ContactsService', () => {
           expect.objectContaining({ regionCode: 'dubai' }),
         );
       });
+    });
+  });
+
+  describe('duplicates and merge', () => {
+    const managerCaller = { role: Role.MANAGER, regionCodes: ['dubai'] };
+    const agentCaller = { role: Role.AGENT, regionCodes: ['dubai'] };
+
+    function stubTags() {
+      leadRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      leaseRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      unitRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+    }
+
+    function stubMergeTransaction() {
+      const manager = {
+        save: jest.fn((_entity: unknown, row: Contact) => Promise.resolve(row)),
+      };
+      dataSource.transaction.mockImplementation(
+        (cb: (m: EntityManager) => Promise<unknown>) =>
+          cb(manager as unknown as EntityManager),
+      );
+      return manager;
+    }
+
+    it('answers an agent duplicate with 409 CONTACT_EXISTS and the LIMITED match', async () => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+
+      const error: unknown = await service
+        .create(
+          companyId,
+          { firstName: 'Someone', phone: '0501234567' } as any,
+          'agent-uuid-1',
+          agentCaller,
+        )
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(ConflictException);
+      const body = (error as ConflictException).getResponse() as {
+        statusCode: number;
+        code: string;
+        message: string;
+        contact: LimitedContactView;
+      };
+      expect(body).toMatchObject({
+        statusCode: 409,
+        code: 'CONTACT_EXISTS',
+        message: 'Contact already added',
+      });
+      expect(body.contact.accessLevel).toBe('LIMITED');
+      expect(Object.keys(body.contact).sort()).toEqual(LIMITED_KEYS);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it('merges into the match for a manager and records the filled fields', async () => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+      stubTags();
+      const manager = stubMergeTransaction();
+
+      await service.create(
+        companyId,
+        { phone: '+971501234567', nationality: 'Emirati' } as any,
+        'manager-uuid-1',
+        managerCaller,
+      );
+
+      expect(manager.save).toHaveBeenCalledWith(
+        Contact,
+        expect.objectContaining({ nationality: 'Emirati' }),
+      );
+      expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+        companyId,
+        action: RecordHistoryAction.MERGE,
+        entityType: 'Contact',
+        entityId: 'contact-uuid-1',
+        entityTitle: 'Ahmed Al-Rashid',
+        actorId: 'manager-uuid-1',
+        actorName: 'Admin User',
+        regionCode: 'dubai',
+        metadata: { filledFields: ['nationality'] },
+      });
+    });
+
+    it('writes no MERGE history when the manager fills nothing', async () => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+      stubTags();
+
+      await service.create(
+        companyId,
+        { firstName: 'Other', phone: '+971501234567' } as any,
+        'manager-uuid-1',
+        managerCaller,
+      );
+
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('resolveOrCreate hands an agent the match untouched', async () => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+
+      const result = await service.resolveOrCreate(
+        companyId,
+        { phone: '+971501234567', nationalId: 'x' } as any,
+        'agent-uuid-1',
+        undefined,
+        Role.AGENT,
+      );
+
+      expect(result).toEqual({
+        contact: expect.objectContaining({ id: 'contact-uuid-1' }),
+        existing: true,
+      });
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it('resolveOrCreate merges for a manager and records it', async () => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+      const manager = stubMergeTransaction();
+
+      const result = await service.resolveOrCreate(
+        companyId,
+        { phone: '+971501234567', isWhatsapp: true },
+        'manager-uuid-1',
+        undefined,
+        Role.MANAGER,
+      );
+
+      expect(result.existing).toBe(true);
+      expect(result.contact.isWhatsapp).toBe(true);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.MERGE,
+          metadata: { filledFields: ['isWhatsapp'] },
+        }),
+      );
+    });
+  });
+
+  describe('update permissions', () => {
+    const row = { ...mockContact, regionCode: 'dubai' } as Contact;
+
+    function arrange() {
+      repo.findOne.mockResolvedValue({ ...row } as Contact);
+      repo.save.mockResolvedValue(row);
+      leadRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      leaseRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      unitRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+    }
+
+    it.each([
+      ['the creating agent', 'user-uuid-1', Role.AGENT, []],
+      ['a manager in the contact region', 'm-1', Role.MANAGER, ['dubai']],
+      ['an admin in the contact region', 'a-1', Role.ADMIN, ['dubai']],
+      ['a company admin', 'ca-1', Role.COMPANY_ADMIN, []],
+      ['a super admin', 'sa-1', Role.SUPER_ADMIN, []],
+    ])('lets %s edit', async (_label, userId, role, regionCodes) => {
+      arrange();
+
+      await service.update(
+        'contact-uuid-1',
+        companyId,
+        { notes: 'x' },
+        { userId, role, regionCodes },
+      );
+
+      expect(repo.save).toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an agent who did not create it', 'agent-2', Role.AGENT, ['dubai']],
+      ['a manager outside the region', 'm-2', Role.MANAGER, ['makkah']],
+      ['an admin outside the region', 'a-2', Role.ADMIN, ['makkah']],
+      ['an accountant in the region', 'acc-1', Role.ACCOUNTANT, ['dubai']],
+    ])('forbids %s', async (_label, userId, role, regionCodes) => {
+      arrange();
+
+      await expect(
+        service.update(
+          'contact-uuid-1',
+          companyId,
+          { notes: 'x' },
+          { userId, role, regionCodes },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('forbids an agent holding an approved grant', async () => {
+      arrange();
+      accessRequests.grantedContactIds.mockResolvedValue(
+        new Set(['contact-uuid-1']),
+      );
+
+      await expect(
+        service.update(
+          'contact-uuid-1',
+          companyId,
+          { notes: 'x' },
+          { userId: 'agent-2', role: Role.AGENT, regionCodes: ['dubai'] },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('VIEW audit', () => {
+    function arrange(regionCode = 'dubai') {
+      repo.findOne.mockResolvedValue({ ...mockContact, regionCode } as Contact);
+      leadRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      leaseRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      unitRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+    }
+
+    it('logs every FULL view of a contact someone else created', async () => {
+      arrange();
+      const viewer = {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['dubai'],
+      };
+
+      await service.findOne('contact-uuid-1', companyId, viewer);
+      await service.findOne('contact-uuid-1', companyId, viewer);
+
+      expect(audit.log).toHaveBeenCalledTimes(2);
+      expect(audit.log).toHaveBeenCalledWith({
+        companyId,
+        userId: 'manager-uuid-1',
+        action: AuditAction.VIEW,
+        entityType: 'Contact',
+        entityId: 'contact-uuid-1',
+        regionCode: 'dubai',
+      });
+    });
+
+    it('does not log the creator viewing their own contact', async () => {
+      arrange();
+
+      await service.findOne('contact-uuid-1', companyId, {
+        userId: 'user-uuid-1',
+        role: Role.AGENT,
+        regionCodes: ['dubai'],
+      });
+
+      expect(audit.log).not.toHaveBeenCalled();
+    });
+
+    it('does not log a LIMITED view', async () => {
+      arrange('punjab');
+
+      await service.findOne('contact-uuid-1', companyId, {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['dubai'],
+      });
+
+      expect(audit.log).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyPhone', () => {
+    const agent = {
+      userId: 'agent-uuid-1',
+      role: Role.AGENT,
+      regionCodes: ['dubai'],
+    };
+
+    beforeEach(() => {
+      repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
+      leadRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      leaseRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+      unitRepo.createQueryBuilder.mockReturnValue(
+        qbMock({ getRawMany: [] }) as any,
+      );
+    });
+
+    it('passes the typed number with a contact source and reveals nothing on a miss', async () => {
+      accessRequests.verifyPhone.mockResolvedValue(false);
+
+      const result = await service.verifyPhone(
+        'contact-uuid-1',
+        companyId,
+        '0500000000',
+        agent,
+      );
+
+      expect(accessRequests.verifyPhone).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-1',
+        'agent-uuid-1',
+        '0500000000',
+        { sourceType: 'contact', sourceId: 'contact-uuid-1' },
+      );
+      expect(result.verified).toBe(false);
+      expect(result.contact.accessLevel).toBe('LIMITED');
+      expect(JSON.stringify(result)).not.toContain('501234567');
+    });
+
+    it('returns the FULL view once the grant exists', async () => {
+      accessRequests.verifyPhone.mockResolvedValue(true);
+      accessRequests.grantedContactIds.mockResolvedValue(
+        new Set(['contact-uuid-1']),
+      );
+
+      const result = await service.verifyPhone(
+        'contact-uuid-1',
+        companyId,
+        '0501234567',
+        agent,
+      );
+
+      expect(result.verified).toBe(true);
+      expect(result.contact.accessLevel).toBe('FULL');
+    });
+
+    it('404s a contact of another company before checking anything', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.verifyPhone('contact-uuid-1', 'other', '0501234567', agent),
+      ).rejects.toThrow(NotFoundException);
+      expect(accessRequests.verifyPhone).not.toHaveBeenCalled();
     });
   });
 });

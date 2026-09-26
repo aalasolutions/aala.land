@@ -6,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
-import {
-  attachDisplayName,
-  contactDisplayName,
-} from '../../shared/utils/contact.util';
+import { contactDisplayName } from '../../shared/utils/contact.util';
 import { ContactsService } from '../contacts/contacts.service';
+import {
+  ContactPrivacyService,
+  ContactViewer,
+  PresentedContact,
+} from '../contacts/contact-privacy.service';
 import {
   DataSource,
   EntityManager,
@@ -47,6 +49,10 @@ export interface LeaseFilters {
   archived?: LeaseArchivedFilter;
 }
 
+export type LeaseResponse = Omit<Lease, 'contact'> & {
+  contact: PresentedContact | null;
+};
+
 const ARCHIVED_LEASE_MESSAGE = 'This lease is archived. Unarchive it first.';
 const ARCHIVED_UNIT_MESSAGE =
   'This unit is archived and no longer active. Select another unit.';
@@ -66,6 +72,7 @@ export class LeasesService {
     private readonly dataSource: DataSource,
     private readonly contactsService: ContactsService,
     private readonly recordHistoryService: RecordHistoryService,
+    private readonly contactPrivacy: ContactPrivacyService,
   ) {}
 
   // Re-checks under the row lock: READ COMMITTED lets two renews both pass a stale check.
@@ -113,14 +120,43 @@ export class LeasesService {
     }
   }
 
-  // contactId must belong to lease's company and caller's regions, else it surfaces another's PII.
+  // Company scope only: a tenant from any region may be attached, the presenter guards the PII.
   private async assertContactInCompany(
     contactId: string | null | undefined,
     companyId: string,
-    caller?: RegionScope,
   ): Promise<void> {
     if (!contactId) return;
-    await this.contactsService.findOneEntity(contactId, companyId, caller);
+    await this.contactsService.findOneEntity(contactId, companyId);
+  }
+
+  // One presenter pass for every tenant on the page.
+  private async presentLeases(
+    companyId: string,
+    viewer: ContactViewer | undefined,
+    leases: Lease[],
+  ): Promise<LeaseResponse[]> {
+    const tenants = new Map<string, Contact>();
+    leases.forEach((l) => {
+      if (l.contact) tenants.set(l.contact.id, l.contact);
+    });
+    const presented = await this.contactPrivacy.presentMany(companyId, viewer, [
+      ...tenants.values(),
+    ]);
+    const byId = new Map(presented.map((p) => [p.id, p]));
+    return leases.map((lease) =>
+      Object.assign(lease, {
+        contact: lease.contact ? (byId.get(lease.contact.id) ?? null) : null,
+      }),
+    ) as LeaseResponse[];
+  }
+
+  private async presentLease(
+    companyId: string,
+    viewer: ContactViewer | undefined,
+    lease: Lease,
+  ): Promise<LeaseResponse> {
+    const [presented] = await this.presentLeases(companyId, viewer, [lease]);
+    return presented;
   }
 
   private regionScopedWhere(caller?: RegionScope): FindOptionsWhere<Lease> {
@@ -210,16 +246,15 @@ export class LeasesService {
       where: { id, companyId },
       relations: ['contact'],
     });
-    attachDisplayName(lease?.contact ?? null);
     return lease as Lease;
   }
 
   async create(
     companyId: string,
     dto: CreateLeaseDto,
-    caller?: RegionScope,
-  ): Promise<Lease> {
-    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
@@ -239,7 +274,11 @@ export class LeasesService {
       return manager.save(Lease, lease);
     });
     // Re-read of a row this caller just wrote, so it stays unscoped.
-    return this.findOne(saved.id, companyId);
+    return this.presentLease(
+      companyId,
+      caller,
+      await this.findLeaseOrThrow(saved.id, companyId),
+    );
   }
 
   async findAll(
@@ -249,8 +288,13 @@ export class LeasesService {
     regionCode?: string,
     contactId?: string,
     filters?: LeaseFilters,
-    caller?: RegionScope,
-  ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
+    caller?: ContactViewer,
+  ): Promise<{
+    data: LeaseResponse[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     // No readable region means no rows, and an empty IN () is invalid SQL.
     if (regionCodes?.length === 0) {
@@ -303,7 +347,6 @@ export class LeasesService {
     const [data, total] = await qb.getManyAndCount();
 
     data.forEach((l) => {
-      attachDisplayName(l.contact);
       if (l.unit) {
         const unit = l.unit as typeof l.unit & {
           areaId: string | null;
@@ -315,10 +358,27 @@ export class LeasesService {
         unit.assetName = l.unit.asset?.name ?? null;
       }
     });
-    return { data, total, page, limit };
+    return {
+      data: await this.presentLeases(companyId, caller, data),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(
+    id: string,
+    companyId: string,
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
+    return this.presentLease(
+      companyId,
+      caller,
+      await this.findLeaseOrThrow(id, companyId, caller),
+    );
+  }
+
+  private async findLeaseOrThrow(
     id: string,
     companyId: string,
     caller?: RegionScope,
@@ -330,16 +390,15 @@ export class LeasesService {
     if (!lease) {
       throw new NotFoundException('Lease not found');
     }
-    attachDisplayName(lease.contact);
     return lease;
   }
 
   async findByUnit(
     unitId: string,
     companyId: string,
-    caller?: RegionScope,
+    caller?: ContactViewer,
     archived: LeaseArchivedFilter = LeaseArchivedFilter.INCLUDE,
-  ): Promise<Lease[]> {
+  ): Promise<LeaseResponse[]> {
     await this.assertUnitInCallerRegions(unitId, companyId, caller);
     const where: FindOptionsWhere<Lease> = { unitId, companyId };
     if (archived === LeaseArchivedFilter.EXCLUDE) {
@@ -352,8 +411,7 @@ export class LeasesService {
       relations: ['contact'],
       order: { startDate: 'DESC' },
     });
-    leases.forEach((l) => attachDisplayName(l.contact));
-    return leases;
+    return this.presentLeases(companyId, caller, leases);
   }
 
   async update(
@@ -361,11 +419,11 @@ export class LeasesService {
     companyId: string,
     dto: UpdateLeaseDto,
     actorId: string,
-    caller?: RegionScope,
-  ): Promise<Lease> {
-    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     const regionWhere = this.regionScopedWhere(caller);
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
         where: { id, companyId, ...regionWhere },
         lock: { mode: 'pessimistic_write' },
@@ -456,20 +514,21 @@ export class LeasesService {
 
       return this.reloadWithContact(manager, id, companyId);
     });
+    return this.presentLease(companyId, caller, saved);
   }
 
   async renew(
     id: string,
     companyId: string,
     dto: CreateLeaseDto,
-    caller?: RegionScope,
-  ): Promise<{ oldLease: Lease; newLease: Lease }> {
-    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    caller?: ContactViewer,
+  ): Promise<{ oldLease: LeaseResponse; newLease: LeaseResponse }> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
     const regionWhere = this.regionScopedWhere(caller);
-    return this.dataSource.transaction(async (manager) => {
+    const renewed = await this.dataSource.transaction(async (manager) => {
       const oldLease = await manager.findOne(Lease, {
         where: { id, companyId, ...regionWhere },
         lock: { mode: 'pessimistic_write' },
@@ -532,6 +591,11 @@ export class LeasesService {
         ),
       };
     });
+    const [oldLease, newLease] = await this.presentLeases(companyId, caller, [
+      renewed.oldLease,
+      renewed.newLease,
+    ]);
+    return { oldLease, newLease };
   }
 
   async terminate(
@@ -539,10 +603,10 @@ export class LeasesService {
     companyId: string,
     dto: LeaseReasonDto,
     actorId: string,
-    caller?: RegionScope,
-  ): Promise<Lease> {
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
     const regionWhere = this.regionScopedWhere(caller);
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await this.lockLease(manager, id, companyId, regionWhere);
       if (lease.deletedAt) {
         throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
@@ -561,6 +625,7 @@ export class LeasesService {
       );
       return this.reloadWithContact(manager, id, companyId);
     });
+    return this.presentLease(companyId, caller, saved);
   }
 
   async remove(
@@ -603,10 +668,10 @@ export class LeasesService {
     companyId: string,
     dto: LeaseReasonDto,
     actorId: string,
-    caller?: RegionScope,
-  ): Promise<Lease> {
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
     const regionWhere = this.regionScopedWhere(caller);
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await this.lockLease(manager, id, companyId, regionWhere);
       if (lease.deletedAt) {
         throw new ConflictException('This lease is already archived');
@@ -628,6 +693,7 @@ export class LeasesService {
       );
       return this.reloadWithContact(manager, id, companyId);
     });
+    return this.presentLease(companyId, caller, saved);
   }
 
   async unarchive(
@@ -635,10 +701,10 @@ export class LeasesService {
     companyId: string,
     dto: OptionalLeaseReasonDto,
     actorId: string,
-    caller?: RegionScope,
-  ): Promise<Lease> {
+    caller?: ContactViewer,
+  ): Promise<LeaseResponse> {
     const regionWhere = this.regionScopedWhere(caller);
-    return this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await this.lockLease(manager, id, companyId, regionWhere);
       if (!lease.deletedAt) {
         throw new ConflictException('This lease is not archived');
@@ -655,6 +721,7 @@ export class LeasesService {
       );
       return this.reloadWithContact(manager, id, companyId);
     });
+    return this.presentLease(companyId, caller, saved);
   }
 
   private async lockLease(

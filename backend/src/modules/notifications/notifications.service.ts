@@ -56,6 +56,25 @@ export interface NotificationResult {
   error?: string;
 }
 
+export interface ContactAccessRequestedInput {
+  companyId: string;
+  requestId: string;
+  requesterId: string;
+  requesterName: string;
+  contactName: string;
+  regionCode: string;
+}
+
+export interface ContactAccessDecidedInput {
+  companyId: string;
+  requestId: string;
+  requesterId: string;
+  contactName: string;
+  regionCode: string;
+  decision: 'approved' | 'rejected' | 'revoked';
+  reason?: string | null;
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -516,6 +535,59 @@ export class NotificationsService {
     });
 
     return { data };
+  }
+
+  // Approvers are MANAGER and ADMIN of the contact's region plus every COMPANY_ADMIN.
+  async notifyContactAccessRequested(
+    input: ContactAccessRequestedInput,
+  ): Promise<number> {
+    const candidates = await this.userRepository.find({
+      where: {
+        companyId: input.companyId,
+        role: In([Role.MANAGER, Role.ADMIN, Role.COMPANY_ADMIN]),
+        isActive: true,
+        deletedAt: IsNull(),
+      },
+      select: { id: true, role: true, regionCodes: true },
+    });
+    const approvers = candidates.filter(
+      (user) =>
+        user.id !== input.requesterId &&
+        (user.role === Role.COMPANY_ADMIN ||
+          (user.regionCodes ?? []).includes(input.regionCode)),
+    );
+
+    for (const approver of approvers) {
+      await this.create(input.companyId, {
+        userId: approver.id,
+        title: 'Contact access requested',
+        message: `${input.requesterName} asked for access to ${input.contactName}`,
+        type: NotificationType.CONTACT_ACCESS_REQUESTED,
+        entityType: 'ContactAccessRequest',
+        entityId: input.requestId,
+        regionCode: input.regionCode,
+      });
+    }
+    return approvers.length;
+  }
+
+  async notifyContactAccessDecided(
+    input: ContactAccessDecidedInput,
+  ): Promise<Notification> {
+    const reason = input.reason?.trim();
+    const base =
+      input.decision === 'revoked'
+        ? `Your access to ${input.contactName} was revoked`
+        : `Your access request for ${input.contactName} was ${input.decision}`;
+    return this.create(input.companyId, {
+      userId: input.requesterId,
+      title: `Contact access ${input.decision}`,
+      message: reason ? `${base}. Reason: ${reason}` : base,
+      type: NotificationType.CONTACT_ACCESS_DECIDED,
+      entityType: 'ContactAccessRequest',
+      entityId: input.requestId,
+      regionCode: input.regionCode,
+    });
   }
 
   private async findAdminsByCompanyIds(

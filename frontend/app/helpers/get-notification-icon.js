@@ -12,6 +12,8 @@ const NOTIFICATION_ICONS = {
   CHEQUE_OVERDUE: 'clock-countdown',
   CHEQUE_DELAYED: 'hourglass',
   PAYMENT_RECEIVED: 'check-circle',
+  CONTACT_ACCESS_REQUESTED: 'key',
+  CONTACT_ACCESS_DECIDED: 'lock-key-open',
   SYSTEM: 'info',
 };
 

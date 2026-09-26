@@ -539,6 +539,9 @@
         @onSelectContact={{this.ownerSelection.attach}}
         @onClear={{this.ownerSelection.clear}}
         @onIdentityChange={{this.ownerSelection.setField}}
+        @conflict={{this.ownerSelection.conflict}}
+        @verifyPhone={{this.ownerSelection.verifyPhone}}
+        @onVerifyPhoneChange={{this.ownerSelection.setVerifyPhone}}
       />
       <div class="flex col gap-2">
         <span id="unit-amenities-label" class="text-sm text-muted">Amenities</span>

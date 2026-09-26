@@ -29,6 +29,7 @@ import { Role } from '@shared/enums/roles.enum';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DeleteContactDto } from './dto/delete-contact.dto';
+import { VerifyContactPhoneDto } from './dto/verify-contact-phone.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 
@@ -71,7 +72,19 @@ export class ContactsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Searches the whole company; regionCode is ignored',
+  })
+  @ApiQuery({
+    name: 'allRegions',
+    required: false,
+    type: Boolean,
+    description:
+      'true lists every region of the company; regionCode is ignored',
+  })
   @ApiQuery({
     name: 'tag',
     required: false,
@@ -112,6 +125,7 @@ export class ContactsController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('regionCode') regionCode?: string,
+    @Query('allRegions') allRegions?: string,
   ) {
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
@@ -133,6 +147,7 @@ export class ContactsController {
         regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
+        allRegions: allRegions === 'true',
       },
       req.user,
     );
@@ -152,10 +167,11 @@ export class ContactsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.findOne(id, requireCompanyId(req.user), {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.contactsService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -166,16 +182,48 @@ export class ContactsController {
     Role.MANAGER,
     Role.AGENT,
   )
-  @ApiOperation({ summary: 'Update a contact (ADMIN+, AGENT)' })
+  @ApiOperation({
+    summary:
+      'Update a contact (creator, ADMIN or MANAGER in its region, COMPANY_ADMIN, SUPER_ADMIN)',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateContactDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.update(id, requireCompanyId(req.user), dto, {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.contactsService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
+  }
+
+  @Post(':id/verify-phone')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Unlock a contact by typing its phone number (429 after five misses in an hour)',
+  })
+  verifyPhone(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VerifyContactPhoneDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.contactsService.verifyPhone(
+      id,
+      requireCompanyId(req.user),
+      dto.phone,
+      req.user,
+    );
   }
 
   @Post(':id/delete')

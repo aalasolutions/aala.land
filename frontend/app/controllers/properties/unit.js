@@ -326,7 +326,10 @@ export default class PropertiesUnitController extends Controller {
       ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
       ...(this.ownerSelection.contactId
-        ? { ownerId: this.ownerSelection.contactId }
+        ? {
+            ownerId: this.ownerSelection.contactId,
+            ...this.ownerSelection.verifyPhoneField('ownerVerifyPhone'),
+          }
         : { owner: this.ownerSelection.cleanIdentity }),
       amenities: this.formAmenities,
     };
@@ -340,7 +343,9 @@ export default class PropertiesUnitController extends Controller {
       this.closeEdit();
       this.router.refresh('properties.unit');
     } catch (e) {
-      this.errorMsg = e.message;
+      this.errorMsg = this.ownerSelection.takeConflict(e)
+        ? 'Contact already added'
+        : e.message;
     } finally {
       this.isSaving = false;
     }

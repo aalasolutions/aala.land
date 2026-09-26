@@ -47,6 +47,7 @@ describe('ContactsController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            verifyPhone: jest.fn(),
           },
         },
       ],
@@ -103,6 +104,7 @@ describe('ContactsController', () => {
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          allRegions: false,
         },
         mockReq.user,
       );
@@ -127,7 +129,60 @@ describe('ContactsController', () => {
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          allRegions: false,
         },
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('findAll allRegions', () => {
+    it("passes allRegions only for the literal 'true'", async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const args = [
+        mockReq,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'makkah',
+      ] as const;
+
+      await controller.findAll(...args, 'true');
+      await controller.findAll(...args, '1');
+
+      const filters = service.findAll.mock.calls.map((c) => c[5]);
+      expect(filters[0]).toMatchObject({
+        regionCode: 'makkah',
+        allRegions: true,
+      });
+      expect(filters[1]).toMatchObject({ allRegions: false });
+    });
+  });
+
+  describe('verifyPhone', () => {
+    it('passes the typed phone and the caller to the service', async () => {
+      service.verifyPhone.mockResolvedValue({
+        verified: false,
+        contact: { id: 'contact-uuid-1' },
+      } as any);
+
+      await controller.verifyPhone(
+        'contact-uuid-1',
+        { phone: '0501234567' },
+        mockReq,
+      );
+
+      expect(service.verifyPhone).toHaveBeenCalledWith(
+        'contact-uuid-1',
+        companyId,
+        '0501234567',
         mockReq.user,
       );
     });
@@ -142,7 +197,7 @@ describe('ContactsController', () => {
       expect(service.findOne).toHaveBeenCalledWith(
         'contact-uuid-1',
         companyId,
-        caller,
+        mockReq.user,
       );
       expect(result).toEqual(mockContact);
     });
@@ -163,7 +218,7 @@ describe('ContactsController', () => {
         'contact-uuid-1',
         companyId,
         { firstName: 'Khalid' },
-        caller,
+        mockReq.user,
       );
       expect(result.firstName).toBe('Khalid');
     });

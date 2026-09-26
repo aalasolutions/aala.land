@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 import { FinancialAnalyticsService } from './financial-analytics.service';
 import { Transaction } from './entities/transaction.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -97,6 +98,10 @@ describe('FinancialAnalyticsService', () => {
       providers: [
         FinancialAnalyticsService,
         { provide: getRepositoryToken(Transaction), useValue: repository },
+        {
+          provide: ContactPrivacyService,
+          useValue: { accessLevelFor: jest.fn() },
+        },
       ],
     }).compile();
 

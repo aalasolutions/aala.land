@@ -554,6 +554,9 @@
           @onSelectContact={{this.ownerSelection.attach}}
           @onClear={{this.ownerSelection.clear}}
           @onIdentityChange={{this.ownerSelection.setField}}
+          @conflict={{this.ownerSelection.conflict}}
+          @verifyPhone={{this.ownerSelection.verifyPhone}}
+          @onVerifyPhoneChange={{this.ownerSelection.setVerifyPhone}}
         />
       {{/if}}
       {{#if this.newUnitError}}

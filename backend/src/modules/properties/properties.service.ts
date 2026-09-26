@@ -36,10 +36,16 @@ import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { Contact } from '../contacts/entities/contact.entity';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
+import { contactDisplayName } from '../../shared/utils/contact.util';
+import { limitedDisplayName } from '../../shared/utils/contact-privacy.util';
 import {
-  attachDisplayName,
-  contactDisplayName,
-} from '../../shared/utils/contact.util';
+  ContactPrivacyService,
+  ContactViewer,
+  PresentedContact,
+} from '../contacts/contact-privacy.service';
+import { ContactAttachService } from '../contacts/contact-attach.service';
+import { ContactLinkSource } from '../contact-access-requests/contact-access-requests.service';
+import { ContactAccessSourceType } from '../contact-access-requests/entities/contact-access-request.entity';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { RedisService } from '../redis/redis.service';
@@ -85,6 +91,31 @@ function parseOptionalInt(value: string | undefined): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+export type UnitResponse = Omit<Unit, 'owner'> & {
+  owner: PresentedContact | null;
+};
+
+interface ResolvedOwner {
+  contact: Contact;
+  // True when the caller picked or matched a contact that was already on file.
+  existing: boolean;
+}
+
+type UnitCaller = { userId: string; role: string; regionCodes: string[] };
+
+function viewerOf(
+  userId: string | undefined,
+  user: { role: string; regionCodes: string[] } | undefined,
+): ContactViewer | undefined {
+  return userId && user
+    ? { userId, role: user.role, regionCodes: user.regionCodes }
+    : undefined;
+}
+
+function unitSource(unitId: string): ContactLinkSource {
+  return { sourceType: ContactAccessSourceType.UNIT, sourceId: unitId };
+}
+
 export const assetsCacheKey = (localityId: string) =>
   `ref:assets:${localityId}`;
 
@@ -117,6 +148,8 @@ export class PropertiesService {
     private readonly recordHistory: RecordHistoryService,
     private readonly storagePurge: StoragePurgeService,
     private readonly redis: RedisService,
+    private readonly contactPrivacy: ContactPrivacyService,
+    private readonly contactAttach: ContactAttachService,
   ) {}
 
   async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
@@ -467,6 +500,7 @@ export class PropertiesService {
       archived?: UnitArchivedFilter;
     },
     sort?: { field?: string; direction?: string },
+    viewer?: ContactViewer,
   ) {
     const qb = this.unitRepository
       .createQueryBuilder('u')
@@ -483,6 +517,8 @@ export class PropertiesService {
         'o.firstName',
         'o.lastName',
         'o.phone',
+        'o.regionCode',
+        'o.createdBy',
       ])
       .where('u.companyId = :companyId', { companyId });
 
@@ -562,6 +598,13 @@ export class PropertiesService {
       }
     }
 
+    const owners = units.map((u) => u.owner).filter((o): o is Contact => !!o);
+    const ownerLevels = await this.contactPrivacy.accessLevelFor(
+      companyId,
+      viewer,
+      owners,
+    );
+
     const data = units.map((u) => ({
       id: u.id,
       unitNumber: u.unitNumber,
@@ -578,7 +621,10 @@ export class PropertiesService {
       assetName: u.asset?.name ?? '',
       areaId: u.asset?.locality?.id ?? '',
       areaName: u.asset?.locality?.name ?? '',
-      ownerName: contactDisplayName(u.owner),
+      ownerName:
+        u.owner && ownerLevels.get(u.owner.id) === 'FULL'
+          ? contactDisplayName(u.owner)
+          : limitedDisplayName(u.owner),
       deletedAt: u.deletedAt ?? null,
     }));
 
@@ -590,24 +636,40 @@ export class PropertiesService {
     dto: CreateUnitDto,
     userId?: string,
     user?: { role: string; regionCodes: string[] },
-  ): Promise<Unit> {
+  ): Promise<UnitResponse> {
     await this.assertAssetInCallerRegions(dto.assetId, user);
-    const { owner, ...rest } = dto;
-    const ownerId = await this.resolveOwnerId(
+    const viewer = viewerOf(userId, user);
+    const { owner, ownerVerifyPhone, ...rest } = dto;
+    const resolved = await this.resolveOwner(
       companyId,
       dto.ownerId,
       owner,
       userId,
       dto.assetId,
+      user?.role,
     );
     const unit = this.unitRepository.create({
       ...rest,
-      ownerId: ownerId ?? undefined,
+      ownerId: resolved?.contact.id ?? undefined,
       companyId,
     });
     const saved = await this.unitRepository.save(unit);
+    if (resolved) {
+      await this.contactAttach.settle({
+        companyId,
+        viewer,
+        contact: resolved.contact,
+        source: unitSource(saved.id),
+        assigneeId: saved.assignedAgentId,
+        linkAssignee: true,
+        agentAttached: resolved.existing,
+        // Typing the whole number is the verification; the field only overrides it.
+        verifyPhone:
+          ownerVerifyPhone ?? (dto.ownerId ? undefined : owner?.phone),
+      });
+    }
     // Unscoped re-read: a create must not succeed and then 404 on the way out
-    return this.findOneUnit(saved.id, companyId);
+    return this.presentUnitById(saved.id, companyId, viewer);
   }
 
   async findUnitsByAsset(
@@ -634,13 +696,50 @@ export class PropertiesService {
       where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
     }
 
-    const [data, total] = await this.unitRepository.findAndCount({
+    const [units, total] = await this.unitRepository.findAndCount({
       where,
       relations: ['owner'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
+    return {
+      data: await this.presentUnits(companyId, user, units),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  // One presenter pass for every owner on the page.
+  private async presentUnits(
+    companyId: string,
+    viewer: ContactViewer | undefined,
+    units: Unit[],
+  ): Promise<UnitResponse[]> {
+    const owners = new Map<string, Contact>();
+    units.forEach((u) => {
+      if (u.owner) owners.set(u.owner.id, u.owner);
+    });
+    const presented = await this.contactPrivacy.presentMany(companyId, viewer, [
+      ...owners.values(),
+    ]);
+    const byId = new Map(presented.map((p) => [p.id, p]));
+    return units.map((unit) =>
+      Object.assign(unit, {
+        owner: unit.owner ? (byId.get(unit.owner.id) ?? null) : null,
+      }),
+    ) as UnitResponse[];
+  }
+
+  // Re-read after a write the caller was already authorized for, so it is not region scoped.
+  private async presentUnitById(
+    id: string,
+    companyId: string,
+    viewer: ContactViewer | undefined,
+  ): Promise<UnitResponse> {
+    const unit = await this.loadUnitOrThrow(id, companyId);
+    const [presented] = await this.presentUnits(companyId, viewer, [unit]);
+    return presented;
   }
 
   async countUnitsByRegion(
@@ -680,7 +779,17 @@ export class PropertiesService {
   async findOneUnit(
     id: string,
     companyId: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
+    user?: UnitCaller,
+  ): Promise<UnitResponse> {
+    const unit = await this.loadUnitOrThrow(id, companyId, user);
+    const [presented] = await this.presentUnits(companyId, user, [unit]);
+    return presented;
+  }
+
+  private async loadUnitOrThrow(
+    id: string,
+    companyId: string,
+    user?: UnitCaller,
   ): Promise<Unit> {
     const scopedCodes = scopedRegionCodes(user);
     if (scopedCodes?.length === 0)
@@ -696,8 +805,6 @@ export class PropertiesService {
       relations: ['asset', 'asset.locality', 'owner'],
     });
     if (!unit) throw new NotFoundException(`Property not found`);
-    // Attach displayName so a phone-only owner renders instead of blanking
-    attachDisplayName(unit.owner);
     return unit;
   }
 
@@ -706,28 +813,29 @@ export class PropertiesService {
     companyId: string,
     dto: UpdateUnitDto,
     userId?: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<Unit> {
+    user?: UnitCaller,
+  ): Promise<UnitResponse> {
     const archivedMessage =
       'This unit is archived. Unarchive it before editing.';
-    const unit = await this.findOneUnit(id, companyId, user);
+    const unit = await this.loadUnitOrThrow(id, companyId, user);
     if (unit.deletedAt) {
       throw new ConflictException(archivedMessage);
     }
-    const { ownerId, owner, ...rest } = dto;
+    const viewer = viewerOf(userId, user);
+    const { ownerId, owner, ownerVerifyPhone, ...rest } = dto;
     const ownerChanged = 'ownerId' in dto || hasContactIdentity(owner);
-    const resolvedOwnerId = ownerChanged
-      ? await this.resolveOwnerId(
+    const resolved = ownerChanged
+      ? await this.resolveOwner(
           companyId,
           ownerId ?? undefined,
           owner,
           userId,
           unit.assetId,
+          user?.role,
         )
       : null;
-    const resolvedOwner = resolvedOwnerId
-      ? await this.verifyContactBelongsToCompany(resolvedOwnerId, companyId)
-      : null;
+    const resolvedOwnerId = resolved?.contact.id ?? null;
+    const resolvedOwner = resolved?.contact ?? null;
 
     await this.dataSource.transaction(async (manager) => {
       const locked = await this.lockUnit(manager, id, companyId, user);
@@ -741,29 +849,52 @@ export class PropertiesService {
       }
       await manager.save(Unit, locked);
     });
+
+    const agentChanged =
+      'assignedAgentId' in dto && dto.assignedAgentId !== unit.assignedAgentId;
+    const finalOwner = ownerChanged ? resolvedOwner : unit.owner;
+    if (finalOwner && (ownerChanged || agentChanged)) {
+      await this.contactAttach.settle({
+        companyId,
+        viewer,
+        contact: finalOwner,
+        source: unitSource(id),
+        assigneeId:
+          'assignedAgentId' in dto
+            ? (dto.assignedAgentId ?? null)
+            : unit.assignedAgentId,
+        linkAssignee: true,
+        agentAttached: resolved?.existing ?? false,
+        verifyPhone: ownerVerifyPhone ?? (ownerId ? undefined : owner?.phone),
+      });
+    }
     // Authorization happened above; this re-read only builds the response.
-    return this.findOneUnit(id, companyId);
+    return this.presentUnitById(id, companyId, viewer);
   }
 
-  private async resolveOwnerId(
+  // Only MANAGER+ merges typed details into a matched contact; an agent just links it.
+  private async resolveOwner(
     companyId: string,
     ownerId: string | undefined,
     owner: ContactIdentityDto | undefined,
     userId?: string,
     assetId?: string | null,
-  ): Promise<string | null> {
+    callerRole?: string,
+  ): Promise<ResolvedOwner | null> {
     if (ownerId) {
-      await this.verifyContactBelongsToCompany(ownerId, companyId);
-      return ownerId;
+      return {
+        contact: await this.verifyContactBelongsToCompany(ownerId, companyId),
+        existing: true,
+      };
     }
     if (!hasContactIdentity(owner)) return null;
-    const contact = await this.contactsService.resolveOrCreate(
+    return this.contactsService.resolveOrCreate(
       companyId,
       owner,
       userId,
       await this.regionOfAsset(assetId),
+      callerRole,
     );
-    return contact.id;
   }
 
   // A unit inherits its region from its asset; block writes to assets outside caller regions
@@ -845,8 +976,8 @@ export class PropertiesService {
     companyId: string,
     reason: string,
     actorId: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<Unit> {
+    user?: UnitCaller,
+  ): Promise<UnitResponse> {
     await this.dataSource.transaction(async (manager) => {
       const unit = await this.lockUnit(manager, id, companyId, user);
       if (unit.deletedAt) {
@@ -865,7 +996,7 @@ export class PropertiesService {
         actorId,
       });
     });
-    return this.findOneUnit(id, companyId);
+    return this.presentUnitById(id, companyId, viewerOf(user?.userId, user));
   }
 
   async unarchiveUnit(
@@ -873,8 +1004,8 @@ export class PropertiesService {
     companyId: string,
     reason: string | undefined,
     actorId: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<Unit> {
+    user?: UnitCaller,
+  ): Promise<UnitResponse> {
     await this.dataSource.transaction(async (manager) => {
       const unit = await this.lockUnit(manager, id, companyId, user);
       if (!unit.deletedAt) {
@@ -887,7 +1018,7 @@ export class PropertiesService {
         actorId,
       });
     });
-    return this.findOneUnit(id, companyId);
+    return this.presentUnitById(id, companyId, viewerOf(user?.userId, user));
   }
 
   // Locks only the unit row; the joins supply region scope and history titles.

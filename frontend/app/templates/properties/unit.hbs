@@ -159,7 +159,7 @@
                 @model={{@model.unit.owner.id}}
                 class="text-primary owner-link"
               >
-                {{@model.unit.owner.displayName}}
+                {{contact-name @model.unit.owner}}
               </LinkTo>
             </div>
           {{/if}}
@@ -405,7 +405,10 @@
           as |cell|
         >
           {{#if (eq cell.key "contact.displayName")}}
-            <span data-test-lease-row>{{or cell.value "Unknown tenant"}}</span>
+            <span data-test-lease-row>{{or
+                (contact-name cell.row.contact)
+                "Unknown tenant"
+              }}</span>
           {{else if (eq cell.key "startDate")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "endDate")}}
@@ -588,6 +591,9 @@
         @onSelectContact={{this.ownerSelection.attach}}
         @onClear={{this.ownerSelection.clear}}
         @onIdentityChange={{this.ownerSelection.setField}}
+        @conflict={{this.ownerSelection.conflict}}
+        @verifyPhone={{this.ownerSelection.verifyPhone}}
+        @onVerifyPhoneChange={{this.ownerSelection.setVerifyPhone}}
       />
 
       <div class="flex col gap-2">

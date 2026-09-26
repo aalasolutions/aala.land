@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
 import { render, click, fillIn, findAll } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
+import { stubAuth } from 'land/tests/helpers/stub-auth';
 
 // The picker is the single person-attachment control: unit owner and lead
 // capture both depend on it, so its two modes are pinned here.
@@ -129,5 +130,101 @@ module('Integration | Component | contact/picker', function (hooks) {
     await render(hbs`<Contact::Picker @contact={{this.contact}} />`);
 
     assert.dom('[data-test-contact-first-name]').hasValue('Zainab');
+  });
+
+  const LIMITED = {
+    id: 'contact-9',
+    accessLevel: 'LIMITED',
+    firstName: 'Omar',
+    lastInitial: 'H.',
+    phoneMasked: '+971 50 *** **67',
+    regionCode: 'SHJ',
+    createdByName: 'Other Agent',
+    accessPending: false,
+  };
+
+  test('search covers every region and labels a limited match by first name and initial', async function (assert) {
+    const calls = stubAuth(this.owner, {
+      respond: () => ({ data: { data: [LIMITED], total: 1 } }),
+    });
+    this.onSelectContact = (contact) => (this.picked = contact);
+    await render(
+      hbs`<Contact::Picker @onSelectContact={{this.onSelectContact}} />`,
+    );
+
+    await fillIn('[data-test-nu-dropdown-filter]', 'om');
+
+    assert.strictEqual(calls[0].path, '/contacts?allRegions=true&search=om');
+    const item = document.querySelector(
+      '.nu-menu.is-open [data-test-nu-dropdown-item]:not(.m-create)',
+    );
+    assert.dom(item).hasText('Omar H.');
+
+    await click(item);
+    assert.strictEqual(this.picked.id, 'contact-9');
+  });
+
+  test('a limited contact shows masked details, no email, and asks for the number', async function (assert) {
+    this.contact = LIMITED;
+    this.typed = [];
+    this.onVerifyPhoneChange = (value) => this.typed.push(value);
+    await render(hbs`
+      <Contact::Picker
+        @contact={{this.contact}}
+        @onVerifyPhoneChange={{this.onVerifyPhoneChange}}
+      />
+    `);
+
+    assert.dom('[data-test-contact-first-name]').hasValue('Omar');
+    assert.dom('[data-test-contact-last-name]').hasValue('H.');
+    assert.dom('[data-test-contact-phone]').hasValue('+971 50 *** **67');
+    assert.dom('[data-test-contact-email]').doesNotExist();
+    assert.dom('[data-test-contact-verify-phone]').exists();
+
+    await fillIn('[data-test-contact-verify-phone]', '0501234567');
+    assert.deepEqual(this.typed, ['0501234567']);
+  });
+
+  test('a full contact needs no unlock field', async function (assert) {
+    this.contact = { ...CONTACT, accessLevel: 'FULL' };
+    await render(hbs`<Contact::Picker @contact={{this.contact}} />`);
+
+    assert.dom('[data-test-contact-verify-phone]').doesNotExist();
+    assert.dom('[data-test-contact-email]').hasValue('ahmed@example.com');
+  });
+
+  test('a CONTACT_EXISTS match is offered as a card that attaches it', async function (assert) {
+    this.conflict = LIMITED;
+    this.onSelectContact = (contact) => (this.picked = contact);
+    await render(hbs`
+      <Contact::Picker
+        @conflict={{this.conflict}}
+        @onSelectContact={{this.onSelectContact}}
+      />
+    `);
+
+    assert
+      .dom('[data-test-contact-conflict]')
+      .containsText('Contact already added');
+    assert.dom('[data-test-contact-conflict-name]').hasText('Omar H.');
+    assert
+      .dom('[data-test-contact-conflict-phone]')
+      .hasText('+971 50 *** **67');
+    assert
+      .dom('[data-test-contact-conflict-added-by]')
+      .hasText('Added by Other Agent');
+
+    await click('[data-test-contact-use-existing]');
+    assert.strictEqual(this.picked, LIMITED);
+  });
+
+  test('the conflict card steps aside once a contact is attached', async function (assert) {
+    this.conflict = LIMITED;
+    this.contact = LIMITED;
+    await render(
+      hbs`<Contact::Picker @conflict={{this.conflict}} @contact={{this.contact}} />`,
+    );
+
+    assert.dom('[data-test-contact-conflict]').doesNotExist();
   });
 });

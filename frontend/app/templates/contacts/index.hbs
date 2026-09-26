@@ -21,196 +21,242 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Segmented
-    @options={{this.roleTabs}}
-    @value={{this.tag}}
-    @onChange={{this.setTag}}
-    data-test-role-tabs
+  <Nuvo::Tabs
+    @tabs={{this.pageTabs}}
+    @activeTab={{this.currentTab}}
+    @onChange={{this.setTab}}
+    data-test-contacts-tabs
   />
 
-  <Nuvo::Accordion
-    @items={{array
-      (hash
-        id="filters"
-        title=(if this.hasActiveFilters "Filters · active" "Filters")
-      )
-    }}
-    data-test-filters-accordion
-  >
-    <div class="flex col gap-4">
-      <div class="flex gap-3 wrap">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="Search name, email, phone..."
-          class="grow"
-          value={{this.search}}
-          {{on "input" (fn this.updateFilter "search")}}
-          data-test-contacts-search
-        />
-      </div>
-
-      <div class="flex gap-3 wrap x-end">
-        <Nuvo::Field class="grow" @label="Assigned agent">
-          <Nuvo::Dropdown
-            id="contacts-agent-filter"
-            @align="start"
-            @value={{this.agentId}}
-            @onSelect={{this.setAgentFilter}}
-            @options={{this.agentOptions}}
-            data-test-agent-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Company">
-          <Nuvo::Input
-            type="text"
-            autocomplete="off"
-            placeholder="e.g. Emaar Properties"
-            value={{this.company}}
-            {{on "input" (fn this.updateFilter "company")}}
-            data-test-company-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Nationality">
-          <Nuvo::Input
-            type="text"
-            autocomplete="off"
-            placeholder="e.g. Emirati"
-            value={{this.nationality}}
-            {{on "input" (fn this.updateFilter "nationality")}}
-            data-test-nationality-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Added from">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Added from"
-            value={{this.dateFrom}}
-            {{on "change" this.setDateFrom}}
-            data-test-date-from-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Added to">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Added to"
-            value={{this.dateTo}}
-            {{on "change" this.setDateTo}}
-            data-test-date-to-filter
-          />
-        </Nuvo::Field>
-      </div>
-
-      <div class="flex gap-3 x-center between">
-        <Nuvo::Toggle
-          @checked={{this.isWhatsapp}}
-          @onChange={{this.toggleWhatsappFilter}}
-          data-test-whatsapp-filter
-        >
-          Has WhatsApp
-        </Nuvo::Toggle>
-        {{#if this.hasActiveFilters}}
-          <Nuvo::Button
-            @variant="danger"
-            @size="sm"
-            @icon="x"
-            {{on "click" this.clearFilters}}
-            data-test-clear-filters
-          >
-            Clear filters
-          </Nuvo::Button>
-        {{/if}}
-      </div>
-    </div>
-  </Nuvo::Accordion>
-
-  <Nuvo::Card>
-    {{#if @model.contacts.length}}
-      <Nuvo::DataTable
-        @columns={{this.columns}}
-        @rows={{@model.contacts}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="contacts"
-        data-test-contacts-table
-        as |cell|
+  {{#if (eq this.currentTab "requests")}}
+    <AccessRequests::MyRequests />
+  {{else}}
+    <div class="flex between x-center gap-3 wrap">
+      <Nuvo::Segmented
+        @options={{this.roleTabs}}
+        @value={{this.tag}}
+        @onChange={{this.setTag}}
+        data-test-role-tabs
+      />
+      <Nuvo::Toggle
+        @checked={{this.allRegionsOn}}
+        @onChange={{this.toggleAllRegions}}
+        data-test-all-regions-toggle
       >
-        {{#if (eq cell.key "displayName")}}
-          <LinkTo
-            @route="contacts.detail"
-            @model={{cell.row.id}}
-            class="text-primary font-bold whitespace-nowrap"
-            data-test-view-contact
-          >{{cell.value}}</LinkTo>
-        {{else if (eq cell.key "tags")}}
-          <div class="data-table__chips">
-            {{#each cell.value as |tag|}}
-              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
-            {{else}}
-              <span class="text-muted text-sm">Contact</span>
-            {{/each}}
-          </div>
-        {{else if (eq cell.key "phone")}}
-          {{#if cell.value}}
-            <span class="flex gap-2 x-center text-muted">
-              <span>{{cell.value}}</span>
-              {{#if cell.row.isWhatsapp}}
-                <a
-                  href={{wa-link cell.value}}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="wa-link"
-                  title="Open WhatsApp"
-                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
-                  data-test-wa-link
-                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+        All regions
+      </Nuvo::Toggle>
+    </div>
+
+    <Nuvo::Accordion
+      @items={{array
+        (hash
+          id="filters"
+          title=(if this.hasActiveFilters "Filters · active" "Filters")
+        )
+      }}
+      data-test-filters-accordion
+    >
+      <div class="flex col gap-4">
+        <div class="flex gap-3 wrap">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="Search name, email, phone..."
+            class="grow"
+            value={{this.search}}
+            {{on "input" (fn this.updateFilter "search")}}
+            data-test-contacts-search
+          />
+        </div>
+
+        <div class="flex gap-3 wrap x-end">
+          <Nuvo::Field class="grow" @label="Assigned agent">
+            <Nuvo::Dropdown
+              id="contacts-agent-filter"
+              @align="start"
+              @value={{this.agentId}}
+              @onSelect={{this.setAgentFilter}}
+              @options={{this.agentOptions}}
+              data-test-agent-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field class="grow" @label="Company">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Emaar Properties"
+              value={{this.company}}
+              {{on "input" (fn this.updateFilter "company")}}
+              data-test-company-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field class="grow" @label="Nationality">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Emirati"
+              value={{this.nationality}}
+              {{on "input" (fn this.updateFilter "nationality")}}
+              data-test-nationality-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Added from">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Added from"
+              value={{this.dateFrom}}
+              {{on "change" this.setDateFrom}}
+              data-test-date-from-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Added to">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Added to"
+              value={{this.dateTo}}
+              {{on "change" this.setDateTo}}
+              data-test-date-to-filter
+            />
+          </Nuvo::Field>
+        </div>
+
+        <div class="flex gap-3 x-center between">
+          <Nuvo::Toggle
+            @checked={{this.isWhatsapp}}
+            @onChange={{this.toggleWhatsappFilter}}
+            data-test-whatsapp-filter
+          >
+            Has WhatsApp
+          </Nuvo::Toggle>
+          {{#if this.hasActiveFilters}}
+            <Nuvo::Button
+              @variant="danger"
+              @size="sm"
+              @icon="x"
+              {{on "click" this.clearFilters}}
+              data-test-clear-filters
+            >
+              Clear filters
+            </Nuvo::Button>
+          {{/if}}
+        </div>
+      </div>
+    </Nuvo::Accordion>
+
+    <Nuvo::Card>
+      {{#if @model.contacts.length}}
+        <Nuvo::DataTable
+          @columns={{this.columns}}
+          @rows={{@model.contacts}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="contacts"
+          data-test-contacts-table
+          as |cell|
+        >
+          {{#if (eq cell.key "displayName")}}
+            <span class="flex gap-2 x-center">
+              <LinkTo
+                @route="contacts.detail"
+                @model={{cell.row.id}}
+                class="text-primary font-bold whitespace-nowrap"
+                data-test-view-contact
+              >{{contact-name cell.row}}</LinkTo>
+              {{#if (is-limited-contact cell.row)}}
+                <Nuvo::Badge
+                  @size="sm"
+                  @text="Limited"
+                  data-test-limited-badge
+                />
               {{/if}}
             </span>
+          {{else if (eq cell.key "tags")}}
+            {{#unless (is-limited-contact cell.row)}}
+              <div class="data-table__chips">
+                {{#each cell.value as |tag|}}
+                  <Nuvo::Tag
+                    class="tag-contact-{{tag}}"
+                    @text={{contact-tag-label tag}}
+                  />
+                {{else}}
+                  <span class="text-muted text-sm">Contact</span>
+                {{/each}}
+              </div>
+            {{/unless}}
+          {{else if (eq cell.key "phone")}}
+            {{#if (contact-phone cell.row)}}
+              <span class="flex gap-2 x-center text-muted">
+                <span dir="ltr" data-test-contact-phone>{{contact-phone
+                    cell.row
+                  }}</span>
+                {{#if (can-whatsapp cell.row)}}
+                  <a
+                    href={{wa-link cell.row.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    title="Open WhatsApp"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      cell.row
+                    }}"
+                    data-test-wa-link
+                  ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+                {{/if}}
+              </span>
+            {{/if}}
+          {{else if (eq cell.key "id")}}
+            {{#if (is-limited-contact cell.row)}}
+              <Contact::AccessAction
+                @contact={{cell.row}}
+                @size="xs"
+                @pending={{includes this.requestedContactIds cell.row.id}}
+                @onRequested={{this.markRequested}}
+              />
+            {{else if (can-edit-contact cell.row)}}
+              <Nuvo::Button
+                @subtle={{true}}
+                @variant="secondary"
+                @size="xs"
+                @icon="pencil-simple"
+                aria-label="Edit {{contact-name cell.row}}"
+                data-tooltip="Edit"
+                data-test-edit-contact
+                {{on "click" (fn this.openEdit cell.row)}}
+              />
+            {{/if}}
+          {{else}}
+            <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        {{else if (eq cell.key "id")}}
-          <Nuvo::Button
-            @subtle={{true}}
-            @variant="secondary"
-            @size="xs"
-            @icon="pencil-simple"
-            aria-label="Edit {{cell.row.displayName}}"
-            data-tooltip="Edit"
-            data-test-edit-contact
-            {{on "click" (fn this.openEdit cell.row)}}
+        </Nuvo::DataTable>
+      {{else}}
+        {{#if @model.total}}
+          <Nuvo::EmptyState
+            @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
           />
         {{else}}
-          <span class="text-muted">{{cell.value}}</span>
+          <Nuvo::EmptyState @description="No contacts match these filters." />
         {{/if}}
-      </Nuvo::DataTable>
-    {{else}}
+      {{/if}}
+
       {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No contacts match these filters."
+        <Nuvo::Pagination
+          @selectId="contacts-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @perPageOptions={{array 50 100}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+          @onPageChange={{this.goToPage}}
         />
       {{/if}}
-    {{/if}}
-
-    {{#if @model.total}}
-      <Nuvo::Pagination
-        @selectId="contacts-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-        @onPageChange={{this.goToPage}}
-      />
-    {{/if}}
-  </Nuvo::Card>
+    </Nuvo::Card>
+  {{/if}}
 </div>
 
 <Nuvo::Drawer

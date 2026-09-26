@@ -42,6 +42,30 @@ export function canManageFinancials(role) {
   ].includes(role);
 }
 
+// Roles that decide contact access requests; the backend approves with the same list.
+const CONTACT_ACCESS_APPROVERS = [
+  ROLES.SUPER_ADMIN,
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+
+export function canApproveContactAccess(role) {
+  return CONTACT_ACCESS_APPROVERS.includes(role);
+}
+
+// The contacts list opens company-wide for these roles and on the active region for the rest.
+export function listsAllRegionsByDefault(role) {
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+}
+
+// An explicit 'true' or 'false' query param wins; anything else takes the role default.
+export function resolveAllRegions(value, role) {
+  if (value === 'true' || value === true) return true;
+  if (value === 'false' || value === false) return false;
+  return listsAllRegionsByDefault(role);
+}
+
 export const SIDEBAR_ROLES = {
   properties: [
     ROLES.COMPANY_ADMIN,
@@ -75,6 +99,7 @@ export const SIDEBAR_ROLES = {
   reports: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
   team: [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN],
   history: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
+  accessRequests: CONTACT_ACCESS_APPROVERS,
   admin: [ROLES.SUPER_ADMIN],
 };
 

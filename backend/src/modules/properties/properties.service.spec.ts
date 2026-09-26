@@ -38,6 +38,10 @@ import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
+import { ContactAttachService } from '../contacts/contact-attach.service';
+import { ContactAccessRequestsService } from '../contact-access-requests/contact-access-requests.service';
+import { contactDisplayName } from '../../shared/utils/contact.util';
 import { RedisService } from '../redis/redis.service';
 
 // A conditional object spread widens past FindOptionsWhere<Asset>, so only
@@ -87,6 +91,12 @@ describe('PropertiesService', () => {
   let mediaRepo: jest.Mocked<Repository<PropertyMedia>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
   let contactsService: jest.Mocked<ContactsService>;
+  let privacy: { presentMany: jest.Mock; accessLevelFor: jest.Mock };
+  let accessRequests: {
+    grantLink: jest.Mock;
+    verifyPhone: jest.Mock;
+    raiseRequest: jest.Mock;
+  };
   let unitLockQb: Record<string, jest.Mock>;
   let manager: Record<string, jest.Mock>;
   let dataSource: { transaction: jest.Mock };
@@ -189,6 +199,26 @@ describe('PropertiesService', () => {
       }),
     };
 
+    privacy = {
+      presentMany: jest.fn((_c: string, _v: unknown, rows: Contact[]) =>
+        Promise.resolve(
+          rows.map((r) => ({
+            ...r,
+            displayName: contactDisplayName(r),
+            accessLevel: 'FULL',
+          })),
+        ),
+      ),
+      accessLevelFor: jest.fn((_c: string, _v: unknown, rows: Contact[]) =>
+        Promise.resolve(new Map(rows.map((r) => [r.id, 'FULL']))),
+      ),
+    };
+    accessRequests = {
+      grantLink: jest.fn().mockResolvedValue(undefined),
+      verifyPhone: jest.fn(),
+      raiseRequest: jest.fn().mockResolvedValue({}),
+    };
+
     redis = {
       getOrSetJson: jest.fn((_key, _ttl, load: () => unknown) => load()),
       forget: jest.fn(),
@@ -221,6 +251,9 @@ describe('PropertiesService', () => {
           provide: ContactsService,
           useValue: { resolveOrCreate: jest.fn() },
         },
+        ContactAttachService,
+        { provide: ContactPrivacyService, useValue: privacy },
+        { provide: ContactAccessRequestsService, useValue: accessRequests },
       ],
     }).compile();
 
@@ -505,8 +538,9 @@ describe('PropertiesService', () => {
 
     it('resolves inline owner details into a contact and links it', async () => {
       contactsService.resolveOrCreate.mockResolvedValue({
-        id: 'owner-uuid-1',
-      } as Contact);
+        contact: { id: 'owner-uuid-1' } as Contact,
+        existing: false,
+      });
       unitRepo.create.mockImplementation((data) => data as Unit);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
@@ -529,6 +563,7 @@ describe('PropertiesService', () => {
         { firstName: 'Ahmed', phone: '+971501234567', isWhatsapp: true },
         'user-uuid-1',
         'dubai',
+        undefined,
       );
       expect(result.ownerId).toBe('owner-uuid-1');
       expect(unitRepo.create).toHaveBeenCalledWith(
@@ -552,8 +587,9 @@ describe('PropertiesService', () => {
 
     it('accepts a last name alone as owner details', async () => {
       contactsService.resolveOrCreate.mockResolvedValue({
-        id: 'owner-uuid-2',
-      } as Contact);
+        contact: { id: 'owner-uuid-2' } as Contact,
+        existing: false,
+      });
       unitRepo.create.mockImplementation((data) => data as Unit);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
@@ -568,6 +604,7 @@ describe('PropertiesService', () => {
         { lastName: 'Al-Rashid Holdings' },
         undefined,
         'dubai',
+        undefined,
       );
       expect(result.ownerId).toBe('owner-uuid-2');
     });
@@ -698,8 +735,9 @@ describe('PropertiesService', () => {
           owner: { ...mockOwner } as Contact,
         } as Unit);
       contactsService.resolveOrCreate.mockResolvedValue({
-        id: 'owner-uuid-1',
-      } as Contact);
+        contact: { id: 'owner-uuid-1' } as Contact,
+        existing: false,
+      });
       contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
       unitLockQb.getOne.mockResolvedValue({ ...mockUnit });
 
@@ -715,6 +753,7 @@ describe('PropertiesService', () => {
         { firstName: 'Ahmed', phone: '+971501234567' },
         'user-uuid-1',
         'dubai',
+        undefined,
       );
       expect(result.ownerId).toBe('owner-uuid-1');
       expect(result.owner).toMatchObject({ displayName: 'John Doe' });
@@ -2053,6 +2092,305 @@ describe('PropertiesService', () => {
         expect(opts.where[0].units).toEqual({ companyId, deletedAt: IsNull() });
         expect(result.data[0].units.map((u) => u.id)).toEqual(['u2']);
       });
+    });
+  });
+
+  describe('owner privacy and access', () => {
+    const agent = {
+      userId: 'agent-uuid-1',
+      role: Role.AGENT,
+      regionCodes: ['dubai'],
+    };
+    const managerUser = {
+      userId: 'manager-uuid-1',
+      role: Role.MANAGER,
+      regionCodes: ['dubai'],
+    };
+    const owner = {
+      ...mockOwner,
+      phone: '+971501234567',
+      regionCode: 'makkah',
+      createdBy: 'other-user',
+    } as Contact;
+    const unitSource = { sourceType: 'unit', sourceId: 'unit-new' };
+
+    function limited() {
+      privacy.accessLevelFor.mockImplementation(
+        (_c: string, _v: unknown, rows: Contact[]) =>
+          Promise.resolve(new Map(rows.map((r) => [r.id, 'LIMITED']))),
+      );
+    }
+
+    function arrangeCreate() {
+      contactRepo.findOne.mockResolvedValue(owner);
+      unitRepo.create.mockImplementation(
+        (data) => ({ ...data, id: 'unit-new' }) as Unit,
+      );
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+      unitRepo.findOne.mockImplementation(
+        async () =>
+          ({
+            ...(unitRepo.save.mock.calls.at(-1)?.[0] as Unit),
+            owner,
+          }) as Unit,
+      );
+    }
+
+    it('shows first name and last initial as ownerName on a LIMITED list row', async () => {
+      const qb = qbMock([{ ...mockUnit, owner }], 1);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      mediaRepo.find.mockResolvedValue([]);
+      limited();
+
+      const result = await service.findAllUnits(
+        companyId,
+        1,
+        20,
+        {},
+        undefined,
+        agent,
+      );
+
+      expect(result.data[0].ownerName).toBe('John D.');
+      expect(qb.addSelect).toHaveBeenCalledWith(
+        expect.arrayContaining(['o.regionCode', 'o.createdBy']),
+      );
+      expect(privacy.accessLevelFor).toHaveBeenCalledTimes(1);
+      expect(privacy.accessLevelFor).toHaveBeenCalledWith(companyId, agent, [
+        owner,
+      ]);
+    });
+
+    it('keeps the full ownerName for a FULL row', async () => {
+      const qb = qbMock([{ ...mockUnit, owner }], 1);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      mediaRepo.find.mockResolvedValue([]);
+
+      const result = await service.findAllUnits(companyId, 1, 20, {});
+
+      expect(result.data[0].ownerName).toBe('John Doe');
+    });
+
+    it('presents the unit owner for the caller on findOneUnit', async () => {
+      unitRepo.findOne.mockResolvedValue({ ...mockUnit, owner } as Unit);
+
+      await service.findOneUnit('unit-uuid-1', companyId, {
+        ...agent,
+        role: Role.COMPANY_ADMIN,
+      });
+
+      expect(privacy.presentMany).toHaveBeenCalledWith(
+        companyId,
+        { ...agent, role: Role.COMPANY_ADMIN },
+        [owner],
+      );
+    });
+
+    it('presents every owner of an asset page in one call', async () => {
+      unitRepo.findAndCount.mockResolvedValue([
+        [
+          { ...mockUnit, id: 'u1', owner } as Unit,
+          { ...mockUnit, id: 'u2', owner } as Unit,
+          { ...mockUnit, id: 'u3', owner: null } as unknown as Unit,
+        ],
+        3,
+      ]);
+
+      const result = await service.findUnitsByAsset(
+        'asset-uuid-1',
+        companyId,
+        1,
+        20,
+        { ...agent, role: Role.COMPANY_ADMIN },
+      );
+
+      expect(privacy.presentMany).toHaveBeenCalledTimes(1);
+      expect(privacy.presentMany.mock.calls[0][2]).toEqual([owner]);
+      expect(result.data.map((u) => u.owner?.accessLevel ?? null)).toEqual([
+        'FULL',
+        'FULL',
+        null,
+      ]);
+    });
+
+    it('unlocks an existing owner for an agent whose typed phone matches', async () => {
+      arrangeCreate();
+      limited();
+      accessRequests.verifyPhone.mockResolvedValue(true);
+
+      await service.createUnit(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          ownerId: 'owner-uuid-1',
+          ownerVerifyPhone: '0501234567',
+        },
+        'agent-uuid-1',
+        agent,
+      );
+
+      expect(accessRequests.verifyPhone).toHaveBeenCalledWith(
+        companyId,
+        'owner-uuid-1',
+        'agent-uuid-1',
+        '0501234567',
+        unitSource,
+      );
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ ownerVerifyPhone: expect.anything() }),
+      );
+    });
+
+    it('treats the typed owner phone as the verification on a match', async () => {
+      arrangeCreate();
+      limited();
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: owner,
+        existing: true,
+      });
+      accessRequests.verifyPhone.mockResolvedValue(true);
+
+      await service.createUnit(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          owner: { firstName: 'Test', phone: '0501234567' },
+        },
+        'agent-uuid-1',
+        agent,
+      );
+
+      expect(accessRequests.verifyPhone).toHaveBeenCalledWith(
+        companyId,
+        'owner-uuid-1',
+        'agent-uuid-1',
+        '0501234567',
+        unitSource,
+      );
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+    });
+
+    it('raises a request when the agent types no phone for an existing owner', async () => {
+      arrangeCreate();
+      limited();
+
+      await service.createUnit(
+        companyId,
+        { unitNumber: '1A', assetId: 'asset-uuid-1', ownerId: 'owner-uuid-1' },
+        'agent-uuid-1',
+        agent,
+      );
+
+      expect(accessRequests.verifyPhone).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).toHaveBeenCalledWith(
+        companyId,
+        'owner-uuid-1',
+        'agent-uuid-1',
+        unitSource,
+        null,
+      );
+    });
+
+    it('passes the caller role so an agent never merges into a matched owner', async () => {
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: owner,
+        existing: true,
+      });
+      arrangeCreate();
+
+      await service.createUnit(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          owner: { phone: '0501234567' },
+        },
+        'agent-uuid-1',
+        agent,
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { phone: '0501234567' },
+        'agent-uuid-1',
+        'dubai',
+        Role.AGENT,
+      );
+    });
+
+    it('links the assigned agent when a manager creates a unit with an owner', async () => {
+      arrangeCreate();
+
+      await service.createUnit(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          ownerId: 'owner-uuid-1',
+          assignedAgentId: 'agent-uuid-2',
+        },
+        'manager-uuid-1',
+        managerUser,
+      );
+
+      expect(accessRequests.grantLink).toHaveBeenCalledWith(
+        companyId,
+        'owner-uuid-1',
+        'agent-uuid-2',
+        'manager-uuid-1',
+        unitSource,
+      );
+    });
+
+    it('links the new agent when a manager reassigns a unit that has an owner', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        ...mockUnit,
+        ownerId: 'owner-uuid-1',
+        owner,
+        assignedAgentId: null,
+      } as Unit);
+      unitLockQb.getOne.mockResolvedValue({ ...mockUnit });
+
+      await service.updateUnit(
+        'unit-uuid-1',
+        companyId,
+        { assignedAgentId: 'agent-uuid-2' },
+        'manager-uuid-1',
+        managerUser,
+      );
+
+      expect(accessRequests.grantLink).toHaveBeenCalledWith(
+        companyId,
+        'owner-uuid-1',
+        'agent-uuid-2',
+        'manager-uuid-1',
+        { sourceType: 'unit', sourceId: 'unit-uuid-1' },
+      );
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+    });
+
+    it('does not touch grants when an update leaves owner and agent alone', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        ...mockUnit,
+        ownerId: 'owner-uuid-1',
+        owner,
+      } as Unit);
+      unitLockQb.getOne.mockResolvedValue({ ...mockUnit });
+
+      await service.updateUnit(
+        'unit-uuid-1',
+        companyId,
+        { unitNumber: '1B' },
+        'agent-uuid-1',
+        agent,
+      );
+
+      expect(privacy.accessLevelFor).not.toHaveBeenCalled();
+      expect(accessRequests.grantLink).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
     });
   });
 });

@@ -72,4 +72,66 @@ module('Unit | Utility | contact-selection', function (hooks) {
     assert.strictEqual(selection.contact, null);
     assert.false(selection.isPresent);
   });
+
+  test('a typed number is sent only beside a limited contact', function (assert) {
+    const selection = new ContactSelection();
+    selection.attach({ id: 'contact-1', accessLevel: 'LIMITED' });
+    selection.setVerifyPhone(' +971501234567 ');
+
+    assert.strictEqual(selection.cleanVerifyPhone, '+971501234567');
+    assert.deepEqual(selection.verifyPhoneField('contactVerifyPhone'), {
+      contactVerifyPhone: '+971501234567',
+    });
+
+    selection.attach({ id: 'contact-2', accessLevel: 'FULL' });
+    selection.setVerifyPhone('+971501234567');
+    assert.deepEqual(
+      selection.verifyPhoneField('ownerVerifyPhone'),
+      {},
+      'a full contact needs no unlock',
+    );
+  });
+
+  test('picking another contact or clearing drops the typed number', function (assert) {
+    const selection = new ContactSelection();
+    selection.attach({ id: 'contact-1', accessLevel: 'LIMITED' });
+    selection.setVerifyPhone('0501234567');
+    selection.attach({ id: 'contact-3', accessLevel: 'LIMITED' });
+    assert.strictEqual(selection.verifyPhone, '');
+
+    selection.setVerifyPhone('0501234567');
+    selection.clear();
+    assert.strictEqual(selection.verifyPhone, '');
+  });
+
+  test('a CONTACT_EXISTS conflict keeps the presented match until a contact is picked', function (assert) {
+    const selection = new ContactSelection();
+    const match = {
+      id: 'contact-9',
+      accessLevel: 'LIMITED',
+      firstName: 'Omar',
+    };
+    const conflict = new Error('Contact already added');
+    conflict.status = 409;
+    conflict.body = { code: 'CONTACT_EXISTS', contact: match };
+
+    assert.true(selection.takeConflict(conflict));
+    assert.strictEqual(selection.conflict, match);
+
+    selection.attach(match);
+    assert.strictEqual(selection.conflict, null);
+    assert.strictEqual(selection.contactId, 'contact-9');
+  });
+
+  test('any other error is not a conflict and clears an old one', function (assert) {
+    const selection = new ContactSelection();
+    selection.conflict = { id: 'stale' };
+    const other = new Error('Bad Request');
+    other.status = 400;
+    other.body = { message: 'Bad Request' };
+
+    assert.false(selection.takeConflict(other));
+    assert.strictEqual(selection.conflict, null);
+    assert.false(selection.takeConflict(undefined));
+  });
 });

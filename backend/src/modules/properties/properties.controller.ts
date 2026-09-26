@@ -429,6 +429,7 @@ export class PropertiesController {
         field: sort || undefined,
         direction: order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
       },
+      req.user,
     );
   }
 

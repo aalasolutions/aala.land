@@ -1,6 +1,7 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
 import { localMidnightIso } from 'land/utils/local-date';
+import { resolveAllRegions } from 'land/utils/roles';
 
 export default class ContactsIndexRoute extends AuthenticatedRoute {
   @service auth;
@@ -16,6 +17,7 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     nationality: { refreshModel: true },
     dateFrom: { refreshModel: true },
     dateTo: { refreshModel: true },
+    allRegions: { refreshModel: true },
   };
 
   async model({
@@ -29,8 +31,12 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     nationality = '',
     dateFrom = '',
     dateTo = '',
+    allRegions = '',
   }) {
     const params = new URLSearchParams({ page, limit });
+    if (resolveAllRegions(allRegions, this.auth.currentUser?.role)) {
+      params.set('allRegions', 'true');
+    }
     if (search) params.set('search', search);
     if (tag) params.set('tag', tag);
     if (agentId) params.set('agentId', agentId);

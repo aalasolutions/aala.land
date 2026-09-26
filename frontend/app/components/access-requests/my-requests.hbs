@@ -1,0 +1,70 @@
+<Nuvo::Card data-test-my-requests ...attributes>
+  {{#if this.isLoading}}
+    <div class="flex center py-8">
+      <Nuvo::Spinner />
+    </div>
+  {{else if this.error}}
+    <p class="text-danger" data-test-my-requests-error>{{this.error}}</p>
+  {{else if this.rows.length}}
+    <Nuvo::DataTable
+      @columns={{this.columns}}
+      @rows={{this.rows}}
+      @pinColumns={{true}}
+      @sortable={{true}}
+      @tableId="my-access-requests"
+      data-test-my-requests-table
+      as |cell|
+    >
+      {{#if (eq cell.key "contact.displayName")}}
+        <LinkTo
+          @route="contacts.detail"
+          @model={{cell.row.contact.id}}
+          class="text-primary font-bold whitespace-nowrap"
+          data-test-my-request-contact
+        >{{cell.value}}</LinkTo>
+      {{else if (eq cell.key "status")}}
+        <Nuvo::Badge
+          @variant={{cell.row.statusVariant}}
+          @text={{capitalize cell.value}}
+          data-test-my-request-status={{cell.value}}
+        />
+      {{else if (eq cell.key "createdAt")}}
+        {{format-date cell.value}}
+      {{else if (eq cell.key "decidedBy.name")}}
+        <span class="text-muted">{{or cell.value "-"}}</span>
+      {{else if (eq cell.key "decidedAt")}}
+        {{#if cell.value}}{{format-date cell.value}}{{else}}<span
+            class="text-muted"
+          >-</span>{{/if}}
+      {{else if (eq cell.key "expiresAt")}}
+        <span data-test-my-request-expires>
+          {{#if cell.value}}{{format-date cell.value}}{{else}}{{or
+              cell.row.expiryLabel
+              "-"
+            }}{{/if}}
+        </span>
+      {{else}}
+        <span class="text-muted">{{cell.value}}</span>
+      {{/if}}
+    </Nuvo::DataTable>
+  {{else}}
+    <Nuvo::EmptyState
+      @description="You have not asked for access to any contact yet. Open a contact with limited details to request access."
+      data-test-my-requests-empty
+    />
+  {{/if}}
+
+  {{#if this.total}}
+    <Nuvo::Pagination
+      @selectId="my-access-requests-limit"
+      @page={{this.page}}
+      @limit={{this.limit}}
+      @total={{this.total}}
+      @perPageOptions={{array 20 50 100}}
+      @onLimitChange={{this.setLimit}}
+      @onPrevious={{this.previousPage}}
+      @onNext={{this.nextPage}}
+      @onPageChange={{this.goToPage}}
+    />
+  {{/if}}
+</Nuvo::Card>

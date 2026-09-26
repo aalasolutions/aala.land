@@ -13,6 +13,10 @@ import {
   contactToFormFields,
 } from '../../utils/contact-form';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
+import { resolveAllRegions } from '../../utils/roles';
+
+export const CONTACTS_TAB = 'contacts';
+export const REQUESTS_TAB = 'requests';
 
 const ROLE_TABS = [
   { id: '', label: 'All' },
@@ -35,6 +39,8 @@ export default class ContactsIndexController extends PaginatedController {
     'nationality',
     'dateFrom',
     'dateTo',
+    'allRegions',
+    'tab',
   ];
   @tracked search = '';
   @tracked tag = '';
@@ -44,8 +50,25 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked nationality = '';
   @tracked dateFrom = '';
   @tracked dateTo = '';
+  // Empty means the role default; the toggle writes an explicit 'true' or 'false'.
+  @tracked allRegions = '';
+  @tracked tab = CONTACTS_TAB;
+  @tracked requestedContactIds = [];
 
   roleTabs = ROLE_TABS;
+
+  pageTabs = [
+    { id: CONTACTS_TAB, label: 'Contacts' },
+    { id: REQUESTS_TAB, label: 'My requests' },
+  ];
+
+  get currentTab() {
+    return this.tab === REQUESTS_TAB ? REQUESTS_TAB : CONTACTS_TAB;
+  }
+
+  get allRegionsOn() {
+    return resolveAllRegions(this.allRegions, this.auth.currentUser?.role);
+  }
 
   columns = [
     { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left' },
@@ -53,7 +76,15 @@ export default class ContactsIndexController extends PaginatedController {
     { name: 'Email', valuePath: 'email', width: 240 },
     { name: 'Phone', valuePath: 'phone', width: 190 },
     { name: 'Company', valuePath: 'contactCompany', width: 170 },
-    { name: 'Actions', valuePath: 'id', width: 100, isFixed: 'right', isSortable: false, isResizable: false },
+    { name: 'Added by', valuePath: 'createdByName', width: 180 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 150,
+      isFixed: 'right',
+      isSortable: false,
+      isResizable: false,
+    },
   ];
 
   resetState() {
@@ -65,6 +96,9 @@ export default class ContactsIndexController extends PaginatedController {
     this.nationality = '';
     this.dateFrom = '';
     this.dateTo = '';
+    this.allRegions = '';
+    this.tab = CONTACTS_TAB;
+    this.requestedContactIds = [];
     this.page = 1;
     this.showModal = false;
     this.editContact = null;
@@ -127,6 +161,21 @@ export default class ContactsIndexController extends PaginatedController {
   @action setTag(tabId) {
     this.tag = tabId;
     this.page = 1;
+  }
+
+  @action setTab(tabId) {
+    this.tab = tabId;
+  }
+
+  @action toggleAllRegions(checked) {
+    this.allRegions = checked ? 'true' : 'false';
+    this.page = 1;
+  }
+
+  // The row flips to pending at once; the next list load carries accessPending from the server.
+  @action markRequested(contact) {
+    if (this.requestedContactIds.includes(contact.id)) return;
+    this.requestedContactIds = [...this.requestedContactIds, contact.id];
   }
 
   @action setAgentFilter(value) {

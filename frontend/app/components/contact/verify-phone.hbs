@@ -1,0 +1,32 @@
+<form
+  class="flex col gap-2"
+  data-test-verify-phone-form
+  {{on "submit" this.submit}}
+  ...attributes
+>
+  <Nuvo::Field
+    @label="Know this contact? Enter their number to unlock details"
+    @error={{this.error}}
+  >
+    <div class="flex gap-2 x-center">
+      <Nuvo::Input
+        id={{this.inputId}}
+        @type="tel"
+        @placeholder="+971501234567"
+        @value={{this.phone}}
+        @onInput={{this.setPhone}}
+        @invalid={{if this.error true false}}
+        class="grow"
+        data-test-verify-phone-input
+      />
+      <Nuvo::Button
+        @variant="secondary"
+        @type="submit"
+        @text="Unlock"
+        @loading={{this.isChecking}}
+        @disabled={{not this.phone}}
+        data-test-verify-phone-submit
+      />
+    </div>
+  </Nuvo::Field>
+</form>

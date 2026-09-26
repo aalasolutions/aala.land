@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { contactListLimit, pageSkip } from '@shared/utils/pagination.util';
+import { Brackets, DataSource, EntityManager, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
@@ -30,16 +32,40 @@ import {
 import {
   effectiveRegionCodes,
   scopedRegionCodes,
+  seesAllRegions,
 } from '../../shared/utils/region-visibility.util';
 import { isDateOnly } from '../../shared/utils/region-time.util';
+import { Role } from '../../shared/enums/roles.enum';
+import {
+  ContactPrivacyService,
+  ContactViewer,
+  PresentedContact,
+} from './contact-privacy.service';
+import { ContactAccessRequestsService } from '../contact-access-requests/contact-access-requests.service';
+import { ContactAccessSourceType } from '../contact-access-requests/entities/contact-access-request.entity';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 
 // Derived role tags; never stored on the contact, computed from which rows reference it.
 export type ContactTag = 'lead' | 'tenant' | 'owner' | 'vendor';
 
-export type ContactResponse = Omit<Contact, 'company'> & {
-  displayName: string | null;
-  tags: ContactTag[];
-};
+// Roles that may fold new details into an existing contact; everyone else gets CONTACT_EXISTS.
+const MERGE_ROLES: string[] = [
+  Role.SUPER_ADMIN,
+  Role.COMPANY_ADMIN,
+  Role.ADMIN,
+  Role.MANAGER,
+];
+
+export function canMergeContacts(role?: string): boolean {
+  return !!role && MERGE_ROLES.includes(role);
+}
+
+// A term with this many digits is a phone lookup and must match the whole subscriber number.
+const PHONE_SEARCH_MIN_DIGITS = 7;
+
+// Region-bound editors: they may edit only contacts in their own regions.
+const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
 
 // Additional list filters beyond search and role tag.
 export interface ContactFilters {
@@ -50,6 +76,19 @@ export interface ContactFilters {
   dateFrom?: string;
   dateTo?: string;
   regionCode?: string;
+  // Company-wide list: the region clause is skipped, regionCode included.
+  allRegions?: boolean;
+}
+
+export interface ResolvedContact {
+  contact: Contact;
+  // True when the identity matched a contact that was already on file.
+  existing: boolean;
+}
+
+export interface VerifyPhoneResult {
+  verified: boolean;
+  contact: PresentedContact;
 }
 
 // Identity carried inline attaching a person: existing contact id, or details to resolve/create.
@@ -79,29 +118,40 @@ export class ContactsService {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly recordHistoryService: RecordHistoryService,
+    private readonly contactPrivacy: ContactPrivacyService,
+    private readonly contactAccessRequests: ContactAccessRequestsService,
+    private readonly auditService: AuditService,
   ) {}
 
-  // One-number-one-contact: an existing number resolves to it and fills empty fields, no duplicate.
+  // One-number-one-contact: MANAGER+ merges into the match, anyone else gets 409 CONTACT_EXISTS.
   async create(
     companyId: string,
     dto: CreateContactDto,
     createdBy: string,
     caller: RegionScope,
-  ): Promise<ContactResponse> {
-    const phoneKey = normalizePhone(dto.phone);
-    let existing: Contact | null = null;
-    if (phoneKey) {
-      existing = await this.contactRepository.findOne({
-        where: { companyId, phone: phoneDigitsWhere(dto.phone) },
-      });
-    } else if (dto.email) {
-      existing = await this.contactRepository.findOne({
-        where: { companyId, email: emailEqualsWhere(dto.email) },
-      });
-    }
+  ): Promise<PresentedContact> {
+    const viewer: ContactViewer = {
+      userId: createdBy,
+      role: caller.role,
+      regionCodes: caller.regionCodes,
+    };
+    const existing = await this.findDuplicate(companyId, dto.phone, dto.email);
     if (existing) {
-      const merged = await this.mergeEmpty(existing, dto);
-      return this.findOne(merged.id, companyId);
+      if (!canMergeContacts(caller.role)) {
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'Conflict',
+          message: 'Contact already added',
+          code: 'CONTACT_EXISTS',
+          contact: await this.contactPrivacy.presentOne(
+            companyId,
+            viewer,
+            existing,
+          ),
+        });
+      }
+      const merged = await this.mergeEmpty(existing, dto, createdBy);
+      return this.presentById(merged.id, companyId, viewer);
     }
 
     const regionCode = await resolveRegionCode(
@@ -118,16 +168,36 @@ export class ContactsService {
     });
     const saved = await this.contactRepository.save(contact);
     await this.linkMatchingChats(saved);
-    return this.findOne(saved.id, companyId);
+    return this.presentById(saved.id, companyId, viewer);
   }
 
-  // Matches last 9 digits or lowercased email, fills empty fields; regionCode defaults to company.
+  // Phone wins over email, the same key the whole contact model is unique on.
+  private async findDuplicate(
+    companyId: string,
+    phone?: string | null,
+    email?: string | null,
+  ): Promise<Contact | null> {
+    if (normalizePhone(phone)) {
+      return this.contactRepository.findOne({
+        where: { companyId, phone: phoneDigitsWhere(phone) },
+      });
+    }
+    if (email) {
+      return this.contactRepository.findOne({
+        where: { companyId, email: emailEqualsWhere(email) },
+      });
+    }
+    return null;
+  }
+
+  // Matches last 9 digits or email; only MANAGER+ merges into a match. Region defaults to company.
   async resolveOrCreate(
     companyId: string,
     identity: ContactIdentity,
     createdBy?: string,
     regionCode?: string,
-  ): Promise<Contact> {
+    callerRole?: string,
+  ): Promise<ResolvedContact> {
     if (identity.contactId) {
       const existing = await this.contactRepository.findOne({
         where: { id: identity.contactId, companyId },
@@ -135,39 +205,30 @@ export class ContactsService {
       if (!existing) {
         throw new BadRequestException('Contact not found');
       }
-      return existing;
+      return { contact: existing, existing: true };
     }
 
-    const phoneKey = normalizePhone(identity.phone);
-    if (phoneKey) {
-      const match = await this.contactRepository.findOne({
-        where: { companyId, phone: phoneDigitsWhere(identity.phone) },
-      });
-      if (match) {
-        return this.mergeEmpty(match, {
+    const match = await this.findDuplicate(
+      companyId,
+      identity.phone,
+      identity.email,
+    );
+    if (match) {
+      if (!canMergeContacts(callerRole)) {
+        return { contact: match, existing: true };
+      }
+      const merged = await this.mergeEmpty(
+        match,
+        {
           firstName: identity.firstName,
           lastName: identity.lastName,
           email: identity.email,
           phone: identity.phone,
           isWhatsapp: identity.isWhatsapp ?? undefined,
-        });
-      }
-    } else if (identity.email) {
-      const match = await this.contactRepository.findOne({
-        where: {
-          companyId,
-          email: emailEqualsWhere(identity.email),
         },
-      });
-      if (match) {
-        return this.mergeEmpty(match, {
-          firstName: identity.firstName,
-          lastName: identity.lastName,
-          email: identity.email,
-          phone: identity.phone,
-          isWhatsapp: identity.isWhatsapp ?? undefined,
-        });
-      }
+        createdBy,
+      );
+      return { contact: merged, existing: true };
     }
 
     const contact = this.contactRepository.create({
@@ -186,15 +247,16 @@ export class ContactsService {
     });
     const saved = await this.contactRepository.save(contact);
     await this.linkMatchingChats(saved);
-    return saved;
+    return { contact: saved, existing: false };
   }
 
-  // Only empty fields are filled from the input; existing data is never overwritten.
+  // Only empty fields are filled from the input; a fill writes MERGE history in the same transaction.
   private async mergeEmpty(
     existing: Contact,
     input: Partial<Record<keyof Contact, string | boolean | null>>,
+    actorId?: string,
   ): Promise<Contact> {
-    let changed = false;
+    const filledFields: string[] = [];
     const textFields: (keyof Contact)[] = [
       'firstName',
       'lastName',
@@ -211,16 +273,36 @@ export class ContactsService {
       const v = input[key as keyof Partial<CreateContactDto>];
       if (v && !existing[key]) {
         (existing as unknown as Record<string, unknown>)[key as string] = v;
-        changed = true;
+        filledFields.push(key as string);
       }
     }
     // isWhatsapp upgrades true->true; never downgrades an existing true.
     if (input.isWhatsapp && !existing.isWhatsapp) {
       existing.isWhatsapp = true;
-      changed = true;
+      filledFields.push('isWhatsapp');
     }
-    if (!changed) return existing;
-    const saved = await this.contactRepository.save(existing);
+    if (filledFields.length === 0) return existing;
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const row = await manager.save(Contact, existing);
+      if (actorId) {
+        await this.recordHistoryService.record(manager, {
+          companyId: existing.companyId,
+          action: RecordHistoryAction.MERGE,
+          entityType: 'Contact',
+          entityId: existing.id,
+          entityTitle:
+            contactDisplayName(existing) || existing.email || 'Unnamed contact',
+          actorId,
+          actorName: await this.recordHistoryService.resolveActorName(
+            manager,
+            actorId,
+          ),
+          regionCode: existing.regionCode,
+          metadata: { filledFields },
+        });
+      }
+      return row;
+    });
     // A phone may have just been filled: re-link chats that were waiting on it.
     await this.linkMatchingChats(saved);
     return saved;
@@ -254,16 +336,21 @@ export class ContactsService {
     search?: string,
     tag?: ContactTag,
     filters?: ContactFilters,
-    caller?: RegionScope,
+    caller?: ContactViewer,
   ): Promise<{
-    data: ContactResponse[];
+    data: PresentedContact[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const regionCodes = effectiveRegionCodes(filters?.regionCode, caller);
+    const take = contactListLimit(limit);
+    // Search and the all-regions view are company-wide; the presenter guards the personal fields.
+    const companyWide = Boolean(search?.trim()) || filters?.allRegions === true;
+    const regionCodes = companyWide
+      ? null
+      : effectiveRegionCodes(filters?.regionCode, caller);
     if (regionCodes?.length === 0) {
-      return { data: [], total: 0, page, limit };
+      return { data: [], total: 0, page, limit: take };
     }
 
     const qb = this.contactRepository
@@ -274,11 +361,8 @@ export class ContactsService {
       qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
     }
 
-    if (search) {
-      qb.andWhere(
-        `(c.first_name ILIKE :s OR c.last_name ILIKE :s OR c.email ILIKE :s OR c.phone ILIKE :s)`,
-        { s: `%${search}%` },
-      );
+    if (search?.trim()) {
+      qb.andWhere(this.searchSql(search.trim()));
     }
 
     if (tag) {
@@ -329,49 +413,57 @@ export class ContactsService {
       });
     }
 
-    qb.skip(pageSkip(page, limit))
-      .take(clampLimit(limit))
-      .orderBy('c.created_at', 'DESC');
+    qb.skip(pageSkip(page, take)).take(take).orderBy('c.created_at', 'DESC');
 
     const [rows, total] = await qb.getManyAndCount();
     const withTags = await this.attachTags(companyId, rows);
 
     return {
-      data: withTags.map((c) => this.serialize(c)),
+      data: await this.contactPrivacy.presentMany(companyId, caller, withTags),
       total,
       page,
-      limit,
+      limit: take,
     };
   }
 
+  // Every FULL view of a contact someone else created is audited, no dedup.
   async findOne(
     id: string,
     companyId: string,
-    caller?: RegionScope,
-  ): Promise<ContactResponse> {
-    const contact = await this.findOneEntity(id, companyId, caller);
-    const [withTag] = await this.attachTags(companyId, [contact]);
-    return this.serialize(withTag);
+    viewer?: ContactViewer,
+  ): Promise<PresentedContact> {
+    const presented = await this.presentById(id, companyId, viewer);
+    if (
+      viewer &&
+      presented.accessLevel === 'FULL' &&
+      presented.createdBy !== viewer.userId
+    ) {
+      await this.auditService.log({
+        companyId,
+        userId: viewer.userId,
+        action: AuditAction.VIEW,
+        entityType: 'Contact',
+        entityId: id,
+        regionCode: presented.regionCode,
+      });
+    }
+    return presented;
   }
 
-  // Internal callers omit `caller`: access is already established.
-  async findOneEntity(
+  private async presentById(
     id: string,
     companyId: string,
-    caller?: RegionScope,
-  ): Promise<Contact> {
-    const scopedCodes = scopedRegionCodes(caller);
-    // No assignment means no access, and an empty IN () is invalid SQL.
-    if (scopedCodes?.length === 0) {
-      throw new NotFoundException('Contact not found');
-    }
+    viewer?: ContactViewer,
+  ): Promise<PresentedContact> {
+    const contact = await this.findOneEntity(id, companyId);
+    const [withTag] = await this.attachTags(companyId, [contact]);
+    return this.contactPrivacy.presentOne(companyId, viewer, withTag);
+  }
 
+  // Company scope only: every role can find every contact, the presenter decides what it sees.
+  async findOneEntity(id: string, companyId: string): Promise<Contact> {
     const contact = await this.contactRepository.findOne({
-      where: {
-        id,
-        companyId,
-        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
-      },
+      where: { id, companyId },
     });
     if (!contact) {
       throw new NotFoundException('Contact not found');
@@ -383,14 +475,47 @@ export class ContactsService {
     id: string,
     companyId: string,
     dto: UpdateContactDto,
-    caller?: RegionScope,
-  ): Promise<ContactResponse> {
-    const contact = await this.findOneEntity(id, companyId, caller);
+    viewer: ContactViewer,
+  ): Promise<PresentedContact> {
+    const contact = await this.findOneEntity(id, companyId);
+    this.assertCanEdit(contact, viewer);
     Object.assign(contact, dto);
     await this.contactRepository.save(contact);
     // A phone may have changed (or just been set): re-link chats for it.
     await this.linkMatchingChats(contact);
-    return this.findOne(id, companyId);
+    return this.presentById(id, companyId, viewer);
+  }
+
+  // Creator, ADMIN or MANAGER in the contact region, or a company-wide admin; grants never edit.
+  private assertCanEdit(contact: Contact, viewer: ContactViewer): void {
+    const isCreator =
+      !!contact.createdBy && contact.createdBy === viewer.userId;
+    const inOwnRegion =
+      REGION_EDIT_ROLES.includes(viewer.role) &&
+      (viewer.regionCodes ?? []).includes(contact.regionCode);
+    if (isCreator || inOwnRegion || seesAllRegions(viewer.role)) return;
+    throw new ForbiddenException('You cannot edit this contact');
+  }
+
+  // The stored number is compared server side; a miss returns the viewer's view, never the number.
+  async verifyPhone(
+    id: string,
+    companyId: string,
+    phone: string,
+    viewer: ContactViewer,
+  ): Promise<VerifyPhoneResult> {
+    await this.findOneEntity(id, companyId);
+    const verified = await this.contactAccessRequests.verifyPhone(
+      companyId,
+      id,
+      viewer.userId,
+      phone,
+      { sourceType: ContactAccessSourceType.CONTACT, sourceId: id },
+    );
+    return {
+      verified,
+      contact: await this.presentById(id, companyId, viewer),
+    };
   }
 
   // Moves edges to the target and deletes the source in one transaction.
@@ -407,7 +532,12 @@ export class ContactsService {
     }
 
     // Verify source exists first, else a wrong id yields zero edges, a no-op reported as success.
-    const source = await this.findOneEntity(id, companyId, caller);
+    const source = await this.findOneEntity(id, companyId);
+    // Deleting stays confined to the caller regions even though finding is company-wide.
+    const scopedCodes = scopedRegionCodes(caller);
+    if (scopedCodes && !scopedCodes.includes(source.regionCode)) {
+      throw new NotFoundException('Contact not found');
+    }
 
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
       this.leadRepository.count({ where: { contactId: id, companyId } }),
@@ -465,14 +595,9 @@ export class ContactsService {
     }
 
     // Transfers edges and deletes source in one transaction so failure can't strand moved edges.
-    const scopedCodes = scopedRegionCodes(caller);
     await this.dataSource.transaction(async (manager) => {
       const target = await manager.findOne(Contact, {
-        where: {
-          id: transferToContactId!,
-          companyId,
-          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
-        },
+        where: { id: transferToContactId!, companyId },
       });
       if (!target) {
         throw new NotFoundException('Transfer target contact not found');
@@ -499,6 +624,31 @@ export class ContactsService {
         { contactId: target.id },
       );
       await manager.delete(Contact, { id, companyId });
+    });
+  }
+
+  // Names match by substring; phone and email only whole, so a masked value cannot be rebuilt.
+  private searchSql(term: string): Brackets {
+    const digits = normalizePhone(term);
+    const isPhone = !!digits && digits.length >= PHONE_SEARCH_MIN_DIGITS;
+    const isEmail = term.includes('@');
+    return new Brackets((where) => {
+      if (isPhone) {
+        where.where(
+          `RIGHT(regexp_replace(c.phone, '\\D', '', 'g'), 9) = :phoneDigits`,
+          { phoneDigits: digits },
+        );
+        return;
+      }
+      if (isEmail) {
+        where.where('LOWER(c.email) = :emailExact', {
+          emailExact: term.toLowerCase(),
+        });
+        return;
+      }
+      where
+        .where('c.first_name ILIKE :s', { s: `%${term}%` })
+        .orWhere('c.last_name ILIKE :s');
     });
   }
 
@@ -564,13 +714,5 @@ export class ContactsService {
       if (tenantSet.has(c.id)) tags.push('tenant');
       return Object.assign(c, { tags });
     });
-  }
-
-  private serialize(c: Contact & { tags?: ContactTag[] }): ContactResponse {
-    return {
-      ...c,
-      displayName: contactDisplayName(c),
-      tags: c.tags ?? [],
-    } as ContactResponse;
   }
 }

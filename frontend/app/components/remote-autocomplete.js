@@ -39,7 +39,13 @@ export default class RemoteAutocompleteComponent extends Component {
 
   get options() {
     if (!this.args.listUrl || this.listFailed) return undefined;
-    return this.listItems ?? [];
+    return this.mapItems(this.listItems ?? []);
+  }
+
+  // Optional @mapItem lets a host derive a label field the payload does not carry.
+  mapItems(items) {
+    const mapItem = this.args.mapItem;
+    return typeof mapItem === 'function' ? items.map(mapItem) : items;
   }
 
   get searchParam() {
@@ -62,7 +68,9 @@ export default class RemoteAutocompleteComponent extends Component {
     const result = await this.auth.fetchJson(url);
     const payload = result.data ?? result ?? [];
     // Search endpoints return a bare array; paginated ones wrap it again.
-    return Array.isArray(payload) ? payload : (payload.data ?? []);
+    return this.mapItems(
+      Array.isArray(payload) ? payload : (payload.data ?? []),
+    );
   }
 
   @action
@@ -82,7 +90,7 @@ export default class RemoteAutocompleteComponent extends Component {
     ) {
       this.listItems = [...this.listItems, created];
     }
-    return created;
+    return created ? this.mapItems([created])[0] : created;
   }
 
   // A host @onCreate replaces the createUrl POST.

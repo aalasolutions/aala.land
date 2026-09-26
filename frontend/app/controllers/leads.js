@@ -704,14 +704,19 @@ export default class LeadsController extends Controller {
       const originalUnitId = this.editLead?.unitId ?? '';
       const originalRegionCode = this.editLead?.regionCode ?? '';
 
-      await this.auth.fetchJson(path, {
+      const json = await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify({
           // Edit must omit identity fields (name/phone/email) or forbidNonWhitelisted 400s.
           ...(isEdit
             ? {}
             : this.contactSelection.contactId
-              ? { contactId: this.contactSelection.contactId }
+              ? {
+                  contactId: this.contactSelection.contactId,
+                  ...this.contactSelection.verifyPhoneField(
+                    'contactVerifyPhone',
+                  ),
+                }
               : this.contactSelection.cleanIdentity),
           status: this.formStatus,
           temperature: this.formTemperature,
@@ -741,10 +746,15 @@ export default class LeadsController extends Controller {
       });
 
       this.notifications.success(isEdit ? 'Lead updated' : 'Lead created');
+      if (!isEdit && json?.data?.contactAccess === 'PENDING') {
+        this.notifications.info('Access pending: an approver has been asked');
+      }
       this.closeModal();
       this.router.refresh('leads');
     } catch (e) {
-      this.errorMsg = e.message;
+      this.errorMsg = this.contactSelection.takeConflict(e)
+        ? 'Contact already added'
+        : e.message;
     } finally {
       this.isSaving = false;
     }

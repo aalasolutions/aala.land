@@ -92,6 +92,7 @@ export class LeadsController {
       limit,
       regionCode,
       contactId,
+      req.user,
     );
   }
 
@@ -128,10 +129,7 @@ export class LeadsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leadsService.findOne(id, requireCompanyId(req.user), {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.leadsService.findOne(id, requireCompanyId(req.user), req.user);
   }
 
   @Patch(':id')

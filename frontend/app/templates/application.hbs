@@ -136,6 +136,21 @@
                   <Ui::Ph @icon="kanban" />
                   <span class="nu-sidebar__link-label">Lead Pipeline</span>
                 </LinkTo>
+                {{#if this.sidebarGroups.accessRequests}}
+                  <LinkTo
+                    @route="access-requests"
+                    class="nu-sidebar__sublink"
+                    data-tooltip={{if
+                      (and this.desktopCollapsed (eq this.activeGroup "crm"))
+                      "Access Requests"
+                    }}
+                    data-tooltip-position="end"
+                    data-test-nav-access-requests
+                  >
+                    <Ui::Ph @icon="key" />
+                    <span class="nu-sidebar__link-label">Access Requests</span>
+                  </LinkTo>
+                {{/if}}
               </div>
             </div>
           </div>

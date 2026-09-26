@@ -35,6 +35,13 @@ export class UpdateUnitDto {
   @IsOptional()
   owner?: ContactIdentityDto;
 
+  // Typed by an agent attaching someone else's contact: a match unlocks it, a miss raises a request.
+  @ApiPropertyOptional({ example: '+971501234567', maxLength: 30 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30)
+  ownerVerifyPhone?: string;
+
   @ApiPropertyOptional({ example: 'uuid-of-agent', nullable: true })
   @IsUUID()
   @IsOptional()

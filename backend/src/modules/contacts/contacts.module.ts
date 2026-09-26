@@ -9,6 +9,12 @@ import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 import { RecordHistoryModule } from '../record-history/record-history.module';
+import { User } from '../users/entities/user.entity';
+import { ContactAccessRequest } from '../contact-access-requests/entities/contact-access-request.entity';
+import { ContactAccessRequestsModule } from '../contact-access-requests/contact-access-requests.module';
+import { AuditModule } from '../audit/audit.module';
+import { ContactPrivacyService } from './contact-privacy.service';
+import { ContactAttachService } from './contact-attach.service';
 
 @Module({
   imports: [
@@ -19,11 +25,15 @@ import { RecordHistoryModule } from '../record-history/record-history.module';
       Lease,
       WhatsappChat,
       Company,
+      User,
+      ContactAccessRequest,
     ]),
     RecordHistoryModule,
+    ContactAccessRequestsModule,
+    AuditModule,
   ],
   controllers: [ContactsController],
-  providers: [ContactsService],
-  exports: [ContactsService],
+  providers: [ContactsService, ContactPrivacyService, ContactAttachService],
+  exports: [ContactsService, ContactPrivacyService, ContactAttachService],
 })
 export class ContactsModule {}

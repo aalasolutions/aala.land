@@ -26,15 +26,27 @@ import { Locality } from '../locations/entities/locality.entity';
 import { City } from '../locations/entities/city.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { ContactsService } from '../contacts/contacts.service';
+import { Contact } from '../contacts/entities/contact.entity';
 import {
-  attachDisplayName,
-  contactDisplayNameOr,
-} from '../../shared/utils/contact.util';
+  ContactPrivacyService,
+  ContactViewer,
+  PresentedContact,
+} from '../contacts/contact-privacy.service';
+import {
+  ContactAttachAccess,
+  ContactAttachService,
+} from '../contacts/contact-attach.service';
+import { ContactLinkSource } from '../contact-access-requests/contact-access-requests.service';
+import { ContactAccessSourceType } from '../contact-access-requests/entities/contact-access-request.entity';
+import { contactDisplayNameOr } from '../../shared/utils/contact.util';
 import {
   RegionScope,
   resolveRegionCode,
 } from '../../shared/utils/resolve-region-code.util';
-import { paginationOptions } from '../../shared/utils/pagination.util';
+import {
+  contactListLimit,
+  paginationOptions,
+} from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
 import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -42,9 +54,23 @@ import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
-export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
+export type LeadResponse = Omit<Lead, 'assignedAgent' | 'contact'> & {
   assignedAgentName: string | null;
+  contact: PresentedContact | null;
 };
+
+export type CreatedLeadResponse = LeadResponse & {
+  contactAccess: ContactAttachAccess;
+};
+
+function viewerOf(
+  userId: string | undefined,
+  caller: RegionScope | undefined,
+): ContactViewer | undefined {
+  return userId && caller
+    ? { userId, role: caller.role, regionCodes: caller.regionCodes }
+    : undefined;
+}
 
 export type LeadActivityResponse = Omit<LeadActivity, 'performer'> & {
   performedByName: string | null;
@@ -79,6 +105,8 @@ export class LeadsService {
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
     private readonly dataSource: DataSource,
+    private readonly contactPrivacy: ContactPrivacyService,
+    private readonly contactAttach: ContactAttachService,
   ) {}
 
   async create(
@@ -86,7 +114,7 @@ export class LeadsService {
     dto: CreateLeadDto,
     userId?: string,
     caller?: RegionScope,
-  ): Promise<LeadResponse> {
+  ): Promise<CreatedLeadResponse> {
     const {
       contactId,
       firstName,
@@ -98,8 +126,10 @@ export class LeadsService {
       localityId,
       unitId,
       regionCode: dtoRegionCode,
+      contactVerifyPhone,
       ...rest
     } = dto;
+    const viewer = viewerOf(userId, caller);
 
     if (localityId) await this.validateLocalityExists(localityId);
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
@@ -119,11 +149,12 @@ export class LeadsService {
       caller,
     );
 
-    const contact = await this.contactsService.resolveOrCreate(
+    const { contact, existing } = await this.contactsService.resolveOrCreate(
       companyId,
       { contactId, firstName, lastName, email, phone, isWhatsapp },
       userId,
       regionCode,
+      caller?.role,
     );
 
     const lead = this.leadRepository.create({
@@ -187,8 +218,47 @@ export class LeadsService {
       }
     }
 
+    const contactAccess = await this.contactAttach.settle({
+      companyId,
+      viewer,
+      contact,
+      source: this.leadSource(saved.id),
+      assigneeId: saved.assignedTo,
+      linkAssignee: true,
+      agentAttached: existing,
+      // Typing the whole number is the verification; the field only overrides it.
+      verifyPhone: contactVerifyPhone ?? (contactId ? undefined : phone),
+    });
+
     saved.contact = contact;
-    return this.serializeLead(saved);
+    return {
+      ...(await this.serializeLead(companyId, saved, viewer)),
+      contactAccess,
+    };
+  }
+
+  private leadSource(leadId: string): ContactLinkSource {
+    return { sourceType: ContactAccessSourceType.LEAD, sourceId: leadId };
+  }
+
+  // After an update or assign: MANAGER+ links the assignee; an agent without FULL raises a request.
+  private async settleUpdatedLeadAccess(
+    companyId: string,
+    viewer: ContactViewer | undefined,
+    lead: Lead,
+    linkAssignee: boolean,
+    agentAttached: boolean,
+  ): Promise<void> {
+    if (!lead.contact || (!linkAssignee && !agentAttached)) return;
+    await this.contactAttach.settle({
+      companyId,
+      viewer,
+      contact: lead.contact,
+      source: this.leadSource(lead.id),
+      assigneeId: lead.assignedTo,
+      linkAssignee,
+      agentAttached,
+    });
   }
 
   async findAll(
@@ -197,7 +267,9 @@ export class LeadsService {
     limit = 20,
     regionCode?: string,
     contactId?: string,
+    viewer?: ContactViewer,
   ): Promise<PaginatedLeadResponse> {
+    const take = contactListLimit(limit);
     const where: FindOptionsWhere<Lead> = { companyId };
     if (regionCode) where.regionCode = regionCode;
     if (contactId) where.contactId = contactId;
@@ -205,27 +277,37 @@ export class LeadsService {
     const [data, total] = await this.leadRepository.findAndCount({
       where,
       relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
-      ...paginationOptions(page, limit),
+      ...paginationOptions(page, take),
       order: {
         position: { direction: 'ASC', nulls: 'FIRST' },
         createdAt: 'DESC',
       },
     });
     return {
-      data: data.map((lead) => this.serializeLead(lead)),
+      data: await this.serializeLeads(companyId, data, viewer),
       total,
       page,
-      limit,
+      limit: take,
     };
   }
 
   async findOne(
     id: string,
     companyId: string,
-    caller?: RegionScope,
+    caller?: ContactViewer,
   ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
-    return this.serializeLead(lead);
+    return this.serializeLead(companyId, lead, caller);
+  }
+
+  // Re-read after a write: unscoped, since the write itself was already authorized.
+  private async presentLeadById(
+    id: string,
+    companyId: string,
+    viewer: ContactViewer | undefined,
+  ): Promise<LeadResponse> {
+    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    return this.serializeLead(companyId, lead, viewer);
   }
 
   async update(
@@ -237,6 +319,7 @@ export class LeadsService {
     caller?: RegionScope,
   ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
+    const viewer = viewerOf(userId, caller);
 
     if (dto.localityId && dto.localityId !== lead.localityId) {
       await this.validateLocalityExists(dto.localityId);
@@ -247,14 +330,12 @@ export class LeadsService {
     if (dto.unitId && dto.unitId !== lead.unitId) {
       await this.validateUnitOwnership(dto.unitId, companyId);
     }
-    // Repointing must stay within the company and the caller regions.
-    if (dto.contactId !== undefined && dto.contactId !== lead.contactId) {
+    // Any contact of the company may be attached; the presenter decides what the caller sees.
+    const contactChanged =
+      dto.contactId !== undefined && dto.contactId !== lead.contactId;
+    if (contactChanged) {
       lead.contact = dto.contactId
-        ? await this.contactsService.findOneEntity(
-            dto.contactId,
-            companyId,
-            caller,
-          )
+        ? await this.contactsService.findOneEntity(dto.contactId, companyId)
         : null;
     }
 
@@ -401,7 +482,15 @@ export class LeadsService {
       }
     }
 
-    return this.findOne(id, companyId);
+    await this.settleUpdatedLeadAccess(
+      companyId,
+      viewer,
+      lead,
+      assignmentChanged || contactChanged,
+      contactChanged,
+    );
+
+    return this.presentLeadById(id, companyId, viewer);
   }
 
   async assign(
@@ -470,7 +559,16 @@ export class LeadsService {
       });
     }
 
-    return this.findOne(id, companyId);
+    const viewer = viewerOf(performedBy, caller);
+    await this.settleUpdatedLeadAccess(
+      companyId,
+      viewer,
+      lead,
+      true,
+      agentId === performedBy,
+    );
+
+    return this.presentLeadById(id, companyId, viewer);
   }
 
   async convert(
@@ -478,7 +576,7 @@ export class LeadsService {
     companyId: string,
     performedBy?: string,
     caller?: RegionScope,
-  ): Promise<Lead> {
+  ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     const previousStatus = lead.status;
     if (previousStatus !== LeadStatus.WON) lead.position = null;
@@ -510,7 +608,12 @@ export class LeadsService {
       }),
     );
 
-    return updated;
+    updated.contact = lead.contact;
+    return this.serializeLead(
+      companyId,
+      updated,
+      viewerOf(performedBy, caller),
+    );
   }
 
   async addActivity(
@@ -733,13 +836,36 @@ export class LeadsService {
     }
   }
 
-  private serializeLead(lead: Lead): LeadResponse {
-    const { assignedAgent, ...leadWithoutAssignedAgent } = lead;
-    // Contact is a raw relation; attach displayName so a phone-only contact renders, not blank.
-    attachDisplayName(lead.contact);
-    return {
-      ...leadWithoutAssignedAgent,
-      assignedAgentName: assignedAgent?.name ?? null,
-    };
+  private async serializeLead(
+    companyId: string,
+    lead: Lead,
+    viewer: ContactViewer | undefined,
+  ): Promise<LeadResponse> {
+    const [serialized] = await this.serializeLeads(companyId, [lead], viewer);
+    return serialized;
+  }
+
+  // One presenter pass per page, so access levels and creator names are batched.
+  private async serializeLeads(
+    companyId: string,
+    leads: Lead[],
+    viewer: ContactViewer | undefined,
+  ): Promise<LeadResponse[]> {
+    const contacts = new Map<string, Contact>();
+    leads.forEach((l) => {
+      if (l.contact) contacts.set(l.contact.id, l.contact);
+    });
+    const presented = await this.contactPrivacy.presentMany(companyId, viewer, [
+      ...contacts.values(),
+    ]);
+    const byId = new Map(presented.map((p) => [p.id, p]));
+    return leads.map((lead) => {
+      const { assignedAgent, contact, ...rest } = lead;
+      return {
+        ...rest,
+        contact: contact ? (byId.get(contact.id) ?? null) : null,
+        assignedAgentName: assignedAgent?.name ?? null,
+      };
+    });
   }
 }
