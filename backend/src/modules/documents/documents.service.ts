@@ -16,6 +16,9 @@ import { Unit } from '../properties/entities/unit.entity';
 import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { Lease } from '../leases/entities/lease.entity';
+import { WorkOrder } from '../maintenance/entities/work-order.entity';
 import {
   RegionScope,
   resolveRegionCode,
@@ -31,11 +34,27 @@ import {
   scopedRegionCodes,
 } from '@shared/utils/region-visibility.util';
 import { isDateOnly } from '../../shared/utils/region-time.util';
+import {
+  DOCUMENT_LINK_COLUMNS,
+  DocumentLink,
+  DocumentRelatedFilter,
+  documentLink,
+} from './document-link';
 
-// Storage pointers stripped before reaching client; documents serve only via streaming download.
+// Storage pointers and joined parents never reach the client; files serve only via download.
+const CLIENT_HIDDEN_KEYS = [
+  'url',
+  's3Key',
+  'unit',
+  'asset',
+  'contact',
+  'lease',
+  'workOrder',
+] as const;
+
 export type SanitizedDocument = Omit<
   PropertyDocument,
-  'url' | 's3Key' | 'unit'
+  (typeof CLIENT_HIDDEN_KEYS)[number]
 > & {
   uploadedByName?: string | null;
   unit?: {
@@ -44,7 +63,33 @@ export type SanitizedDocument = Omit<
     areaId: string | null;
     assetName: string | null;
   } | null;
+  link?: DocumentLink | null;
+  derivedFrom?: 'lease' | 'work_order';
 };
+
+export interface DocumentListFilters {
+  search?: string;
+  accessLevel?: DocumentAccessLevel;
+  dateFrom?: string;
+  dateTo?: string;
+  regionCode?: string;
+  contactId?: string;
+  leaseId?: string;
+  workOrderId?: string;
+  related?: DocumentRelatedFilter;
+  includeDerived?: boolean;
+}
+
+const LINK_ID_KEYS = [
+  'unitId',
+  'assetId',
+  'contactId',
+  'leaseId',
+  'workOrderId',
+] as const;
+
+type LinkIdKey = (typeof LINK_ID_KEYS)[number];
+type DocumentLinkIds = Partial<Record<LinkIdKey, string | null>>;
 
 @Injectable()
 export class DocumentsService {
@@ -59,6 +104,12 @@ export class DocumentsService {
     private readonly assetRepository: Repository<Asset>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(Contact)
+    private readonly contactRepository: Repository<Contact>,
+    @InjectRepository(Lease)
+    private readonly leaseRepository: Repository<Lease>,
+    @InjectRepository(WorkOrder)
+    private readonly workOrderRepository: Repository<WorkOrder>,
     private readonly mediaService: MediaService,
     private readonly dataSource: DataSource,
     private readonly storagePurge: StoragePurgeService,
@@ -72,10 +123,19 @@ export class DocumentsService {
     caller: RegionScope,
   ): Promise<SanitizedDocument> {
     // Checked before the storage write so a refusal leaves no object behind.
-    if (dto.unitId) {
-      await this.assertUnitNotArchived(companyId, dto.unitId, 'uploading');
-    }
-    const regionCode = await this.resolveDocumentRegion(companyId, dto, caller);
+    this.assertAccessLevelAllowed(caller.role, dto.accessLevel);
+    const attachedRegion = await this.validateLink(
+      companyId,
+      caller,
+      dto,
+      'uploading',
+    );
+    const regionCode = await this.resolveDocumentRegion(
+      companyId,
+      dto.regionCode,
+      attachedRegion,
+      caller,
+    );
     const { url, s3Key, fileSize } =
       await this.mediaService.uploadDocumentToStorage(companyId, file);
 
@@ -87,6 +147,9 @@ export class DocumentsService {
       fileType: dto.fileType ?? file.mimetype,
       unitId: dto.unitId ?? null,
       assetId: dto.assetId ?? null,
+      contactId: dto.contactId ?? null,
+      leaseId: dto.leaseId ?? null,
+      workOrderId: dto.workOrderId ?? null,
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,
@@ -116,13 +179,7 @@ export class DocumentsService {
     limit = 20,
     category?: DocumentCategory,
     unitId?: string,
-    filters?: {
-      search?: string;
-      accessLevel?: DocumentAccessLevel;
-      dateFrom?: string;
-      dateTo?: string;
-      regionCode?: string;
-    },
+    filters?: DocumentListFilters,
     regionCodes?: string[],
   ): Promise<{
     data: SanitizedDocument[];
@@ -146,6 +203,34 @@ export class DocumentsService {
       .leftJoinAndSelect('doc.unit', 'unit')
       .leftJoinAndSelect('unit.asset', 'asset')
       .leftJoinAndSelect('asset.locality', 'locality')
+      .leftJoin('doc.asset', 'docAsset')
+      .addSelect(['docAsset.id', 'docAsset.name'])
+      .leftJoin('doc.contact', 'contact', 'contact.company_id = doc.company_id')
+      .addSelect([
+        'contact.id',
+        'contact.firstName',
+        'contact.lastName',
+        'contact.phone',
+      ])
+      .leftJoin('doc.lease', 'lease', 'lease.company_id = doc.company_id')
+      .addSelect(['lease.id', 'lease.startDate'])
+      .leftJoin(
+        'lease.contact',
+        'leaseContact',
+        'leaseContact.company_id = lease.company_id',
+      )
+      .addSelect([
+        'leaseContact.id',
+        'leaseContact.firstName',
+        'leaseContact.lastName',
+        'leaseContact.phone',
+      ])
+      .leftJoin(
+        'doc.workOrder',
+        'workOrder',
+        'workOrder.company_id = doc.company_id',
+      )
+      .addSelect(['workOrder.id', 'workOrder.title'])
       .where('doc.company_id = :companyId', { companyId })
       .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
 
@@ -160,8 +245,43 @@ export class DocumentsService {
       qb.andWhere('doc.category = :category', { category });
     }
 
-    if (unitId) {
+    const includeDerived = Boolean(unitId && filters?.includeDerived);
+    if (unitId && includeDerived) {
+      // Leases and work orders on the unit surface their documents on the unit page.
+      qb.andWhere(
+        '(doc.unit_id = :unitId' +
+          ' OR doc.lease_id IN (SELECT dl.id FROM leases dl WHERE dl.unit_id = :unitId AND dl.company_id = :companyId)' +
+          ' OR doc.work_order_id IN (SELECT dw.id FROM work_orders dw WHERE dw.unit_id = :unitId AND dw.company_id = :companyId))',
+        { unitId },
+      );
+    } else if (unitId) {
       qb.andWhere('doc.unit_id = :unitId', { unitId });
+    }
+
+    if (filters?.contactId) {
+      qb.andWhere('doc.contact_id = :contactId', {
+        contactId: filters.contactId,
+      });
+    }
+
+    if (filters?.leaseId) {
+      qb.andWhere('doc.lease_id = :leaseId', { leaseId: filters.leaseId });
+    }
+
+    if (filters?.workOrderId) {
+      qb.andWhere('doc.work_order_id = :workOrderId', {
+        workOrderId: filters.workOrderId,
+      });
+    }
+
+    if (filters?.related === 'none') {
+      qb.andWhere(
+        `(${Object.values(DOCUMENT_LINK_COLUMNS)
+          .map((column) => `doc.${column} IS NULL`)
+          .join(' AND ')})`,
+      );
+    } else if (filters?.related) {
+      qb.andWhere(`doc.${DOCUMENT_LINK_COLUMNS[filters.related]} IS NOT NULL`);
     }
 
     if (filters?.accessLevel) {
@@ -216,6 +336,8 @@ export class DocumentsService {
     return {
       data: data.map((d) => ({
         ...this.sanitize(d),
+        link: documentLink(d),
+        ...this.derivedFrom(d, includeDerived ? unitId : undefined),
         uploadedByName: d.uploadedBy
           ? (uploaderNames.get(d.uploadedBy) ?? null)
           : null,
@@ -294,6 +416,46 @@ export class DocumentsService {
       userRole,
       regionCodes,
     );
+    const caller: RegionScope = { role: userRole, regionCodes };
+    this.assertAccessLevelAllowed(userRole, dto.accessLevel);
+
+    const { unitId, assetId, contactId, leaseId, workOrderId, ...metadata } =
+      dto;
+    const requested: DocumentLinkIds = {
+      unitId,
+      assetId,
+      contactId,
+      leaseId,
+      workOrderId,
+    };
+    // Omitted keeps the current link column, null clears it, a uuid sets it.
+    const nextLink = {} as Record<LinkIdKey, string | null>;
+    for (const key of LINK_ID_KEYS) {
+      const value = requested[key];
+      nextLink[key] = value === undefined ? existing[key] : value;
+    }
+    const linkChanged = LINK_ID_KEYS.some(
+      (key) => nextLink[key] !== existing[key],
+    );
+
+    let regionCode = existing.regionCode;
+    if (linkChanged) {
+      const attachedRegion = await this.validateLink(
+        companyId,
+        caller,
+        nextLink,
+        'editing',
+      );
+      if (attachedRegion) {
+        regionCode = await this.resolveDocumentRegion(
+          companyId,
+          undefined,
+          attachedRegion,
+          caller,
+        );
+      }
+    }
+
     return this.sanitize(
       await this.dataSource.transaction(async (manager) => {
         if (existing.unitId) {
@@ -304,7 +466,15 @@ export class DocumentsService {
             manager,
           );
         }
-        Object.assign(existing, dto);
+        if (nextLink.unitId && nextLink.unitId !== existing.unitId) {
+          await this.assertUnitNotArchived(
+            companyId,
+            nextLink.unitId,
+            'editing',
+            manager,
+          );
+        }
+        Object.assign(existing, metadata, nextLink, { regionCode });
         return manager.getRepository(PropertyDocument).save(existing);
       }),
     );
@@ -379,26 +549,22 @@ export class DocumentsService {
     return versions.map((v) => this.sanitize(v));
   }
 
-  // NULL is company-wide, admin-only; property-attached takes that property's region.
+  // NULL is company-wide, admin-only; a linked document inherits its parent's region.
   private async resolveDocumentRegion(
     companyId: string,
-    dto: UploadDocumentDto,
+    requestedRegion: string | undefined,
+    attachedRegion: string | undefined,
     caller: RegionScope,
   ): Promise<string | null> {
-    if (dto.regionCode) {
+    if (requestedRegion) {
       return resolveRegionCode(
         this.companyRepository,
         companyId,
-        dto.regionCode,
+        requestedRegion,
         caller,
       );
     }
 
-    const attachedRegion = await this.regionOfProperty(
-      companyId,
-      dto.unitId,
-      dto.assetId,
-    );
     if (attachedRegion) {
       return attachedRegion;
     }
@@ -412,6 +578,96 @@ export class DocumentsService {
       throw new BadRequestException('No region assigned to you');
     }
     return ownRegion;
+  }
+
+  // One link at most; returns the linked parent's region so the document can inherit it.
+  private async validateLink(
+    companyId: string,
+    caller: RegionScope,
+    link: DocumentLinkIds,
+    verb: 'uploading' | 'editing',
+  ): Promise<string | undefined> {
+    if (LINK_ID_KEYS.filter((key) => link[key]).length > 1) {
+      throw new BadRequestException('A document can link to only one record');
+    }
+    const { unitId, assetId, contactId, leaseId, workOrderId } = link;
+
+    if (unitId) {
+      await this.assertUnitNotArchived(companyId, unitId, verb);
+      return this.regionOfProperty(companyId, unitId);
+    }
+    if (assetId) {
+      return this.regionOfProperty(companyId, undefined, assetId);
+    }
+    if (contactId) {
+      const contact = await this.contactRepository.findOne({
+        where: { id: contactId, companyId },
+        select: { id: true, regionCode: true },
+      });
+      return this.visibleParentRegion(contact, 'contactId', caller);
+    }
+    if (leaseId) {
+      const lease = await this.leaseRepository.findOne({
+        where: { id: leaseId, companyId },
+        select: { id: true, regionCode: true, deletedAt: true },
+      });
+      const region = this.visibleParentRegion(lease, 'leaseId', caller);
+      if (lease?.deletedAt) {
+        throw new ConflictException(
+          `This lease is archived. Unarchive it before ${verb} documents.`,
+        );
+      }
+      return region;
+    }
+    if (workOrderId) {
+      const workOrder = await this.workOrderRepository.findOne({
+        where: { id: workOrderId, companyId },
+        select: { id: true, regionCode: true },
+      });
+      return this.visibleParentRegion(workOrder, 'workOrderId', caller);
+    }
+    return undefined;
+  }
+
+  // A parent outside the caller's regions reads as missing, so its existence does not leak.
+  private visibleParentRegion(
+    parent: { regionCode: string } | null,
+    field: 'contactId' | 'leaseId' | 'workOrderId',
+    caller: RegionScope,
+  ): string {
+    const scopedCodes = scopedRegionCodes(caller);
+    if (
+      !parent?.regionCode ||
+      (scopedCodes && !scopedCodes.includes(parent.regionCode))
+    ) {
+      throw new BadRequestException(`Invalid ${field}: record not found`);
+    }
+    return parent.regionCode;
+  }
+
+  // Refuses a level the caller could not read back, which would strand the document.
+  private assertAccessLevelAllowed(
+    userRole: string,
+    accessLevel?: DocumentAccessLevel,
+  ): void {
+    if (
+      accessLevel &&
+      !this.getAllowedAccessLevels(userRole).includes(accessLevel)
+    ) {
+      throw new BadRequestException(
+        'You cannot share a document at that level',
+      );
+    }
+  }
+
+  private derivedFrom(
+    doc: PropertyDocument,
+    unitId?: string,
+  ): { derivedFrom?: 'lease' | 'work_order' } {
+    if (!unitId || doc.unitId === unitId) return {};
+    if (doc.leaseId) return { derivedFrom: 'lease' };
+    if (doc.workOrderId) return { derivedFrom: 'work_order' };
+    return {};
   }
 
   private async assertUnitNotArchived(
@@ -485,10 +741,12 @@ export class DocumentsService {
     return undefined;
   }
 
-  // Mirrors the omit-by-rest sanitize pattern used elsewhere (companies.controller adminEmail).
   private sanitize(doc: PropertyDocument): SanitizedDocument {
-    const { url: _url, s3Key: _s3Key, unit: _unit, ...rest } = doc;
-    return rest;
+    const rest: Partial<PropertyDocument> = { ...doc };
+    for (const key of CLIENT_HIDDEN_KEYS) {
+      delete rest[key];
+    }
+    return rest as SanitizedDocument;
   }
 
   private getAllowedAccessLevels(userRole: string): DocumentAccessLevel[] {

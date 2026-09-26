@@ -1,20 +1,11 @@
 import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
-import {
-  closeDeleteModal,
-  confirmDeleteModal,
-  openDeleteModal,
-} from '../utils/delete-modal';
-import { CATEGORIES, ACCESS_LEVELS } from 'land/constants';
+import { CATEGORIES, ACCESS_LEVELS, RELATED_TYPES } from 'land/constants';
+import { localMidnightIso } from 'land/utils/local-date';
 
 export default class DocumentsController extends PaginatedController {
-  @service auth;
-  @service notifications;
-  @service router;
-
   queryParams = [
     'page',
     'limit',
@@ -23,44 +14,14 @@ export default class DocumentsController extends PaginatedController {
     'accessLevel',
     'dateFrom',
     'dateTo',
+    'related',
   ];
   @tracked category = '';
   @tracked search = '';
   @tracked accessLevel = '';
   @tracked dateFrom = '';
   @tracked dateTo = '';
-
-  @tracked showModal = false;
-  @tracked editDocument = null;
-  @tracked formName = '';
-  @tracked formCategory = 'OTHER';
-  @tracked formAccessLevel = 'TEAM';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
-
-  @tracked selectedFile = null;
-  @tracked uploadProgress = '';
-  @tracked showDeleteModal = false;
-  @tracked documentToDelete = null;
-  @tracked isDeleting = false;
-
-  columns = [
-    { name: 'Name', valuePath: 'name', width: 250, isFixed: 'left' },
-    { name: 'Category', valuePath: 'category', width: 140 },
-    { name: 'Access', valuePath: 'accessLevel', width: 120 },
-    { name: 'Property', valuePath: 'unit.assetName', width: 220 },
-    { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
-    { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
-    { name: 'Uploaded', valuePath: 'createdAt', width: 140, numeric: true },
-    {
-      name: 'Actions',
-      valuePath: 'id',
-      width: 130,
-      isFixed: 'right',
-      isSortable: false,
-      isResizable: false,
-    },
-  ];
+  @tracked related = '';
 
   resetState() {
     this.page = 1;
@@ -69,48 +30,43 @@ export default class DocumentsController extends PaginatedController {
     this.accessLevel = '';
     this.dateFrom = '';
     this.dateTo = '';
-    this.showModal = false;
-    this.editDocument = null;
-    this.selectedFile = null;
-    this.uploadProgress = '';
-    this.errorMsg = '';
-    this.showDeleteModal = false;
-    this.documentToDelete = null;
-    this.isDeleting = false;
+    this.related = '';
   }
 
   get categories() {
     return CATEGORIES;
   }
 
-  categoryOptions = CATEGORIES.filter((c) => c.value !== '');
-
-  accessLevels = ACCESS_LEVELS;
+  relatedTypes = RELATED_TYPES;
 
   get accessLevelFilterOptions() {
     return [{ value: '', label: 'All access levels' }, ...ACCESS_LEVELS];
   }
 
+  // The panel owns the list fetch; the URL filters reach it as query params.
+  get panelFilters() {
+    return {
+      category: this.category,
+      search: this.search,
+      accessLevel: this.accessLevel,
+      dateFrom: localMidnightIso(this.dateFrom),
+      dateTo: localMidnightIso(this.dateTo, 1),
+      related: this.related,
+    };
+  }
+
   get hasActiveFilters() {
     return Boolean(
       this.category ||
-        this.search ||
-        this.accessLevel ||
-        this.dateFrom ||
-        this.dateTo,
+      this.search ||
+      this.accessLevel ||
+      this.dateFrom ||
+      this.dateTo ||
+      this.related,
     );
   }
 
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
-  }
-
-  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
-  @action setFieldValue(fieldName, value) {
-    this[fieldName] = value;
-  }
-
-  // Nuvo::Select calls onChange as (value, event).
+  // Nuvo::Dropdown calls onSelect with the value.
   @action setCategory(value) {
     this.category = value;
     this.page = 1;
@@ -119,6 +75,15 @@ export default class DocumentsController extends PaginatedController {
   @action setAccessLevelFilter(value) {
     this.accessLevel = value;
     this.page = 1;
+  }
+
+  @action setRelated(value) {
+    this.related = value;
+    this.page = 1;
+  }
+
+  @action setPage(page) {
+    this.page = page;
   }
 
   @action updateFilter(fieldName, e) {
@@ -146,146 +111,7 @@ export default class DocumentsController extends PaginatedController {
     this.accessLevel = '';
     this.dateFrom = '';
     this.dateTo = '';
+    this.related = '';
     this.page = 1;
-  }
-
-  @action onFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (file) {
-      this.selectedFile = file;
-      if (!this.formName) {
-        this.formName = file.name;
-      }
-    }
-  }
-
-  @action openCreate() {
-    this.formName = '';
-    this.formCategory = 'OTHER';
-    this.formAccessLevel = 'TEAM';
-    this.selectedFile = null;
-    this.uploadProgress = '';
-    this.editDocument = null;
-    this.errorMsg = '';
-    this.showModal = true;
-  }
-
-  @action openEdit(doc) {
-    this.formName = doc.name ?? '';
-    this.formCategory = doc.category ?? 'OTHER';
-    this.formAccessLevel = doc.accessLevel ?? 'TEAM';
-    this.selectedFile = null;
-    this.uploadProgress = '';
-    this.editDocument = doc;
-    this.errorMsg = '';
-    this.showModal = true;
-  }
-
-  @action closeModal() {
-    this.showModal = false;
-  }
-
-  @action resetDrawer() {
-    this.editDocument = null;
-    this.errorMsg = '';
-    this.selectedFile = null;
-    this.uploadProgress = '';
-  }
-
-  @action async saveDocument(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editDocument;
-
-    try {
-      if (isEdit) {
-        // Edit path: metadata-only PATCH. File replacement is out of scope.
-        const body = {
-          name: this.formName,
-          category: this.formCategory,
-          accessLevel: this.formAccessLevel,
-        };
-        await this.auth.fetchJson(`/documents/${this.editDocument.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(body),
-        });
-        this.notifications.success('Document updated');
-      } else {
-        if (!this.selectedFile) {
-          throw new Error('Please select a file to upload');
-        }
-        this.uploadProgress = 'Uploading...';
-
-        const formData = new FormData();
-        formData.append('file', this.selectedFile);
-        formData.append('name', this.formName);
-        formData.append('category', this.formCategory);
-        formData.append('accessLevel', this.formAccessLevel);
-
-        await this.auth.fetchJson('/documents/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        this.notifications.success('Document uploaded');
-      }
-
-      this.closeModal();
-      this.router.refresh('documents');
-    } catch (err) {
-      if (err.message?.toLowerCase().includes('storage quota')) {
-        this.errorMsg =
-          'Storage quota exceeded. Add a seat or top up storage to upload more files.';
-      } else {
-        this.errorMsg = err.message || 'Save failed';
-      }
-    } finally {
-      this.isSaving = false;
-      this.uploadProgress = '';
-    }
-  }
-
-  @action openDelete(doc) {
-    openDeleteModal(this, 'documentToDelete', doc);
-  }
-
-  @action closeDeleteModal() {
-    closeDeleteModal(this, 'documentToDelete');
-  }
-
-  @action async confirmDelete() {
-    await confirmDeleteModal(this, {
-      itemKey: 'documentToDelete',
-      resourcePath: '/documents',
-      successMessage: 'Document deleted',
-      refreshRoute: 'documents',
-    });
-  }
-
-  @action async downloadDocument(doc) {
-    try {
-      const res = await this.auth.authorizedFetch(
-        `${this.auth.apiBase}/documents/${doc.id}/download`,
-      );
-      if (!res.ok) {
-        throw new Error('Download failed');
-      }
-
-      // Blob download avoids exposing the S3 URL; endpoint re-checks access and streams bytes.
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = doc.name || 'document';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      this.notifications.error(err.message || 'Download failed');
-    }
   }
 }

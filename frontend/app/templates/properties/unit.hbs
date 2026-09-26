@@ -308,87 +308,37 @@
       </Nuvo::Card>
     {{/if}}
 
-    <Nuvo::Card data-test-unit-documents>
-      <div class="flex between x-center mb-3">
-        <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
-          Documents</h2>
-        {{#unless this.isArchived}}
-          <Nuvo::Button
-            @variant="primary"
-            @size="sm"
-            data-test-upload-document-btn
-            @icon="upload-simple"
-            {{on "click" this.openDocumentCreate}}
-          >
-            Upload
-          </Nuvo::Button>
-        {{/unless}}
-      </div>
-
-      {{#if @model.documents.length}}
-        <Nuvo::DataTable
-          @columns={{this.documentColumns}}
-          @rows={{@model.documents}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="unit-documents"
-          as |cell|
-        >
-          {{#if (eq cell.key "name")}}
-            <span class="font-bold" data-test-document-row>{{cell.value}}</span>
-          {{else if (eq cell.key "fileSize")}}
-            <span class="text-sm text-muted">{{format-bytes cell.value}}</span>
-          {{else if (eq cell.key "category")}}
-            <Nuvo::Tag class="tag-doc-{{lowercase cell.value}}">
-              {{cell.value}}
-            </Nuvo::Tag>
-          {{else if (eq cell.key "uploadedByName")}}
-            <span
-              class="text-sm text-muted"
-              data-test-document-uploader
-            >{{if cell.value cell.value "-"}}</span>
-          {{else if (eq cell.key "id")}}
-            <div class="flex gap-2">
+    <section data-test-unit-documents>
+      <Documents::Panel
+        @filters={{hash unitId=@model.unit.id includeDerived=true}}
+        @presetLink={{hash
+          type="unit"
+          id=@model.unit.id
+          label=this.documentLinkLabel
+        }}
+        @tableId="unit-documents"
+        @canEdit={{not this.isArchived}}
+        @canUpload={{not this.isArchived}}
+      >
+        <:header as |panel|>
+          <div class="flex between x-center">
+            <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
+              Documents</h2>
+            {{#if panel.canUpload}}
               <Nuvo::Button
-                @variant="secondary"
-                @size="xs"
-                data-tooltip="Download"
-                aria-label="Download {{cell.row.name}}"
-                data-test-download-document-btn
-                @icon="download-simple"
-                {{on "click" (fn this.downloadDocument cell.row)}}
-              />
-              {{#unless this.isArchived}}
-                <Nuvo::Button
-                  @variant="secondary"
-                  @size="xs"
-                  data-tooltip="Edit"
-                  aria-label="Edit {{cell.row.name}}"
-                  data-test-edit-document-btn
-                  @icon="pencil-simple"
-                  {{on "click" (fn this.openDocumentEdit cell.row)}}
-                />
-              {{/unless}}
-              <Nuvo::Button
-                @variant="danger"
-                @size="xs"
-                data-tooltip="Delete"
-                aria-label="Delete {{cell.row.name}}"
-                data-test-delete-document-btn
-                @icon="trash"
-                {{on "click" (fn this.openDeleteDocument cell.row)}}
-              />
-            </div>
-          {{else}}
-            <span class="text-muted">{{cell.value}}</span>
-          {{/if}}
-        </Nuvo::DataTable>
-      {{else}}
-        <p class="text-muted text-sm">No documents uploaded for this property.</p>
-      {{/if}}
-    </Nuvo::Card>
+                @variant="primary"
+                @size="sm"
+                @icon="upload-simple"
+                data-test-upload-document-btn
+                {{on "click" panel.openUpload}}
+              >
+                Upload
+              </Nuvo::Button>
+            {{/if}}
+          </div>
+        </:header>
+      </Documents::Panel>
+    </section>
 
     <Nuvo::Card data-test-lease-history>
       <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
@@ -657,127 +607,6 @@
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDeletePhoto}}
-/>
-
-<Nuvo::Drawer
-  @open={{this.showDocumentModal}}
-  @title={{if this.editDocument "Update Document" "Upload Document"}}
-  @placement="end"
-  @size="lg"
-  @onClose={{this.closeDocumentModal}}
-  @onClosed={{this.resetDocumentDrawer}}
->
-  <:body>
-    <form
-      id="unit-document-form"
-      class="flex col gap-4"
-      {{on "submit" this.saveDocument}}
-    >
-      <Nuvo::Field @label="File" @required={{unless this.editDocument true false}}>
-        <input
-          id="ud-file"
-          type="file"
-          class="nu-input"
-          data-test-document-file-input
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
-          {{on "change" this.onDocFileSelect}}
-        />
-        {{#if this.selectedDocFile}}
-          <p class="text-xs text-muted" data-test-selected-document-file>
-            Selected:
-            {{this.selectedDocFile.name}}
-            ({{format-bytes this.selectedDocFile.size}})
-          </p>
-        {{/if}}
-      </Nuvo::Field>
-
-      <Nuvo::Field @label="Document Name" @required={{true}}>
-        <Nuvo::Input
-          type="text"
-          placeholder="Title Deed"
-          @value={{this.formDocName}}
-          @onInput={{fn this.setFieldValue "formDocName"}}
-          data-test-document-field-name
-        />
-      </Nuvo::Field>
-
-      <div class="flex gap-4">
-        <Nuvo::Field @label="Category" class="grow">
-          <Nuvo::Dropdown
-            @align="start"
-            @value={{this.formDocCategory}}
-            @onSelect={{fn this.setFieldValue "formDocCategory"}}
-            @options={{this.documentCategoryOptions}}
-            @placeholder="Select category..."
-            data-test-document-field-category
-          />
-        </Nuvo::Field>
-        <Nuvo::Field
-          @label="Access Level"
-          class="grow"
-          @tooltip="Team means every staff member can open this file. Admin means only admins can."
-        >
-          <Nuvo::Dropdown
-            @align="start"
-            @value={{this.formDocAccessLevel}}
-            @onSelect={{fn this.setFieldValue "formDocAccessLevel"}}
-            @options={{this.documentAccessLevelOptions}}
-            @placeholder="Select access level..."
-            data-test-document-field-access
-          />
-        </Nuvo::Field>
-      </div>
-
-      {{#if this.isSavingDocument}}
-        {{#unless this.editDocument}}
-          <div data-test-document-upload-progress>
-            <Nuvo::Progress
-              @value={{this.uploadProgress}}
-              @showText={{true}}
-            />
-          </div>
-        {{/unless}}
-      {{/if}}
-
-      {{#if this.documentErrorMsg}}
-        <p class="text-sm text-danger" data-test-document-error>
-          {{this.documentErrorMsg}}
-        </p>
-      {{/if}}
-    </form>
-  </:body>
-  <:footer>
-    <Nuvo::Button
-      data-test-document-cancel
-      @variant="secondary"
-      {{on "click" this.closeDocumentModal}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
-      @variant="primary"
-      type="submit"
-      form="unit-document-form"
-      @loading={{this.isSavingDocument}}
-      data-test-document-save-btn
-    >
-      {{if
-        this.isSavingDocument
-        "Uploading..."
-        (if this.editDocument "Update" "Upload")
-      }}
-    </Nuvo::Button>
-  </:footer>
-</Nuvo::Drawer>
-
-<ConfirmModal
-  @open={{this.showDeleteDocumentModal}}
-  @title="Delete Document"
-  @message="Delete {{this.documentToDelete.name}}? This cannot be undone."
-  @confirmText="Delete"
-  @confirmVariant="danger"
-  @isConfirming={{this.isDeletingDocument}}
-  @confirmingText="Deleting..."
-  @onClose={{this.closeDeleteDocumentModal}}
-  @onConfirm={{this.confirmDeleteDocument}}
 />
 
 <ConfirmModal

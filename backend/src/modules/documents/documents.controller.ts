@@ -47,6 +47,10 @@ import { diskStorage } from 'multer';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
+import {
+  DOCUMENT_RELATED_FILTERS,
+  DocumentRelatedFilter,
+} from './document-link';
 
 @ApiTags('documents')
 @Controller('documents')
@@ -81,6 +85,9 @@ export class DocumentsController {
         name: { type: 'string' },
         unitId: { type: 'string', format: 'uuid' },
         assetId: { type: 'string', format: 'uuid' },
+        contactId: { type: 'string', format: 'uuid' },
+        leaseId: { type: 'string', format: 'uuid' },
+        workOrderId: { type: 'string', format: 'uuid' },
         category: {
           type: 'string',
           enum: Object.values(DocumentCategory),
@@ -89,6 +96,7 @@ export class DocumentsController {
           type: 'string',
           enum: ['ADMIN', 'TEAM'],
         },
+        regionCode: { type: 'string' },
       },
       required: ['file', 'name'],
     },
@@ -148,6 +156,7 @@ export class DocumentsController {
     Role.COMPANY_ADMIN,
     Role.ADMIN,
     Role.MANAGER,
+    Role.AGENT,
     Role.ACCOUNTANT,
   )
   @ApiOperation({
@@ -158,6 +167,22 @@ export class DocumentsController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'category', required: false, enum: DocumentCategory })
   @ApiQuery({ name: 'unitId', required: false })
+  @ApiQuery({ name: 'contactId', required: false, type: String })
+  @ApiQuery({ name: 'leaseId', required: false, type: String })
+  @ApiQuery({ name: 'workOrderId', required: false, type: String })
+  @ApiQuery({
+    name: 'related',
+    required: false,
+    enum: DOCUMENT_RELATED_FILTERS,
+    description: 'Link type; none means documents linked to no record',
+  })
+  @ApiQuery({
+    name: 'includeDerived',
+    required: false,
+    type: Boolean,
+    description:
+      'With unitId, also returns documents of leases and work orders on that unit',
+  })
   @ApiQuery({
     name: 'search',
     required: false,
@@ -188,7 +213,22 @@ export class DocumentsController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('regionCode') regionCode?: string,
+    @Query('contactId', new ParseUUIDPipe({ optional: true }))
+    contactId?: string,
+    @Query('leaseId', new ParseUUIDPipe({ optional: true })) leaseId?: string,
+    @Query('workOrderId', new ParseUUIDPipe({ optional: true }))
+    workOrderId?: string,
+    @Query('related') related?: string,
+    @Query('includeDerived') includeDerived?: string,
   ) {
+    if (
+      related &&
+      !(DOCUMENT_RELATED_FILTERS as readonly string[]).includes(related)
+    ) {
+      throw new BadRequestException(
+        `related must be one of: ${DOCUMENT_RELATED_FILTERS.join(', ')}`,
+      );
+    }
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
     }
@@ -202,7 +242,18 @@ export class DocumentsController {
       limit,
       category,
       unitId,
-      { search, accessLevel, dateFrom, dateTo, regionCode },
+      {
+        search,
+        accessLevel,
+        dateFrom,
+        dateTo,
+        regionCode,
+        contactId,
+        leaseId,
+        workOrderId,
+        related: related as DocumentRelatedFilter | undefined,
+        includeDerived: includeDerived === 'true',
+      },
       req.user.regionCodes,
     );
   }
@@ -213,6 +264,7 @@ export class DocumentsController {
     Role.COMPANY_ADMIN,
     Role.ADMIN,
     Role.MANAGER,
+    Role.AGENT,
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Get a document by ID' })
@@ -234,6 +286,7 @@ export class DocumentsController {
     Role.COMPANY_ADMIN,
     Role.ADMIN,
     Role.MANAGER,
+    Role.AGENT,
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Get version history for a document' })
@@ -255,6 +308,7 @@ export class DocumentsController {
     Role.COMPANY_ADMIN,
     Role.ADMIN,
     Role.MANAGER,
+    Role.AGENT,
     Role.ACCOUNTANT,
   )
   @ApiOperation({

@@ -2,6 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ParseUUIDPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 import {
   DocumentCategory,
   DocumentAccessLevel,
@@ -130,6 +135,7 @@ describe('DocumentsController', () => {
           accessLevel: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          includeDerived: false,
         },
         callerRegions,
       );
@@ -152,6 +158,7 @@ describe('DocumentsController', () => {
           accessLevel: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          includeDerived: false,
         },
         callerRegions,
       );
@@ -174,6 +181,7 @@ describe('DocumentsController', () => {
           accessLevel: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          includeDerived: false,
         },
         callerRegions,
       );
@@ -212,6 +220,121 @@ describe('DocumentsController', () => {
       ).toThrow('dateTo is not a valid date');
 
       expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    const callWithLinks = (
+      related?: string,
+      includeDerived?: string,
+      unitId?: string,
+    ) =>
+      controller.findAll(
+        mockReq,
+        1,
+        20,
+        undefined,
+        unitId,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'contact-uuid-1',
+        'lease-uuid-1',
+        'work-order-uuid-1',
+        related,
+        includeDerived,
+      );
+
+    it('forwards contactId, leaseId, workOrderId, related and includeDerived', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await callWithLinks('lease', 'true', 'unit-uuid-1');
+
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        role,
+        1,
+        20,
+        undefined,
+        'unit-uuid-1',
+        expect.objectContaining({
+          contactId: 'contact-uuid-1',
+          leaseId: 'lease-uuid-1',
+          workOrderId: 'work-order-uuid-1',
+          related: 'lease',
+          includeDerived: true,
+        }),
+        callerRegions,
+      );
+    });
+
+    it.each([
+      [undefined, false],
+      ['false', false],
+      ['1', false],
+      ['true', true],
+    ])('parses includeDerived=%s as %s', async (raw, parsed) => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await callWithLinks(undefined, raw, 'unit-uuid-1');
+
+      expect(service.findAll.mock.calls[0][6]).toEqual(
+        expect.objectContaining({ includeDerived: parsed }),
+      );
+    });
+
+    it('rejects an unknown related value', () => {
+      expect(() => callWithLinks('owner')).toThrow('related must be one of');
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('validates the link id params as optional uuids', () => {
+      const args: Record<string, { data: string; pipes: unknown[] }> =
+        Reflect.getMetadata(
+          ROUTE_ARGS_METADATA,
+          DocumentsController,
+          'findAll',
+        );
+      for (const name of ['contactId', 'leaseId', 'workOrderId']) {
+        const arg = Object.values(args).find((a) => a.data === name);
+        expect(arg?.pipes).toEqual([expect.any(ParseUUIDPipe)]);
+      }
+    });
+  });
+
+  describe('role access', () => {
+    const rolesOf = (handler: (...args: any[]) => unknown) =>
+      new Reflector().get<Role[]>(ROLES_KEY, handler);
+
+    it.each([
+      ['findAll'],
+      ['findOne'],
+      ['getVersionHistory'],
+      ['download'],
+    ] as const)('allows AGENT on %s', (name) => {
+      expect(rolesOf(DocumentsController.prototype[name])).toEqual([
+        Role.SUPER_ADMIN,
+        Role.COMPANY_ADMIN,
+        Role.ADMIN,
+        Role.MANAGER,
+        Role.AGENT,
+        Role.ACCOUNTANT,
+      ]);
+    });
+
+    it('still allows AGENT to upload', () => {
+      expect(rolesOf(DocumentsController.prototype.uploadDocument)).toContain(
+        Role.AGENT,
+      );
+    });
+
+    it('keeps AGENT off update and delete', () => {
+      expect(rolesOf(DocumentsController.prototype.update)).not.toContain(
+        Role.AGENT,
+      );
+      expect(rolesOf(DocumentsController.prototype.remove)).not.toContain(
+        Role.AGENT,
+      );
     });
   });
 

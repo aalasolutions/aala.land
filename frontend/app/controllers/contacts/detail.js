@@ -92,6 +92,11 @@ export default class ContactsDetailController extends Controller {
     this.router.refresh('contacts.detail');
   }
 
+  // A contact shared with limited access takes no new documents; the panel adds the role rule.
+  get canUploadDocuments() {
+    return !this.isLimited;
+  }
+
   @action goBack() {
     this.router.transitionTo('contacts.index');
   }

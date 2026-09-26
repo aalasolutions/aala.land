@@ -320,6 +320,36 @@
           </Nuvo::Card>
         {{/if}}
 
+        <section data-test-contact-documents>
+          <Documents::Panel
+            @filters={{hash contactId=@model.contact.id}}
+            @presetLink={{hash
+              type="contact"
+              id=@model.contact.id
+              label=@model.contact.displayName
+            }}
+            @compact={{true}}
+            @tableId="contact-documents"
+            @canUpload={{this.canUploadDocuments}}
+          >
+            <:header as |panel|>
+              <div class="flex between x-center">
+                <h2 class="text-md font-bold">Documents</h2>
+                {{#if panel.canUpload}}
+                  <Nuvo::Button
+                    @variant="primary"
+                    @size="sm"
+                    @icon="upload-simple"
+                    @text="Upload"
+                    data-test-contact-documents-upload
+                    {{on "click" panel.openUpload}}
+                  />
+                {{/if}}
+              </div>
+            </:header>
+          </Documents::Panel>
+        </section>
+
         {{#if (includes @model.contact.tags "tenant")}}
           <Nuvo::Card @title="Leases">
             {{#if @model.leases.length}}

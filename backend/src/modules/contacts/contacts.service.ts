@@ -18,6 +18,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DeleteContactDto } from './dto/delete-contact.dto';
@@ -641,6 +642,11 @@ export class ContactsService {
       );
       await manager.update(
         WhatsappChat,
+        { contactId: id, companyId },
+        { contactId: target.id },
+      );
+      await manager.update(
+        PropertyDocument,
         { contactId: id, companyId },
         { contactId: target.id },
       );

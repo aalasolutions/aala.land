@@ -1,0 +1,133 @@
+<Nuvo::Card @title="Work Order Summary" data-test-work-order-summary>
+  <Nuvo::DescList @horizontal={{true}}>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Title</dt>
+      <dd
+        class="nu-desc-list__description"
+        data-test-work-order-title
+      >{{@workOrder.title}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Description</dt>
+      <dd
+        class="nu-desc-list__description whitespace-pre-line"
+        data-test-work-order-description
+      >{{or @workOrder.description "-"}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Unit</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-unit>
+        {{#if @unit.areaId}}
+          <LinkTo
+            @route="properties.unit"
+            @models={{array @unit.areaId @unit.id}}
+            class="text-primary"
+            data-test-work-order-unit-link
+          >{{@unit.label}}</LinkTo>
+        {{else}}
+          {{or @unit.label "-"}}
+        {{/if}}
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Region</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-region>{{or
+          @workOrder.regionCode
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Status</dt>
+      <dd class="nu-desc-list__description">
+        <Nuvo::Tag
+          class="tag-wo-{{lowercase @workOrder.status}}"
+          @text={{@workOrder.status}}
+          data-test-work-order-status
+        />
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Priority</dt>
+      <dd class="nu-desc-list__description">
+        <Nuvo::Tag
+          class="tag-priority-{{lowercase @workOrder.priority}}"
+          @text={{@workOrder.priority}}
+          data-test-work-order-priority
+        />
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Category</dt>
+      <dd class="nu-desc-list__description">
+        <Nuvo::Tag
+          class="tag-trade-{{lowercase @workOrder.category}}"
+          @text={{@workOrder.category}}
+          data-test-work-order-category
+        />
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Vendor</dt>
+      <dd
+        class="nu-desc-list__description"
+        data-test-work-order-vendor
+      >{{this.vendorName}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Assignee</dt>
+      <dd
+        class="nu-desc-list__description"
+        data-test-work-order-assignee
+      >{{this.assigneeName}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Scheduled Date</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-scheduled>{{or
+          (format-date @workOrder.scheduledDate)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Completed Date</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-completed>{{or
+          (format-date @workOrder.completedAt)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Estimated Cost</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-estimated>{{or
+          (format-currency @workOrder.estimatedCost)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Actual Cost</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-actual>{{or
+          (format-currency @workOrder.actualCost)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Currency</dt>
+      <dd class="nu-desc-list__description" data-test-work-order-currency>{{or
+          @workOrder.currency
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Cost Notes</dt>
+      <dd
+        class="nu-desc-list__description whitespace-pre-line"
+        data-test-work-order-cost-notes
+      >{{or @workOrder.costNotes "-"}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Notes</dt>
+      <dd
+        class="nu-desc-list__description whitespace-pre-line"
+        data-test-work-order-notes
+      >{{or @workOrder.notes "-"}}</dd>
+    </div>
+  </Nuvo::DescList>
+</Nuvo::Card>

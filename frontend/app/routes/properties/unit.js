@@ -6,19 +6,16 @@ export default class PropertiesUnitRoute extends AuthenticatedRoute {
 
   async model({ area_id, unit_id }) {
     try {
-      const [unitJson, leasesJson, mediaJson, documentsJson] =
-        await Promise.all([
-          this.auth.fetchJson(`/properties/units/${unit_id}`),
-          this.auth.fetchJson(`/leases/unit/${unit_id}`),
-          this.auth.fetchJson(`/properties/units/${unit_id}/media`),
-          this.auth.fetchJson(`/documents?unitId=${unit_id}&limit=100`),
-        ]);
+      const [unitJson, leasesJson, mediaJson] = await Promise.all([
+        this.auth.fetchJson(`/properties/units/${unit_id}`),
+        this.auth.fetchJson(`/leases/unit/${unit_id}`),
+        this.auth.fetchJson(`/properties/units/${unit_id}/media`),
+      ]);
 
       return {
         unit: unitJson.data || null,
         leases: leasesJson.data || [],
         media: mediaJson.data || [],
-        documents: documentsJson.data?.data || [],
         areaId: area_id,
       };
     } catch {
@@ -26,7 +23,6 @@ export default class PropertiesUnitRoute extends AuthenticatedRoute {
         unit: null,
         leases: [],
         media: [],
-        documents: [],
         areaId: area_id,
       };
     }

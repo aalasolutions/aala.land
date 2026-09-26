@@ -5,7 +5,6 @@ import ContactSelection, {
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { htmlSafe } from '@ember/template';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -17,8 +16,6 @@ import {
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
   AMENITY_OPTIONS,
-  CATEGORIES,
-  ACCESS_LEVELS,
 } from 'land/constants';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
@@ -68,21 +65,6 @@ export default class PropertiesUnitController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
-  documentColumns = [
-    { name: 'Title', valuePath: 'name', width: 250, isFixed: 'left' },
-    { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
-    { name: 'Document Type', valuePath: 'category', width: 160 },
-    { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
-    {
-      name: 'Actions',
-      valuePath: 'id',
-      width: 240,
-      isFixed: 'right',
-      isSortable: false,
-      isResizable: false,
-    },
-  ];
-
   leaseColumns = [
     {
       name: 'Tenant',
@@ -105,20 +87,6 @@ export default class PropertiesUnitController extends Controller {
   @tracked itemToDelete = null;
   @tracked isDeleting = false;
 
-  @tracked showDocumentModal = false;
-  @tracked editDocument = null;
-  @tracked formDocName = '';
-  @tracked formDocCategory = 'OTHER';
-  @tracked formDocAccessLevel = 'TEAM';
-  @tracked selectedDocFile = null;
-  @tracked isSavingDocument = false;
-  @tracked documentErrorMsg = '';
-  @tracked uploadProgress = 0;
-
-  @tracked showDeleteDocumentModal = false;
-  @tracked documentToDelete = null;
-  @tracked isDeletingDocument = false;
-
   @tracked pendingUnitAction = null;
   @tracked unitActionReason = '';
   @tracked reasonError = '';
@@ -140,14 +108,6 @@ export default class PropertiesUnitController extends Controller {
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
   amenityOptions = AMENITY_OPTIONS;
-
-  documentCategoryOptions = CATEGORIES.filter((c) => c.value !== '');
-  documentAccessLevelOptions = ACCESS_LEVELS;
-
-  get documentUploadProgressStyle() {
-    const clamped = Math.max(0, Math.min(100, Number(this.uploadProgress) || 0));
-    return htmlSafe(`width:${clamped}%;`);
-  }
 
   ownerSelection = new ContactSelection();
 
@@ -355,6 +315,14 @@ export default class PropertiesUnitController extends Controller {
     return Boolean(this.model?.unit?.deletedAt);
   }
 
+  // Matches the label the server returns for a unit link.
+  get documentLinkLabel() {
+    const unit = this.model?.unit;
+    const unitNumber = unit?.unitNumber ?? '';
+    const assetName = unit?.asset?.name;
+    return assetName ? `${assetName} ${unitNumber}`.trim() : unitNumber;
+  }
+
   get canArchiveUnit() {
     return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
   }
@@ -419,160 +387,6 @@ export default class PropertiesUnitController extends Controller {
       this.notifications.error(e.message || config.errorMessage);
     } finally {
       this.isSubmittingUnitAction = false;
-    }
-  }
-
-  @action onDocFileSelect(e) {
-    const file = e.target.files?.[0];
-    if (file) {
-      this.selectedDocFile = file;
-      if (!this.formDocName) {
-        this.formDocName = file.name;
-      }
-    }
-  }
-
-  @action openDocumentCreate() {
-    this.formDocName = '';
-    this.formDocCategory = 'OTHER';
-    this.formDocAccessLevel = 'TEAM';
-    this.selectedDocFile = null;
-    this.uploadProgress = 0;
-    this.editDocument = null;
-    this.documentErrorMsg = '';
-    this.showDocumentModal = true;
-  }
-
-  @action openDocumentEdit(doc) {
-    this.formDocName = doc.name ?? '';
-    this.formDocCategory = doc.category ?? 'OTHER';
-    this.formDocAccessLevel = doc.accessLevel ?? 'TEAM';
-    this.selectedDocFile = null;
-    this.uploadProgress = 0;
-    this.editDocument = doc;
-    this.documentErrorMsg = '';
-    this.showDocumentModal = true;
-  }
-
-  @action closeDocumentModal() {
-    this.showDocumentModal = false;
-  }
-
-  @action resetDocumentDrawer() {
-    this.editDocument = null;
-    this.documentErrorMsg = '';
-    this.selectedDocFile = null;
-    this.uploadProgress = 0;
-  }
-
-  @action async saveDocument(event) {
-    event.preventDefault();
-    if (this.isSavingDocument) return;
-
-    const unit = this.model?.unit;
-    if (!unit) return;
-
-    this.isSavingDocument = true;
-    this.documentErrorMsg = '';
-
-    const isEdit = !!this.editDocument;
-
-    try {
-      if (isEdit) {
-        const body = {
-          name: this.formDocName,
-          category: this.formDocCategory,
-          accessLevel: this.formDocAccessLevel,
-        };
-        await this.auth.fetchJson(`/documents/${this.editDocument.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(body),
-        });
-        this.notifications.success('Document updated');
-      } else {
-        if (!this.selectedDocFile) {
-          throw new Error('Please select a file to upload');
-        }
-
-        const formData = new FormData();
-        formData.append('file', this.selectedDocFile);
-        formData.append('name', this.formDocName);
-        formData.append('category', this.formDocCategory);
-        formData.append('accessLevel', this.formDocAccessLevel);
-        formData.append('unitId', unit.id);
-
-        await this.auth.uploadWithProgress(
-          '/documents/upload',
-          formData,
-          (percent) => (this.uploadProgress = percent),
-        );
-        this.notifications.success('Document uploaded');
-      }
-
-      this.closeDocumentModal();
-      this.router.refresh('properties.unit');
-    } catch (err) {
-      if (err.message?.toLowerCase().includes('storage quota')) {
-        this.documentErrorMsg =
-          'Storage quota exceeded. Add a seat or top up storage to upload more files.';
-      } else {
-        this.documentErrorMsg = err.message || 'Save failed';
-      }
-    } finally {
-      this.isSavingDocument = false;
-      this.uploadProgress = 0;
-    }
-  }
-
-  @action openDeleteDocument(doc) {
-    this.documentToDelete = doc;
-    this.showDeleteDocumentModal = true;
-  }
-
-  @action closeDeleteDocumentModal() {
-    this.showDeleteDocumentModal = false;
-    this.documentToDelete = null;
-  }
-
-  @action async confirmDeleteDocument() {
-    if (!this.documentToDelete || this.isDeletingDocument) return;
-    this.isDeletingDocument = true;
-    try {
-      await this.auth.fetchJson(`/documents/${this.documentToDelete.id}`, {
-        method: 'DELETE',
-      });
-      this.notifications.success('Document deleted');
-      this.closeDeleteDocumentModal();
-      this.router.refresh('properties.unit');
-    } catch (e) {
-      this.notifications.error(e.message || 'Delete failed');
-    } finally {
-      this.isDeletingDocument = false;
-    }
-  }
-
-  @action async downloadDocument(doc) {
-    try {
-      const res = await this.auth.authorizedFetch(
-        `${this.auth.apiBase}/documents/${doc.id}/download`,
-      );
-      if (!res.ok) {
-        throw new Error('Download failed');
-      }
-
-      // Blob download avoids exposing the S3 URL; endpoint re-checks access and streams bytes.
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = doc.name || 'document';
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      this.notifications.error(err.message || 'Download failed');
     }
   }
 }

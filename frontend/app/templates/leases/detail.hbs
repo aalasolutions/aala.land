@@ -1,0 +1,54 @@
+{{page-title (if @model.lease this.tenantName "Lease")}}
+
+<div data-test-lease-detail class="flex col gap-6">
+  <Nuvo::PageHeader
+    @title={{if @model.lease this.tenantName "Lease"}}
+    @subtitle="Lease agreement"
+  >
+    <:breadcrumb>
+      <LinkTo
+        @route="leases.index"
+        class="text-muted text-sm"
+        data-test-breadcrumb-leases
+      >Leases</LinkTo>
+      <span class="text-muted">/</span>
+    </:breadcrumb>
+  </Nuvo::PageHeader>
+
+  {{#if @model.lease}}
+    <Leases::Summary @lease={{@model.lease}} @unit={{@model.unit}} />
+
+    <section data-test-lease-documents>
+      <Documents::Panel
+        @filters={{this.documentFilters}}
+        @presetLink={{this.presetLink}}
+        @compact={{true}}
+        @tableId="lease-documents"
+        @canUpload={{this.canUpload}}
+      >
+        <:header as |panel|>
+          <div class="flex between x-center">
+            <h2 class="text-md font-bold">Documents</h2>
+            {{#if panel.canUpload}}
+              <Nuvo::Button
+                @variant="primary"
+                @size="sm"
+                @icon="upload-simple"
+                @text="Upload"
+                data-test-lease-documents-upload
+                {{on "click" panel.openUpload}}
+              />
+            {{/if}}
+          </div>
+        </:header>
+      </Documents::Panel>
+    </section>
+  {{else}}
+    <Nuvo::Card>
+      <Nuvo::EmptyState
+        @description="Lease not found."
+        data-test-lease-not-found
+      />
+    </Nuvo::Card>
+  {{/if}}
+</div>

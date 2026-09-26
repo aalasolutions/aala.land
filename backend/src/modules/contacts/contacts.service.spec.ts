@@ -30,6 +30,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { Company } from '../companies/entities/company.entity';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
@@ -798,7 +799,13 @@ describe('ContactsService', () => {
         Lease,
         Unit,
         WhatsappChat,
+        PropertyDocument,
       ]);
+      expect(manager.update).toHaveBeenCalledWith(
+        PropertyDocument,
+        { contactId: 'contact-uuid-1', companyId },
+        { contactId: 'contact-uuid-2' },
+      );
       expect(manager.delete).toHaveBeenCalledWith(Contact, {
         id: 'contact-uuid-1',
         companyId,

@@ -140,6 +140,17 @@ export const ACCESS_LEVELS = [
   { value: 'ADMIN', label: 'Share with Admin' },
 ];
 
+// Values match the documents list `related` query param.
+export const RELATED_TYPES = [
+  { value: '', label: 'All' },
+  { value: 'none', label: 'Library only' },
+  { value: 'unit', label: 'Unit' },
+  { value: 'asset', label: 'Property' },
+  { value: 'contact', label: 'Contact' },
+  { value: 'lease', label: 'Lease' },
+  { value: 'work_order', label: 'Work Order' },
+];
+
 export const EMAIL_CATEGORIES = [
   { value: 'FOLLOW_UP', label: 'Follow Up' },
   { value: 'WELCOME', label: 'Welcome' },

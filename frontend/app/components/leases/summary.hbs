@@ -1,0 +1,122 @@
+<Nuvo::Card @title="Lease Summary" data-test-lease-summary>
+  <Nuvo::DescList @horizontal={{true}}>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Tenant</dt>
+      <dd class="nu-desc-list__description" data-test-lease-tenant>
+        {{#if this.tenantId}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{this.tenantId}}
+            class="text-primary"
+            data-test-lease-tenant-link
+          >{{this.tenantName}}</LinkTo>
+        {{else}}
+          {{this.tenantName}}
+        {{/if}}
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Unit</dt>
+      <dd class="nu-desc-list__description" data-test-lease-unit>
+        {{#if @unit.areaId}}
+          <LinkTo
+            @route="properties.unit"
+            @models={{array @unit.areaId @unit.id}}
+            class="text-primary"
+            data-test-lease-unit-link
+          >{{@unit.label}}</LinkTo>
+        {{else}}
+          {{or @unit.label "-"}}
+        {{/if}}
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Region</dt>
+      <dd class="nu-desc-list__description" data-test-lease-region>{{or
+          @lease.regionCode
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Status</dt>
+      <dd class="nu-desc-list__description">
+        <div class="flex gap-1 wrap">
+          <Nuvo::Tag
+            class="tag-lease-{{lowercase @lease.status}}"
+            @text={{@lease.status}}
+            data-test-lease-status
+          />
+          {{#if @lease.deletedAt}}
+            <Nuvo::Tag
+              @variant="secondary"
+              @text="Archived"
+              data-test-lease-archived
+            />
+          {{/if}}
+        </div>
+      </dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Type</dt>
+      <dd
+        class="nu-desc-list__description"
+        data-test-lease-type
+      >{{this.typeLabel}}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Start Date</dt>
+      <dd class="nu-desc-list__description" data-test-lease-start>{{format-date
+          @lease.startDate
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">End Date</dt>
+      <dd class="nu-desc-list__description" data-test-lease-end>{{format-date
+          @lease.endDate
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Monthly Rent</dt>
+      <dd class="nu-desc-list__description" data-test-lease-rent>{{or
+          (format-currency @lease.monthlyRent)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Currency</dt>
+      <dd class="nu-desc-list__description" data-test-lease-currency>{{or
+          @lease.currency
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Security Deposit</dt>
+      <dd class="nu-desc-list__description" data-test-lease-deposit>{{or
+          (format-currency @lease.securityDeposit)
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Number of Cheques</dt>
+      <dd class="nu-desc-list__description" data-test-lease-cheques>{{if
+          (has-value @lease.numberOfCheques)
+          @lease.numberOfCheques
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Tenancy Registration Ref</dt>
+      <dd class="nu-desc-list__description" data-test-lease-registration>{{or
+          @lease.tenancyRegistrationRef
+          "-"
+        }}</dd>
+    </div>
+    <div class="nu-desc-list__group">
+      <dt class="nu-desc-list__term">Notes</dt>
+      <dd
+        class="nu-desc-list__description whitespace-pre-line"
+        data-test-lease-notes
+      >{{or @lease.notes "-"}}</dd>
+    </div>
+  </Nuvo::DescList>
+</Nuvo::Card>
