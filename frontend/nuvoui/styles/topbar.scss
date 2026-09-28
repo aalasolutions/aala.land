@@ -118,6 +118,7 @@
     display: flex;
     align-items: center;
     gap: nu-space(1);
+    margin-inline-start: auto;
   }
 
   @include e(icon-btn) {
