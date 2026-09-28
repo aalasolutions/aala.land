@@ -91,9 +91,9 @@ export const REGIONS: Region[] = [
   },
   {
     code: 'makkah',
-    name: 'Utah',
+    name: 'Makkah',
     country: 'SA',
-    currency: 'USD',
+    currency: 'SAR',
     currencySymbol: '\u0631.\u0633',
     timezone: 'Asia/Riyadh',
   },
