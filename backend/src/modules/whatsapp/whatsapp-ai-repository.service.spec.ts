@@ -64,7 +64,10 @@ const makeRepos = () => {
         .fn()
         .mockResolvedValue({ id: 'c1', name: 'Test Co', activeRegions: [] }),
     },
-    unitRepo: { find: jest.fn().mockResolvedValue([]) },
+    unitRepo: {
+      find: jest.fn().mockResolvedValue([]),
+      createQueryBuilder: jest.fn(),
+    },
     settingsRepo: {
       findOne: jest.fn().mockResolvedValue(null),
       upsert: jest.fn().mockResolvedValue(undefined),
@@ -80,7 +83,10 @@ const makeRepos = () => {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
     },
     billingHistoryRepo: { findOne: jest.fn().mockResolvedValue(null) },
-    userRepo: { find: jest.fn().mockResolvedValue([]) },
+    userRepo: {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+    },
     qb,
     usageQb,
     conversationQb,
@@ -522,73 +528,158 @@ describe('WhatsappAiRepositoryService', () => {
   });
 
   describe('searchProperties', () => {
-    it('queries AVAILABLE units for the company with no filters', async () => {
-      await service.searchProperties('c1', {});
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            companyId: 'c1',
-            status: UnitStatus.AVAILABLE,
-          }),
-        }),
+    let unitQb: Record<string, jest.Mock>;
+
+    const agent = (regionCodes: string[]) =>
+      repos.userRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        role: 'agent',
+        regionCodes,
+      });
+
+    const whereCalls = () =>
+      unitQb.andWhere.mock.calls.map(([clause, params]) => ({
+        clause: typeof clause === 'string' ? clause : 'brackets',
+        params,
+      }));
+
+    beforeEach(() => {
+      unitQb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      };
+      repos.unitRepo.createQueryBuilder.mockReturnValue(unitQb);
+      service = makeService(repos);
+    });
+
+    it('returns nothing for a user outside the company, without querying units', async () => {
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(repos.userRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'u1', companyId: 'c1' } }),
+      );
+      expect(result).toEqual({ units: [], total: 0 });
+      expect(repos.unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('returns nothing for an agent with no assigned regions', async () => {
+      agent([]);
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(result).toEqual({ units: [], total: 0 });
+      expect(repos.unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('limits an agent to their regions and to available, unarchived company units', async () => {
+      agent(['dubai']);
+      await service.searchProperties('c1', 'u1', {});
+      expect(unitQb.where).toHaveBeenCalledWith('u.companyId = :companyId', {
+        companyId: 'c1',
+      });
+      expect(whereCalls()).toEqual(
+        expect.arrayContaining([
+          {
+            clause: 'u.status = :status',
+            params: { status: UnitStatus.AVAILABLE },
+          },
+          { clause: 'u.deletedAt IS NULL', params: undefined },
+          {
+            clause: 'ci.regionCode IN (:...regionCodes)',
+            params: { regionCodes: ['dubai'] },
+          },
+        ]),
       );
     });
 
-    it('excludes archived units', async () => {
-      await service.searchProperties('c1', {});
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ deletedAt: IsNull() }),
-        }),
+    it('does not narrow regions for a company admin', async () => {
+      repos.userRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        role: 'company_admin',
+        regionCodes: [],
+      });
+      await service.searchProperties('c1', 'u1', {});
+      expect(whereCalls().map((c) => c.clause)).not.toContain(
+        'ci.regionCode IN (:...regionCodes)',
       );
     });
 
-    it('maps RENT type filter (uppercase) to PropertyType.RENTAL', async () => {
-      await service.searchProperties('c1', { type: 'RENT' });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ propertyType: PropertyType.RENTAL }),
-        }),
+    it('maps listing type, bedroom, bathroom, price and size bounds', async () => {
+      agent(['dubai']);
+      await service.searchProperties('c1', 'u1', {
+        type: 'RENT',
+        minBedrooms: 2,
+        maxBedrooms: 3,
+        minBathrooms: 2,
+        maxPrice: 700000,
+        minSqft: 900,
+      });
+      expect(whereCalls()).toEqual(
+        expect.arrayContaining([
+          {
+            clause: 'u.propertyType = :pt',
+            params: { pt: PropertyType.RENTAL },
+          },
+          { clause: 'u.bedrooms >= :minBedrooms', params: { minBedrooms: 2 } },
+          { clause: 'u.bedrooms <= :maxBedrooms', params: { maxBedrooms: 3 } },
+          {
+            clause: 'u.bathrooms >= :minBathrooms',
+            params: { minBathrooms: 2 },
+          },
+          { clause: 'u.price <= :maxPrice', params: { maxPrice: 700000 } },
+          { clause: 'u.sqFt >= :minSqft', params: { minSqft: 900 } },
+        ]),
       );
     });
 
-    it('normalizes lowercase "sale" type filter to PropertyType.FOR_SALE', async () => {
-      await service.searchProperties('c1', { type: 'sale' });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            propertyType: PropertyType.FOR_SALE,
-          }),
-        }),
+    it('matches a place fuzzily and escapes LIKE wildcards in customer text', async () => {
+      agent(['dubai']);
+      await service.searchProperties('c1', 'u1', { place: '50%_off' });
+      expect(whereCalls()).toContainEqual({
+        clause: 'brackets',
+        params: {
+          place: '50%_off',
+          placeLike: '%50\\%\\_off%',
+          placeSimilarity: 0.3,
+        },
+      });
+    });
+
+    it('requires every amenity asked for', async () => {
+      agent(['dubai']);
+      await service.searchProperties('c1', 'u1', {
+        amenities: ['pool', 'parking'],
+      });
+      const clauses = whereCalls().filter((c) => c.clause.startsWith('EXISTS'));
+      expect(clauses).toHaveLength(2);
+      expect(clauses[1].params).toEqual({ amenity1: '%parking%' });
+    });
+
+    it('sorts by the requested order, newest by default', async () => {
+      agent(['dubai']);
+      await service.searchProperties('c1', 'u1', { sort: 'price_low' });
+      expect(unitQb.orderBy).toHaveBeenLastCalledWith(
+        'u.price',
+        'ASC',
+        'NULLS LAST',
+      );
+      await service.searchProperties('c1', 'u1', {});
+      expect(unitQb.orderBy).toHaveBeenLastCalledWith(
+        'u.createdAt',
+        'DESC',
+        'NULLS LAST',
       );
     });
 
-    it('does not include propertyType in where when not provided', async () => {
-      await service.searchProperties('c1', {});
-      const call = repos.unitRepo.find.mock.calls[0][0];
-      expect(call.where).not.toHaveProperty('propertyType');
-    });
-
-    it('includes bedrooms filter directly in where', async () => {
-      await service.searchProperties('c1', { bedrooms: 2 });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ bedrooms: 2 }),
-        }),
-      );
-    });
-
-    it('includes city filter nested under asset.locality.city', async () => {
-      await service.searchProperties('c1', { city: 'karachi' });
-      const call = repos.unitRepo.find.mock.calls[0][0];
-      expect(call.where.asset?.locality?.city?.name).toBeDefined();
-    });
-
-    it('returns units from unitRepo', async () => {
-      const fakeUnits = [{ id: 'u1', bedrooms: 2 }];
-      repos.unitRepo.find.mockResolvedValue(fakeUnits);
-      const result = await service.searchProperties('c1', {});
-      expect(result).toEqual(fakeUnits);
+    it('returns at most 20 units with the total match count', async () => {
+      agent(['dubai']);
+      const fakeUnits = [{ id: 'u-1' }];
+      unitQb.getManyAndCount.mockResolvedValue([fakeUnits, 7]);
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(unitQb.take).toHaveBeenCalledWith(20);
+      expect(result).toEqual({ units: fakeUnits, total: 7 });
     });
   });
 });

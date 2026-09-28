@@ -9,6 +9,7 @@ import {
   resolveMediaUrlTtlSeconds,
   revokeMediaDeletedBy,
   toWireMessage,
+  isSendableSticker,
 } from './wa-media.util';
 import { WaMediaStatus, WaMessage, WaMessageInsert } from './wa-types';
 
@@ -238,5 +239,21 @@ describe('wa-media.util', () => {
       expect(outboundTextMime('readme.md')).toBe('text/markdown');
       expect(outboundTextMime('notes')).toBe('text/plain');
     });
+  });
+});
+
+describe('isSendableSticker', () => {
+  it('accepts exactly 512x512 within the static and animated limits', () => {
+    expect(isSendableSticker(512, 512, 100 * 1024, false)).toBe(true);
+    expect(isSendableSticker(512, 512, 500 * 1024, true)).toBe(true);
+  });
+
+  it('rejects any other size, an oversized file or an empty one', () => {
+    expect(isSendableSticker(600, 600, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(512, 511, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(undefined, 512, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(512, 512, 100 * 1024 + 1, false)).toBe(false);
+    expect(isSendableSticker(512, 512, 500 * 1024 + 1, true)).toBe(false);
+    expect(isSendableSticker(512, 512, 0, false)).toBe(false);
   });
 });

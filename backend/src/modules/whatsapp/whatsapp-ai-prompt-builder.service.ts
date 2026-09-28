@@ -3,7 +3,12 @@ import { Company } from '../companies/entities/company.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { PropertyType } from '../properties/entities/property-type.enum';
 import { REGIONS } from '../../shared/constants/regions';
-import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
+import {
+  COMPANY_NOTES_HEADER,
+  DEFAULT_PROMPT,
+  RULES_BLOCK,
+} from './whatsapp-ai-prompts';
+import { cleanAdminText } from './whatsapp-ai-filter';
 
 // The model receives no file, only what kind of file arrived.
 const MEDIA_TURN_NOUNS: Record<string, string> = {
@@ -33,25 +38,37 @@ export class WhatsappAiPromptBuilderService {
         ?.currency ?? '';
 
     if (company) {
-      const regions = (company.activeRegions ?? []).join(', ');
-      parts.push(
-        `[COMPANY INFO]\nName: ${company.name}\nActive Regions: ${regions || 'N/A'}`,
-      );
+      parts.push(`[COMPANY INFO]\nName: ${company.name}`);
     }
 
     parts.push(RULES_BLOCK);
     return { block: parts.join('\n\n'), fallbackCurrency };
   }
 
-  buildFullPrompt(customPrompt: string | null, contextBlock: string): string {
-    const base = customPrompt ?? DEFAULT_PROMPT;
-    return contextBlock ? `${base}\n\n${contextBlock}` : base;
+  buildFullPrompt(companyNotes: string | null, contextBlock: string): string {
+    const notes = companyNotes ? cleanAdminText(companyNotes) : '';
+    return [
+      DEFAULT_PROMPT,
+      notes ? `${COMPANY_NOTES_HEADER}\n${notes}` : '',
+      contextBlock,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
   }
 
-  formatToolResult(units: Unit[], fallbackCurrency: string): string {
+  formatToolResult(
+    units: Unit[],
+    total: number,
+    fallbackCurrency: string,
+  ): string {
     if (units.length === 0)
       return 'No properties found matching your criteria.';
-    return this.formatUnits(units, fallbackCurrency).join('\n\n');
+    const noun = total === 1 ? 'property' : 'properties';
+    const header =
+      total > units.length
+        ? `Found ${total} ${noun}. Showing the newest ${units.length}.`
+        : `Found ${total} ${noun}.`;
+    return [header, ...this.formatUnits(units, fallbackCurrency)].join('\n\n');
   }
 
   private formatUnits(units: Unit[], fallbackCurrency: string): string[] {
@@ -64,29 +81,28 @@ export class WhatsappAiPromptBuilderService {
         (cityRegionCode
           ? REGIONS.find((r) => r.code === cityRegionCode)?.currency
           : undefined) ?? fallbackCurrency;
-      const location = [asset?.name, locality?.name, city?.name]
-        .filter(Boolean)
-        .join(', ');
+      const location = [locality?.name, city?.name].filter(Boolean).join(', ');
       const beds = u.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
       const baths = u.bathrooms ? `${u.bathrooms} Bath` : '';
       const sqft = u.sqFt ? `${u.sqFt} sqft` : '';
       const amenities = (u.amenities ?? []).join(', ');
       const typeLabel =
         u.propertyType === PropertyType.RENTAL
-          ? 'RENT'
+          ? 'For Rent: '
           : u.propertyType === PropertyType.FOR_SALE
-            ? 'SALE'
-            : 'N/A';
+            ? 'For Sale: '
+            : '';
       const title = asset?.name
-        ? `${asset.name} — Property ${u.unitNumber}`
-        : `Property ${u.unitNumber}`;
+        ? `${asset.name}, unit ${u.unitNumber}`
+        : `Unit ${u.unitNumber}`;
 
       const priceLabel =
         u.price != null
           ? `${currency} ${Number(u.price).toLocaleString()}`
           : 'Price on request';
       const rows = [
-        `${i + 1}. [${typeLabel}] ${title} — ${priceLabel}`,
+        `${i + 1}. ${typeLabel}${title}`,
+        `   Price: ${priceLabel}`,
         `   Location: ${location || 'N/A'}`,
         asset?.address ? `   Address: ${asset.address}` : '',
         `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,

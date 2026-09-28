@@ -360,7 +360,7 @@ export default class CompanyController extends Controller {
 
     try {
       await this.whatsapp.updateSettings(null);
-      this.aiSuccessMsg = 'Restored to default prompt.';
+      this.aiSuccessMsg = 'Business information cleared.';
     } catch {
       this.aiErrorMsg = 'Failed to restore. Please try again.';
     } finally {

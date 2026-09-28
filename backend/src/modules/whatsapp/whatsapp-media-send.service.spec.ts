@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileTypeFromFile } from 'file-type';
+import sharp from 'sharp';
 import {
   releaseStorage,
   reserveStorage,
@@ -23,6 +24,7 @@ import { WhatsappCloudApiService } from './whatsapp-cloud-api.service';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 import { GRAPH_VERSION, WaMediaStatus } from './wa-types';
+import { WA_ANIMATED_WEBP_MESSAGE } from './wa-media.util';
 
 const mockS3Send = jest.fn();
 jest.mock('@aws-sdk/client-s3', () => ({
@@ -85,21 +87,21 @@ const connection = {
   accessTokenCiphertext: 'cipher',
 };
 
-function webp(chunks: string[]): Buffer {
-  const body = Buffer.concat(
-    chunks.map((fourCc) => {
-      const header = Buffer.alloc(8);
-      header.write(fourCc, 0, 'latin1');
-      header.writeUInt32LE(10, 4);
-      return Buffer.concat([header, Buffer.alloc(10)]);
-    }),
-  );
-  const riff = Buffer.alloc(12);
-  riff.write('RIFF', 0, 'latin1');
-  riff.writeUInt32LE(4 + body.length, 4);
-  riff.write('WEBP', 8, 'latin1');
-  return Buffer.concat([riff, body]);
-}
+const solid = (side: number, background: string) =>
+  sharp({ create: { width: side, height: side, channels: 3, background } });
+
+const staticWebp = (side: number) => solid(side, '#cc3333').webp().toBuffer();
+
+const animatedWebp = async (side: number) =>
+  sharp(
+    [
+      await solid(side, '#ff0000').png().toBuffer(),
+      await solid(side, '#0000ff').png().toBuffer(),
+    ],
+    { join: { animated: true } },
+  )
+    .webp()
+    .toBuffer();
 
 describe('WhatsappMediaSendService', () => {
   let service: WhatsappMediaSendService;
@@ -444,23 +446,13 @@ describe('WhatsappMediaSendService', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('holds a static WebP sticker to 100 KB and an animated one to 500 KB, outside the quota', async () => {
+    it('sends a 512x512 WebP within the sticker limit as a sticker, outside the quota', async () => {
       detect('image/webp');
-      await expect(
-        service.sendFile(
-          'company-1',
-          'user-1',
-          '971501234567',
-          await upload('s.webp', 150 * 1024, webp(['VP8 '])),
-        ),
-      ).rejects.toThrow('Sticker is over 100 KB.');
-      expect(mockUploads).toHaveLength(0);
-
       const msg = await service.sendFile(
         'company-1',
         'user-1',
         '971501234567',
-        await upload('a.webp', 150 * 1024, webp(['VP8X', 'ANIM', 'ANMF'])),
+        await upload('s.webp', 10 * 1024, await staticWebp(512)),
       );
       expect(msg.mediaType).toBe('sticker');
       expect(sentBody()).toMatchObject({
@@ -468,15 +460,73 @@ describe('WhatsappMediaSendService', () => {
         sticker: { id: 'meta-media-1' },
       });
       expect(reserveStorage).not.toHaveBeenCalled();
+    });
 
+    it.each([
+      ['a photo-sized WebP', 600, 10 * 1024, undefined],
+      ['a 512x512 WebP over 100 KB', 512, 150 * 1024, undefined],
+      ['a captioned 512x512 WebP', 512, 10 * 1024, 'hi'],
+    ])('converts %s to a JPEG photo', async (_label, side, size, caption) => {
+      (fileTypeFromFile as jest.Mock)
+        .mockResolvedValueOnce({ mime: 'image/webp', ext: 'webp' })
+        .mockResolvedValueOnce({ mime: 'image/jpeg', ext: 'jpg' });
+      const file = await upload('p.webp', size, await staticWebp(side));
+      const msg = await service.sendFile(
+        'company-1',
+        'user-1',
+        '971501234567',
+        file,
+        caption ? { caption } : {},
+      );
+      expect(msg.mediaType).toBe('image');
+      expect(msg.mediaMime).toBe('image/jpeg');
+      expect(mockUploads[0].received?.subarray(0, 3)).toEqual(
+        Buffer.from([0xff, 0xd8, 0xff]),
+      );
+      const form = callsTo(MEDIA_URL)[0][1].body as FormData;
+      expect(form.get('type')).toBe('image/jpeg');
+      expect(sentBody()).toMatchObject({ type: 'image' });
+      expect(reserveStorage).toHaveBeenCalled();
+      expect(existsSync(file.path)).toBe(false);
+    });
+
+    it('sends an animated 512x512 WebP as a sticker and refuses any other animated WebP', async () => {
+      detect('image/webp');
+      const msg = await service.sendFile(
+        'company-1',
+        'user-1',
+        '971501234567',
+        await upload('a.webp', 150 * 1024, await animatedWebp(512)),
+      );
+      expect(msg.mediaType).toBe('sticker');
+
+      for (const [side, size] of [
+        [600, 10 * 1024],
+        [512, 600 * 1024],
+      ]) {
+        await expect(
+          service.sendFile(
+            'company-1',
+            'user-1',
+            '971501234567',
+            await upload('b.webp', size, await animatedWebp(side)),
+          ),
+        ).rejects.toThrow(WA_ANIMATED_WEBP_MESSAGE);
+      }
+      expect(mockUploads).toHaveLength(1);
+    });
+
+    it('refuses a WebP it cannot decode before any upload', async () => {
+      detect('image/webp');
       await expect(
         service.sendFile(
           'company-1',
           'user-1',
           '971501234567',
-          await upload('b.webp', 600 * 1024, webp(['VP8X', 'ANIM'])),
+          await upload('x.webp', 1024, Buffer.from('RIFF\0\0\0\0WEBPjunk')),
         ),
-      ).rejects.toThrow('Animated sticker is over 500 KB.');
+      ).rejects.toThrow('This WebP image could not be read.');
+      expect(mockUploads).toHaveLength(0);
     });
 
     it('refuses a video over 16 MB with the exact message before any upload', async () => {

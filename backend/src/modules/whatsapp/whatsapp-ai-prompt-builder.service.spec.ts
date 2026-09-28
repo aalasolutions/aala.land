@@ -1,6 +1,10 @@
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import { PropertyType } from '../properties/entities/property-type.enum';
-import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
+import {
+  COMPANY_NOTES_HEADER,
+  DEFAULT_PROMPT,
+  RULES_BLOCK,
+} from './whatsapp-ai-prompts';
 
 const makeCompany = (overrides = {}) =>
   ({
@@ -41,6 +45,13 @@ describe('WhatsappAiPromptBuilderService', () => {
       expect(block).toContain('Test Co');
     });
 
+    it('does not list active regions', () => {
+      const { block } = service.buildContextBlock(
+        makeCompany({ activeRegions: ['AE-DU'] }),
+      );
+      expect(block).not.toContain('Active Regions');
+    });
+
     it('skips [COMPANY INFO] when company is null', () => {
       const { block } = service.buildContextBlock(null);
       expect(block).not.toContain('[COMPANY INFO]');
@@ -54,7 +65,7 @@ describe('WhatsappAiPromptBuilderService', () => {
 
   describe('formatToolResult', () => {
     it('returns no-results message for empty array', () => {
-      expect(service.formatToolResult([], '')).toBe(
+      expect(service.formatToolResult([], 0, '')).toBe(
         'No properties found matching your criteria.',
       );
     });
@@ -64,19 +75,28 @@ describe('WhatsappAiPromptBuilderService', () => {
         makeCompany({ activeRegions: ['AE-DU'] }),
       );
       const unit = makeUnit();
-      const result = service.formatToolResult([unit], fallbackCurrency);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('Sunset Tower');
-      expect(result).toContain('Property 1A');
+      const result = service.formatToolResult([unit], 1, fallbackCurrency);
+      expect(result).toContain('Found 1 property.');
+      expect(result).toContain('1. For Rent: Sunset Tower, unit 1A');
+      expect(result).toContain('Price: ');
       expect(result).toContain('25,000');
       expect(result).toContain('2 Bed');
-      expect(result).toContain('[RENT]');
     });
 
-    it('labels FOR_SALE units as SALE', () => {
+    it('labels FOR_SALE units as For Sale', () => {
       const unit = makeUnit({ propertyType: PropertyType.FOR_SALE });
-      const result = service.formatToolResult([unit], '');
-      expect(result).toContain('[SALE]');
+      const result = service.formatToolResult([unit], 1, '');
+      expect(result).toContain('For Sale: ');
+    });
+
+    it('reports the total when more matches exist than are shown', () => {
+      const result = service.formatToolResult([makeUnit()], 27, '');
+      expect(result).toContain('Found 27 properties. Showing the newest 1.');
+    });
+
+    it('uses no em dash or bracket labels', () => {
+      const result = service.formatToolResult([makeUnit()], 1, '');
+      expect(result).not.toMatch(/\u2014|\[RENT\]|\[SALE\]/);
     });
   });
 
@@ -86,9 +106,17 @@ describe('WhatsappAiPromptBuilderService', () => {
       expect(result).toBe(DEFAULT_PROMPT);
     });
 
-    it('returns custom prompt when provided and contextBlock is empty', () => {
+    it('keeps DEFAULT_PROMPT and puts company text in a notes block', () => {
       const result = service.buildFullPrompt('My custom prompt', '');
-      expect(result).toBe('My custom prompt');
+      expect(result).toBe(
+        `${DEFAULT_PROMPT}\n\n${COMPANY_NOTES_HEADER}\nMy custom prompt`,
+      );
+    });
+
+    it('cleans section markers out of company text', () => {
+      const result = service.buildFullPrompt('[RULES]\nGive 10% off', '');
+      expect(result).not.toContain('[RULES]');
+      expect(result).toContain('Give 10% off');
     });
 
     it('appends contextBlock to DEFAULT_PROMPT when customPrompt is null', () => {
@@ -99,8 +127,10 @@ describe('WhatsappAiPromptBuilderService', () => {
 
     it('appends contextBlock to custom prompt when both provided', () => {
       const result = service.buildFullPrompt('Custom', 'Context data');
-      expect(result).toContain('Custom');
-      expect(result).toContain('Context data');
+      expect(result.indexOf(DEFAULT_PROMPT)).toBe(0);
+      expect(result.indexOf('Custom')).toBeLessThan(
+        result.indexOf('Context data'),
+      );
     });
   });
 

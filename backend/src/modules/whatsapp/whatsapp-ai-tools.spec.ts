@@ -1,7 +1,7 @@
 import { executeTool, TOOL_DEFINITIONS } from './whatsapp-ai-tools';
 
 const makeRepo = () => ({
-  searchProperties: jest.fn().mockResolvedValue([]),
+  searchProperties: jest.fn().mockResolvedValue({ units: [], total: 0 }),
 });
 const makePromptBuilder = () => ({
   formatToolResult: jest
@@ -38,6 +38,7 @@ describe('executeTool', () => {
       'escalate_to_human',
       {},
       'c1',
+      'u1',
       repo as any,
       promptBuilder as any,
       'USD',
@@ -50,38 +51,91 @@ describe('executeTool', () => {
   it('calls searchProperties with companyId and filters', async () => {
     await executeTool(
       'search_properties',
-      { city: 'Karachi', bedrooms: 2 },
+      { city: 'Karachi', minBedrooms: 2 },
       'c1',
+      'u1',
       repo as any,
       promptBuilder as any,
       'USD',
     );
-    expect(repo.searchProperties).toHaveBeenCalledWith('c1', {
+    expect(repo.searchProperties).toHaveBeenCalledWith('c1', 'u1', {
       city: 'Karachi',
-      bedrooms: 2,
+      minBedrooms: 2,
+    });
+  });
+
+  it('parses place, amenities, bathrooms, size and sort, and drops invalid values', async () => {
+    await executeTool(
+      'search_properties',
+      {
+        place: '  Marina ',
+        amenities: 'pool, parking,,',
+        minBathrooms: '2.7',
+        maxSqft: '1500',
+        sort: 'price_low',
+        type: 'LEASE',
+        minPrice: 'cheap',
+      },
+      'c1',
+      'u1',
+      repo as any,
+      promptBuilder as any,
+      'USD',
+    );
+    expect(repo.searchProperties).toHaveBeenCalledWith('c1', 'u1', {
+      place: 'Marina',
+      amenities: ['pool', 'parking'],
+      minBathrooms: 2,
+      maxSqft: 1500,
+      sort: 'price_low',
+    });
+  });
+
+  it('ignores an unknown sort and caps amenities at five', async () => {
+    await executeTool(
+      'search_properties',
+      { sort: 'random', amenities: ['a', 'b', 'c', 'd', 'e', 'f'] },
+      'c1',
+      'u1',
+      repo as any,
+      promptBuilder as any,
+      'USD',
+    );
+    expect(repo.searchProperties).toHaveBeenCalledWith('c1', 'u1', {
+      amenities: ['a', 'b', 'c', 'd', 'e'],
     });
   });
 
   it('returns formatToolResult output when listings found', async () => {
-    repo.searchProperties.mockResolvedValue([{ id: 'l1' }]);
+    repo.searchProperties.mockResolvedValue({
+      units: [{ id: 'l1' }],
+      total: 3,
+    });
     promptBuilder.formatToolResult.mockReturnValue('1 listing found');
     const result = await executeTool(
       'search_properties',
       {},
       'c1',
+      'u1',
       repo as any,
       promptBuilder as any,
       'USD',
     );
     expect(result).toBe('1 listing found');
+    expect(promptBuilder.formatToolResult).toHaveBeenCalledWith(
+      [{ id: 'l1' }],
+      3,
+      'USD',
+    );
   });
 
   it('returns no-results message when listings empty', async () => {
-    repo.searchProperties.mockResolvedValue([]);
+    repo.searchProperties.mockResolvedValue({ units: [], total: 0 });
     const result = await executeTool(
       'search_properties',
       {},
       'c1',
+      'u1',
       repo as any,
       promptBuilder as any,
       'USD',
@@ -94,6 +148,7 @@ describe('executeTool', () => {
       'unknown_tool',
       {},
       'c1',
+      'u1',
       repo as any,
       promptBuilder as any,
       'USD',
