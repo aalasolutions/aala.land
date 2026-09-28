@@ -60,6 +60,12 @@ export default class CommissionsController extends PaginatedController {
     }));
   }
 
+  // The agents list holds active assignable users only; anyone else falls back to the id.
+  @action agentName(agentId) {
+    return (this.model.agents || []).find((agent) => agent.id === agentId)
+      ?.name;
+  }
+
   get filteredCommissions() {
     return this.model?.commissions || [];
   }

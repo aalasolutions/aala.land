@@ -229,20 +229,22 @@
         </Nuvo::Field>
       {{/unless}}
 
-      <Nuvo::Field
-        @label="Role"
-        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
-      >
-        <Nuvo::Dropdown
-          id="t-role"
-          @align="start"
-          @value={{this.formRole}}
-          @onSelect={{fn this.setFieldValue "formRole"}}
-          @options={{this.roles}}
-          @placeholder="Select role..."
-          data-test-input-role
-        />
-      </Nuvo::Field>
+      {{#unless this.isEditingSelf}}
+        <Nuvo::Field
+          @label="Role"
+          @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+        >
+          <Nuvo::Dropdown
+            id="t-role"
+            @align="start"
+            @value={{this.formRole}}
+            @onSelect={{fn this.setFieldValue "formRole"}}
+            @options={{this.roles}}
+            @placeholder="Select role..."
+            data-test-input-role
+          />
+        </Nuvo::Field>
+      {{/unless}}
 
       <div class="nu-field">
         <span id="team-regions-label" class="nu-field__label">Regions</span>
@@ -255,13 +257,14 @@
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
+              class="nu-tag m-pill m-selectable {{if (or this.hasAllRegions (includes this.selectedRegionCodes r.code)) 'is-selected'}}"
               data-test-region-choice={{r.code}}
               aria-pressed={{if
-                (includes this.selectedRegionCodes r.code)
+                (or this.hasAllRegions (includes this.selectedRegionCodes r.code))
                 "true"
                 "false"
               }}
+              disabled={{this.hasAllRegions}}
               {{on "click" (fn this.toggleRegion r.code)}}
             >
               <Ui::Ph @icon="map-pin" />
@@ -269,8 +272,12 @@
             </button>
           {{/each}}
         </div>
-        <span class="nu-field__hint">Which regions this member can work in.
-          Selecting more than one lets them switch.</span>
+        {{#if this.hasAllRegions}}
+          <span class="nu-field__hint" data-test-all-regions-note>{{this.allRegionsNote}}</span>
+        {{else}}
+          <span class="nu-field__hint">Which regions this member can work in.
+            Selecting more than one lets them switch.</span>
+        {{/if}}
       </div>
 
       {{#if this.hasNoRegionsSelected}}

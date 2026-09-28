@@ -47,7 +47,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 
 // Derived role tags; never stored on the contact, computed from which rows reference it.
-export type ContactTag = 'lead' | 'tenant' | 'owner' | 'vendor';
+export type ContactTag = 'lead' | 'tenant' | 'owner' | 'portfolio_owner';
 
 // Roles that may fold new details into an existing contact; everyone else gets CONTACT_EXISTS.
 const MERGE_ROLES: string[] = [
@@ -78,6 +78,8 @@ export interface ContactFilters {
   regionCode?: string;
   // Company-wide list: the region clause is skipped, regionCode included.
   allRegions?: boolean;
+  // Default order is newest first.
+  sort?: 'name';
 }
 
 export interface ResolvedContact {
@@ -413,7 +415,14 @@ export class ContactsService {
       });
     }
 
-    qb.skip(pageSkip(page, take)).take(take).orderBy('c.created_at', 'DESC');
+    if (filters?.sort === 'name') {
+      qb.orderBy('LOWER(c.first_name)', 'ASC', 'NULLS LAST')
+        .addOrderBy('LOWER(c.last_name)', 'ASC', 'NULLS LAST')
+        .addOrderBy('c.id', 'ASC');
+    } else {
+      qb.orderBy('c.created_at', 'DESC');
+    }
+    qb.skip(pageSkip(page, take)).take(take);
 
     const [rows, total] = await qb.getManyAndCount();
     const withTags = await this.attachTags(companyId, rows);
@@ -661,7 +670,7 @@ export class ContactsService {
         return `EXISTS (SELECT 1 FROM leases le WHERE le.contact_id = ${contactCol} AND le.company_id = :companyId AND le.deleted_at IS NULL)`;
       case 'owner':
         return `EXISTS (SELECT 1 FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL)`;
-      case 'vendor':
+      case 'portfolio_owner':
         return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
   }
@@ -709,7 +718,7 @@ export class ContactsService {
       const tags: ContactTag[] = [];
       const units = ownerMap.get(c.id) ?? 0;
       if (units > 0) tags.push('owner');
-      if (units >= 2) tags.push('vendor');
+      if (units >= 2) tags.push('portfolio_owner');
       if (leadSet.has(c.id)) tags.push('lead');
       if (tenantSet.has(c.id)) tags.push('tenant');
       return Object.assign(c, { tags });

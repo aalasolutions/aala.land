@@ -54,6 +54,11 @@ export function canApproveContactAccess(role) {
   return CONTACT_ACCESS_APPROVERS.includes(role);
 }
 
+// Mirrors the backend: these roles read every region regardless of assignment.
+export function seesAllRegions(role) {
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+}
+
 // The contacts list opens company-wide for these roles and on the active region for the rest.
 export function listsAllRegionsByDefault(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);

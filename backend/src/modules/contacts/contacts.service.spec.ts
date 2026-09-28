@@ -52,6 +52,7 @@ function qbMock(result: {
     'skip',
     'take',
     'orderBy',
+    'addOrderBy',
     'leftJoin',
     'leftJoinAndSelect',
     'select',
@@ -585,6 +586,27 @@ describe('ContactsService', () => {
       expect(sql).toContain('FROM units u');
       expect(sql).toContain('u.assigned_agent_id = :agentId');
       expect(sql).toContain('u.deleted_at IS NULL');
+    });
+
+    it('orders newest first by default and by name when asked', async () => {
+      const qb = stubQueryBuilders();
+      await service.findAll(companyId, 1, 20);
+      expect(qb.orderBy).toHaveBeenCalledWith('c.created_at', 'DESC');
+      expect(qb.addOrderBy).not.toHaveBeenCalled();
+
+      const sorted = stubQueryBuilders();
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        sort: 'name',
+      });
+      expect(sorted.orderBy).toHaveBeenCalledWith(
+        'LOWER(c.first_name)',
+        'ASC',
+        'NULLS LAST',
+      );
+      expect(sorted.addOrderBy.mock.calls).toEqual([
+        ['LOWER(c.last_name)', 'ASC', 'NULLS LAST'],
+        ['c.id', 'ASC'],
+      ]);
     });
 
     it('ignores archived units and leases when deriving tags', async () => {

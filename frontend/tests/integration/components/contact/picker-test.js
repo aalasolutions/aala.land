@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { render, click, fillIn, findAll } from '@ember/test-helpers';
+import { render, click, fillIn, findAll, focus } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { stubAuth } from 'land/tests/helpers/stub-auth';
 
@@ -154,7 +154,14 @@ module('Integration | Component | contact/picker', function (hooks) {
 
     await fillIn('[data-test-nu-dropdown-filter]', 'om');
 
-    assert.strictEqual(calls[0].path, '/contacts?allRegions=true&search=om');
+    assert.deepEqual(
+      calls.map((c) => c.path),
+      [
+        '/contacts?allRegions=true&sort=name&search=',
+        '/contacts?allRegions=true&sort=name&search=om',
+      ],
+      'opening lists the first page, typing searches',
+    );
     const item = document.querySelector(
       '.nu-menu.is-open [data-test-nu-dropdown-item]:not(.m-create)',
     );
@@ -162,6 +169,23 @@ module('Integration | Component | contact/picker', function (hooks) {
 
     await click(item);
     assert.strictEqual(this.picked.id, 'contact-9');
+  });
+
+  test('opening the search with a contact attached ticks that contact', async function (assert) {
+    stubAuth(this.owner, {
+      respond: () => ({ data: { data: [LIMITED], total: 1 } }),
+    });
+    this.contact = CONTACT;
+    await render(hbs`<Contact::Picker @contact={{this.contact}} />`);
+
+    await focus('[data-test-nu-dropdown-filter]');
+
+    const items = document.querySelectorAll(
+      '.nu-menu.is-open [data-test-nu-dropdown-item]',
+    );
+    assert.dom(items[0]).hasText('Ahmed Al-Rashid');
+    assert.dom(items[0]).hasAttribute('aria-selected', 'true');
+    assert.dom(items[1]).hasText('Omar H.');
   });
 
   test('a limited contact shows masked details, no email, and asks for the number', async function (assert) {

@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
+import Service from '@ember/service';
 
 module('Integration | Component | nuvo/data-table', function (hooks) {
   setupRenderingTest(hooks);
@@ -73,5 +74,38 @@ module('Integration | Component | nuvo/data-table', function (hooks) {
     for (const className of rowClasses(this.element)) {
       assert.notOk(className.includes('undefined'));
     }
+  });
+
+  test('a saved layout keeps pinned columns at their edges and places new columns in line', async function (assert) {
+    this.owner.register(
+      'service:nuvo-storage',
+      class extends Service {
+        get() {
+          return { order: ['id', 'email', 'name'], hidden: [], widths: {} };
+        }
+        set() {}
+        remove() {}
+      },
+    );
+    this.columns = [
+      { name: 'Name', valuePath: 'name', isFixed: 'left' },
+      { name: 'Email', valuePath: 'email' },
+      { name: 'Added by', valuePath: 'createdBy' },
+      { name: 'Actions', valuePath: 'id', isFixed: 'right' },
+    ];
+
+    await render(hbs`
+      <Nuvo::DataTable
+        @columns={{this.columns}}
+        @rows={{this.rows}}
+        @pinColumns={{true}}
+        @tableId="layout-test"
+      />
+    `);
+
+    const headers = Array.from(this.element.querySelectorAll('thead th')).map(
+      (th) => th.textContent.trim(),
+    );
+    assert.deepEqual(headers, ['Name', 'Email', 'Added by', 'Actions']);
   });
 });

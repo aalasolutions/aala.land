@@ -159,6 +159,19 @@ export default class DataTableComponent extends Component {
     this.layoutVersion++;
   }
 
+  // Pinned columns hold their edge whatever a saved layout says.
+  pinToEdges(order) {
+    const edge = (key) =>
+      this.args.pinColumns
+        ? this.defs.find((def) => def.valuePath === key)?.isFixed
+        : undefined;
+    return [
+      ...order.filter((key) => edge(key) === 'left'),
+      ...order.filter((key) => edge(key) !== 'left' && edge(key) !== 'right'),
+      ...order.filter((key) => edge(key) === 'right'),
+    ];
+  }
+
   // Per user: the host scopes nuvoStorage keys by user id.
   get layoutKey() {
     return `table-${this.args.tableId}`;
@@ -186,9 +199,18 @@ export default class DataTableComponent extends Component {
     if (!saved) return;
 
     const known = new Set(this.copies.keys());
+    const defaults = this.defs.map((def) => def.valuePath);
     const order = (saved.order ?? []).filter((key) => known.has(key));
-    for (const key of known) if (!order.includes(key)) order.push(key);
-    this.order = order;
+    // A column added since the layout was saved goes after its nearest earlier neighbour.
+    defaults.forEach((key, index) => {
+      if (order.includes(key)) return;
+      const before = defaults
+        .slice(0, index)
+        .reverse()
+        .find((other) => order.includes(other));
+      order.splice(before ? order.indexOf(before) + 1 : 0, 0, key);
+    });
+    this.order = this.pinToEdges(order);
 
     this.hidden = (saved.hidden ?? []).filter(
       (key) => known.has(key) && !this.copies.get(key).isFixed,

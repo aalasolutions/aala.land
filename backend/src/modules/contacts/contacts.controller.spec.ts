@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
@@ -133,6 +134,34 @@ describe('ContactsController', () => {
         },
         mockReq.user,
       );
+    });
+  });
+
+  describe('findAll sort', () => {
+    it('passes sort=name and rejects any other value', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const call = (sort?: string) =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          sort,
+        );
+
+      await call('name');
+      expect(service.findAll.mock.calls[0][5]).toMatchObject({ sort: 'name' });
+
+      expect(() => call('created')).toThrow(BadRequestException);
     });
   });
 

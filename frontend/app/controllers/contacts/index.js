@@ -80,7 +80,7 @@ export default class ContactsIndexController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 150,
+      width: 100,
       isFixed: 'right',
       isSortable: false,
       isResizable: false,

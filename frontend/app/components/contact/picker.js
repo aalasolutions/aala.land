@@ -39,7 +39,7 @@ export default class ContactPickerComponent extends Component {
 
   // Picking a person searches the whole company, whatever region the topbar shows.
   get searchUrl() {
-    return '/contacts?allRegions=true';
+    return '/contacts?allRegions=true&sort=name';
   }
 
   mapItem = withPickerLabel;
@@ -55,6 +55,10 @@ export default class ContactPickerComponent extends Component {
     return (
       contactName(contact) || contactPhone(contact) || contactEmail(contact)
     );
+  }
+
+  get selectedId() {
+    return this.contact?.id ?? null;
   }
 
   get attachedLastName() {

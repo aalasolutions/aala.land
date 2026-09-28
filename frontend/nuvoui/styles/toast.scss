@@ -84,7 +84,7 @@
     "BackgroundColor": var(--bg-surface),
     "BoxShadow": #{nu-shadow(lg)},
     "IconColor": var(--text-muted),
-    "TitleFontWeight": nu-font-weight(semibold),
+    "TitleFontSize": nu-font-size(xs),
     "ContentColor": var(--text-muted),
     "AnimationDuration": nu-duration(normal),
     "ProgressColor": var(--primary),
@@ -126,7 +126,7 @@
   }
 
   @include e(title) {
-    font-weight: nu-var("toast", "TitleFontWeight");
+    font-size: nu-var("toast", "TitleFontSize");
     line-height: 1.4;
   }
 

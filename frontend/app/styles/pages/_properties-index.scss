@@ -34,18 +34,19 @@
   opacity: 0.55;
 }
 
+// Columns follow the width the sidebar leaves: tiles of at least 17.5rem, at most five per row.
 .browse-unit-grid {
+  --browse-grid-gap: #{nu-space(4)};
+
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: nu-space(4);
-
-  @include media-down(lg) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @include media-down(sm) {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(
+      max(min(17.5rem, 100%), calc((100% - 4 * var(--browse-grid-gap)) / 5)),
+      1fr
+    )
+  );
+  gap: var(--browse-grid-gap);
 }
 
 // Card padding removed so the photo bleeds to the edges; text block below re-adds it.

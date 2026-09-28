@@ -88,7 +88,7 @@ export class ContactsController {
   @ApiQuery({
     name: 'tag',
     required: false,
-    enum: ['lead', 'tenant', 'owner', 'vendor'],
+    enum: ['lead', 'tenant', 'owner', 'portfolio_owner'],
     description: 'Filter by derived role tag',
   })
   @ApiQuery({
@@ -96,6 +96,12 @@ export class ContactsController {
     required: false,
     type: String,
     description: 'Contacts with a lead or owned unit assigned to this agent',
+  })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['name'],
+    description: 'name sorts by first then last name; default is newest first',
   })
   @ApiQuery({ name: 'isWhatsapp', required: false, type: Boolean })
   @ApiQuery({ name: 'company', required: false, type: String })
@@ -117,7 +123,7 @@ export class ContactsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
-    @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'vendor',
+    @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'portfolio_owner',
     @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
     @Query('isWhatsapp') isWhatsapp?: string,
     @Query('company') company?: string,
@@ -126,7 +132,11 @@ export class ContactsController {
     @Query('dateTo') dateTo?: string,
     @Query('regionCode') regionCode?: string,
     @Query('allRegions') allRegions?: string,
+    @Query('sort') sort?: string,
   ) {
+    if (sort && sort !== 'name') {
+      throw new BadRequestException('sort must be name');
+    }
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
     }
@@ -148,6 +158,7 @@ export class ContactsController {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         allRegions: allRegions === 'true',
+        sort: sort === 'name' ? 'name' : undefined,
       },
       req.user,
     );
