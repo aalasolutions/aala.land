@@ -98,7 +98,17 @@ export class Unit {
   @Column({ type: 'integer', nullable: true })
   bedrooms: number | null;
 
-  @Column({ type: 'integer', nullable: true })
+  // Half steps (2.5) cover a bathroom without a shower or tub.
+  @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 1,
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | null) => (value === null ? null : Number(value)),
+    },
+  })
   bathrooms: number | null;
 
   @Column({

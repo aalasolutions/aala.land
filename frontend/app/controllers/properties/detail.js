@@ -395,7 +395,7 @@ export default class PropertiesDetailController extends Controller {
         ? { bedrooms: parseInt(this.formUnitBedrooms, 10) }
         : {}),
       ...(this.formUnitBathrooms
-        ? { bathrooms: parseInt(this.formUnitBathrooms, 10) }
+        ? { bathrooms: Number(this.formUnitBathrooms) }
         : {}),
       ...(this.ownerSelection.contactId
         ? {

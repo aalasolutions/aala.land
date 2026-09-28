@@ -321,7 +321,7 @@ export default class PropertiesUnitController extends Controller {
         ? { bedrooms: parseInt(this.formBedrooms, 10) }
         : {}),
       ...(this.formBathrooms
-        ? { bathrooms: parseInt(this.formBathrooms, 10) }
+        ? { bathrooms: Number(this.formBathrooms) }
         : {}),
       ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),

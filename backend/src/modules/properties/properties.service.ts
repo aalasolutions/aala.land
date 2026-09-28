@@ -91,6 +91,13 @@ function parseOptionalInt(value: string | undefined): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
+// Bathrooms take half steps; anything else rounds to the nearest half.
+function parseOptionalHalf(value: string | undefined): number | null {
+  if (!value || !value.trim()) return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isNaN(parsed) ? null : Math.round(parsed * 2) / 2;
+}
+
 export type UnitResponse = Omit<Unit, 'owner'> & {
   owner: PresentedContact | null;
 };
@@ -1218,7 +1225,7 @@ export class PropertiesService {
           unitNumber: row['unitnumber'],
           assetId: row['assetid'],
           bedrooms: parseOptionalInt(row['bedrooms']),
-          bathrooms: parseOptionalInt(row['bathrooms']),
+          bathrooms: parseOptionalHalf(row['bathrooms']),
           sqFt,
           price,
           status: (row['status'] as any) || 'available',

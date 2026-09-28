@@ -8,9 +8,11 @@ import {
   IsInt,
   IsArray,
   Min,
+  Max,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { IsHalfStep } from '@shared/decorators/is-half-step.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
@@ -82,9 +84,11 @@ export class CreateUnitDto {
   @IsOptional()
   bedrooms?: number;
 
-  @ApiPropertyOptional({ example: 2 })
-  @IsInt()
+  @ApiPropertyOptional({ example: 2.5, description: 'Half steps allowed' })
+  @IsNumber()
+  @IsHalfStep()
   @Min(0)
+  @Max(99)
   @IsOptional()
   bathrooms?: number;
 

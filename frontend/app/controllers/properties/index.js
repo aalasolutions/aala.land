@@ -379,7 +379,7 @@ export default class PropertiesIndexController extends Controller {
         ? { bedrooms: parseInt(this.newUnitBedrooms, 10) }
         : {}),
       ...(this.newUnitBathrooms
-        ? { bathrooms: parseInt(this.newUnitBathrooms, 10) }
+        ? { bathrooms: Number(this.newUnitBathrooms) }
         : {}),
       ...(this.ownerSelection.contactId
         ? {
