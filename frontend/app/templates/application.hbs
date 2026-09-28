@@ -531,6 +531,7 @@
         >
           <Ui::Ph @icon="list" @size="20px" />
         </button>
+        {{!-- Global search hidden until it covers contacts, leads and units.
         <div class="nu-topbar__search">
           {{! Explicit combobox is the ARIA pattern for a text box that owns a listbox. }}
           {{! template-lint-disable no-redundant-role }}
@@ -569,6 +570,7 @@
             {{on "click" this.closeSearch}}
           ></button>
         {{/if}}
+        --}}
         <div class="nu-topbar__actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
