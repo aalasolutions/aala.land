@@ -209,14 +209,15 @@ module('Acceptance | contacts/detail documents panel', function (hooks) {
     assert.dom('[data-test-related-record-readonly]').hasValue('Test Contact');
   });
 
-  test('a contact with limited access offers no upload', async function (assert) {
+  test('a contact with limited access shows no documents panel', async function (assert) {
     this.responses['/contacts/contact-1'] = {
       success: true,
       data: { ...CONTACT, accessLevel: 'LIMITED' },
     };
     await visit('/contacts/contact-1');
-    await waitFor('[data-test-contact-documents] [data-test-data-table-row]');
+    await waitFor('[data-test-limited-details]');
 
+    assert.dom('[data-test-contact-documents]').doesNotExist();
     assert.dom('[data-test-contact-documents-upload]').doesNotExist();
   });
 
