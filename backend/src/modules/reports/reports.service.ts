@@ -37,6 +37,11 @@ import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import {
+  ContactPrivacyService,
+  ContactViewer,
+} from '../contacts/contact-privacy.service';
+import { limitedDisplayName } from '../../shared/utils/contact-privacy.util';
+import {
   effectiveRegionCodes,
   isAdminRole,
 } from '../../shared/utils/region-visibility.util';
@@ -100,6 +105,13 @@ export interface RedFlag {
   // Locality id for Unit flags; the unit page route needs it.
   areaId?: string | null;
   createdAt: Date;
+}
+
+// A lead flag before its name is settled: LIMITED callers get the masked name.
+interface LeadFlagDraft {
+  flag: RedFlag;
+  contact: Contact | null;
+  suffix: string;
 }
 
 const RED_FLAG_CHECKS = {
@@ -255,6 +267,8 @@ export class ReportsService {
 
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
+
+    private readonly contactPrivacy: ContactPrivacyService,
   ) {}
 
   async getDashboardKpis(
@@ -574,7 +588,7 @@ export class ReportsService {
   async getRedFlags(
     companyId: string,
     regionCode?: string,
-    caller?: RegionScope,
+    caller?: ContactViewer,
   ): Promise<RedFlagCheck[]> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     // No readable region means no rows, and an empty IN () is invalid SQL.
@@ -589,27 +603,58 @@ export class ReportsService {
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
-    return Promise.all([
+    const drafts: LeadFlagDraft[] = [];
+    const checks = await Promise.all([
       this.untouchedLeadsCheck(
         'UNTOUCHED_LEAD_48H',
         '48+ hours',
         leadWhere,
         LessThan(hours48Ago),
+        drafts,
       ),
       this.untouchedLeadsCheck(
         'UNTOUCHED_LEAD_24H',
         '24+ hours',
         leadWhere,
         And(MoreThanOrEqual(hours48Ago), LessThan(hours24Ago)),
+        drafts,
       ),
-      this.stalledLeadsCheck(leadWhere, subtractDaysFromInstant(now, 14)),
+      this.stalledLeadsCheck(
+        leadWhere,
+        subtractDaysFromInstant(now, 14),
+        drafts,
+      ),
       this.overdueFollowupsCheck(
         companyId,
         regionCodes,
         subtractDaysFromInstant(now, 7),
+        drafts,
       ),
       this.longVacantUnitsCheck(companyId, regionCodes, now),
     ]);
+    await this.maskLimitedLeadFlags(companyId, caller, drafts);
+    return checks;
+  }
+
+  // One access lookup for every flagged contact; LIMITED ones show first name and last initial.
+  private async maskLimitedLeadFlags(
+    companyId: string,
+    caller: ContactViewer | undefined,
+    drafts: LeadFlagDraft[],
+  ): Promise<void> {
+    const contacts = new Map<string, Contact>();
+    drafts.forEach((d) => {
+      if (d.contact) contacts.set(d.contact.id, d.contact);
+    });
+    const levels = await this.contactPrivacy.accessLevelFor(companyId, caller, [
+      ...contacts.values(),
+    ]);
+    for (const draft of drafts) {
+      if (draft.contact && levels.get(draft.contact.id) !== 'FULL') {
+        const name = limitedDisplayName(draft.contact) || 'Lead';
+        draft.flag.message = `${name} ${draft.suffix}`;
+      }
+    }
   }
 
   private redFlagCheck(
@@ -625,8 +670,9 @@ export class ReportsService {
     lead: Lead,
     message: string,
     createdAt: Date,
+    drafts: LeadFlagDraft[],
   ): RedFlag {
-    return {
+    const flag: RedFlag = {
       type,
       severity: RED_FLAG_CHECKS[type].severity,
       message: `${this.leadFlagName(lead)} ${message}`,
@@ -634,6 +680,8 @@ export class ReportsService {
       entityId: lead.id,
       createdAt,
     };
+    drafts.push({ flag, contact: lead.contact ?? null, suffix: message });
+    return flag;
   }
 
   private async untouchedLeadsCheck(
@@ -641,6 +689,7 @@ export class ReportsService {
     age: string,
     leadWhere: FindOptionsWhere<Lead>,
     createdAt: FindOperator<Date>,
+    drafts: LeadFlagDraft[],
   ): Promise<RedFlagCheck> {
     const [leads, total] = await this.leadRepository.findAndCount({
       where: { ...leadWhere, status: LeadStatus.NEW, createdAt },
@@ -653,7 +702,13 @@ export class ReportsService {
       type,
       total,
       leads.map((lead) =>
-        this.leadFlag(type, lead, `untouched for ${age}`, lead.createdAt),
+        this.leadFlag(
+          type,
+          lead,
+          `untouched for ${age}`,
+          lead.createdAt,
+          drafts,
+        ),
       ),
     );
   }
@@ -661,6 +716,7 @@ export class ReportsService {
   private async stalledLeadsCheck(
     leadWhere: FindOptionsWhere<Lead>,
     days14Ago: Date,
+    drafts: LeadFlagDraft[],
   ): Promise<RedFlagCheck> {
     const [leads, total] = await this.leadRepository.findAndCount({
       where: {
@@ -682,6 +738,7 @@ export class ReportsService {
           lead,
           `stuck in ${lead.status} for 14+ days`,
           lead.updatedAt,
+          drafts,
         ),
       ),
     );
@@ -691,6 +748,7 @@ export class ReportsService {
     companyId: string,
     regionCodes: string[] | null,
     days7Ago: Date,
+    drafts: LeadFlagDraft[],
   ): Promise<RedFlagCheck> {
     const overdueQb = this.leadRepository
       .createQueryBuilder('l')
@@ -704,6 +762,8 @@ export class ReportsService {
         'c.firstName',
         'c.lastName',
         'c.phone',
+        'c.regionCode',
+        'c.createdBy',
       ])
       .where('l.companyId = :companyId', { companyId })
       .andWhere('l.status IN (:...statuses)', {
@@ -724,6 +784,7 @@ export class ReportsService {
           lead,
           `in ${lead.status}, no update for 7+ days`,
           lead.updatedAt,
+          drafts,
         ),
       ),
     );

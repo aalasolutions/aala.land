@@ -481,7 +481,7 @@ describe('WhatsappWebhookService', () => {
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
-    it('skips non-text and empty-body messages', async () => {
+    it('skips empty-body text, and stores media without an id as UNSUPPORTED with no AI turn', async () => {
       const envelope = inboundEnvelope() as {
         entry: { changes: { value: { messages: unknown[] } }[] }[];
       };
@@ -497,6 +497,13 @@ describe('WhatsappWebhookService', () => {
       ];
 
       await expect(service.processEnvelope(envelope)).resolves.toBeUndefined();
+      expect(store.addMessage).toHaveBeenCalledTimes(1);
+      expect(store.addMessage.mock.calls[0][2]).toEqual(
+        expect.objectContaining({
+          id: 'wamid.img',
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+        }),
+      );
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
@@ -2462,9 +2469,66 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
-    it('still drops a location message', async () => {
+    it('stores an unsupported message without a size code as UNSUPPORTED and logs why', async () => {
+      const warn = jest
+        .spyOn(
+          (service as unknown as { logger: { warn: jest.Mock } }).logger,
+          'warn',
+        )
+        .mockImplementation(() => undefined);
+
+      await service.processEnvelope(
+        mediaEnvelope({
+          type: 'unsupported',
+          errors: [{ code: 131051, title: 'Message type unknown' }],
+        }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          body: '',
+          hasMedia: true,
+          mediaType: 'media_placeholder',
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+        }),
+      );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('type unsupported'),
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('131051 Message type unknown'),
+      );
+    });
+
+    it('stores a video that came without a media id as UNSUPPORTED', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({ type: 'video', video: {} }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+        }),
+      );
+      expect(mediaQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('stores a location as UNSUPPORTED instead of dropping it', async () => {
       await service.processEnvelope(
         mediaEnvelope({ type: 'location', location: {} }),
+      );
+
+      expect(storedMsg()).toEqual(
+        expect.objectContaining({
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+        }),
+      );
+    });
+
+    it('still drops a reaction', async () => {
+      await service.processEnvelope(
+        mediaEnvelope({ type: 'reaction', reaction: { emoji: 'x' } }),
       );
 
       expect(store.addMessage).not.toHaveBeenCalled();

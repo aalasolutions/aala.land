@@ -91,18 +91,36 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
-                <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
+                <p class="text-sm font-bold flex gap-2 x-center">
+                  {{contact-name lead.contact}}
+                  {{#if (is-limited-contact lead.contact)}}
+                    <Nuvo::Badge
+                      @size="sm"
+                      @text="Limited"
+                      data-test-limited-badge
+                    />
+                  {{/if}}
+                </p>
+                <Nuvo::Tag
+                  class="tag-temp-{{lowercase lead.temperature}}"
+                  @text={{lead.temperature}}
+                />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
+                <p
+                  class="text-muted text-xs"
+                  dir="ltr"
+                  data-test-lead-phone
+                >{{contact-phone lead.contact}}</p>
+                {{#if (can-whatsapp lead.contact)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
-                    aria-label="Open WhatsApp chat with {{lead.contact.displayName}}"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      lead.contact
+                    }}"
                     data-test-wa-link
                     {{on "click" this.stopPropagation}}
                   >
@@ -110,7 +128,9 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted text-xs">{{lead.contact.email}}</p>
+              <p class="text-muted text-xs" data-test-lead-email>{{contact-email
+                  lead.contact
+                }}</p>
               {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
@@ -199,18 +219,36 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
-                <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
+                <p class="text-sm font-bold flex gap-2 x-center">
+                  {{contact-name lead.contact}}
+                  {{#if (is-limited-contact lead.contact)}}
+                    <Nuvo::Badge
+                      @size="sm"
+                      @text="Limited"
+                      data-test-limited-badge
+                    />
+                  {{/if}}
+                </p>
+                <Nuvo::Tag
+                  class="tag-lead-{{lowercase lead.status}}"
+                  @text={{lead.status}}
+                />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
+                <p
+                  class="text-muted text-xs"
+                  dir="ltr"
+                  data-test-lead-phone
+                >{{contact-phone lead.contact}}</p>
+                {{#if (can-whatsapp lead.contact)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
-                    aria-label="Open WhatsApp chat with {{lead.contact.displayName}}"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      lead.contact
+                    }}"
                     data-test-wa-link
                     {{on "click" this.stopPropagation}}
                   >
@@ -218,7 +256,9 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted text-xs">{{lead.contact.email}}</p>
+              <p class="text-muted text-xs" data-test-lead-email>{{contact-email
+                  lead.contact
+                }}</p>
               {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
@@ -303,18 +343,36 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
-                <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
+                <p class="text-sm font-bold flex gap-2 x-center">
+                  {{contact-name lead.contact}}
+                  {{#if (is-limited-contact lead.contact)}}
+                    <Nuvo::Badge
+                      @size="sm"
+                      @text="Limited"
+                      data-test-limited-badge
+                    />
+                  {{/if}}
+                </p>
+                <Nuvo::Tag
+                  class="tag-temp-{{lowercase lead.temperature}}"
+                  @text={{lead.temperature}}
+                />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
+                <p
+                  class="text-muted text-xs"
+                  dir="ltr"
+                  data-test-lead-phone
+                >{{contact-phone lead.contact}}</p>
+                {{#if (can-whatsapp lead.contact)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
-                    aria-label="Open WhatsApp chat with {{lead.contact.displayName}}"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      lead.contact
+                    }}"
                     data-test-wa-link
                     {{on "click" this.stopPropagation}}
                   >
@@ -369,29 +427,43 @@
         as |cell|
       >
         {{#if (eq cell.key "contact.displayName")}}
-          <span
-            class="font-bold"
-            data-test-lead-row
-            data-test-lead-id={{cell.row.id}}
-          >{{cell.value}}</span>
+          <span class="flex gap-2 x-center">
+            <span
+              class="font-bold"
+              data-test-lead-row
+              data-test-lead-id={{cell.row.id}}
+            >{{contact-name cell.row.contact}}</span>
+            {{#if (is-limited-contact cell.row.contact)}}
+              <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
+            {{/if}}
+          </span>
         {{else if (eq cell.key "contact.phone")}}
           <div class="flex col gap-1">
             <div class="flex gap-2 x-center">
-              <span class="text-xs">{{cell.value}}</span>
-              {{#if (and cell.value cell.row.contact.isWhatsapp)}}
+              <span
+                class="text-xs"
+                dir="ltr"
+                data-test-lead-phone
+              >{{contact-phone cell.row.contact}}</span>
+              {{#if (can-whatsapp cell.row.contact)}}
                 <a
-                  href={{wa-link cell.value}}
+                  href={{wa-link cell.row.contact.phone}}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="wa-link"
-                  aria-label="Open WhatsApp chat with {{cell.row.contact.displayName}}"
+                  aria-label="Open WhatsApp chat with {{contact-name
+                    cell.row.contact
+                  }}"
                   data-test-wa-link
                 >
                   <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                 </a>
               {{/if}}
             </div>
-            <span class="text-xs text-muted">{{cell.row.contact.email}}</span>
+            <span
+              class="text-xs text-muted"
+              data-test-lead-email
+            >{{contact-email cell.row.contact}}</span>
           </div>
         {{else if (eq cell.key "status")}}
           <Nuvo::Tag
@@ -429,7 +501,7 @@
               @variant="secondary"
               @size="xs"
               @icon="pencil-simple"
-              aria-label="Edit lead {{cell.row.contact.displayName}}"
+              aria-label="Edit lead {{contact-name cell.row.contact}}"
               data-tooltip="Edit"
               data-test-edit-lead
               {{on "click" (fn this.openEdit cell.row)}}
@@ -439,7 +511,7 @@
               @variant="secondary"
               @size="xs"
               @icon="user-switch"
-              aria-label="Assign lead {{cell.row.contact.displayName}}"
+              aria-label="Assign lead {{contact-name cell.row.contact}}"
               data-tooltip="Assign"
               data-test-assign-lead
               {{on "click" (fn this.openAssignModal cell.row)}}
@@ -484,13 +556,20 @@
       {{#if this.editLead}}
         {{! Identity lives on the contact; edit it on the Contacts page. }}
         <Nuvo::Field @label="Contact">
-          <p class="text-sm">
-            {{this.editLead.contact.displayName}}
-            {{#if this.editLead.contact.email}}
-              <span class="text-muted">- {{this.editLead.contact.email}}</span>
+          <p class="text-sm flex gap-2 x-center wrap">
+            {{contact-name this.editLead.contact}}
+            {{#if (is-limited-contact this.editLead.contact)}}
+              <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
             {{/if}}
-            {{#if this.editLead.contact.phone}}
-              <span class="text-muted">- {{this.editLead.contact.phone}}</span>
+            {{#if (contact-email this.editLead.contact)}}
+              <span class="text-muted">-
+                {{contact-email this.editLead.contact}}</span>
+            {{/if}}
+            {{#if (contact-phone this.editLead.contact)}}
+              <span class="text-muted">-
+                <bdi dir="ltr">{{contact-phone
+                    this.editLead.contact
+                  }}</bdi></span>
             {{/if}}
           </p>
         </Nuvo::Field>
@@ -503,6 +582,9 @@
           @onSelectContact={{this.contactSelection.attach}}
           @onClear={{this.contactSelection.clear}}
           @onIdentityChange={{this.contactSelection.setField}}
+          @conflict={{this.contactSelection.conflict}}
+          @verifyPhone={{this.contactSelection.verifyPhone}}
+          @onVerifyPhoneChange={{this.contactSelection.setVerifyPhone}}
         />
       {{/if}}
       <div class="flex gap-4">
@@ -599,7 +681,7 @@
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
-      <strong>{{this.assignLead.contact.displayName}}</strong>
+      <strong>{{contact-name this.assignLead.contact}}</strong>
       to:</p>
     <Nuvo::Field @label="Agent">
       <Nuvo::Dropdown
@@ -623,7 +705,11 @@
 
 <Nuvo::Modal
   @open={{this.showDetailModal}}
-  @title={{if this.detailLead this.detailLead.contact.displayName "Lead Details"}}
+  @title={{if
+    this.detailLead
+    (contact-name this.detailLead.contact)
+    "Lead Details"
+  }}
   @onClose={{this.closeDetailModal}}
   @size="xl"
 >
@@ -631,8 +717,11 @@
     <div class="flex col gap-2 grow min-w-0">
       <div class="flex gap-3 x-center wrap">
         <h2 id={{titleId}} class="nu-modal__title" data-test-nu-modal-title>
-          {{this.detailLead.contact.displayName}}
+          {{contact-name this.detailLead.contact}}
         </h2>
+        {{#if (is-limited-contact this.detailLead.contact)}}
+          <Nuvo::Badge @text="Limited" data-test-limited-badge />
+        {{/if}}
         <Nuvo::Tag
           class="tag-temp-{{lowercase this.detailLead.temperature}}"
           @text={{this.detailLead.temperature}}
@@ -660,10 +749,12 @@
         <section class="flex col">
           <h4 class="nu-title m-xs text-muted mb-1">Contact</h4>
           <Nuvo::InfoRow @label="Phone">
-            {{#if this.detailLead.contact.phone}}
+            {{#if (contact-phone this.detailLead.contact)}}
               <span class="flex gap-2 x-center">
-                <span>{{this.detailLead.contact.phone}}</span>
-                {{#if this.detailLead.contact.isWhatsapp}}
+                <span dir="ltr" data-test-lead-phone>{{contact-phone
+                    this.detailLead.contact
+                  }}</span>
+                {{#if (can-whatsapp this.detailLead.contact)}}
                   <a
                     href={{wa-link this.detailLead.contact.phone}}
                     target="_blank"
@@ -671,7 +762,9 @@
                     class="wa-link"
                     data-test-wa-link
                     title="Open WhatsApp"
-                    aria-label="Open WhatsApp chat with {{this.detailLead.contact.displayName}}"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      this.detailLead.contact
+                    }}"
                   >
                     <Ui::Ph @icon="whatsapp-logo" @size="16px" />
                   </a>
@@ -681,14 +774,18 @@
               <span class="text-muted">N/A</span>
             {{/if}}
           </Nuvo::InfoRow>
-          <Nuvo::InfoRow class="m-stacked" @label="Email">
-            {{#if this.detailLead.contact.email}}
-              {{this.detailLead.contact.email}}
-            {{else}}
-              <span class="text-muted">N/A</span>
-            {{/if}}
-          </Nuvo::InfoRow>
-          {{#if this.detailLead.contact.isWhatsapp}}
+          {{#unless (is-limited-contact this.detailLead.contact)}}
+            <Nuvo::InfoRow class="m-stacked" @label="Email">
+              {{#if (contact-email this.detailLead.contact)}}
+                <span data-test-lead-email>{{contact-email
+                    this.detailLead.contact
+                  }}</span>
+              {{else}}
+                <span class="text-muted">N/A</span>
+              {{/if}}
+            </Nuvo::InfoRow>
+          {{/unless}}
+          {{#if (can-whatsapp this.detailLead.contact)}}
             <Nuvo::InfoRow @label="WhatsApp">
               <a
                 href={{wa-link this.detailLead.contact.phone}}

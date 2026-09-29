@@ -1,0 +1,230 @@
+{{page-title "Access Requests"}}
+
+<div data-test-access-requests-page class="flex col gap-6">
+  <Nuvo::PageHeader
+    @icon="key"
+    @title="Access Requests"
+    @subtitle="Agents asking for full details of contacts they did not add."
+  >
+    <:actions>
+      <Nuvo::Field @label="Status">
+        <Nuvo::Select
+          @options={{this.statusOptions}}
+          @value={{this.status}}
+          @onChange={{this.setStatus}}
+          aria-label="Status"
+          data-test-access-status-filter
+        />
+      </Nuvo::Field>
+    </:actions>
+  </Nuvo::PageHeader>
+
+  <Nuvo::Card>
+    {{#if @model.error}}
+      <p
+        class="text-danger"
+        data-test-access-requests-error
+      >{{@model.error}}</p>
+    {{else if this.rows.length}}
+      <Nuvo::DataTable
+        @columns={{this.columns}}
+        @rows={{this.rows}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="access-requests"
+        data-test-access-requests-table
+        as |cell|
+      >
+        {{#if (eq cell.key "requester.name")}}
+          <span
+            class="font-bold"
+            data-test-access-request-row={{cell.row.id}}
+          >{{cell.value}}</span>
+        {{else if (eq cell.key "contact.displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.contact.id}}
+            class="text-primary whitespace-nowrap"
+            data-test-access-request-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "sourceType")}}
+          <span class="text-muted">{{or cell.row.sourceLabel "-"}}</span>
+        {{else if (eq cell.key "createdAt")}}
+          <span
+            class="text-muted"
+            title={{format-date-time cell.value}}
+          >{{cell.row.requestedAgo}}</span>
+        {{else if (eq cell.key "decidedBy.name")}}
+          <span class="text-muted">{{or cell.value "-"}}</span>
+        {{else if (eq cell.key "expiresAt")}}
+          {{#if cell.value}}
+            {{format-date cell.value}}
+          {{else}}
+            <span class="text-muted">{{or cell.row.expiryLabel "-"}}</span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          {{#if (eq cell.row.status "PENDING")}}
+            <div class="flex">
+              <Nuvo::Button
+                @subtle={{true}}
+                @variant="primary"
+                @size="xs"
+                @icon="check"
+                aria-label="Approve request from {{cell.row.requester.name}}"
+                data-tooltip="Approve"
+                data-test-approve-access
+                {{on "click" (fn this.openApprove cell.row)}}
+              />
+              <Nuvo::Button
+                @subtle={{true}}
+                @variant="secondary"
+                @size="xs"
+                @icon="x"
+                aria-label="Reject request from {{cell.row.requester.name}}"
+                data-tooltip="Reject"
+                data-test-reject-access
+                {{on "click" (fn this.openDecision "reject" cell.row)}}
+              />
+            </div>
+          {{else if (eq cell.row.status "APPROVED")}}
+            <Nuvo::Button
+              @subtle={{true}}
+              @variant="secondary"
+              @size="xs"
+              @icon="prohibit"
+              aria-label="Revoke access for {{cell.row.requester.name}}"
+              data-tooltip="Revoke"
+              data-test-revoke-access
+              {{on "click" (fn this.openDecision "revoke" cell.row)}}
+            />
+          {{else}}
+            <Nuvo::Badge
+              @variant={{cell.row.statusVariant}}
+              @text={{capitalize cell.row.status}}
+              data-test-access-request-status={{cell.row.status}}
+            />
+          {{/if}}
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </Nuvo::DataTable>
+    {{else}}
+      <Nuvo::EmptyState
+        @description="No {{lowercase this.status}} access requests."
+        data-test-access-requests-empty
+      />
+    {{/if}}
+
+    {{#if @model.total}}
+      <Nuvo::Pagination
+        @selectId="access-requests-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @perPageOptions={{array 50 100}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </Nuvo::Card>
+</div>
+
+<Nuvo::Modal
+  @open={{this.showApproveModal}}
+  @title="Approve access"
+  @subtitle="{{this.approving.requester.name}} asked for {{this.approving.contact.displayName}}"
+  @size="sm"
+  @onClose={{this.closeApprove}}
+  data-test-approve-modal
+>
+  <:body>
+    <form
+      id="approve-access-form"
+      class="flex col gap-3"
+      {{on "submit" this.confirmApprove}}
+    >
+      <div class="flex col gap-2" role="radiogroup" aria-label="Access lasts">
+        {{#each this.expiryChoices as |choice|}}
+          <Nuvo::Radio
+            @name="access-expiry"
+            @value={{choice.value}}
+            @label={{choice.label}}
+            @checked={{eq this.expiryChoice choice.value}}
+            @onChange={{this.setExpiryChoice}}
+            data-test-expiry-choice={{choice.value}}
+          />
+        {{/each}}
+      </div>
+      {{#if (eq this.expiryChoice "date")}}
+        <Nuvo::Field @label="Access ends on">
+          <Nuvo::Input
+            id="access-expiry-date"
+            @type="date"
+            @value={{this.expiryDate}}
+            @onInput={{fn this.setFieldValue "expiryDate"}}
+            min={{this.minExpiryDate}}
+            data-test-expiry-date
+          />
+        </Nuvo::Field>
+      {{/if}}
+      {{#if this.approveError}}
+        <p
+          class="text-sm text-danger"
+          data-test-approve-error
+        >{{this.approveError}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @text="Cancel"
+      @onClick={{this.closeApprove}}
+      data-test-approve-cancel
+    />
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="approve-access-form"
+      @text="Approve"
+      @loading={{this.isApproving}}
+      data-test-approve-confirm
+    />
+  </:footer>
+</Nuvo::Modal>
+
+<ConfirmModal
+  @open={{this.showDecisionModal}}
+  @title={{this.decisionTitle}}
+  @message={{this.decisionMessage}}
+  @confirmText={{this.decisionConfirmText}}
+  @confirmVariant="danger"
+  @isConfirming={{this.isDeciding}}
+  @confirmingText="Saving..."
+  @onClose={{this.closeDecision}}
+  @onConfirm={{this.confirmDecision}}
+  data-test-decision-modal
+>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
+    <Nuvo::Textarea
+      id="access-decision-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Not the agent handling this client"
+      @value={{this.reason}}
+      @onInput={{fn this.setFieldValue "reason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-decision-reason
+    />
+  </Nuvo::Field>
+</ConfirmModal>

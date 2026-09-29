@@ -58,10 +58,33 @@ export function sanitizeInput(message: string): {
   return { cleaned, needsDirectContact: cleaned.length === 0 };
 }
 
+// Admin text is data: drop lines shaped like prompt section markers, tags and headings.
+export function cleanAdminText(text: string): string {
+  return text
+    .replace(/^[ \t]*\[[^\]\n]*\][ \t]*$/gm, '')
+    .replace(/<[^>\n]*>/g, '')
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// WhatsApp renders only *bold*, _italic_, ~strike~ and numbered lists.
+export function toWhatsappFormat(text: string): string {
+  return text
+    .replace(
+      /^#{1,6}[ \t]+(.+)$/gm,
+      (_, t: string) => `*${t.replace(/\*/g, '').trim()}*`,
+    )
+    .replace(/\*\*(.+?)\*\*/g, '*$1*')
+    .replace(/__(.+?)__/g, '_$1_')
+    .replace(/~~(.+?)~~/g, '~$1~')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '$1 $2');
+}
+
 export function parseResponse(raw: ChatCompletion | null): string | null {
   const content = raw?.choices?.[0]?.message?.content;
   if (!content || typeof content !== 'string' || !content.trim()) return null;
-  return content.trim();
+  return toWhatsappFormat(content.trim());
 }
 
 export function parseToolCall(

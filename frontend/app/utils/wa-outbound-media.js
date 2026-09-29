@@ -7,7 +7,8 @@ const LIMITS = [
     kind: 'image',
     label: 'Image',
     max: 5 * MB,
-    types: ['image/jpeg', 'image/png'],
+    // The server sends a 512x512 WebP as a sticker and converts any other WebP to JPEG.
+    types: ['image/jpeg', 'image/png', 'image/webp'],
   },
   {
     kind: 'video',
@@ -21,8 +22,6 @@ const LIMITS = [
     max: 16 * MB,
     types: ['audio/aac', 'audio/amr', 'audio/mpeg', 'audio/mp4', 'audio/ogg'],
   },
-  // An animated sticker may reach 500 KB; a static one over 100 KB is left to the server.
-  { kind: 'sticker', label: 'Sticker', max: 500 * KB, types: ['image/webp'] },
   {
     kind: 'document',
     label: 'File',

@@ -2,7 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { ROLE_HIERARCHY } from '../utils/roles';
+import { ROLE_HIERARCHY, seesAllRegions } from '../utils/roles';
 import { ALL_ROLES } from 'land/constants';
 
 export default class TeamController extends PaginatedController {
@@ -60,6 +60,10 @@ export default class TeamController extends PaginatedController {
 
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
+  }
+
+  get isEditingSelf() {
+    return !!this.editUser && this.editUser.id === this.auth.currentUser?.id;
   }
 
   // The Company column only exists for super admins.
@@ -181,8 +185,18 @@ export default class TeamController extends PaginatedController {
     return this.region.regions;
   }
 
+  get hasAllRegions() {
+    return seesAllRegions(this.formRole);
+  }
+
+  get allRegionsNote() {
+    return this.isEditingSelf
+      ? 'You are a company admin. You have access to all regions.'
+      : 'Company admins have access to all regions.';
+  }
+
   get hasNoRegionsSelected() {
-    return this.selectedRegionCodes.length === 0;
+    return !this.hasAllRegions && this.selectedRegionCodes.length === 0;
   }
 
   @action toggleRegion(code) {
@@ -279,10 +293,8 @@ export default class TeamController extends PaginatedController {
     const path = isEdit ? `/users/${this.editUser.id}` : '/users';
 
     try {
-      const body = {
-        name: this.formName,
-        role: this.formRole,
-      };
+      const body = { name: this.formName };
+      if (!this.isEditingSelf) body.role = this.formRole;
       if (!isEdit) {
         body.email = this.formEmail;
         if (this.formPassword) body.password = this.formPassword;
@@ -298,7 +310,7 @@ export default class TeamController extends PaginatedController {
       });
 
       // PATCH does not touch assignments, so an edit sends them separately.
-      if (isEdit) {
+      if (isEdit && !this.hasAllRegions) {
         await this.auth.fetchJson(`/users/${this.editUser.id}/regions`, {
           method: 'PUT',
           body: JSON.stringify({ regionCodes: this.selectedRegionCodes }),

@@ -14,6 +14,8 @@ import {
 import { LeasesService } from './leases.service';
 import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
 import { ContactsService } from '../contacts/contacts.service';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
+import { contactDisplayName } from '../../shared/utils/contact.util';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Contact } from '../contacts/entities/contact.entity';
@@ -26,6 +28,7 @@ describe('LeasesService', () => {
   let repo: jest.Mocked<Repository<Lease>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let contactsService: { findOneEntity: jest.Mock };
+  let privacy: { presentMany: jest.Mock };
   let dataSource: { transaction: jest.Mock };
   let manager: {
     findOne: jest.Mock;
@@ -86,6 +89,17 @@ describe('LeasesService', () => {
   };
 
   beforeEach(async () => {
+    privacy = {
+      presentMany: jest.fn((_c: string, _v: unknown, rows: Contact[]) =>
+        Promise.resolve(
+          rows.map((r) => ({
+            ...r,
+            displayName: contactDisplayName(r),
+            accessLevel: 'FULL',
+          })),
+        ),
+      ),
+    };
     activeLeaseCount = 0;
     unitRegionCode = 'dubai';
 
@@ -153,6 +167,7 @@ describe('LeasesService', () => {
           },
         },
         { provide: RecordHistoryService, useValue: recordHistory },
+        { provide: ContactPrivacyService, useValue: privacy },
       ],
     }).compile();
 
@@ -1541,12 +1556,21 @@ describe('LeasesService', () => {
     });
   });
   describe('region scoping', () => {
-    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const makkahManager = {
+      userId: 'manager-uuid-1',
+      role: 'manager',
+      regionCodes: ['makkah'],
+    };
     const twoRegionManager = {
+      userId: 'manager-uuid-1',
       role: 'manager',
       regionCodes: ['makkah', 'punjab'],
     };
-    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+    const admin = {
+      userId: 'admin-uuid-1',
+      role: 'company_admin',
+      regionCodes: ['makkah'],
+    };
 
     const unitRegions: Record<string, string> = {
       'unit-makkah': 'makkah',
@@ -1683,6 +1707,7 @@ describe('LeasesService', () => {
 
       await expect(
         service.findOne('lease-uuid-1', companyId, {
+          userId: 'manager-uuid-1',
           role: 'manager',
           regionCodes: [],
         }),
@@ -1707,51 +1732,47 @@ describe('LeasesService', () => {
     });
 
     describe('tenant contact', () => {
-      // ContactsService confines its own by-id read, so a contact the caller
-      // cannot see resolves to NotFound here too.
-      function contactInRegion(regionCode: string) {
-        contactsService.findOneEntity.mockImplementation(
-          (_id: string, _companyId: string, caller?: any) => {
-            if (
-              caller &&
-              caller.role === 'manager' &&
-              !(caller.regionCodes as string[]).includes(regionCode)
-            ) {
-              return Promise.reject(new NotFoundException('Contact not found'));
-            }
-            return Promise.resolve({ id: 'contact-uuid-1' });
-          },
+      it('attaches a tenant from another region: the check is company scope only', async () => {
+        seedUnitLookup();
+        const row = { ...mockLease, unitId: 'unit-makkah' } as Lease;
+        repo.create.mockReturnValue(row);
+        manager.findOne.mockResolvedValue({
+          id: 'unit-makkah',
+          deletedAt: null,
+        });
+        manager.save.mockResolvedValue(row);
+        repo.findOne.mockResolvedValue(row);
+
+        await service.create(
+          companyId,
+          {
+            unitId: 'unit-makkah',
+            contactId: 'contact-uuid-1',
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            monthlyRent: 5000,
+          } as any,
+          makkahManager,
         );
-      }
 
-      it('denies create when the tenant contact is outside the caller regions', async () => {
-        contactInRegion('punjab');
-
-        await expect(
-          service.create(
-            companyId,
-            {
-              unitId: 'unit-makkah',
-              contactId: 'contact-uuid-1',
-              startDate: '2026-01-01',
-              endDate: '2026-12-31',
-              monthlyRent: 5000,
-            } as any,
-            makkahManager,
-          ),
-        ).rejects.toThrow(NotFoundException);
-        expect(repo.save).not.toHaveBeenCalled();
+        expect(contactsService.findOneEntity).toHaveBeenCalledWith(
+          'contact-uuid-1',
+          companyId,
+        );
+        expect(manager.save).toHaveBeenCalled();
       });
 
-      it('denies update when the tenant contact is outside the caller regions', async () => {
+      it('rejects a tenant of another company', async () => {
         seedLeaseOnUnit('unit-makkah');
-        contactInRegion('punjab');
+        contactsService.findOneEntity.mockRejectedValue(
+          new NotFoundException('Contact not found'),
+        );
 
         await expect(
           service.update(
             'lease-uuid-1',
             companyId,
-            { contactId: 'contact-uuid-1' },
+            { contactId: 'contact-other-company' },
             actorId,
             makkahManager,
           ),
@@ -1761,7 +1782,6 @@ describe('LeasesService', () => {
 
       it('accepts a tenant contact inside the caller regions', async () => {
         seedLeaseOnUnit('unit-makkah');
-        contactInRegion('makkah');
 
         const result = await service.update(
           'lease-uuid-1',
@@ -1891,7 +1911,7 @@ describe('LeasesService', () => {
         undefined,
         undefined,
         undefined,
-        { role: 'manager', regionCodes: [] },
+        { userId: 'manager-uuid-1', role: 'manager', regionCodes: [] },
       );
 
       expect(result.data).toEqual([]);
@@ -1928,6 +1948,7 @@ describe('LeasesService', () => {
 
       await expect(
         service.findByUnit('unit-makkah', companyId, {
+          userId: 'manager-uuid-1',
           role: 'manager',
           regionCodes: [],
         }),
@@ -2012,6 +2033,7 @@ describe('LeasesService', () => {
 
         await expect(
           service.create(companyId, dtoOnUnit('unit-makkah'), {
+            userId: 'manager-uuid-1',
             role: 'manager',
             regionCodes: [],
           }),
@@ -2033,6 +2055,95 @@ describe('LeasesService', () => {
         ).rejects.toThrow(NotFoundException);
         expect(manager.save).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('tenant presentation', () => {
+    const viewer = {
+      userId: 'agent-uuid-1',
+      role: 'agent',
+      regionCodes: ['dubai'],
+    };
+    const tenant = {
+      id: 'contact-uuid-1',
+      firstName: 'Test',
+      lastName: 'User',
+      phone: '+971501234567',
+      email: 'user@example.com',
+    } as Contact;
+
+    it('presents every tenant of a list page in one call, for the caller', async () => {
+      const rows = [
+        { ...mockLease, id: 'l1', contact: tenant },
+        { ...mockLease, id: 'l2', contact: tenant },
+        { ...mockLease, id: 'l3', contact: null },
+      ] as Lease[];
+      const chain: Record<string, jest.Mock> = {};
+      [
+        'leftJoinAndSelect',
+        'where',
+        'andWhere',
+        'skip',
+        'take',
+        'orderBy',
+      ].forEach((key) => {
+        chain[key] = jest.fn().mockReturnValue(chain);
+      });
+      chain.getManyAndCount = jest.fn().mockResolvedValue([rows, 3]);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(chain);
+      privacy.presentMany.mockResolvedValue([
+        {
+          id: 'contact-uuid-1',
+          firstName: 'Test',
+          lastInitial: 'U.',
+          phoneMasked: '+971 50 *** **67',
+          accessLevel: 'LIMITED',
+        },
+      ]);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        { ...viewer, regionCodes: ['dubai'] },
+      );
+
+      expect(privacy.presentMany).toHaveBeenCalledTimes(1);
+      expect(privacy.presentMany).toHaveBeenCalledWith(companyId, viewer, [
+        tenant,
+      ]);
+      expect(result.data[0].contact).toEqual({
+        id: 'contact-uuid-1',
+        firstName: 'Test',
+        lastInitial: 'U.',
+        phoneMasked: '+971 50 *** **67',
+        accessLevel: 'LIMITED',
+      });
+      expect(JSON.stringify(result.data)).not.toContain('user@example.com');
+      expect(result.data[2].contact).toBeNull();
+    });
+
+    it('presents the tenant on findOne for the caller', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockLease,
+        contact: tenant,
+      } as Lease);
+
+      await service.findOne('lease-uuid-1', companyId, {
+        ...viewer,
+        role: 'company_admin',
+      });
+
+      expect(privacy.presentMany).toHaveBeenCalledWith(
+        companyId,
+        { ...viewer, role: 'company_admin' },
+        [tenant],
+      );
     });
   });
 });

@@ -355,6 +355,7 @@ describe('PropertiesController', () => {
         20,
         expect.objectContaining({ archived: UnitArchivedFilter.ONLY }),
         expect.anything(),
+        expect.objectContaining({ userId: expect.any(String) }),
       );
     });
   });

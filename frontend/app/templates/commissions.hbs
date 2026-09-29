@@ -38,9 +38,15 @@
         as |cell|
       >
         {{#if (eq cell.key "agentId")}}
-          <span class="text-xs" data-test-commission-row>{{truncate-id
-              cell.value
-            }}</span>
+          {{#let (this.agentName cell.value) as |name|}}
+            {{#if name}}
+              <span data-test-commission-row>{{name}}</span>
+            {{else}}
+              <span class="text-xs" data-test-commission-row>{{truncate-id
+                  cell.value
+                }}</span>
+            {{/if}}
+          {{/let}}
         {{else if (eq cell.key "leadId")}}
           <span class="text-xs">
             {{#if cell.row.leadId}}

@@ -4,14 +4,19 @@
 
 $shell-sidebar-width: 15rem;
 $shell-sidebar-collapsed: 3.75rem;
+$shell-background-color: #0d1b2a;
+$shell-background-image: radial-gradient(
+  circle at center,
+  #344244 0%,
+  #0b212d 90%,
+  #2b1818 100%
+);
 
 .app-shell {
   display: flex;
   min-block-size: 100vh;
-  background-color: #0d1b2a;
-
-
-  background-image: radial-gradient(circle at center, #344244 0%, #0b212d 90%, #2b1818 100%);
+  background-color: $shell-background-color;
+  background-image: $shell-background-image;
   background-repeat: no-repeat;
   background-attachment: fixed;
   min-height: 100vh;
@@ -344,9 +349,13 @@ $shell-sidebar-collapsed: 3.75rem;
     margin-inline-start: 0;
   }
 
+  // As a drawer it slides over light content, so it carries the shell surface above the scrim and topbar.
   .nu-sidebar {
     inset-inline-start: -#{$shell-sidebar-width};
     transition: inset-inline-start nu-duration(normal) $nu-ease;
+    z-index: nu-z(sticky) + 1;
+    background-color: $shell-background-color;
+    background-image: $shell-background-image;
   }
 
   .nu-sidebar.is-open {

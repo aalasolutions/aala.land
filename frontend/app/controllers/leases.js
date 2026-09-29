@@ -16,6 +16,7 @@ import {
 } from '../utils/delete-modal';
 import { ROLES } from '../utils/roles';
 import { toDateOnly } from '../utils/local-date';
+import { contactName } from '../utils/contact-display';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -179,7 +180,7 @@ export default class LeasesController extends PaginatedController {
       { value: '', label: 'Select a tenant...' },
       ...(this.model.contacts || []).map((contact) => ({
         value: contact.id,
-        label: contact.displayName,
+        label: contactName(contact),
       })),
     ];
   }

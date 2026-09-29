@@ -73,6 +73,7 @@ Router.map(function () {
     this.route('index', { path: '/' });
     this.route('detail', { path: '/:contact_id' });
   });
+  this.route('access-requests');
   // Development-only DataTable option showcase, a copy of the contacts list.
   this.route('table-options');
   this.route('documents');

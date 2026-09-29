@@ -37,7 +37,7 @@ module('Unit | Utility | wa-outbound-media', function () {
       ['a.mp3', 'audio/mpeg', 16 * MB, 'audio'],
       ['a.m4a', 'audio/mp4', 16 * MB, 'audio'],
       ['a.ogg', 'audio/ogg', 16 * MB, 'audio'],
-      ['a.webp', 'image/webp', 500 * KB, 'sticker'],
+      ['a.webp', 'image/webp', 5 * MB, 'image'],
       ['a.pdf', 'application/pdf', 100 * MB, 'document'],
       [
         'a.docx',
@@ -69,8 +69,8 @@ module('Unit | Utility | wa-outbound-media', function () {
       { kind: 'audio', error: 'Audio is over 16 MB.' },
     );
     assert.deepEqual(
-      classifyOutboundFile(fakeFile('a.webp', 'image/webp', 500 * KB + 1)),
-      { kind: 'sticker', error: 'Sticker is over 500 KB.' },
+      classifyOutboundFile(fakeFile('a.webp', 'image/webp', 5 * MB + 1)),
+      { kind: 'image', error: 'Image is over 5 MB.' },
     );
     assert.deepEqual(
       classifyOutboundFile(fakeFile('a.pdf', 'application/pdf', 100 * MB + 1)),

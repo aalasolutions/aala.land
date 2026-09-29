@@ -9,6 +9,8 @@ import {
   resolveMediaUrlTtlSeconds,
   revokeMediaDeletedBy,
   toWireMessage,
+  isSendableSticker,
+  unsupportedInboundMedia,
 } from './wa-media.util';
 import { WaMediaStatus, WaMessage, WaMessageInsert } from './wa-types';
 
@@ -46,6 +48,28 @@ describe('wa-media.util', () => {
   it('names the revoke side', () => {
     expect(revokeMediaDeletedBy(false)).toBe('CUSTOMER_REVOKE');
     expect(revokeMediaDeletedBy(true)).toBe('BUSINESS_APP_REVOKE');
+  });
+
+  describe('unsupportedInboundMedia', () => {
+    it('gives any other customer message an UNSUPPORTED placeholder', () => {
+      expect(
+        unsupportedInboundMedia({ id: 'wamid.1', type: 'unsupported' }),
+      ).toEqual(
+        expect.objectContaining({
+          mediaType: 'media_placeholder',
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+          mediaMetaId: null,
+        }),
+      );
+    });
+
+    it('gives no bubble to text, reactions, edits, revokes or a message without id or type', () => {
+      for (const type of ['text', 'reaction', 'edit', 'revoke']) {
+        expect(unsupportedInboundMedia({ id: 'wamid.1', type })).toBeNull();
+      }
+      expect(unsupportedInboundMedia({ type: 'unsupported' })).toBeNull();
+      expect(unsupportedInboundMedia({ id: 'wamid.1' })).toBeNull();
+    });
   });
 
   describe('resolveInboundMedia', () => {
@@ -238,5 +262,21 @@ describe('wa-media.util', () => {
       expect(outboundTextMime('readme.md')).toBe('text/markdown');
       expect(outboundTextMime('notes')).toBe('text/plain');
     });
+  });
+});
+
+describe('isSendableSticker', () => {
+  it('accepts exactly 512x512 within the static and animated limits', () => {
+    expect(isSendableSticker(512, 512, 100 * 1024, false)).toBe(true);
+    expect(isSendableSticker(512, 512, 500 * 1024, true)).toBe(true);
+  });
+
+  it('rejects any other size, an oversized file or an empty one', () => {
+    expect(isSendableSticker(600, 600, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(512, 511, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(undefined, 512, 10 * 1024, false)).toBe(false);
+    expect(isSendableSticker(512, 512, 100 * 1024 + 1, false)).toBe(false);
+    expect(isSendableSticker(512, 512, 500 * 1024 + 1, true)).toBe(false);
+    expect(isSendableSticker(512, 512, 0, false)).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { FinancialService } from './financial.service';
 import { FinancialAnalyticsService } from './financial-analytics.service';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 import {
   Transaction,
   TransactionType,
@@ -39,7 +40,14 @@ describe('FinancialService', () => {
     updatedAt: new Date(),
   };
 
+  let privacy: { accessLevelFor: jest.Mock };
+
   beforeEach(async () => {
+    privacy = {
+      accessLevelFor: jest.fn((_c: string, _v: unknown, rows: any[]) =>
+        Promise.resolve(new Map(rows.map((r) => [r.id, 'FULL']))),
+      ),
+    };
     manager = {
       getRepository: jest.fn(() => repo),
       findOne: jest.fn().mockResolvedValue(null),
@@ -48,6 +56,7 @@ describe('FinancialService', () => {
       providers: [
         FinancialService,
         FinancialAnalyticsService,
+        { provide: ContactPrivacyService, useValue: privacy },
         {
           provide: DataSource,
           useValue: {
@@ -684,6 +693,7 @@ describe('FinancialService', () => {
       const builders = seedBuckets([]);
 
       await service.getDepositReminders(companyId, undefined, {
+        userId: 'manager-uuid-1',
         role: 'manager',
         regionCodes: ['makkah', 'punjab'],
       });
@@ -750,6 +760,84 @@ describe('FinancialService', () => {
       expect(result.overdue[0].tenantName).toBe('+971500000000');
     });
 
+    it('masks the tenant for a LIMITED caller with one access lookup', async () => {
+      const named = { ...mockTransaction, id: 'txn-a' } as Transaction;
+      const phoneOnly = { ...mockTransaction, id: 'txn-b' } as Transaction;
+      const later = { ...mockTransaction, id: 'txn-c' } as Transaction;
+      const builders = seedBuckets(
+        [[named, phoneOnly], [later]],
+        [
+          [
+            {
+              t_id: 'txn-a',
+              tenant_contact_id: 'contact-1',
+              tenant_first_name: 'Test',
+              tenant_last_name: 'User',
+              tenant_phone: '+971500000001',
+              tenant_region_code: 'makkah',
+              tenant_created_by: 'other-user',
+            },
+            {
+              t_id: 'txn-b',
+              tenant_contact_id: 'contact-2',
+              tenant_first_name: null,
+              tenant_last_name: null,
+              tenant_phone: '+971501234567',
+              tenant_region_code: 'makkah',
+              tenant_created_by: null,
+            },
+          ],
+          [
+            {
+              t_id: 'txn-c',
+              tenant_contact_id: 'contact-1',
+              tenant_first_name: 'Test',
+              tenant_last_name: 'User',
+              tenant_phone: '+971500000001',
+              tenant_region_code: 'makkah',
+              tenant_created_by: 'other-user',
+            },
+          ],
+        ],
+      );
+      privacy.accessLevelFor.mockImplementation(
+        (_c: string, _v: unknown, rows: any[]) =>
+          Promise.resolve(new Map(rows.map((r) => [r.id, 'LIMITED']))),
+      );
+      const caller = {
+        userId: 'manager-uuid-1',
+        role: 'manager',
+        regionCodes: ['dubai'],
+      };
+
+      const result = await service.getDepositReminders(
+        companyId,
+        undefined,
+        caller,
+      );
+
+      expect(result.overdue.map((r) => r.tenantName)).toEqual([
+        'Test U.',
+        '+971 50 *** **67',
+      ]);
+      expect(result.dueToday[0].tenantName).toBe('Test U.');
+      expect(privacy.accessLevelFor).toHaveBeenCalledTimes(1);
+      expect(privacy.accessLevelFor).toHaveBeenCalledWith(companyId, caller, [
+        { id: 'contact-1', regionCode: 'makkah', createdBy: 'other-user' },
+        { id: 'contact-2', regionCode: 'makkah', createdBy: null },
+      ]);
+      for (const qb of builders) {
+        expect(qb.addSelect).toHaveBeenCalledWith(
+          'c.region_code',
+          'tenant_region_code',
+        );
+        expect(qb.addSelect).toHaveBeenCalledWith(
+          'c.created_by',
+          'tenant_created_by',
+        );
+      }
+    });
+
     it('returns null unit and tenant fields when nothing is linked', async () => {
       const txn = { ...mockTransaction, id: 'txn-bare' } as Transaction;
       seedBuckets(
@@ -800,6 +888,7 @@ describe('FinancialService', () => {
 
     it('queries nothing when the caller has no assigned region', async () => {
       const result = await service.getDepositReminders(companyId, undefined, {
+        userId: 'manager-uuid-1',
         role: 'manager',
         regionCodes: [],
       });

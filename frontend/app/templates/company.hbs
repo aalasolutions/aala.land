@@ -68,20 +68,20 @@
     <Nuvo::Card class="max-w-lg">
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
         <Nuvo::Field
-          @label="AI System Prompt"
-          @tooltip="Your own instructions for the AI when it answers leads on WhatsApp. Leave it empty to use the built-in instructions."
+          @label="Business information for the AI"
+          @tooltip="Facts the WhatsApp AI can share with leads: services, areas you cover, office hours, contact details. It cannot change how the AI behaves."
         >
           <Nuvo::Textarea
             id="company-ai-prompt"
             data-test-ai-prompt
             rows="10"
-            placeholder="Leave empty to use the default prompt"
+            placeholder="For example: we manage rentals in Dubai Marina and JLT, office hours 9am to 6pm, Sunday to Thursday."
             @value={{this.aiPrompt}}
             @onInput={{this.setAIPrompt}}
           />
           <p class="text-muted text-sm mt-1">
-            This prompt tells the AI how to respond on behalf of your company.
-            Leave blank to use the built-in default.
+            Describe your business, not instructions. The AI uses this as
+            facts and always follows its built-in rules.
           </p>
         </Nuvo::Field>
 
@@ -107,7 +107,7 @@
             data-test-restore-prompt
             {{on "click" this.restoreDefaultPrompt}}
           >
-            Restore Default
+            Clear
           </Nuvo::Button>
         </Nuvo::FormActions>
       </form>

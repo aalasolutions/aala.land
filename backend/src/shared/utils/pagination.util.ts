@@ -1,4 +1,8 @@
-import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from '../constants/pagination';
+import {
+  CONTACT_LIST_MAX_LIMIT,
+  DEFAULT_PAGE_LIMIT,
+  MAX_PAGE_LIMIT,
+} from '../constants/pagination';
 
 // Every list clamps here, so an oversized or negative limit never reaches the query.
 export function clampLimit(limit = DEFAULT_PAGE_LIMIT): number {
@@ -20,4 +24,9 @@ export function paginationOptions(
 
 export function pageSkip(page = 1, limit = DEFAULT_PAGE_LIMIT): number {
   return (clampPage(page) - 1) * clampLimit(limit);
+}
+
+// Contacts and leads lists stop at 100 rows per page, below the shared 500 clamp.
+export function contactListLimit(limit = DEFAULT_PAGE_LIMIT): number {
+  return Math.min(clampLimit(limit), CONTACT_LIST_MAX_LIMIT);
 }

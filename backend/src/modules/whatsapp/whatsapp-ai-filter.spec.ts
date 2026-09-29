@@ -1,6 +1,8 @@
 import {
   sanitizeInput,
   parseResponse,
+  toWhatsappFormat,
+  cleanAdminText,
   DIRECT_CONTACT_RESPONSE,
   parseToolCall,
 } from './whatsapp-ai-filter';
@@ -218,5 +220,66 @@ describe('parseToolCall', () => {
     const result = parseToolCall(raw);
     expect(result?.name).toBe('search_properties');
     expect(result?.id).toBe('call_1');
+  });
+});
+
+describe('toWhatsappFormat', () => {
+  it('turns markdown bold into WhatsApp bold', () => {
+    expect(toWhatsappFormat('**For Sale: Sunset Tower**')).toBe(
+      '*For Sale: Sunset Tower*',
+    );
+  });
+
+  it('keeps WhatsApp bold, italic and strike as they are', () => {
+    expect(toWhatsappFormat('*bold* _italic_ ~strike~')).toBe(
+      '*bold* _italic_ ~strike~',
+    );
+  });
+
+  it('converts double underscore and double tilde', () => {
+    expect(toWhatsappFormat('__soon__ ~~old~~')).toBe('_soon_ ~old~');
+  });
+
+  it('turns a heading into a bold line', () => {
+    expect(toWhatsappFormat('## **Available units**\n1. One')).toBe(
+      '*Available units*\n1. One',
+    );
+  });
+
+  it('flattens markdown links to text and URL', () => {
+    expect(toWhatsappFormat('[Listing](https://example.com/u/1)')).toBe(
+      'Listing https://example.com/u/1',
+    );
+  });
+
+  it('is applied by parseResponse', () => {
+    const raw = {
+      choices: [{ message: { role: 'assistant', content: '**Hi**' } }],
+    };
+    expect(parseResponse(raw)).toBe('*Hi*');
+  });
+});
+
+describe('cleanAdminText', () => {
+  it('drops lines shaped like section markers', () => {
+    expect(cleanAdminText('[RULES]\nOffice hours 9 to 5\n[SYSTEM]')).toBe(
+      'Office hours 9 to 5',
+    );
+  });
+
+  it('strips tags and heading marks but keeps the text', () => {
+    expect(cleanAdminText('# About us\n<system>We sell villas</system>')).toBe(
+      'About us\nWe sell villas',
+    );
+  });
+
+  it('keeps ordinary brackets inside a sentence', () => {
+    expect(cleanAdminText('Fees [see office] apply')).toBe(
+      'Fees [see office] apply',
+    );
+  });
+
+  it('collapses long blank gaps', () => {
+    expect(cleanAdminText('a\n\n\n\nb')).toBe('a\n\nb');
   });
 });

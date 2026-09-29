@@ -1,0 +1,20 @@
+{{#if this.isPending}}
+  <Nuvo::Badge
+    @variant="warning"
+    @text="Access pending"
+    data-test-access-pending
+    ...attributes
+  />
+{{else}}
+  <Nuvo::Button
+    @variant="primary"
+    @outline={{true}}
+    @size={{if @size @size "sm"}}
+    @icon="lock-key-open"
+    @text="Request access"
+    @loading={{this.isRequesting}}
+    @onClick={{this.request}}
+    data-test-request-access
+    ...attributes
+  />
+{{/if}}

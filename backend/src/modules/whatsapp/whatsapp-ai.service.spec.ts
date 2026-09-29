@@ -7,59 +7,23 @@ import { WhatsappSendError } from './whatsapp-cloud-api.service';
 import { DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
 import { SubscriptionTier } from '../companies/entities/company.entity';
 
-function sseStream(chunks: object[]): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  const lines =
-    chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') +
-    'data: [DONE]\n\n';
-  return new ReadableStream({
-    start(ctrl) {
-      ctrl.enqueue(encoder.encode(lines));
-      ctrl.close();
-    },
-  });
+function completion(message: object) {
+  return {
+    ok: true,
+    json: async () => ({ choices: [{ message }] }),
+  };
 }
 
 function mockTextResponse(content: string) {
-  return {
-    ok: true,
-    body: sseStream([{ choices: [{ delta: { role: 'assistant', content } }] }]),
-  };
+  return completion({ role: 'assistant', content });
 }
 
 function mockToolCallResponse(id: string, name: string, args = '{}') {
-  return {
-    ok: true,
-    body: sseStream([
-      {
-        choices: [
-          {
-            delta: {
-              role: 'assistant',
-              content: null,
-              tool_calls: [
-                {
-                  index: 0,
-                  id,
-                  type: 'function',
-                  function: { name, arguments: '' },
-                },
-              ],
-            },
-          },
-        ],
-      },
-      {
-        choices: [
-          {
-            delta: {
-              tool_calls: [{ index: 0, function: { arguments: args } }],
-            },
-          },
-        ],
-      },
-    ]),
-  };
+  return completion({
+    role: 'assistant',
+    content: null,
+    tool_calls: [{ id, type: 'function', function: { name, arguments: args } }],
+  });
 }
 
 const makeCompany = (
@@ -96,7 +60,7 @@ const makeMockRepo = (
   getCreditUsage: jest.fn().mockResolvedValue({ used: 0, openWindows: 0 }),
   getAgentCreditBreakdown: jest.fn().mockResolvedValue([]),
   claimExhaustedNotification: jest.fn().mockResolvedValue(true),
-  searchProperties: jest.fn().mockResolvedValue([]),
+  searchProperties: jest.fn().mockResolvedValue({ units: [], total: 0 }),
 });
 
 const makeMockEmail = () => ({
@@ -1043,9 +1007,10 @@ describe('WhatsappAiService', () => {
 
     it('aborts the send when the human replies mid-tool-flow', async () => {
       const mockRepo = makeMockRepo();
-      mockRepo.searchProperties.mockResolvedValue([
-        { id: 'l1', title: 'Test' },
-      ]);
+      mockRepo.searchProperties.mockResolvedValue({
+        units: [{ id: 'l1', title: 'Test' }],
+        total: 1,
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockStore() as any,
@@ -1887,7 +1852,7 @@ describe('WhatsappAiService', () => {
       });
     });
 
-    it('passes TOOL_DEFINITIONS and stream:true in first LLM call body', async () => {
+    it('passes TOOL_DEFINITIONS and stream:false in first LLM call body', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockStore() as any,
@@ -1917,14 +1882,15 @@ describe('WhatsappAiService', () => {
       expect(body.tools).toBeDefined();
       expect(Array.isArray(body.tools)).toBe(true);
       expect(body.tools.length).toBeGreaterThan(0);
-      expect(body.stream).toBe(true);
+      expect(body.stream).toBe(false);
     });
 
     it('executes search_properties and makes second LLM call', async () => {
       const mockRepo = makeMockRepo();
-      mockRepo.searchProperties.mockResolvedValue([
-        { id: 'l1', title: 'Test' },
-      ]);
+      mockRepo.searchProperties.mockResolvedValue({
+        units: [{ id: 'l1', title: 'Test' }],
+        total: 1,
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockStore() as any,
@@ -2001,50 +1967,6 @@ describe('WhatsappAiService', () => {
       );
     });
 
-    it('accumulates content correctly when SSE chunks arrive split across multiple reads', async () => {
-      service = new WhatsappAiService(
-        makeMockRepo() as any,
-        makeMockStore() as any,
-        makeMockBuilder() as any,
-        makeMockEmail() as any,
-
-        makeMockRedis() as any,
-        queue as any,
-      );
-
-      // Split the SSE body across two separate Uint8Array chunks mid-line
-      const encoder = new TextEncoder();
-      const full =
-        'data: {"choices":[{"delta":{"role":"assistant","content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n';
-      const half = Math.floor(full.length / 2);
-      const chunk1 = encoder.encode(full.slice(0, half));
-      const chunk2 = encoder.encode(full.slice(half));
-
-      const splitStream = new ReadableStream<Uint8Array>({
-        start(ctrl) {
-          ctrl.enqueue(chunk1);
-          ctrl.enqueue(chunk2);
-          ctrl.close();
-        },
-      });
-
-      global.fetch = jest
-        .fn()
-        .mockResolvedValue({ ok: true, body: splitStream }) as any;
-
-      const mockSend = jest.fn().mockResolvedValue({});
-      await incoming(
-        baseEvt({ body: 'hi' }),
-        'comp1',
-        'user1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello world', {
-        creditCharged: true,
-      });
-    });
   });
 
   describe('per-chat turn serialization', () => {

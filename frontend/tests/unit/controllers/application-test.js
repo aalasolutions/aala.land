@@ -9,9 +9,12 @@ class MockSessionService extends Service {
 
 class MockRouterService extends Service {
   currentRouteName = null;
+  transitions = [];
   on() {}
   off() {}
-  transitionTo() {}
+  transitionTo(...args) {
+    this.transitions.push(args);
+  }
 }
 
 module('Unit | Controller | application', function (hooks) {
@@ -277,5 +280,34 @@ module('Unit | Controller | application', function (hooks) {
       assert.strictEqual(byCode.dxb, 3);
       assert.strictEqual(byCode.auh, 0, 'a real zero, not a missing badge');
     });
+  });
+
+  test('an access request notification opens the approvals page', function (assert) {
+    const controller = makeController(this);
+    controller.handleNotificationNavigation({
+      entityType: 'ContactAccessRequest',
+      type: 'CONTACT_ACCESS_REQUESTED',
+    });
+
+    assert.deepEqual(controller.router.transitions, [['access-requests']]);
+  });
+
+  test('an access decision notification opens My requests on the contacts page', function (assert) {
+    const controller = makeController(this);
+    controller.handleNotificationNavigation({
+      entityType: 'ContactAccessRequest',
+      type: 'CONTACT_ACCESS_DECIDED',
+    });
+
+    assert.deepEqual(controller.router.transitions, [
+      ['contacts.index', { queryParams: { tab: 'requests' } }],
+    ]);
+  });
+
+  test('the Access Requests page lights up the People group', function (assert) {
+    const controller = makeController(this);
+    controller.router.currentRouteName = 'access-requests';
+
+    assert.strictEqual(controller.activeGroup, 'crm');
   });
 });

@@ -14,6 +14,8 @@ export enum AuditAction {
   IMPORT = 'IMPORT',
   BULK_DELETE = 'BULK_DELETE',
   BULK_UPDATE = 'BULK_UPDATE',
+  VIEW = 'VIEW',
+  ACCESS_VERIFY_FAILED = 'ACCESS_VERIFY_FAILED',
 }
 
 export class QueryAuditLogsDto {

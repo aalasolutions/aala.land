@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import sharp from 'sharp';
 import { Role } from '@shared/enums/roles.enum';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -48,11 +49,13 @@ import {
 } from './whatsapp-media-ingest.service';
 import { WA_LOCAL_ID_PREFIX, WaMediaStatus, WaMessage } from './wa-types';
 import {
+  WA_ANIMATED_WEBP_MESSAGE,
   WaOutboundMedia,
   WaOutboundMediaType,
   baseMime,
   countsTowardQuota,
   generatedMediaFileName,
+  isSendableSticker,
   isVoiceNoteMedia,
   metaUploadMime,
   outboundObjectKey,
@@ -161,14 +164,62 @@ export class WhatsappMediaSendService {
     file: Express.Multer.File,
     options: WaMediaSendOptions = {},
   ): Promise<WaMessage> {
+    let photo: Express.Multer.File | null = null;
     try {
-      return await this.sendFromDisk(companyId, userId, chatId, file, options);
-    } finally {
-      await unlink(file.path).catch((err: unknown) =>
-        this.logger.error(
-          `Failed to remove temp upload file ${file.path}: ${errorMessage(err)}`,
-        ),
+      photo = await this.webpAsPhoto(file, options.caption);
+      return await this.sendFromDisk(
+        companyId,
+        userId,
+        chatId,
+        photo ?? file,
+        options,
       );
+    } finally {
+      for (const path of [file.path, photo?.path]) {
+        if (!path) continue;
+        await unlink(path).catch((err: unknown) =>
+          this.logger.error(
+            `Failed to remove temp upload file ${path}: ${errorMessage(err)}`,
+          ),
+        );
+      }
+    }
+  }
+
+  // Meta takes WebP only as a 512x512 sticker; any other WebP goes out as a JPEG photo.
+  private async webpAsPhoto(
+    file: Express.Multer.File,
+    caption?: string,
+  ): Promise<Express.Multer.File | null> {
+    const { fileTypeFromFile } = await import('file-type');
+    const detected = await fileTypeFromFile(file.path);
+    if (baseMime(detected?.mime) !== 'image/webp') return null;
+
+    const animated = await isAnimatedWebp(file.path);
+    let width: number | undefined;
+    let height: number | undefined;
+    try {
+      ({ width, height } = await sharp(file.path).metadata());
+    } catch (err) {
+      this.logger.warn(`WebP metadata read failed: ${errorMessage(err)}`);
+      throw new BadRequestException('This WebP image could not be read.');
+    }
+    if (!caption && isSendableSticker(width, height, file.size, animated)) {
+      return null;
+    }
+    if (animated) throw new BadRequestException(WA_ANIMATED_WEBP_MESSAGE);
+
+    const path = join(tmpdir(), `wa-photo-${randomUUID()}.jpg`);
+    try {
+      const { size } = await sharp(file.path)
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality: 85 })
+        .toFile(path);
+      return { ...file, path, size, mimetype: 'image/jpeg' };
+    } catch (err) {
+      await unlink(path).catch(() => undefined);
+      this.logger.error(`WebP to JPEG conversion failed: ${errorMessage(err)}`);
+      throw new BadRequestException('This WebP image could not be read.');
     }
   }
 

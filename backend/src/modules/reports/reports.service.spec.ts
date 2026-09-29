@@ -20,6 +20,7 @@ import {
 } from '../../shared/utils/region-time.util';
 import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 
 function createMockQueryBuilder(result: any = []) {
   const qb: any = {
@@ -60,10 +61,16 @@ describe('ReportsService', () => {
   let auditLogRepo: any;
   let userRepo: any;
   let contactRepo: any;
+  let privacy: { accessLevelFor: jest.Mock };
 
   const companyId = 'company-uuid-1';
 
   beforeEach(async () => {
+    privacy = {
+      accessLevelFor: jest.fn((_c: string, _v: unknown, rows: any[]) =>
+        Promise.resolve(new Map(rows.map((r) => [r.id, 'FULL']))),
+      ),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReportsService,
@@ -135,6 +142,7 @@ describe('ReportsService', () => {
             count: jest.fn().mockResolvedValue(0),
           },
         },
+        { provide: ContactPrivacyService, useValue: privacy },
       ],
     }).compile();
 
@@ -482,6 +490,73 @@ describe('ReportsService', () => {
       expect(result[1]).toMatchObject({ total: 0, flags: [] });
     });
 
+    it('shows a LIMITED caller first name and last initial, and masks a phone-only name', async () => {
+      seedEmpty();
+      const named = {
+        ...lead,
+        contact: { id: 'c1', firstName: 'Ahmed', lastName: 'Ali' },
+      };
+      const phoneOnly = {
+        ...lead,
+        id: 'l2',
+        contactId: 'c2',
+        contact: { id: 'c2', firstName: null, phone: '+971501234567' },
+      };
+      leadRepo.findAndCount.mockResolvedValueOnce([[named, phoneOnly], 2]);
+      privacy.accessLevelFor.mockImplementation(
+        (_c: string, _v: unknown, rows: any[]) =>
+          Promise.resolve(new Map(rows.map((r) => [r.id, 'LIMITED']))),
+      );
+      const caller = {
+        userId: 'manager-uuid-1',
+        role: 'manager',
+        regionCodes: ['dubai'],
+      };
+
+      const result = await service.getRedFlags(companyId, undefined, caller);
+
+      expect(result[0].flags.map((f) => f.message)).toEqual([
+        'Ahmed A. untouched for 48+ hours',
+        '+971 50 *** **67 untouched for 48+ hours',
+      ]);
+      expect(privacy.accessLevelFor).toHaveBeenCalledTimes(1);
+      expect(privacy.accessLevelFor).toHaveBeenCalledWith(companyId, caller, [
+        named.contact,
+        phoneOnly.contact,
+      ]);
+    });
+
+    it('keeps the full name and raw phone fallback for a FULL caller', async () => {
+      seedEmpty();
+      leadRepo.findAndCount.mockResolvedValueOnce([
+        [
+          {
+            ...lead,
+            contact: { id: 'c2', firstName: null, phone: '+971501234567' },
+          },
+        ],
+        1,
+      ]);
+
+      const result = await service.getRedFlags(companyId);
+
+      expect(result[0].flags[0].message).toBe(
+        '+971501234567 untouched for 48+ hours',
+      );
+    });
+
+    it('selects region and creator on the overdue follow-up contact', async () => {
+      seedEmpty();
+      const overdueQb = createMockQueryBuilder([]);
+      leadRepo.createQueryBuilder.mockReturnValue(overdueQb);
+
+      await service.getRedFlags(companyId);
+
+      expect(overdueQb.select).toHaveBeenCalledWith(
+        expect.arrayContaining(['c.regionCode', 'c.createdBy']),
+      );
+    });
+
     it('bounds the 24h window at 48h and keeps the oldest leads under the cap', async () => {
       seedEmpty();
 
@@ -775,13 +850,26 @@ describe('ReportsService', () => {
     });
   });
   describe('region scoping', () => {
-    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const makkahManager = {
+      userId: 'manager-uuid-1',
+      role: 'manager',
+      regionCodes: ['makkah'],
+    };
     const twoRegionManager = {
+      userId: 'manager-uuid-1',
       role: 'manager',
       regionCodes: ['makkah', 'punjab'],
     };
-    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
-    const unassignedManager = { role: 'manager', regionCodes: [] };
+    const admin = {
+      userId: 'admin-uuid-1',
+      role: 'company_admin',
+      regionCodes: ['makkah'],
+    };
+    const unassignedManager = {
+      userId: 'manager-uuid-1',
+      role: 'manager',
+      regionCodes: [],
+    };
 
     // Stands in for Postgres: seeded rows survive only if the built predicate admits their region.
     function createRegionAwareQb(rows: any[]) {

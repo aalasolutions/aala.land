@@ -13,7 +13,7 @@
       @value={{this.inputValue}}
       @size={{@size}}
       @disabled={{@disabled}}
-      @placeholder={{if @placeholder @placeholder "Search..."}}
+      @placeholder={{this.filterPlaceholder}}
       @clearable={{true}}
       @onInput={{this.onFilterInput}}
       @onClear={{this.onFilterClear}}

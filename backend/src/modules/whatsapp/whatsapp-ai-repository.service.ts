@@ -1,17 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Between,
-  FindOptionsWhere,
-  ILike,
-  In,
-  IsNull,
-  LessThanOrEqual,
-  MoreThan,
-  MoreThanOrEqual,
-  Not,
-  Repository,
-} from 'typeorm';
+import { Brackets, In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { acquireCompanyLock } from '@shared/utils/company-lock.util';
 import {
   Company,
@@ -26,14 +15,13 @@ import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.enti
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
 import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { AiCreditAgentUsage } from './wa-types';
+import type { PropertySearchFilters } from './whatsapp-ai-tools';
+import { scopedRegionCodes } from '@shared/utils/region-visibility.util';
 
-interface PropertySearchFilters {
-  bedrooms?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  city?: string;
-  type?: string;
-}
+const PLACE_SIMILARITY = 0.3;
+
+const likePattern = (value: string) =>
+  `%${value.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 interface ContextCache {
   units: Unit[];
@@ -153,44 +141,106 @@ export class WhatsappAiRepositoryService
     return { company, units };
   }
 
+  // Scoped to the connected agent's regions, like every other read in the app.
   async searchProperties(
     companyId: string,
+    userId: string,
     filters: PropertySearchFilters,
-  ): Promise<Unit[]> {
-    const where: FindOptionsWhere<Unit> = {
-      companyId,
-      status: UnitStatus.AVAILABLE,
-      deletedAt: IsNull(),
-    };
+  ): Promise<{ units: Unit[]; total: number }> {
+    const user = await this.userRepo.findOne({
+      where: { id: userId, companyId },
+      select: ['id', 'role', 'regionCodes'],
+    });
+    if (!user) return { units: [], total: 0 };
+    const regionCodes = scopedRegionCodes({
+      role: user.role,
+      regionCodes: user.regionCodes ?? [],
+    });
+    if (regionCodes && regionCodes.length === 0) return { units: [], total: 0 };
 
-    if (filters.type) {
-      const normalized = filters.type.toUpperCase();
-      if (normalized === 'RENT') where['propertyType'] = PropertyType.RENTAL;
-      else if (normalized === 'SALE')
-        where['propertyType'] = PropertyType.FOR_SALE;
+    const qb = this.unitRepo
+      .createQueryBuilder('u')
+      .leftJoinAndSelect('u.asset', 'a')
+      .leftJoinAndSelect('a.locality', 'l')
+      .leftJoinAndSelect('l.city', 'ci')
+      .where('u.companyId = :companyId', { companyId })
+      .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
+      .andWhere('u.deletedAt IS NULL');
+
+    if (regionCodes) {
+      qb.andWhere('ci.regionCode IN (:...regionCodes)', { regionCodes });
     }
-    if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
-      where['price'] = Between(filters.minPrice, filters.maxPrice);
-    } else if (filters.minPrice !== undefined) {
-      where['price'] = MoreThanOrEqual(filters.minPrice);
-    } else if (filters.maxPrice !== undefined) {
-      where['price'] = LessThanOrEqual(filters.maxPrice);
+    if (filters.type === 'RENT') {
+      qb.andWhere('u.propertyType = :pt', { pt: PropertyType.RENTAL });
+    } else if (filters.type === 'SALE') {
+      qb.andWhere('u.propertyType = :pt', { pt: PropertyType.FOR_SALE });
     }
-    if (filters.bedrooms !== undefined) {
-      where['bedrooms'] = filters.bedrooms;
+    if (filters.minPrice !== undefined) {
+      qb.andWhere('u.price >= :minPrice', { minPrice: filters.minPrice });
+    }
+    if (filters.maxPrice !== undefined) {
+      qb.andWhere('u.price <= :maxPrice', { maxPrice: filters.maxPrice });
+    }
+    if (filters.minBedrooms !== undefined) {
+      qb.andWhere('u.bedrooms >= :minBedrooms', {
+        minBedrooms: filters.minBedrooms,
+      });
+    }
+    if (filters.maxBedrooms !== undefined) {
+      qb.andWhere('u.bedrooms <= :maxBedrooms', {
+        maxBedrooms: filters.maxBedrooms,
+      });
+    }
+    if (filters.minBathrooms !== undefined) {
+      qb.andWhere('u.bathrooms >= :minBathrooms', {
+        minBathrooms: filters.minBathrooms,
+      });
+    }
+    if (filters.minSqft !== undefined) {
+      qb.andWhere('u.sqFt >= :minSqft', { minSqft: filters.minSqft });
+    }
+    if (filters.maxSqft !== undefined) {
+      qb.andWhere('u.sqFt <= :maxSqft', { maxSqft: filters.maxSqft });
     }
     if (filters.city) {
-      where['asset'] = {
-        locality: { city: { name: ILike(`%${filters.city}%`) } },
-      };
+      qb.andWhere('ci.name ILIKE :city', { city: likePattern(filters.city) });
     }
-
-    return this.unitRepo.find({
-      where,
-      relations: ['asset', 'asset.locality', 'asset.locality.city'],
-      order: { createdAt: 'DESC' },
-      take: 20,
+    if (filters.place) {
+      qb.andWhere(
+        new Brackets((w) => {
+          for (const col of ['a.name', 'l.name', 'ci.name']) {
+            w.orWhere(`${col} ILIKE :placeLike`).orWhere(
+              `similarity(${col}, :place) > :placeSimilarity`,
+            );
+          }
+        }),
+        {
+          place: filters.place,
+          placeLike: likePattern(filters.place),
+          placeSimilarity: PLACE_SIMILARITY,
+        },
+      );
+    }
+    (filters.amenities ?? []).forEach((amenity, i) => {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM jsonb_array_elements_text(u.amenities) am WHERE replace(am, '_', ' ') ILIKE :amenity${i})`,
+        { [`amenity${i}`]: likePattern(amenity) },
+      );
     });
+
+    const order: Record<string, [string, 'ASC' | 'DESC']> = {
+      price_low: ['u.price', 'ASC'],
+      price_high: ['u.price', 'DESC'],
+      largest: ['u.sqFt', 'DESC'],
+    };
+    const [column, direction] = order[filters.sort ?? ''] ?? [
+      'u.createdAt',
+      'DESC',
+    ];
+    qb.orderBy(column, direction, 'NULLS LAST').addOrderBy('u.id', 'ASC');
+
+    const [units, total] = await qb.take(20).getManyAndCount();
+    return { units, total };
   }
 
   async getCompanyPrompt(companyId: string): Promise<string | null> {

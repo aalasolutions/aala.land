@@ -8,13 +8,15 @@ import {
   IsInt,
   IsArray,
   Min,
+  Max,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
+import { IsHalfStep } from '@shared/decorators/is-half-step.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
-import { UnitStatus } from '../entities/unit.entity';
+import { UnitStatus, MAX_BATHROOMS } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
 
 export class CreateUnitDto {
@@ -40,6 +42,13 @@ export class CreateUnitDto {
   @Type(() => ContactIdentityDto)
   @IsOptional()
   owner?: ContactIdentityDto;
+
+  // Typed by an agent attaching someone else's contact: a match unlocks it, a miss raises a request.
+  @ApiPropertyOptional({ example: '+971501234567', maxLength: 30 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30)
+  ownerVerifyPhone?: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-agent' })
   @IsUUID()
@@ -75,9 +84,11 @@ export class CreateUnitDto {
   @IsOptional()
   bedrooms?: number;
 
-  @ApiPropertyOptional({ example: 2 })
-  @IsInt()
+  @ApiPropertyOptional({ example: 2.5, description: 'Half steps allowed' })
+  @IsNumber()
+  @IsHalfStep()
   @Min(0)
+  @Max(MAX_BATHROOMS)
   @IsOptional()
   bathrooms?: number;
 

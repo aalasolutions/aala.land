@@ -11,6 +11,11 @@ import { Asset } from '../properties/entities/asset.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { contactDisplayName } from '../../shared/utils/contact.util';
+import { limitedDisplayName } from '../../shared/utils/contact-privacy.util';
+import {
+  ContactPrivacyService,
+  ContactViewer,
+} from '../contacts/contact-privacy.service';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
 import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 import {
@@ -91,6 +96,8 @@ interface DepositReminderRaw {
   tenant_first_name: string | null;
   tenant_last_name: string | null;
   tenant_phone: string | null;
+  tenant_region_code: string | null;
+  tenant_created_by: string | null;
 }
 
 // One definition of the range clause, so a bound or a cast changes in one place.
@@ -121,6 +128,7 @@ export class FinancialAnalyticsService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    private readonly contactPrivacy: ContactPrivacyService,
   ) {}
 
   async getSummary(
@@ -340,7 +348,7 @@ export class FinancialAnalyticsService {
   async getDepositReminders(
     companyId: string,
     regionCode?: string,
-    caller?: RegionScope,
+    caller?: ContactViewer,
   ): Promise<DepositReminders> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     if (regionCodes?.length === 0) {
@@ -351,6 +359,7 @@ export class FinancialAnalyticsService {
     const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
     const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
 
+    const tenantRows: DepositReminderRaw[] = [];
     const bucket = async (condition: string): Promise<DepositReminder[]> => {
       // Every join is to-one: UQ_leases_active_unit allows one ACTIVE lease per unit.
       const qb = this.transactionRepository
@@ -382,6 +391,8 @@ export class FinancialAnalyticsService {
         .addSelect('c.first_name', 'tenant_first_name')
         .addSelect('c.last_name', 'tenant_last_name')
         .addSelect('c.phone', 'tenant_phone')
+        .addSelect('c.region_code', 'tenant_region_code')
+        .addSelect('c.created_by', 'tenant_created_by')
         .where('t.company_id = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.PENDING })
@@ -396,6 +407,7 @@ export class FinancialAnalyticsService {
       const rawById = new Map(raw.map((r) => [r.t_id, r]));
       return entities.map((t) => {
         const r = rawById.get(t.id);
+        if (r?.tenant_contact_id) tenantRows.push(r);
         return Object.assign(t, {
           unitNumber: r?.unit_number ?? null,
           areaId: r?.area_id ?? null,
@@ -417,7 +429,47 @@ export class FinancialAnalyticsService {
       bucket(`t.due_date > ${today} AND t.due_date <= ${weekEnd}`),
       bucket(`t.due_date > ${weekEnd} AND t.due_date <= ${monthEnd}`),
     ]);
+    await this.maskLimitedTenants(
+      companyId,
+      caller,
+      [overdue, dueToday, dueThisWeek, dueThisMonth].flat(),
+      tenantRows,
+    );
 
     return { overdue, dueToday, dueThisWeek, dueThisMonth };
+  }
+
+  // One access lookup per call; a LIMITED tenant shows first name and initial, else a masked phone.
+  private async maskLimitedTenants(
+    companyId: string,
+    caller: ContactViewer | undefined,
+    reminders: DepositReminder[],
+    rows: DepositReminderRaw[],
+  ): Promise<void> {
+    const tenants = new Map<string, DepositReminderRaw>();
+    rows.forEach((r) => {
+      if (r.tenant_contact_id) tenants.set(r.tenant_contact_id, r);
+    });
+    if (tenants.size === 0) return;
+    const levels = await this.contactPrivacy.accessLevelFor(
+      companyId,
+      caller,
+      [...tenants.entries()].map(([id, r]) => ({
+        id,
+        regionCode: r.tenant_region_code ?? '',
+        createdBy: r.tenant_created_by,
+      })),
+    );
+    for (const reminder of reminders) {
+      const id = reminder.tenantContactId;
+      const r = id ? tenants.get(id) : undefined;
+      if (id && r && levels.get(id) !== 'FULL') {
+        reminder.tenantName = limitedDisplayName({
+          firstName: r.tenant_first_name,
+          lastName: r.tenant_last_name,
+          phone: r.tenant_phone,
+        });
+      }
+    }
   }
 }

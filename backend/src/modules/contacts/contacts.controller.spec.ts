@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
@@ -47,6 +48,7 @@ describe('ContactsController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            verifyPhone: jest.fn(),
           },
         },
       ],
@@ -103,6 +105,7 @@ describe('ContactsController', () => {
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          allRegions: false,
         },
         mockReq.user,
       );
@@ -127,7 +130,105 @@ describe('ContactsController', () => {
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          allRegions: false,
         },
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('findAll tag', () => {
+    it('400s a tag outside the known list, such as the old vendor', () => {
+      expect(() =>
+        controller.findAll(mockReq, 1, 20, undefined, 'vendor'),
+      ).toThrow(BadRequestException);
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('passes a known tag through', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await controller.findAll(mockReq, 1, 20, undefined, 'portfolio_owner');
+
+      expect(service.findAll.mock.calls[0][4]).toBe('portfolio_owner');
+    });
+  });
+
+  describe('findAll sort', () => {
+    it('passes sort=name and rejects any other value', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const call = (sort?: string) =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          sort,
+        );
+
+      await call('name');
+      expect(service.findAll.mock.calls[0][5]).toMatchObject({ sort: 'name' });
+
+      expect(() => call('created')).toThrow(BadRequestException);
+    });
+  });
+
+  describe('findAll allRegions', () => {
+    it("passes allRegions only for the literal 'true'", async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const args = [
+        mockReq,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'makkah',
+      ] as const;
+
+      await controller.findAll(...args, 'true');
+      await controller.findAll(...args, '1');
+
+      const filters = service.findAll.mock.calls.map((c) => c[5]);
+      expect(filters[0]).toMatchObject({
+        regionCode: 'makkah',
+        allRegions: true,
+      });
+      expect(filters[1]).toMatchObject({ allRegions: false });
+    });
+  });
+
+  describe('verifyPhone', () => {
+    it('passes the typed phone and the caller to the service', async () => {
+      service.verifyPhone.mockResolvedValue({
+        verified: false,
+        contact: { id: 'contact-uuid-1' },
+      } as any);
+
+      await controller.verifyPhone(
+        'contact-uuid-1',
+        { phone: '0501234567' },
+        mockReq,
+      );
+
+      expect(service.verifyPhone).toHaveBeenCalledWith(
+        'contact-uuid-1',
+        companyId,
+        '0501234567',
         mockReq.user,
       );
     });
@@ -142,7 +243,7 @@ describe('ContactsController', () => {
       expect(service.findOne).toHaveBeenCalledWith(
         'contact-uuid-1',
         companyId,
-        caller,
+        mockReq.user,
       );
       expect(result).toEqual(mockContact);
     });
@@ -163,7 +264,7 @@ describe('ContactsController', () => {
         'contact-uuid-1',
         companyId,
         { firstName: 'Khalid' },
-        caller,
+        mockReq.user,
       );
       expect(result.firstName).toBe('Khalid');
     });

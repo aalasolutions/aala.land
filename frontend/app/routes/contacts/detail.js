@@ -1,5 +1,6 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
+import { isLimited } from 'land/utils/contact-display';
 
 export default class ContactsDetailRoute extends AuthenticatedRoute {
   @service auth;
@@ -9,9 +10,13 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
       .fetchJson(`/contacts/${contact_id}`)
       .catch(() => null);
     const contact = contactResult?.data || null;
+    // A LIMITED view shows no related records, so none are fetched.
+    if (isLimited(contact)) {
+      return { contact, units: [], leases: [], leads: [] };
+    }
     const tags = contact?.tags || [];
 
-    // Vendor is just Owner with 2+ units, so one fetch of "units owned" covers both tags.
+    // Portfolio owner is just owner with 2+ units, so one fetch of "units owned" covers both tags.
     const [unitsResult, leasesResult, leadsResult] = await Promise.all([
       tags.includes('owner')
         ? this.auth

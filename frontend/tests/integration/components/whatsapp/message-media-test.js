@@ -157,6 +157,15 @@ module('Integration | Component | whatsapp/message-media', function (hooks) {
       .dom('[data-test-wa-media-too-large]')
       .hasText('File too large to receive');
     assert.dom('[data-test-wa-media-delete]').doesNotExist();
+
+    this.set('message', media({ mediaStatus: 'UNSUPPORTED' }));
+    assert
+      .dom('[data-test-wa-media-unsupported]')
+      .hasText(
+        "This message can't be shown here. Open WhatsApp on your phone to see it.",
+      );
+    assert.dom('[data-test-wa-media-pending]').doesNotExist();
+    assert.dom('[data-test-wa-media-delete]').doesNotExist();
   });
 
   test('deleted inbound media shows one record line with an isolated file name', async function (assert) {

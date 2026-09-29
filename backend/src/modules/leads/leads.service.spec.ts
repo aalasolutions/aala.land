@@ -5,6 +5,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
 import { LeadsService } from './leads.service';
@@ -26,6 +28,9 @@ import { NotificationType } from '../notifications/entities/notification.entity'
 import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { ContactsService } from '../contacts/contacts.service';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
+import { ContactAttachService } from '../contacts/contact-attach.service';
+import { ContactAccessRequestsService } from '../contact-access-requests/contact-access-requests.service';
 
 describe('LeadsService', () => {
   let service: LeadsService;
@@ -36,6 +41,12 @@ describe('LeadsService', () => {
   let localityRepo: jest.Mocked<Repository<Locality>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let contactsService: { resolveOrCreate: jest.Mock; findOneEntity: jest.Mock };
+  let privacy: { presentMany: jest.Mock; accessLevelFor: jest.Mock };
+  let accessRequests: {
+    grantLink: jest.Mock;
+    verifyPhone: jest.Mock;
+    raiseRequest: jest.Mock;
+  };
   let module: TestingModule;
   let manager: {
     getRepository: jest.Mock;
@@ -76,6 +87,19 @@ describe('LeadsService', () => {
     ({ id: 'contact-uuid-1', firstName, lastName, phone, companyId }) as any;
 
   beforeEach(async () => {
+    privacy = {
+      presentMany: jest.fn((_c: string, _v: unknown, rows: unknown[]) =>
+        Promise.resolve(rows),
+      ),
+      accessLevelFor: jest.fn((_c: string, _v: unknown, rows: any[]) =>
+        Promise.resolve(new Map(rows.map((r) => [r.id, 'FULL']))),
+      ),
+    };
+    accessRequests = {
+      grantLink: jest.fn().mockResolvedValue(undefined),
+      verifyPhone: jest.fn(),
+      raiseRequest: jest.fn().mockResolvedValue({}),
+    };
     manager = {
       getRepository: jest.fn((entity: unknown) =>
         entity === LeadActivity ? activityRepo : leadRepo,
@@ -170,6 +194,9 @@ describe('LeadsService', () => {
             broadcastToCompany: jest.fn(),
           },
         },
+        ContactAttachService,
+        { provide: ContactPrivacyService, useValue: privacy },
+        { provide: ContactAccessRequestsService, useValue: accessRequests },
       ],
     }).compile();
 
@@ -182,9 +209,10 @@ describe('LeadsService', () => {
     unitRepo = module.get(getRepositoryToken(Unit));
     contactsService = module.get(ContactsService);
     // Default: resolveOrCreate returns a contact carrying the lead's name.
-    contactsService.resolveOrCreate.mockResolvedValue(
-      contact('Ahmed', 'Al-Rashid'),
-    );
+    contactsService.resolveOrCreate.mockResolvedValue({
+      contact: contact('Ahmed', 'Al-Rashid'),
+      existing: false,
+    });
   });
 
   it('should be defined', () => {
@@ -207,6 +235,7 @@ describe('LeadsService', () => {
         expect.any(Object),
         undefined,
         expect.any(String),
+        undefined,
       );
       expect(leadRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -217,11 +246,9 @@ describe('LeadsService', () => {
       );
       expect(result).toEqual({
         ...mockLead,
-        contact: {
-          ...contact('Ahmed', 'Al-Rashid'),
-          displayName: 'Ahmed Al-Rashid',
-        },
+        contact: contact('Ahmed', 'Al-Rashid'),
         assignedAgentName: null,
+        contactAccess: 'LIMITED',
       });
     });
 
@@ -237,7 +264,8 @@ describe('LeadsService', () => {
         defaultRegionCode: 'dubai',
       } as Company);
       contactsService.resolveOrCreate.mockResolvedValue({
-        id: 'contact-uuid-1',
+        contact: { id: 'contact-uuid-1' },
+        existing: false,
       } as any);
       leadRepo.create.mockReturnValue(mockLead as Lead);
       leadRepo.save.mockResolvedValue({ ...mockLead } as Lead);
@@ -251,6 +279,7 @@ describe('LeadsService', () => {
         expect.objectContaining({ lastName: 'Al-Rashid Holdings' }),
         undefined,
         expect.any(String),
+        undefined,
       );
     });
 
@@ -339,9 +368,10 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(clientLead as Lead);
       leadRepo.save.mockResolvedValue(clientLead as Lead);
-      contactsService.resolveOrCreate.mockResolvedValue(
-        contact('Samir', 'Hassan'),
-      );
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: contact('Samir', 'Hassan'),
+        existing: false,
+      });
       const notificationsService = module!.get(NotificationsService);
 
       await service.create(companyId, {
@@ -477,9 +507,10 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(noAssignLead as Lead);
       leadRepo.save.mockResolvedValue(noAssignLead as Lead);
-      contactsService.resolveOrCreate.mockResolvedValue(
-        contact('Layla', 'Ibrahim'),
-      );
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: contact('Layla', 'Ibrahim'),
+        existing: false,
+      });
       const notificationsService = module!.get(NotificationsService);
       (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
         admin1,
@@ -529,7 +560,10 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(noAssignLead as Lead);
       leadRepo.save.mockResolvedValue(noAssignLead as Lead);
-      contactsService.resolveOrCreate.mockResolvedValue(contact('Salma', ''));
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: contact('Salma', ''),
+        existing: false,
+      });
       const notificationsService = module!.get(NotificationsService);
 
       await service.create(companyId, { firstName: 'Salma' } as any);
@@ -1384,12 +1418,21 @@ describe('LeadsService', () => {
   });
 
   describe('region scoping', () => {
-    const makkahAgent = { role: Role.AGENT, regionCodes: ['makkah'] };
+    const makkahAgent = {
+      userId: 'agent-uuid-1',
+      role: Role.AGENT,
+      regionCodes: ['makkah'],
+    };
     const twoRegionAgent = {
+      userId: 'agent-uuid-1',
       role: Role.AGENT,
       regionCodes: ['makkah', 'punjab'],
     };
-    const admin = { role: Role.COMPANY_ADMIN, regionCodes: ['makkah'] };
+    const admin = {
+      userId: 'admin-uuid-1',
+      role: Role.COMPANY_ADMIN,
+      regionCodes: ['makkah'],
+    };
 
     function seedLeadInRegion(regionCode: string) {
       const row = { ...mockLead, regionCode } as Lead;
@@ -1486,6 +1529,7 @@ describe('LeadsService', () => {
 
         await expect(
           service.findOne('lead-uuid-1', companyId, {
+            userId: 'agent-uuid-1',
             role: Role.AGENT,
             regionCodes: [],
           }),
@@ -1561,6 +1605,359 @@ describe('LeadsService', () => {
           expect.objectContaining({ regionCode: 'makkah' }),
         );
       });
+    });
+  });
+
+  describe('contact access', () => {
+    const agentCaller = { role: Role.AGENT, regionCodes: ['dubai'] };
+    const managerCaller = { role: Role.MANAGER, regionCodes: ['dubai'] };
+    const someoneElses = {
+      id: 'contact-uuid-9',
+      firstName: 'Test',
+      lastName: 'User',
+      phone: '+971501234567',
+      regionCode: 'makkah',
+      createdBy: 'other-user',
+      companyId,
+    } as any;
+    const leadSource = { sourceType: 'lead', sourceId: 'lead-uuid-7' };
+
+    function arrangeCreate(assignedTo: string | null = null) {
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
+      const saved = {
+        id: 'lead-uuid-7',
+        companyId,
+        status: LeadStatus.NEW,
+        regionCode: 'dubai',
+        assignedTo,
+      } as Lead;
+      leadRepo.create.mockReturnValue(saved);
+      leadRepo.save.mockResolvedValue(saved);
+      contactsService.resolveOrCreate.mockResolvedValue({
+        contact: someoneElses,
+        existing: true,
+      });
+    }
+
+    function limitedFor(id: string) {
+      privacy.accessLevelFor.mockResolvedValue(new Map([[id, 'LIMITED']]));
+    }
+
+    it('unlocks the contact when the typed phone matches', async () => {
+      arrangeCreate();
+      limitedFor('contact-uuid-9');
+      accessRequests.verifyPhone.mockResolvedValue(true);
+
+      const result = await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9', contactVerifyPhone: '0501234567' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(accessRequests.verifyPhone).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-1',
+        '0501234567',
+        leadSource,
+      );
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+      expect(result.contactAccess).toBe('FULL');
+      expect(leadRepo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ contactVerifyPhone: expect.anything() }),
+      );
+    });
+
+    it('raises a request with the lead as source when the phone misses', async () => {
+      arrangeCreate();
+      limitedFor('contact-uuid-9');
+      accessRequests.verifyPhone.mockResolvedValue(false);
+
+      const result = await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9', contactVerifyPhone: '0500000000' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(accessRequests.raiseRequest).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-1',
+        leadSource,
+        null,
+      );
+      expect(result.contactAccess).toBe('PENDING');
+    });
+
+    it('treats the typed contact phone as the verification on a match', async () => {
+      arrangeCreate();
+      limitedFor('contact-uuid-9');
+      accessRequests.verifyPhone.mockResolvedValue(true);
+
+      const result = await service.create(
+        companyId,
+        { firstName: 'Test', phone: '0501234567' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(accessRequests.verifyPhone).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-1',
+        '0501234567',
+        leadSource,
+      );
+      expect(result.contactAccess).toBe('FULL');
+    });
+
+    it('raises a request without verifying when no phone is typed', async () => {
+      arrangeCreate();
+      limitedFor('contact-uuid-9');
+
+      const result = await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(accessRequests.verifyPhone).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).toHaveBeenCalledTimes(1);
+      expect(result.contactAccess).toBe('PENDING');
+    });
+
+    it('keeps the saved lead and raises a request when the phone check is rate limited', async () => {
+      arrangeCreate();
+      limitedFor('contact-uuid-9');
+      accessRequests.verifyPhone.mockRejectedValue(
+        new HttpException('Too many attempts', HttpStatus.TOO_MANY_REQUESTS),
+      );
+
+      const result = await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9', contactVerifyPhone: '0500000000' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(result.contactAccess).toBe('PENDING');
+      expect(accessRequests.raiseRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it('requests nothing when the agent already has FULL', async () => {
+      arrangeCreate();
+
+      const result = await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9', contactVerifyPhone: '0501234567' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(accessRequests.verifyPhone).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+      expect(result.contactAccess).toBe('FULL');
+    });
+
+    it('never merges for an agent: the caller role reaches resolveOrCreate', async () => {
+      arrangeCreate();
+
+      await service.create(
+        companyId,
+        { phone: '0501234567' },
+        'agent-uuid-1',
+        agentCaller,
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        expect.any(Object),
+        'agent-uuid-1',
+        'dubai',
+        Role.AGENT,
+      );
+    });
+
+    it('links the assigned agent when a manager creates an assigned lead', async () => {
+      arrangeCreate('agent-uuid-2');
+
+      await service.create(
+        companyId,
+        { contactId: 'contact-uuid-9' },
+        'manager-uuid-1',
+        managerCaller,
+      );
+
+      expect(accessRequests.grantLink).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-2',
+        'manager-uuid-1',
+        leadSource,
+      );
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+    });
+
+    it('links the new assignee when an admin reassigns through update', async () => {
+      const row = {
+        ...mockLead,
+        id: 'lead-uuid-7',
+        contactId: 'contact-uuid-9',
+        contact: someoneElses,
+        assignedTo: 'old-agent',
+      } as Lead;
+      leadRepo.findOne.mockResolvedValue({ ...row } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({
+        id: 'agent-uuid-2',
+        name: 'Agent Two',
+      } as User);
+      activityRepo.create.mockImplementation((a) => a as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update(
+        'lead-uuid-7',
+        companyId,
+        { assignedTo: 'agent-uuid-2' },
+        'admin-uuid-1',
+        Role.COMPANY_ADMIN,
+        { role: Role.COMPANY_ADMIN, regionCodes: [] },
+      );
+
+      expect(accessRequests.grantLink).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-2',
+        'admin-uuid-1',
+        leadSource,
+      );
+    });
+
+    it('raises a request, never a phone check, when an agent repoints the contact', async () => {
+      const row = { ...mockLead, id: 'lead-uuid-7' } as Lead;
+      leadRepo.findOne.mockResolvedValue({ ...row } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      contactsService.findOneEntity.mockResolvedValue(someoneElses);
+      limitedFor('contact-uuid-9');
+
+      await service.update(
+        'lead-uuid-7',
+        companyId,
+        { contactId: 'contact-uuid-9' },
+        'agent-uuid-1',
+        Role.AGENT,
+        agentCaller,
+      );
+
+      expect(contactsService.findOneEntity).toHaveBeenCalledWith(
+        'contact-uuid-9',
+        companyId,
+      );
+      expect(accessRequests.verifyPhone).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-1',
+        leadSource,
+        null,
+      );
+    });
+
+    it('touches no grants when an update leaves contact and assignee alone', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+
+      await service.update(
+        'lead-uuid-1',
+        companyId,
+        { notes: 'x' },
+        'agent-uuid-1',
+        Role.AGENT,
+        agentCaller,
+      );
+
+      expect(privacy.accessLevelFor).not.toHaveBeenCalled();
+      expect(accessRequests.raiseRequest).not.toHaveBeenCalled();
+      expect(accessRequests.grantLink).not.toHaveBeenCalled();
+    });
+
+    it('raises a request when an agent assigns a lead on someone else contact to themselves', async () => {
+      const row = {
+        ...mockLead,
+        id: 'lead-uuid-7',
+        contactId: 'contact-uuid-9',
+        contact: someoneElses,
+      } as Lead;
+      leadRepo.findOne.mockResolvedValue({ ...row } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({
+        id: 'agent-uuid-1',
+        name: 'Agent One',
+      } as User);
+      activityRepo.create.mockImplementation((a) => a as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+      limitedFor('contact-uuid-9');
+
+      await service.assign(
+        'lead-uuid-7',
+        companyId,
+        'agent-uuid-1',
+        'agent-uuid-1',
+        undefined,
+        agentCaller,
+      );
+
+      expect(accessRequests.raiseRequest).toHaveBeenCalledWith(
+        companyId,
+        'contact-uuid-9',
+        'agent-uuid-1',
+        leadSource,
+        null,
+      );
+      expect(accessRequests.grantLink).not.toHaveBeenCalled();
+    });
+
+    it('presents every lead contact of a page in one presenter call', async () => {
+      const a = { ...mockLead, id: 'l1', contact: { id: 'c1' } } as Lead;
+      const b = { ...mockLead, id: 'l2', contact: { id: 'c1' } } as Lead;
+      const c = { ...mockLead, id: 'l3', contact: null } as Lead;
+      leadRepo.findAndCount.mockResolvedValue([[a, b, c], 3]);
+      const viewer = { userId: 'agent-uuid-1', ...agentCaller };
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        viewer,
+      );
+
+      expect(privacy.presentMany).toHaveBeenCalledTimes(1);
+      expect(privacy.presentMany).toHaveBeenCalledWith(companyId, viewer, [
+        { id: 'c1' },
+      ]);
+      expect(result.data.map((l) => l.contact)).toEqual([
+        { id: 'c1' },
+        { id: 'c1' },
+        null,
+      ]);
+    });
+
+    it('caps the leads page at 100 rows', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      const result = await service.findAll(companyId, 2, 500);
+
+      expect(leadRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 100, take: 100 }),
+      );
+      expect(result.limit).toBe(100);
     });
   });
 });

@@ -21,7 +21,11 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
-import { ContactsService } from './contacts.service';
+import {
+  CONTACT_TAGS,
+  ContactsService,
+  isContactTag,
+} from './contacts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -29,6 +33,7 @@ import { Role } from '@shared/enums/roles.enum';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DeleteContactDto } from './dto/delete-contact.dto';
+import { VerifyContactPhoneDto } from './dto/verify-contact-phone.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 
@@ -71,11 +76,23 @@ export class ContactsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Searches the whole company; regionCode is ignored',
+  })
+  @ApiQuery({
+    name: 'allRegions',
+    required: false,
+    type: Boolean,
+    description:
+      'true lists every region of the company; regionCode is ignored',
+  })
   @ApiQuery({
     name: 'tag',
     required: false,
-    enum: ['lead', 'tenant', 'owner', 'vendor'],
+    enum: CONTACT_TAGS,
     description: 'Filter by derived role tag',
   })
   @ApiQuery({
@@ -83,6 +100,12 @@ export class ContactsController {
     required: false,
     type: String,
     description: 'Contacts with a lead or owned unit assigned to this agent',
+  })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    enum: ['name'],
+    description: 'name sorts by first then last name; default is newest first',
   })
   @ApiQuery({ name: 'isWhatsapp', required: false, type: Boolean })
   @ApiQuery({ name: 'company', required: false, type: String })
@@ -104,7 +127,7 @@ export class ContactsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
-    @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'vendor',
+    @Query('tag') tag?: string,
     @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
     @Query('isWhatsapp') isWhatsapp?: string,
     @Query('company') company?: string,
@@ -112,7 +135,18 @@ export class ContactsController {
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('regionCode') regionCode?: string,
+    @Query('allRegions') allRegions?: string,
+    @Query('sort') sort?: string,
   ) {
+    if (sort && sort !== 'name') {
+      throw new BadRequestException('sort must be name');
+    }
+    if (tag && !isContactTag(tag)) {
+      throw new BadRequestException(
+        `tag must be one of ${CONTACT_TAGS.join(', ')}`,
+      );
+    }
+    const tagFilter = tag && isContactTag(tag) ? tag : undefined;
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
     }
@@ -124,7 +158,7 @@ export class ContactsController {
       page,
       limit,
       search,
-      tag,
+      tagFilter,
       {
         agentId: agentId || undefined,
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
@@ -133,6 +167,8 @@ export class ContactsController {
         regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
+        allRegions: allRegions === 'true',
+        sort: sort === 'name' ? 'name' : undefined,
       },
       req.user,
     );
@@ -152,10 +188,11 @@ export class ContactsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.findOne(id, requireCompanyId(req.user), {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.contactsService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -166,16 +203,48 @@ export class ContactsController {
     Role.MANAGER,
     Role.AGENT,
   )
-  @ApiOperation({ summary: 'Update a contact (ADMIN+, AGENT)' })
+  @ApiOperation({
+    summary:
+      'Update a contact (creator, ADMIN or MANAGER in its region, COMPANY_ADMIN, SUPER_ADMIN)',
+  })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateContactDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.update(id, requireCompanyId(req.user), dto, {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.contactsService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
+  }
+
+  @Post(':id/verify-phone')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Unlock a contact by typing its phone number (429 after five misses in an hour)',
+  })
+  verifyPhone(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VerifyContactPhoneDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.contactsService.verifyPhone(
+      id,
+      requireCompanyId(req.user),
+      dto.phone,
+      req.user,
+    );
   }
 
   @Post(':id/delete')

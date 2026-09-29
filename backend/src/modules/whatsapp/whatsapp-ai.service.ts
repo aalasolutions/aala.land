@@ -779,6 +779,7 @@ export class WhatsappAiService {
           toolCall.name,
           toolCall.args,
           companyId,
+          userId,
           this.repo,
           this.promptBuilder,
           fallbackCurrency,
@@ -985,7 +986,7 @@ export class WhatsappAiService {
         const body: Record<string, unknown> = {
           model,
           messages,
-          stream: true,
+          stream: false,
           temperature: envFloat('AI_TEMPERATURE', 0.7),
           top_p: envFloat('AI_TOP_P', 0.9),
         };
@@ -1009,7 +1010,7 @@ export class WhatsappAiService {
           return null;
         }
 
-        return await this.readCompletionStream(res);
+        return (await res.json()) as ChatCompletion;
       } catch (err) {
         const cause = errorCause(err);
         const isTransient =
@@ -1030,86 +1031,5 @@ export class WhatsappAiService {
       }
     }
     return null;
-  }
-
-  // Tool-call ids and names arrive in the first delta; arguments stream across many.
-  private async readCompletionStream(
-    res: Response,
-  ): Promise<ChatCompletion | null> {
-    const reader = res.body?.getReader();
-    if (!reader) return null;
-
-    const decoder = new TextDecoder();
-    let buf = '';
-    let content = '';
-    const toolCallMap: Record<
-      number,
-      {
-        id: string;
-        type: string;
-        function: { name: string; arguments: string };
-      }
-    > = {};
-
-    try {
-      outer: while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-
-        const lines = buf.split('\n');
-        buf = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') break outer;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta;
-            if (!delta) continue;
-
-            if (typeof delta.content === 'string') content += delta.content;
-
-            if (Array.isArray(delta.tool_calls)) {
-              for (const tc of delta.tool_calls) {
-                const idx: number = tc.index ?? 0;
-                if (!toolCallMap[idx]) {
-                  toolCallMap[idx] = {
-                    id: '',
-                    type: 'function',
-                    function: { name: '', arguments: '' },
-                  };
-                }
-                if (tc.id && !toolCallMap[idx].id) toolCallMap[idx].id = tc.id;
-                if (tc.function?.name && !toolCallMap[idx].function.name)
-                  toolCallMap[idx].function.name = tc.function.name;
-                if (tc.function?.arguments)
-                  toolCallMap[idx].function.arguments += tc.function.arguments;
-              }
-            }
-          } catch {
-            /* malformed SSE chunk, skip */
-          }
-        }
-      }
-    } finally {
-      // cancel(), not releaseLock(): body is not at EOF, an undrained body pins the socket
-      await reader.cancel().catch(() => undefined);
-      reader.releaseLock();
-    }
-
-    const tool_calls = Object.values(toolCallMap);
-    return {
-      choices: [
-        {
-          message: {
-            role: 'assistant',
-            content: content || null,
-            ...(tool_calls.length > 0 ? { tool_calls } : {}),
-          },
-        },
-      ],
-    };
   }
 }

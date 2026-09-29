@@ -56,6 +56,13 @@ export class CreateLeadDto {
   @IsOptional()
   isWhatsapp?: boolean;
 
+  // Typed by an agent attaching someone else's contact: a match unlocks it, a miss raises a request.
+  @ApiPropertyOptional({ example: '+971501234567', maxLength: 30 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(30)
+  contactVerifyPhone?: string;
+
   @ApiPropertyOptional({ enum: LeadStatus, default: LeadStatus.NEW })
   @IsEnum(LeadStatus)
   @IsOptional()

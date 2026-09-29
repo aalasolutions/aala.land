@@ -171,6 +171,26 @@ export function resolveInboundMedia(
   };
 }
 
+// Types that are changes to another message or carry nothing to show; never a bubble of their own.
+const NO_BUBBLE_TYPES = new Set(['text', 'reaction', 'revoke', 'edit']);
+
+// A customer message with nothing we can show (type `unsupported`, or media with no id) still gets a bubble.
+export function unsupportedInboundMedia(
+  message: CloudMediaMessage,
+): InboundMedia | null {
+  const type = message.type ?? '';
+  if (!type || !message.id || NO_BUBBLE_TYPES.has(type)) return null;
+  return {
+    body: '',
+    mediaType: 'media_placeholder',
+    mediaStatus: WaMediaStatus.UNSUPPORTED,
+    mediaMetaId: null,
+    mediaMime: null,
+    mediaSha256: null,
+    mediaFileName: null,
+  };
+}
+
 // The socket payload carries no Meta media id or hash.
 export function toWireMessage(evt: WaMessage & WaMessageInsert): WaMessage {
   const message: WaMessage & WaMessageInsert = { ...evt };
@@ -197,6 +217,28 @@ interface WaOutboundRule {
 const KB = 1024;
 const MB = 1024 * 1024;
 export const WA_ANIMATED_STICKER_LIMIT_BYTES = 500 * KB;
+export const WA_STICKER_LIMIT_BYTES = 100 * KB;
+const WA_STICKER_SIDE_PX = 512;
+export const WA_ANIMATED_WEBP_MESSAGE =
+  'An animated WebP can only be sent as a 512x512 sticker without a caption.';
+
+// Meta delivers a WebP only as a sticker, and only at exactly 512x512 within the sticker size limit.
+export function isSendableSticker(
+  width: number | undefined,
+  height: number | undefined,
+  sizeBytes: number,
+  animated: boolean,
+): boolean {
+  const limit = animated
+    ? WA_ANIMATED_STICKER_LIMIT_BYTES
+    : WA_STICKER_LIMIT_BYTES;
+  return (
+    width === WA_STICKER_SIDE_PX &&
+    height === WA_STICKER_SIDE_PX &&
+    sizeBytes > 0 &&
+    sizeBytes <= limit
+  );
+}
 
 // Meta accepts plain text, PDF and Office files as documents; csv and markdown are text and go up as text/plain.
 const DOCUMENT_RULES: Record<string, WaOutboundRule> = {
@@ -253,7 +295,11 @@ const MEDIA_RULES: Record<string, WaOutboundRule> = {
   'audio/mp4': { type: 'audio', ext: 'm4a', limitBytes: 16 * MB },
   'audio/ogg': { type: 'audio', ext: 'ogg', limitBytes: 16 * MB },
   // Static limit; an animated sticker is allowed WA_ANIMATED_STICKER_LIMIT_BYTES.
-  'image/webp': { type: 'sticker', ext: 'webp', limitBytes: 100 * KB },
+  'image/webp': {
+    type: 'sticker',
+    ext: 'webp',
+    limitBytes: WA_STICKER_LIMIT_BYTES,
+  },
 };
 
 // Keyed by the mime detected from the file bytes, never the one the client sent.

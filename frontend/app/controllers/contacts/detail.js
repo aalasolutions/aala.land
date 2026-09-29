@@ -7,6 +7,7 @@ import {
   contactToFormFields,
 } from '../../utils/contact-form';
 import { ROLES } from '../../utils/roles';
+import { isLimited } from '../../utils/contact-display';
 
 const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 
@@ -75,6 +76,20 @@ export default class ContactsDetailController extends Controller {
   // Same roles as GET /record-history.
   get canViewHistory() {
     return HISTORY_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get isLimited() {
+    return isLimited(this.model?.contact);
+  }
+
+  // The server grants access on a match; reloading swaps in whatever view it now returns.
+  @action onPhoneVerified(contact) {
+    this.notifications.success(
+      isLimited(contact)
+        ? 'Number matched'
+        : 'Number matched: full details unlocked',
+    );
+    this.router.refresh('contacts.detail');
   }
 
   @action goBack() {

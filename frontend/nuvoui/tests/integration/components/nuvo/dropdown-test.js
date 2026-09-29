@@ -1,10 +1,14 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import {
+  blur,
   render,
   click,
+  fillIn,
+  focus,
   settled,
   triggerKeyEvent,
+  waitUntil,
 } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
@@ -147,5 +151,163 @@ module('Integration | Component | nuvo/dropdown', function (hooks) {
     assert.false(reachedDocument, 'Escape is stopped at the menu');
 
     document.removeEventListener('keydown', spy);
+  });
+
+  test('searchOnOpen loads results on open and pins the current pick on top', async function (assert) {
+    this.terms = [];
+    this.onSearch = async (term) => {
+      this.terms.push(term);
+      return [
+        { value: 'a', label: 'Alpha' },
+        { value: 'b', label: 'Beta' },
+      ];
+    };
+    await render(hbs`
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @searchOnOpen={{true}}
+        @searchDebounce={{0}}
+        @value="x"
+        @selectedLabel="Picked"
+        @placeholder="Search"
+        @onSearch={{this.onSearch}}
+        @onSelect={{this.onSelect}}
+      />
+    `);
+
+    await focus('[data-test-nu-dropdown-filter]');
+
+    assert.deepEqual(this.terms, [''], 'an empty search runs on open');
+    const input = document.querySelector('[data-test-nu-dropdown-filter]');
+    assert.strictEqual(input.value, '', 'the input is ready for typing');
+    assert.strictEqual(
+      input.placeholder,
+      'Picked',
+      'the current pick shows faded',
+    );
+
+    const items = menu().querySelectorAll('[data-test-nu-dropdown-item]');
+    assert.deepEqual(
+      [...items].map((i) => i.textContent.trim()),
+      ['Picked', 'Alpha', 'Beta'],
+    );
+    assert.dom(items[0]).hasAttribute('aria-selected', 'true');
+
+    await click(items[0]);
+    assert.strictEqual(
+      this.selected,
+      null,
+      'the current pick is not re-selected',
+    );
+    assert.notOk(menu(), 'picking the current value closes the menu');
+    assert.notStrictEqual(
+      document.activeElement,
+      input,
+      'the input lets go of focus after a pick',
+    );
+  });
+
+  test('searchOnOpen ticks the current pick in place when the results hold it', async function (assert) {
+    this.onSearch = async () => [
+      { value: 'a', label: 'Alpha' },
+      { value: 'b', label: 'Beta' },
+    ];
+    await render(hbs`
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @searchOnOpen={{true}}
+        @value="b"
+        @selectedLabel="Beta"
+        @onSearch={{this.onSearch}}
+      />
+    `);
+
+    await focus('[data-test-nu-dropdown-filter]');
+
+    const items = menu().querySelectorAll('[data-test-nu-dropdown-item]');
+    assert.strictEqual(items.length, 2, 'no duplicate row');
+    assert.dom(items[1]).hasAttribute('aria-selected', 'true');
+  });
+
+  test('a remote dropdown without searchOnOpen waits for typing', async function (assert) {
+    let searched = false;
+    this.onSearch = async () => {
+      searched = true;
+      return [];
+    };
+    await render(hbs`
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @value="x"
+        @selectedLabel="Picked"
+        @promptText="Type to search"
+        @onSearch={{this.onSearch}}
+      />
+    `);
+
+    await focus('[data-test-nu-dropdown-filter]');
+
+    assert.false(searched);
+    assert.dom(menu()).hasText('Type to search');
+  });
+
+  test('searchOnOpen fetches the first page once while typed terms always search', async function (assert) {
+    this.terms = [];
+    this.onSearch = async (term) => {
+      this.terms.push(term);
+      return [{ value: 'a', label: 'Alpha' }];
+    };
+    await render(hbs`
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @searchOnOpen={{true}}
+        @searchDebounce={{0}}
+        @onSearch={{this.onSearch}}
+      />
+    `);
+
+    await focus('[data-test-nu-dropdown-filter]');
+    await triggerKeyEvent(menu(), 'keydown', 'Escape');
+    await blur('[data-test-nu-dropdown-filter]');
+    await focus('[data-test-nu-dropdown-filter]');
+    assert.dom(menu()).hasText('Alpha', 'the cached page is shown again');
+    await fillIn('[data-test-nu-dropdown-filter]', 'al');
+    await fillIn('[data-test-nu-dropdown-filter]', 'alp');
+
+    assert.deepEqual(this.terms, ['', 'al', 'alp']);
+  });
+
+  test('closing during a remote search does not leave the menu searching', async function (assert) {
+    let release;
+    this.onSearch = () =>
+      new Promise((resolve) => {
+        release = resolve;
+      });
+    await render(hbs`
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @minChars={{2}}
+        @searchDebounce={{0}}
+        @promptText="Type to search"
+        @onSearch={{this.onSearch}}
+      />
+    `);
+
+    await fillIn('[data-test-nu-dropdown-filter]', 'ab');
+    await waitUntil(() => release);
+    assert.dom(menu()).hasText('Searching...');
+
+    await triggerKeyEvent(menu(), 'keydown', 'Escape');
+    release([]);
+    await settled();
+
+    await blur('[data-test-nu-dropdown-filter]');
+    await focus('[data-test-nu-dropdown-filter]');
+    assert.dom(menu()).hasText('Type to search');
   });
 });

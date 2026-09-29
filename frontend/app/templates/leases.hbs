@@ -117,7 +117,7 @@
       >
         {{#if (eq cell.key "contact.displayName")}}
           <span class="font-bold" data-test-lease-row>{{or
-              cell.value
+              (contact-name cell.row.contact)
               "Unknown tenant"
             }}</span>
         {{else if (eq cell.key "unit.unitNumber")}}
@@ -160,7 +160,7 @@
                 @size="xs"
                 @icon="clock-counter-clockwise"
                 aria-label="History for lease of {{or
-                  cell.row.contact.displayName
+                  (contact-name cell.row.contact)
                   'Unknown tenant'
                 }}"
                 data-tooltip="History"
@@ -176,7 +176,9 @@
                   @variant="secondary"
                   @size="xs"
                   @icon="arrow-counter-clockwise"
-                  aria-label="Unarchive lease for {{cell.row.contact.displayName}}"
+                  aria-label="Unarchive lease for {{contact-name
+                    cell.row.contact
+                  }}"
                   data-tooltip="Unarchive"
                   {{on "click" (fn this.openArchive cell.row "unarchive")}}
                 />
@@ -187,7 +189,7 @@
                 @variant="secondary"
                 @size="xs"
                 @icon="pencil-simple"
-                aria-label="Edit lease for {{cell.row.contact.displayName}}"
+                aria-label="Edit lease for {{contact-name cell.row.contact}}"
                 data-tooltip="Edit"
                 data-test-edit-lease
                 {{on "click" (fn this.openEdit cell.row)}}
@@ -199,7 +201,7 @@
                   @variant="secondary"
                   @size="xs"
                   @icon="arrows-clockwise"
-                  aria-label="Renew lease for {{cell.row.contact.displayName}}"
+                  aria-label="Renew lease for {{contact-name cell.row.contact}}"
                   data-tooltip="Renew"
                   {{on "click" (fn this.renewLease cell.row)}}
                 />
@@ -209,7 +211,9 @@
                   @variant="danger"
                   @size="xs"
                   @icon="x-circle"
-                  aria-label="Terminate lease for {{cell.row.contact.displayName}}"
+                  aria-label="Terminate lease for {{contact-name
+                    cell.row.contact
+                  }}"
                   data-tooltip="Terminate"
                   {{on "click" (fn this.openTerminate cell.row)}}
                 />
@@ -221,7 +225,7 @@
                   @variant="secondary"
                   @size="xs"
                   @icon="arrows-clockwise"
-                  aria-label="Renew lease for {{cell.row.contact.displayName}}"
+                  aria-label="Renew lease for {{contact-name cell.row.contact}}"
                   data-tooltip="Renew"
                   {{on "click" (fn this.renewLease cell.row)}}
                 />
@@ -233,7 +237,9 @@
                     @variant="danger"
                     @size="xs"
                     @icon="trash"
-                    aria-label="Delete lease for {{cell.row.contact.displayName}}"
+                    aria-label="Delete lease for {{contact-name
+                      cell.row.contact
+                    }}"
                     data-tooltip="Delete"
                     data-test-delete-lease
                     {{on "click" (fn this.openDelete cell.row)}}
@@ -247,7 +253,9 @@
                     @variant="secondary"
                     @size="xs"
                     @icon="archive"
-                    aria-label="Archive lease for {{cell.row.contact.displayName}}"
+                    aria-label="Archive lease for {{contact-name
+                      cell.row.contact
+                    }}"
                     data-tooltip="Archive"
                     {{on "click" (fn this.openArchive cell.row "archive")}}
                   />
@@ -476,7 +484,10 @@
 <ConfirmModal
   @open={{this.showTerminateModal}}
   @title="Terminate lease"
-  @message="Terminate the lease for {{or this.leaseToTerminate.contact.displayName "this tenant"}}? It ends now and cannot be reactivated."
+  @message="Terminate the lease for {{or
+    (contact-name this.leaseToTerminate.contact)
+    'this tenant'
+  }}? It ends now and cannot be reactivated."
   @confirmText="Terminate"
   @cancelText="I changed my mind"
   @confirmVariant="danger"
@@ -503,7 +514,10 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Lease"
-  @message="Delete the lease for {{or this.leaseToDelete.contact.displayName "this tenant"}}? This cannot be undone."
+  @message="Delete the lease for {{or
+    (contact-name this.leaseToDelete.contact)
+    'this tenant'
+  }}? This cannot be undone."
   @confirmText="Delete"
   @cancelText="I changed my mind"
   @confirmVariant="danger"
@@ -536,7 +550,7 @@
       "Archive the lease for "
       "Unarchive the lease for "
     )
-    (or this.leaseToArchive.contact.displayName "this tenant")
+    (or (contact-name this.leaseToArchive.contact) "this tenant")
     (if
       (eq this.archiveMode "archive")
       "? It becomes read-only and hidden from lists. You can unarchive it later."

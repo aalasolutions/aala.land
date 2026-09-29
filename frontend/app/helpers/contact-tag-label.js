@@ -4,7 +4,7 @@ export const CONTACT_TAG_LABELS = {
   lead: 'Lead',
   owner: 'Owner',
   tenant: 'Tenant',
-  vendor: 'Portfolio Owner',
+  portfolio_owner: 'Portfolio Owner',
 };
 
 export function contactTagLabel(tag) {

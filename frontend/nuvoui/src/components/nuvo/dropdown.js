@@ -30,6 +30,8 @@ export default class NuDropdownComponent extends Component {
   clickOutsideHandler = null;
   searchTimer = null;
   searchSeq = 0;
+  // The first page from @searchOnOpen is fetched once per instance; typed terms always hit @onSearch.
+  browseCache = null;
 
   // The menu lives on .nu-layer; these map the kit's placement args to the anchor.
   get anchorPlacement() {
@@ -99,7 +101,27 @@ export default class NuDropdownComponent extends Component {
   }
 
   get optionSource() {
-    return this.args.remote ? this.remoteOptions : this.args.options || [];
+    if (!this.args.remote) {
+      return this.args.options || [];
+    }
+    const pinned = this.pinnedCurrent;
+    return pinned ? [pinned, ...this.remoteOptions] : this.remoteOptions;
+  }
+
+  // The first page loaded on open may not hold the current pick, so it is listed on top.
+  get pinnedCurrent() {
+    const value = this.args.value;
+    if (
+      !this.args.searchOnOpen ||
+      this.searchText.trim() ||
+      value === null ||
+      value === undefined ||
+      !this.args.selectedLabel ||
+      this.remoteOptions.some((o) => o?.value === value)
+    ) {
+      return null;
+    }
+    return { value, label: this.args.selectedLabel, isCurrentPick: true };
   }
 
   // Accepts {value,label,group,icon,danger,disabled} objects or plain strings.
@@ -270,11 +292,23 @@ export default class NuDropdownComponent extends Component {
     return this.isOpen ? this.searchText : this.selectedLabel;
   }
 
+  // While open the input holds the search, so the current pick shows as the placeholder.
+  get filterPlaceholder() {
+    if (this.isOpen && this.selectedLabel) {
+      return this.selectedLabel;
+    }
+    return this.args.placeholder ?? 'Search...';
+  }
+
   get emptyText() {
     if (this.isSearching) {
       return 'Searching...';
     }
-    if (this.args.remote && !this.searchText.trim()) {
+    if (
+      this.args.remote &&
+      !this.searchText.trim() &&
+      !this.args.searchOnOpen
+    ) {
       return this.args.promptText ?? 'Type to search';
     }
     return this.args.emptyText ?? 'No results found';
@@ -315,6 +349,13 @@ export default class NuDropdownComponent extends Component {
     this.isOpen = true;
     this.highlightedIndex = -1;
     this.focusSearch();
+    this.loadOnOpen();
+  }
+
+  loadOnOpen() {
+    if (this.args.remote && this.args.searchOnOpen) {
+      this.runRemoteSearch();
+    }
   }
 
   focusSearch() {
@@ -336,6 +377,15 @@ export default class NuDropdownComponent extends Component {
     if (this.args.remote) {
       this.remoteOptions = [];
       this.searchSeq += 1;
+      this.isSearching = false;
+    }
+  }
+
+  // After a pick the filter input lets go of focus, so the next click opens the menu again.
+  closeAfterPick() {
+    this.close();
+    if (this.args.filterable) {
+      this.rootElement?.querySelector('input')?.blur();
     }
   }
 
@@ -348,9 +398,13 @@ export default class NuDropdownComponent extends Component {
       this.runCreate();
       return;
     }
+    if (option.item?.isCurrentPick) {
+      this.closeAfterPick();
+      return;
+    }
     this.internalValue = option.value;
     this.args.onSelect?.(option.value, option);
-    this.close();
+    this.closeAfterPick();
   }
 
   async runCreate() {
@@ -369,9 +423,10 @@ export default class NuDropdownComponent extends Component {
         return;
       }
       const value = created.value ?? created.id;
+      this.browseCache = null;
       this.internalValue = value;
       this.args.onSelect?.(value, created);
-      this.close();
+      this.closeAfterPick();
     } finally {
       if (!isDestroyed(this)) {
         this.isCreating = false;
@@ -402,9 +457,11 @@ export default class NuDropdownComponent extends Component {
 
   @action
   onFilterFocus() {
-    if (!this.args.disabled) {
-      this.isOpen = true;
+    if (this.args.disabled || this.isOpen) {
+      return;
     }
+    this.isOpen = true;
+    this.loadOnOpen();
   }
 
   @action
@@ -428,7 +485,13 @@ export default class NuDropdownComponent extends Component {
   async runRemoteSearch() {
     const term = this.searchText.trim();
     const seq = ++this.searchSeq;
-    if (term.length < this.minChars) {
+    const browsing = this.args.searchOnOpen && term === '';
+    if (browsing && this.browseCache) {
+      this.remoteOptions = this.browseCache;
+      this.isSearching = false;
+      return;
+    }
+    if (term.length < this.minChars && !browsing) {
       this.remoteOptions = [];
       this.isSearching = false;
       return;
@@ -440,6 +503,9 @@ export default class NuDropdownComponent extends Component {
         return;
       }
       this.remoteOptions = results ?? [];
+      if (browsing) {
+        this.browseCache = this.remoteOptions;
+      }
     } catch {
       if (!isDestroyed(this) && seq === this.searchSeq) {
         this.remoteOptions = [];
