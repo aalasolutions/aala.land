@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
-  BadRequestException,
   ExecutionContext,
   ForbiddenException,
   INestApplication,
@@ -256,34 +255,16 @@ describe('ContactAccessRequestsController', () => {
   });
 
   describe('approve', () => {
-    it('defaults the expiry to 90 days', async () => {
-      const before = Date.now();
-      await controller.approve(requestId, {}, req);
+    it('passes the body to the service, which resolves the expiry', async () => {
+      const dto = { forever: true };
+      await controller.approve(requestId, dto, req);
 
-      const expiresAt = service.approve.mock.calls[0][3] as Date;
-      const days = (expiresAt.getTime() - before) / (24 * 60 * 60 * 1000);
-      expect(Math.round(days)).toBe(90);
-      expect(service.approve.mock.calls[0].slice(0, 3)).toEqual([
+      expect(service.approve).toHaveBeenCalledWith(
         companyId,
         req.user,
         requestId,
-      ]);
-    });
-
-    it('passes null for forever', async () => {
-      await controller.approve(requestId, { forever: true }, req);
-      expect(service.approve.mock.calls[0][3]).toBeNull();
-    });
-
-    it('400s a past expiresAt without calling the service', async () => {
-      await expect(
-        controller.approve(
-          requestId,
-          { expiresAt: '2020-01-01T00:00:00Z' },
-          req,
-        ),
-      ).rejects.toThrow(BadRequestException);
-      expect(service.approve).not.toHaveBeenCalled();
+        dto,
+      );
     });
   });
 
@@ -352,10 +333,10 @@ describe('ContactAccessRequestsController', () => {
       expect(service.reject).not.toHaveBeenCalled();
     });
 
-    it('400s an approve with a past expiresAt', async () => {
+    it('400s an approve whose expiresAt is not an ISO date', async () => {
       await request(app.getHttpServer())
         .post(`/contact-access-requests/${requestId}/approve`)
-        .send({ expiresAt: '2020-01-01T00:00:00Z' })
+        .send({ expiresAt: 'next friday' })
         .expect(400);
       expect(service.approve).not.toHaveBeenCalled();
     });

@@ -171,6 +171,26 @@ export function resolveInboundMedia(
   };
 }
 
+// Types that are changes to another message or carry nothing to show; never a bubble of their own.
+const NO_BUBBLE_TYPES = new Set(['text', 'reaction', 'revoke', 'edit']);
+
+// A customer message with nothing we can show (type `unsupported`, or media with no id) still gets a bubble.
+export function unsupportedInboundMedia(
+  message: CloudMediaMessage,
+): InboundMedia | null {
+  const type = message.type ?? '';
+  if (!type || !message.id || NO_BUBBLE_TYPES.has(type)) return null;
+  return {
+    body: '',
+    mediaType: 'media_placeholder',
+    mediaStatus: WaMediaStatus.UNSUPPORTED,
+    mediaMetaId: null,
+    mediaMime: null,
+    mediaSha256: null,
+    mediaFileName: null,
+  };
+}
+
 // The socket payload carries no Meta media id or hash.
 export function toWireMessage(evt: WaMessage & WaMessageInsert): WaMessage {
   const message: WaMessage & WaMessageInsert = { ...evt };

@@ -137,6 +137,23 @@ describe('ContactsController', () => {
     });
   });
 
+  describe('findAll tag', () => {
+    it('400s a tag outside the known list, such as the old vendor', () => {
+      expect(() =>
+        controller.findAll(mockReq, 1, 20, undefined, 'vendor'),
+      ).toThrow(BadRequestException);
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('passes a known tag through', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await controller.findAll(mockReq, 1, 20, undefined, 'portfolio_owner');
+
+      expect(service.findAll.mock.calls[0][4]).toBe('portfolio_owner');
+    });
+  });
+
   describe('findAll sort', () => {
     it('passes sort=name and rejects any other value', async () => {
       service.findAll.mockResolvedValue(paginated as any);

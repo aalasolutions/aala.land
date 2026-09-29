@@ -362,7 +362,7 @@ export default class CompanyController extends Controller {
       await this.whatsapp.updateSettings(null);
       this.aiSuccessMsg = 'Business information cleared.';
     } catch {
-      this.aiErrorMsg = 'Failed to restore. Please try again.';
+      this.aiErrorMsg = 'Failed to clear. Please try again.';
     } finally {
       this.isSavingAI = false;
     }

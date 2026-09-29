@@ -94,6 +94,16 @@ describe('WhatsappAiPromptBuilderService', () => {
       expect(result).toContain('Found 27 properties. Showing the newest 1.');
     });
 
+    it('names the sort the search used', () => {
+      const result = service.formatToolResult(
+        [makeUnit()],
+        27,
+        '',
+        'price_low',
+      );
+      expect(result).toContain('Found 27 properties. Showing the cheapest 1.');
+    });
+
     it('uses no em dash or bracket labels', () => {
       const result = service.formatToolResult([makeUnit()], 1, '');
       expect(result).not.toMatch(/\u2014|\[RENT\]|\[SALE\]/);

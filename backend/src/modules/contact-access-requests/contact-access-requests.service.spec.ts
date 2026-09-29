@@ -68,7 +68,11 @@ describe('ContactAccessRequestsService', () => {
     notifyContactAccessDecided: jest.Mock;
   };
   let audit: { log: jest.Mock };
-  let redis: { get: jest.Mock; incr: jest.Mock; expire: jest.Mock };
+  let redis: {
+    incr: jest.Mock;
+    expire: jest.Mock;
+    decr: jest.Mock;
+  };
 
   const companyId = 'company-1';
   const contactId = 'contact-1';
@@ -161,9 +165,9 @@ describe('ContactAccessRequestsService', () => {
     };
     audit = { log: jest.fn().mockResolvedValue({}) };
     redis = {
-      get: jest.fn().mockResolvedValue(null),
       incr: jest.fn().mockResolvedValue(1),
       expire: jest.fn().mockResolvedValue(1),
+      decr: jest.fn().mockResolvedValue(0),
     };
     repo = { createQueryBuilder: jest.fn() };
     contactRepo = { findOne: jest.fn().mockResolvedValue(contact) };
@@ -343,7 +347,9 @@ describe('ContactAccessRequestsService', () => {
         manager,
         expect.objectContaining({ reason: 'Phone verified' }),
       );
-      expect(redis.incr).not.toHaveBeenCalled();
+      const key = `contact-access:verify:${companyId}:${agentId}:${contactId}`;
+      expect(redis.incr).toHaveBeenCalledWith(key);
+      expect(redis.decr).toHaveBeenCalledWith(key);
       expect(audit.log).not.toHaveBeenCalled();
     });
 
@@ -378,7 +384,6 @@ describe('ContactAccessRequestsService', () => {
     });
 
     it('does not reset the TTL after the first miss', async () => {
-      redis.get.mockResolvedValue('2');
       redis.incr.mockResolvedValue(3);
 
       await service.verifyPhone(companyId, contactId, agentId, '1', source);
@@ -386,8 +391,8 @@ describe('ContactAccessRequestsService', () => {
       expect(redis.expire).not.toHaveBeenCalled();
     });
 
-    it('throws 429 on the sixth miss in the hour', async () => {
-      redis.get.mockResolvedValue('5');
+    it('throws 429 on the sixth attempt in the hour, before comparing', async () => {
+      redis.incr.mockResolvedValue(6);
 
       const err = await service
         .verifyPhone(companyId, contactId, agentId, '+971501234567', source)
@@ -399,16 +404,26 @@ describe('ContactAccessRequestsService', () => {
         'Too many attempts, try again later',
       );
       expect(manager.save).not.toHaveBeenCalled();
+      expect(redis.decr).not.toHaveBeenCalled();
     });
 
-    it('throws 429 when a concurrent miss pushes the count past five', async () => {
-      redis.get.mockResolvedValue('4');
-      redis.incr.mockResolvedValue(6);
+    it('lets at most five of six parallel guesses reach the comparison', async () => {
+      let count = 0;
+      redis.incr.mockImplementation(() => Promise.resolve(++count));
 
-      await expect(
-        service.verifyPhone(companyId, contactId, agentId, '1', source),
-      ).rejects.toMatchObject({ status: 429 });
-      expect(audit.log).toHaveBeenCalled();
+      const results = await Promise.allSettled(
+        Array.from({ length: 6 }, () =>
+          service.verifyPhone(companyId, contactId, agentId, '1', source),
+        ),
+      );
+
+      const limited = results.filter(
+        (r) =>
+          r.status === 'rejected' &&
+          (r.reason as HttpException).getStatus() === 429,
+      );
+      expect(limited).toHaveLength(1);
+      expect(audit.log).toHaveBeenCalledTimes(5);
     });
 
     it('404s for a contact outside the company', async () => {
@@ -534,12 +549,9 @@ describe('ContactAccessRequestsService', () => {
       routeFindOne({ byId: pendingRow() });
 
       await expect(
-        service.approve(
-          companyId,
-          user(Role.MANAGER, ['abudhabi']),
-          'req-1',
-          null,
-        ),
+        service.approve(companyId, user(Role.MANAGER, ['abudhabi']), 'req-1', {
+          forever: true,
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -548,7 +560,9 @@ describe('ContactAccessRequestsService', () => {
       routeFindOne({ byId: pendingRow() });
 
       await expect(
-        service.approve(companyId, user(Role.AGENT), 'req-1', null),
+        service.approve(companyId, user(Role.AGENT), 'req-1', {
+          forever: true,
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -558,7 +572,9 @@ describe('ContactAccessRequestsService', () => {
       });
 
       await expect(
-        service.approve(companyId, user(Role.MANAGER), 'req-1', null),
+        service.approve(companyId, user(Role.MANAGER), 'req-1', {
+          forever: true,
+        }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -566,7 +582,9 @@ describe('ContactAccessRequestsService', () => {
       routeFindOne({ byId: null });
 
       await expect(
-        service.approve(companyId, user(Role.COMPANY_ADMIN), 'req-1', null),
+        service.approve(companyId, user(Role.COMPANY_ADMIN), 'req-1', {
+          forever: true,
+        }),
       ).rejects.toThrow(NotFoundException);
       expect(manager.findOne).toHaveBeenCalledWith(
         ContactAccessRequest,
@@ -576,17 +594,15 @@ describe('ContactAccessRequestsService', () => {
 
     it('approves in region, records history, notifies and returns the view row', async () => {
       const expiresAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+      expiresAt.setMilliseconds(0);
       routeFindOne({ byId: pendingRow() });
       const view = { ...pendingRow(), status: ContactAccessStatus.APPROVED };
       repo.createQueryBuilder.mockReturnValue(qbMock({ getOne: view }));
       const approver = user(Role.MANAGER);
 
-      const result = await service.approve(
-        companyId,
-        approver,
-        'req-1',
-        expiresAt,
-      );
+      const result = await service.approve(companyId, approver, 'req-1', {
+        expiresAt: expiresAt.toISOString(),
+      });
 
       expect(manager.save).toHaveBeenCalledWith(
         ContactAccessRequest,
@@ -616,12 +632,9 @@ describe('ContactAccessRequestsService', () => {
       routeFindOne({ byId: { ...pendingRow(), regionCode: 'riyadh' } });
       repo.createQueryBuilder.mockReturnValue(qbMock({ getOne: pendingRow() }));
 
-      await service.approve(
-        companyId,
-        user(Role.COMPANY_ADMIN, []),
-        'req-1',
-        null,
-      );
+      await service.approve(companyId, user(Role.COMPANY_ADMIN, []), 'req-1', {
+        forever: true,
+      });
 
       expect(manager.save).toHaveBeenCalledWith(
         ContactAccessRequest,
@@ -631,13 +644,11 @@ describe('ContactAccessRequestsService', () => {
 
     it('rejects a past expiry', async () => {
       await expect(
-        service.approve(
-          companyId,
-          user(Role.MANAGER),
-          'req-1',
-          new Date(Date.now() - 1000),
-        ),
+        service.approve(companyId, user(Role.MANAGER), 'req-1', {
+          expiresAt: new Date(Date.now() - 1000).toISOString(),
+        }),
       ).rejects.toThrow(BadRequestException);
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 

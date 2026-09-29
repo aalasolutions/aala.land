@@ -10,6 +10,7 @@ import {
   revokeMediaDeletedBy,
   toWireMessage,
   isSendableSticker,
+  unsupportedInboundMedia,
 } from './wa-media.util';
 import { WaMediaStatus, WaMessage, WaMessageInsert } from './wa-types';
 
@@ -47,6 +48,28 @@ describe('wa-media.util', () => {
   it('names the revoke side', () => {
     expect(revokeMediaDeletedBy(false)).toBe('CUSTOMER_REVOKE');
     expect(revokeMediaDeletedBy(true)).toBe('BUSINESS_APP_REVOKE');
+  });
+
+  describe('unsupportedInboundMedia', () => {
+    it('gives any other customer message an UNSUPPORTED placeholder', () => {
+      expect(
+        unsupportedInboundMedia({ id: 'wamid.1', type: 'unsupported' }),
+      ).toEqual(
+        expect.objectContaining({
+          mediaType: 'media_placeholder',
+          mediaStatus: WaMediaStatus.UNSUPPORTED,
+          mediaMetaId: null,
+        }),
+      );
+    });
+
+    it('gives no bubble to text, reactions, edits, revokes or a message without id or type', () => {
+      for (const type of ['text', 'reaction', 'edit', 'revoke']) {
+        expect(unsupportedInboundMedia({ id: 'wamid.1', type })).toBeNull();
+      }
+      expect(unsupportedInboundMedia({ type: 'unsupported' })).toBeNull();
+      expect(unsupportedInboundMedia({ id: 'wamid.1' })).toBeNull();
+    });
   });
 
   describe('resolveInboundMedia', () => {

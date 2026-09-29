@@ -27,7 +27,9 @@ import {
   contactDisplayName,
   emailEqualsWhere,
   normalizePhone,
+  phoneDigitsSql,
   phoneDigitsWhere,
+  SUBSCRIBER_DIGITS,
 } from '../../shared/utils/contact.util';
 import {
   effectiveRegionCodes,
@@ -47,7 +49,17 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 
 // Derived role tags; never stored on the contact, computed from which rows reference it.
-export type ContactTag = 'lead' | 'tenant' | 'owner' | 'portfolio_owner';
+export const CONTACT_TAGS = [
+  'lead',
+  'tenant',
+  'owner',
+  'portfolio_owner',
+] as const;
+export type ContactTag = (typeof CONTACT_TAGS)[number];
+
+export function isContactTag(value: string): value is ContactTag {
+  return (CONTACT_TAGS as readonly string[]).includes(value);
+}
 
 // Roles that may fold new details into an existing contact; everyone else gets CONTACT_EXISTS.
 const MERGE_ROLES: string[] = [
@@ -61,8 +73,8 @@ export function canMergeContacts(role?: string): boolean {
   return !!role && MERGE_ROLES.includes(role);
 }
 
-// A term with this many digits is a phone lookup and must match the whole subscriber number.
-const PHONE_SEARCH_MIN_DIGITS = 7;
+// Only a whole subscriber number is a phone lookup, so a masked number cannot be rebuilt.
+const PHONE_SEARCH_MIN_DIGITS = SUBSCRIBER_DIGITS;
 
 // Region-bound editors: they may edit only contacts in their own regions.
 const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
@@ -638,15 +650,14 @@ export class ContactsService {
 
   // Names match by substring; phone and email only whole, so a masked value cannot be rebuilt.
   private searchSql(term: string): Brackets {
-    const digits = normalizePhone(term);
-    const isPhone = !!digits && digits.length >= PHONE_SEARCH_MIN_DIGITS;
     const isEmail = term.includes('@');
+    const digits = isEmail ? null : normalizePhone(term);
+    const isPhone = !!digits && digits.length >= PHONE_SEARCH_MIN_DIGITS;
     return new Brackets((where) => {
       if (isPhone) {
-        where.where(
-          `RIGHT(regexp_replace(c.phone, '\\D', '', 'g'), 9) = :phoneDigits`,
-          { phoneDigits: digits },
-        );
+        where.where(`${phoneDigitsSql('c.phone')} = :phoneDigits`, {
+          phoneDigits: digits,
+        });
         return;
       }
       if (isEmail) {

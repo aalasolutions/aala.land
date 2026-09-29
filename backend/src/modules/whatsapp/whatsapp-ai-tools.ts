@@ -40,7 +40,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             type: 'integer',
             description: 'Maximum bedrooms.',
           },
-          minBathrooms: { type: 'integer', description: 'Minimum bathrooms.' },
+          minBathrooms: {
+            type: 'number',
+            description:
+              'Minimum bathrooms. Half steps allowed, for example 2.5.',
+          },
           minPrice: { type: 'number', description: 'Minimum price.' },
           maxPrice: { type: 'number', description: 'Maximum price.' },
           minSqft: { type: 'number', description: 'Minimum size in sqft.' },
@@ -113,6 +117,10 @@ export async function executeTool(
       const n = toNumber(v);
       return Number.isFinite(n) ? (n as number) : undefined;
     };
+    const half = (v: unknown) => {
+      const n = amount(v);
+      return n === undefined ? undefined : Math.max(0, Math.round(n * 2) / 2);
+    };
     const text = (v: unknown, max: number) =>
       typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
     const list = Array.isArray(raw.amenities)
@@ -124,7 +132,7 @@ export async function executeTool(
     const filters: PropertySearchFilters = {
       minBedrooms: count(raw.minBedrooms),
       maxBedrooms: count(raw.maxBedrooms),
-      minBathrooms: count(raw.minBathrooms),
+      minBathrooms: half(raw.minBathrooms),
       minPrice: amount(raw.minPrice),
       maxPrice: amount(raw.maxPrice),
       minSqft: amount(raw.minSqft),
@@ -151,7 +159,12 @@ export async function executeTool(
       userId,
       set,
     );
-    return promptBuilder.formatToolResult(units, total, fallbackCurrency);
+    return promptBuilder.formatToolResult(
+      units,
+      total,
+      fallbackCurrency,
+      set.sort,
+    );
   }
   return 'Unknown tool.';
 }

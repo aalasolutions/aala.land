@@ -70,7 +70,7 @@ describe('executeTool', () => {
       {
         place: '  Marina ',
         amenities: 'pool, parking,,',
-        minBathrooms: '2.7',
+        minBathrooms: '2.4',
         maxSqft: '1500',
         sort: 'price_low',
         type: 'LEASE',
@@ -85,7 +85,7 @@ describe('executeTool', () => {
     expect(repo.searchProperties).toHaveBeenCalledWith('c1', 'u1', {
       place: 'Marina',
       amenities: ['pool', 'parking'],
-      minBathrooms: 2,
+      minBathrooms: 2.5,
       maxSqft: 1500,
       sort: 'price_low',
     });
@@ -126,6 +126,7 @@ describe('executeTool', () => {
       [{ id: 'l1' }],
       3,
       'USD',
+      undefined,
     );
   });
 

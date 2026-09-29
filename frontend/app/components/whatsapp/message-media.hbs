@@ -195,6 +195,12 @@
         <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>File too large to
           receive</Nuvo::Text>
       </div>
+    {{else if (eq this.status "UNSUPPORTED")}}
+      <div class="flex x-center gap-1" data-test-wa-media-unsupported>
+        <Nuvo::Icon @icon="device-mobile" aria-hidden="true" />
+        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>This message can't be
+          shown here. Open WhatsApp on your phone to see it.</Nuvo::Text>
+      </div>
     {{else}}
       <div class="flex x-center gap-1 wrap" data-test-wa-media-pending>
         <Nuvo::Spinner @size="xs" />

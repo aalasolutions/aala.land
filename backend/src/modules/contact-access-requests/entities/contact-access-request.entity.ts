@@ -38,6 +38,10 @@ export enum ContactAccessSourceType {
 @Index('IDX_contact_access_requester_status', ['requesterId', 'status'])
 @Index('IDX_contact_access_contact', ['contactId'])
 @Index('IDX_contact_access_region', ['regionCode'])
+@Index('UQ_contact_access_pending', ['contactId', 'requesterId'], {
+  unique: true,
+  where: `"status" = 'PENDING'`,
+})
 export class ContactAccessRequest {
   @PrimaryGeneratedColumn('uuid')
   id: string;

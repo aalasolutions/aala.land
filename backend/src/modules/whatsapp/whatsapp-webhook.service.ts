@@ -47,6 +47,7 @@ import {
   resolveInboundMedia,
   revokeMediaDeletedBy,
   toWireMessage,
+  unsupportedInboundMedia,
 } from './wa-media.util';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
 import { RedisService } from '@modules/redis/redis.service';
@@ -1279,7 +1280,19 @@ export class WhatsappWebhookService {
           continue;
         }
         if (!message.id || !message.from) continue;
-        const media = resolveInboundMedia(message);
+        const media =
+          resolveInboundMedia(message) ?? unsupportedInboundMedia(message);
+        if (media?.mediaStatus === WaMediaStatus.UNSUPPORTED) {
+          const codes =
+            (message.errors ?? [])
+              .map((error) =>
+                `${error.code ?? '?'} ${error.title ?? ''}`.trim(),
+              )
+              .join('; ') || 'none';
+          this.logger.warn(
+            `Inbound ${message.id} arrived as type ${message.type} with nothing to show (errors: ${codes}); stored as UNSUPPORTED`,
+          );
+        }
         if (!media && message.type !== 'text') continue;
         const body = media ? media.body : (message.text?.body ?? '');
         if (!media && !body.trim()) continue;
@@ -1382,6 +1395,8 @@ export class WhatsappWebhookService {
         }
         // Read back so a customer delete or edit that already landed is what the AI sees.
         if (current?.deletedAt) continue;
+        // Meta also sends customer edits as unsupported, so the AI cannot tell what arrived; a human reads the phone.
+        if (media?.mediaStatus === WaMediaStatus.UNSUPPORTED) continue;
         const aiEvt = toWireMessage(
           current ? { ...evt, body: current.body } : evt,
         );

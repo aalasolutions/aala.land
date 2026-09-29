@@ -15,10 +15,8 @@ export default class ContactSelection {
   @tracked conflict = null;
 
   attach = (contact) => {
+    this.clear();
     this.contact = contact ?? null;
-    this.identity = {};
-    this.verifyPhone = '';
-    this.conflict = null;
   };
 
   clear = () => {

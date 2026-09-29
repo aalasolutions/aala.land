@@ -1,5 +1,6 @@
-// Subscriber length normalizePhone matches on; digits before it are the country or trunk prefix.
-const SUBSCRIBER_DIGITS = 9;
+import { SUBSCRIBER_DIGITS } from './contact.util';
+
+// Digits before the last SUBSCRIBER_DIGITS are the country or trunk prefix.
 
 // Masks the middle of the subscriber number, keeping its first two and last two digits.
 export function maskPhone(phone: string | null | undefined): string | null {

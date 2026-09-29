@@ -21,6 +21,8 @@ export enum UnitStatus {
   MAINTENANCE = 'maintenance',
 }
 
+export const MAX_BATHROOMS = 99;
+
 @Entity('units')
 @Index('IDX_units_amenities', { synchronize: false })
 @Index(
@@ -98,7 +100,7 @@ export class Unit {
   @Column({ type: 'integer', nullable: true })
   bedrooms: number | null;
 
-  // Half steps (2.5) cover a bathroom without a shower or tub.
+  // Half steps (2.5) cover a bathroom without a shower or tub; numeric(3,1) caps it below 100.
   @Column({
     type: 'decimal',
     precision: 3,

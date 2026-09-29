@@ -21,7 +21,11 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
-import { ContactsService } from './contacts.service';
+import {
+  CONTACT_TAGS,
+  ContactsService,
+  isContactTag,
+} from './contacts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -88,7 +92,7 @@ export class ContactsController {
   @ApiQuery({
     name: 'tag',
     required: false,
-    enum: ['lead', 'tenant', 'owner', 'portfolio_owner'],
+    enum: CONTACT_TAGS,
     description: 'Filter by derived role tag',
   })
   @ApiQuery({
@@ -123,7 +127,7 @@ export class ContactsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
-    @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'portfolio_owner',
+    @Query('tag') tag?: string,
     @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
     @Query('isWhatsapp') isWhatsapp?: string,
     @Query('company') company?: string,
@@ -137,6 +141,12 @@ export class ContactsController {
     if (sort && sort !== 'name') {
       throw new BadRequestException('sort must be name');
     }
+    if (tag && !isContactTag(tag)) {
+      throw new BadRequestException(
+        `tag must be one of ${CONTACT_TAGS.join(', ')}`,
+      );
+    }
+    const tagFilter = tag && isContactTag(tag) ? tag : undefined;
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
     }
@@ -148,7 +158,7 @@ export class ContactsController {
       page,
       limit,
       search,
-      tag,
+      tagFilter,
       {
         agentId: agentId || undefined,
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,

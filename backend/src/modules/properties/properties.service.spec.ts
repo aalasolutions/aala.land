@@ -863,6 +863,35 @@ describe('PropertiesService', () => {
       );
     });
 
+    it('keeps a half bathroom', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId,bathrooms\n101,asset-1,2.5';
+      await service.bulkImportUnits(companyId, csv);
+
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bathrooms: 2.5 }),
+      );
+    });
+
+    it('rounds bathrooms to the nearest half and fails only an out-of-range row', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv =
+        'unitNumber,assetId,bathrooms\n101,asset-1,120\n102,asset-1,2.3\n103,asset-1,2';
+      const result = await service.bulkImportUnits(companyId, csv);
+
+      expect(result.failed).toBe(1);
+      expect(result.created).toBe(2);
+      expect(result.errors).toEqual(['Row 1: bathrooms must be from 0 to 99']);
+      expect(unitRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ unitNumber: '102', bathrooms: 2.5 }),
+        expect.objectContaining({ unitNumber: '103', bathrooms: 2 }),
+      ]);
+    });
+
     it('returns error when CSV has no data rows', async () => {
       const csv = 'unitNumber,assetId';
       const result = await service.bulkImportUnits(companyId, csv);

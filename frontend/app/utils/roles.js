@@ -55,13 +55,15 @@ export function canApproveContactAccess(role) {
 }
 
 // Mirrors the backend: these roles read every region regardless of assignment.
+const ALL_REGION_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN];
+
 export function seesAllRegions(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+  return ALL_REGION_ROLES.includes(role);
 }
 
 // The contacts list opens company-wide for these roles and on the active region for the rest.
 export function listsAllRegionsByDefault(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+  return seesAllRegions(role);
 }
 
 // An explicit 'true' or 'false' query param wins; anything else takes the role default.
@@ -132,7 +134,7 @@ export function canUpdateUser(role, targetRole) {
 
 // Adding or removing a region is a paid entitlement, so it stays with the owner.
 export function canManageRegions(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
+  return ALL_REGION_ROLES.includes(role);
 }
 
 export function getVisibleGroups(role) {

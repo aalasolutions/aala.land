@@ -200,7 +200,8 @@ export class WhatsappMediaSendService {
     let height: number | undefined;
     try {
       ({ width, height } = await sharp(file.path).metadata());
-    } catch {
+    } catch (err) {
+      this.logger.warn(`WebP metadata read failed: ${errorMessage(err)}`);
       throw new BadRequestException('This WebP image could not be read.');
     }
     if (!caption && isSendableSticker(width, height, file.size, animated)) {

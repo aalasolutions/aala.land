@@ -15,7 +15,7 @@ import { IsHalfStep } from '@shared/decorators/is-half-step.decorator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
-import { UnitStatus } from '../entities/unit.entity';
+import { UnitStatus, MAX_BATHROOMS } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
 
 export class UpdateUnitDto {
@@ -82,7 +82,7 @@ export class UpdateUnitDto {
   @IsNumber()
   @IsHalfStep()
   @Min(0)
-  @Max(99)
+  @Max(MAX_BATHROOMS)
   @IsOptional()
   bathrooms?: number;
 

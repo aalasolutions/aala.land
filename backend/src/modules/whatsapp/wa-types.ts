@@ -9,6 +9,8 @@ export enum WaMediaStatus {
   STORED = 'STORED',
   FAILED = 'FAILED',
   TOO_LARGE = 'TOO_LARGE',
+  // Meta delivered the message without anything we can show; the phone still has it.
+  UNSUPPORTED = 'UNSUPPORTED',
   DELETED = 'DELETED',
 }
 

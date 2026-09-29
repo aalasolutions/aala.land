@@ -39,23 +39,31 @@ export function attachDisplayName<
   return contact;
 }
 
+// Two phones are the same number when their last SUBSCRIBER_DIGITS digits match.
+export const SUBSCRIBER_DIGITS = 9;
+
 // Last 9 digits resolve +971501234567, 0501234567, 501234567 without a country-code table
 export function normalizePhone(
   phone: string | null | undefined,
 ): string | null {
   if (!phone) return null;
   const digits = phone.replace(/\D/g, '');
-  return digits.length > 9 ? digits.slice(-9) : digits || null;
+  return digits.length > SUBSCRIBER_DIGITS
+    ? digits.slice(-SUBSCRIBER_DIGITS)
+    : digits || null;
+}
+
+// normalizePhone in SQL, for a column or expression holding a phone.
+export function phoneDigitsSql(column: string): string {
+  return `RIGHT(regexp_replace(${column}, '\\D', '', 'g'), ${SUBSCRIBER_DIGITS})`;
 }
 
 // Mirrors normalizePhone in SQL, avoiding a leading-wildcard ILIKE scan
 export function phoneDigitsWhere(inputPhone: string | null | undefined) {
   const digits = normalizePhone(inputPhone);
-  return Raw(
-    (alias) =>
-      `RIGHT(regexp_replace(${alias}, '\\D', '', 'g'), 9) = :phoneDigits`,
-    { phoneDigits: digits ?? '' },
-  );
+  return Raw((alias) => `${phoneDigitsSql(alias)} = :phoneDigits`, {
+    phoneDigits: digits ?? '',
+  });
 }
 
 // Exact match, not ILIKE: _ and % are legitimate email characters, not wildcards here

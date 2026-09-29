@@ -517,6 +517,29 @@ describe('ContactsService', () => {
       expect(orWhere).not.toHaveBeenCalled();
     });
 
+    it('treats an email full of digits as an email, not a phone', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, 'ali971501234567@mail.com');
+
+      const { where } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith('LOWER(c.email) = :emailExact', {
+        emailExact: 'ali971501234567@mail.com',
+      });
+    });
+
+    it('does not run a phone lookup below nine digits', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, '50123456');
+
+      const { where } = searchWhere(qb);
+      expect(where).not.toHaveBeenCalledWith(
+        expect.stringContaining('RIGHT(regexp_replace'),
+        expect.anything(),
+      );
+    });
+
     it('matches a name term on first and last name by substring only', async () => {
       const qb = arrangeList();
 

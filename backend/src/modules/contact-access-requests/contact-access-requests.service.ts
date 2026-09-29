@@ -247,15 +247,19 @@ export class ContactAccessRequestsService {
     }
 
     const key = verifyKey(companyId, agentId, contactId);
-    // Checked before comparing, so a locked-out caller cannot keep guessing for a match.
-    const misses = Number(await this.redisService.client.get(key)) || 0;
-    if (misses >= VERIFY_MAX_MISSES) {
+    // Counted before comparing, so parallel guesses cannot all slip past the limit.
+    const attempt = await this.redisService.client.incr(key);
+    if (attempt === 1) {
+      await this.redisService.client.expire(key, VERIFY_WINDOW_SECONDS);
+    }
+    if (attempt > VERIFY_MAX_MISSES) {
       throw this.tooManyAttempts();
     }
 
     const typed = normalizePhone(phone);
     const stored = normalizePhone(contact.phone);
     if (typed && stored && typed === stored) {
+      await this.redisService.client.decr(key);
       await this.dataSource.transaction(async (manager) => {
         await this.grantInTx(manager, {
           contact,
@@ -269,10 +273,6 @@ export class ContactAccessRequestsService {
       return true;
     }
 
-    const count = await this.redisService.client.incr(key);
-    if (count === 1) {
-      await this.redisService.client.expire(key, VERIFY_WINDOW_SECONDS);
-    }
     await this.auditService.log({
       companyId,
       userId: agentId,
@@ -280,11 +280,8 @@ export class ContactAccessRequestsService {
       entityType: 'Contact',
       entityId: contactId,
       regionCode: contact.regionCode,
-      newValue: { attempt: count },
+      newValue: { attempt },
     });
-    if (count > VERIFY_MAX_MISSES) {
-      throw this.tooManyAttempts();
-    }
     return false;
   }
 
@@ -449,16 +446,13 @@ export class ContactAccessRequestsService {
     companyId: string,
     user: JwtUserPayload,
     id: string,
-    expiresAt: Date | null,
+    input: { expiresAt?: string; forever?: boolean },
   ): Promise<ContactAccessRequest> {
-    if (expiresAt && expiresAt.getTime() <= Date.now()) {
-      throw new BadRequestException('expiresAt must be in the future');
-    }
     return this.decide(companyId, user, id, 'approved', {
       from: ContactAccessStatus.PENDING,
       to: ContactAccessStatus.APPROVED,
       action: RecordHistoryAction.ACCESS_GRANTED,
-      expiresAt,
+      expiresAt: resolveApprovalExpiry(input),
       reason: null,
     });
   }

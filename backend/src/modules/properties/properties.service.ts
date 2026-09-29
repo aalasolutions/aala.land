@@ -15,7 +15,7 @@ import {
   Not,
 } from 'typeorm';
 import { Asset } from './entities/asset.entity';
-import { Unit, UnitStatus } from './entities/unit.entity';
+import { MAX_BATHROOMS, Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
@@ -91,11 +91,15 @@ function parseOptionalInt(value: string | undefined): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-// Bathrooms take half steps; anything else rounds to the nearest half.
-function parseOptionalHalf(value: string | undefined): number | null {
+// Blank or non-numeric is unknown; a number rounds to the nearest half; outside 0..MAX_BATHROOMS fails the row.
+function parseImportBathrooms(
+  value: string | undefined,
+): number | null | undefined {
   if (!value || !value.trim()) return null;
   const parsed = Number.parseFloat(value);
-  return Number.isNaN(parsed) ? null : Math.round(parsed * 2) / 2;
+  if (Number.isNaN(parsed)) return null;
+  const rounded = Math.round(parsed * 2) / 2;
+  return rounded >= 0 && rounded <= MAX_BATHROOMS ? rounded : undefined;
 }
 
 export type UnitResponse = Omit<Unit, 'owner'> & {
@@ -1217,6 +1221,15 @@ export class PropertiesService {
         }
       }
 
+      const bathrooms = parseImportBathrooms(row['bathrooms']);
+      if (bathrooms === undefined) {
+        results.failed++;
+        results.errors.push(
+          `Row ${i}: bathrooms must be from 0 to ${MAX_BATHROOMS}`,
+        );
+        continue;
+      }
+
       try {
         const sqFt = parseFloat(row['sqft'] || '0') || undefined;
         const price = parseFloat(row['price'] || '0') || undefined;
@@ -1225,7 +1238,7 @@ export class PropertiesService {
           unitNumber: row['unitnumber'],
           assetId: row['assetid'],
           bedrooms: parseOptionalInt(row['bedrooms']),
-          bathrooms: parseOptionalHalf(row['bathrooms']),
+          bathrooms,
           sqFt,
           price,
           status: (row['status'] as any) || 'available',

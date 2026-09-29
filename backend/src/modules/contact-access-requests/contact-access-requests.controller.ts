@@ -19,7 +19,6 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 import {
   ContactAccessRequestView,
   ContactAccessRequestsService,
-  resolveApprovalExpiry,
   serializeContactAccessRequest,
 } from './contact-access-requests.service';
 import { ContactAccessSourceType } from './entities/contact-access-request.entity';
@@ -109,14 +108,8 @@ export class ContactAccessRequestsController {
     @Body() dto: ApproveContactAccessRequestDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<ContactAccessRequestView> {
-    const expiresAt = resolveApprovalExpiry(dto);
     return serializeContactAccessRequest(
-      await this.service.approve(
-        requireCompanyId(req.user),
-        req.user,
-        id,
-        expiresAt,
-      ),
+      await this.service.approve(requireCompanyId(req.user), req.user, id, dto),
     );
   }
 

@@ -10,6 +10,14 @@ import {
 } from './whatsapp-ai-prompts';
 import { cleanAdminText } from './whatsapp-ai-filter';
 
+// Keys are the search_properties sort values; the result header must name the order actually used.
+const SORT_LABELS: Record<string, string> = {
+  price_low: 'cheapest',
+  price_high: 'most expensive',
+  largest: 'largest',
+  newest: 'newest',
+};
+
 // The model receives no file, only what kind of file arrived.
 const MEDIA_TURN_NOUNS: Record<string, string> = {
   image: 'a photo',
@@ -60,13 +68,14 @@ export class WhatsappAiPromptBuilderService {
     units: Unit[],
     total: number,
     fallbackCurrency: string,
+    sort?: string,
   ): string {
     if (units.length === 0)
       return 'No properties found matching your criteria.';
     const noun = total === 1 ? 'property' : 'properties';
     const header =
       total > units.length
-        ? `Found ${total} ${noun}. Showing the newest ${units.length}.`
+        ? `Found ${total} ${noun}. Showing the ${SORT_LABELS[sort ?? ''] ?? 'newest'} ${units.length}.`
         : `Found ${total} ${noun}.`;
     return [header, ...this.formatUnits(units, fallbackCurrency)].join('\n\n');
   }
