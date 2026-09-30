@@ -576,6 +576,53 @@ describe('ContactsService', () => {
     });
   });
 
+  describe('findCompanies', () => {
+    function arrangeCompanies() {
+      const qb = qbMock({ getRawMany: [{ name: 'Acme', count: 3 }] });
+      ['clone', 'offset', 'limit'].forEach((key) => {
+        qb[key] = jest.fn().mockReturnValue(qb);
+      });
+      qb.getRawOne = jest.fn().mockResolvedValue({ total: 1 });
+      repo.createQueryBuilder.mockReturnValue(qb as any);
+      return qb;
+    }
+
+    it('groups by normalised company name inside the caller regions', async () => {
+      const qb = arrangeCompanies();
+
+      const result = await service.findCompanies(companyId, 1, 20, 'makkah', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
+      expect(qb.groupBy).toHaveBeenCalledWith('LOWER(TRIM(c.contact_company))');
+      expect(result).toEqual({
+        data: [{ name: 'Acme', count: 3 }],
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
+    });
+
+    it('returns nothing for a region the caller does not hold', async () => {
+      arrangeCompanies();
+
+      const result = await service.findCompanies(companyId, 1, 20, 'punjab', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah'],
+      });
+
+      expect(result.total).toBe(0);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findAll', () => {
     function stubQueryBuilders() {
       const qb = qbMock({ getManyAndCount: [[mockContact], 1] });

@@ -13,9 +13,10 @@ import {
   contactToFormFields,
 } from '../../utils/contact-form';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
-import { resolveAllRegions } from '../../utils/roles';
+import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
 
 export const CONTACTS_TAB = 'contacts';
+export const COMPANIES_TAB = 'companies';
 export const REQUESTS_TAB = 'requests';
 
 const ROLE_TABS = [
@@ -57,12 +58,24 @@ export default class ContactsIndexController extends PaginatedController {
 
   roleTabs = ROLE_TABS;
 
-  pageTabs = [
-    { id: CONTACTS_TAB, label: 'Contacts' },
-    { id: REQUESTS_TAB, label: 'My requests' },
-  ];
+  get canViewCompanies() {
+    return canViewContactCompanies(this.auth.currentUser?.role);
+  }
+
+  get pageTabs() {
+    return [
+      { id: CONTACTS_TAB, label: 'Contacts' },
+      ...(this.canViewCompanies
+        ? [{ id: COMPANIES_TAB, label: 'Companies' }]
+        : []),
+      { id: REQUESTS_TAB, label: 'My requests' },
+    ];
+  }
 
   get currentTab() {
+    if (this.tab === COMPANIES_TAB && this.canViewCompanies) {
+      return COMPANIES_TAB;
+    }
     return this.tab === REQUESTS_TAB ? REQUESTS_TAB : CONTACTS_TAB;
   }
 

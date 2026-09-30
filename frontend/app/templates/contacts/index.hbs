@@ -30,6 +30,8 @@
 
   {{#if (eq this.currentTab "requests")}}
     <AccessRequests::MyRequests />
+  {{else if (eq this.currentTab "companies")}}
+    <Contact::Companies />
   {{else}}
     <div class="flex between x-center gap-3 wrap">
       <Nuvo::Segmented

@@ -174,6 +174,30 @@ export class ContactsController {
     );
   }
 
+  // Limited to roles that see every contact in their regions in full, so no hidden company leaks.
+  @Get('companies')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({
+    summary: 'Company names with their contact counts (MANAGER+)',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  findCompanies(
+    @Request() req: AuthenticatedRequest,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.contactsService.findCompanies(
+      requireCompanyId(req.user),
+      page,
+      limit,
+      regionCode || undefined,
+      req.user,
+    );
+  }
+
   @Get(':id')
   @Roles(
     Role.SUPER_ADMIN,

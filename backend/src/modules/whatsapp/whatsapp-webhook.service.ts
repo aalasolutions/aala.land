@@ -905,7 +905,11 @@ export class WhatsappWebhookService {
     const media = resolveInboundMedia(echo);
     const body = media ? media.body : resolveStorableBody(echo);
     const timestamp = parseEpochSeconds(echo.timestamp);
-    if (!echo.id || !echo.to || body === null || (!media && !body)) return;
+    if (!echo.id || !echo.to || body === null || (!media && !body)) {
+      // TEMP diagnostic: an echo dropped with nothing to store.
+      this.logger.warn(`WA_STATUS_PROBE echo ${JSON.stringify(echo)}`);
+      return;
+    }
     if (!timestamp) return;
     const evt = buildCloudWaMessage(
       {
@@ -1220,6 +1224,12 @@ export class WhatsappWebhookService {
           errorCode,
         );
         if (!applied) {
+          // TEMP diagnostic: full payload of a failed status with no stored row.
+          if (mapped === WhatsappMessageStatus.FAILED) {
+            this.logger.warn(
+              `WA_STATUS_PROBE status ${JSON.stringify(status)}`,
+            );
+          }
           this.logger.debug(
             `Status ${mapped} not stored for ${status.id}: unknown message or a stale status`,
           );

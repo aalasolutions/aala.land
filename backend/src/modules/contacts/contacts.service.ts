@@ -448,6 +448,53 @@ export class ContactsService {
     };
   }
 
+  // Contacts grouped by company name (case and outer spaces ignored) inside the caller's regions.
+  async findCompanies(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    regionCode?: string,
+    caller?: ContactViewer,
+  ): Promise<{
+    data: { name: string; count: number }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const take = contactListLimit(limit);
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit: take };
+    }
+
+    const qb = this.contactRepository
+      .createQueryBuilder('c')
+      .where('c.company_id = :companyId', { companyId })
+      .andWhere("TRIM(COALESCE(c.contact_company, '')) <> ''");
+    if (regionCodes) {
+      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
+    }
+
+    const [rows, totalRow] = await Promise.all([
+      qb
+        .clone()
+        .select('MIN(TRIM(c.contact_company))', 'name')
+        .addSelect('COUNT(*)::int', 'count')
+        .groupBy('LOWER(TRIM(c.contact_company))')
+        .orderBy('count', 'DESC')
+        .addOrderBy('name', 'ASC')
+        .offset(pageSkip(page, take))
+        .limit(take)
+        .getRawMany<{ name: string; count: number }>(),
+      qb
+        .clone()
+        .select('COUNT(DISTINCT LOWER(TRIM(c.contact_company)))::int', 'total')
+        .getRawOne<{ total: number }>(),
+    ]);
+
+    return { data: rows, total: totalRow?.total ?? 0, page, limit: take };
+  }
+
   // Every FULL view of a contact someone else created is audited, no dedup.
   async findOne(
     id: string,

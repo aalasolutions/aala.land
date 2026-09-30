@@ -4,6 +4,7 @@
 @use "./common/var" as *;
 
 @include b(sidebar) {
+  // ---- variables: sidebar ----
   @include nu-root("sidebar", (
     "Width": 15rem,
     "CollapsedWidth": 3.75rem,
@@ -12,6 +13,20 @@
     "PaddingBlock": nu-space(4),
     "PaddingInline": nu-space(3),
     "TransitionDuration": nu-duration(normal),
+  ));
+
+  // ---- variables: link ----
+  @include nu-root-el("sidebar", "link", (
+    "Color": #b5b5b5,
+    "BackgroundColor": transparent,
+    "hover--Color": white,
+    "hover--BackgroundColor": var(--bg-alternate),
+  ));
+
+  // ---- variables: group toggle ----
+  @include nu-root-el("sidebar", "group-toggle", (
+    "Color":  #b5b5b5,
+    "BackgroundColor": transparent,
   ));
 
   display: flex;
@@ -85,13 +100,6 @@
   }
 
   @include e(link) {
-    @include nu-root-el("sidebar", "link", (
-      "Color": var(--text-muted),
-      "BackgroundColor": transparent,
-      "hover--Color": var(--text-color),
-      "hover--BackgroundColor": var(--bg-alternate),
-    ));
-
     display: flex;
     align-items: center;
     gap: nu-space(3);
@@ -165,11 +173,6 @@
   }
 
   @include e(group-toggle) {
-    @include nu-root-el("sidebar", "group-toggle", (
-      "Color": var(--text-muted),
-      "BackgroundColor": transparent,
-    ));
-
     display: flex;
     align-items: center;
     gap: nu-space(3);

@@ -132,7 +132,7 @@ export default class NuvoInputController extends Controller {
     { name: '@autocomplete', type: 'string', default: '"off"', description: 'Native autocomplete token.' },
     { name: '@invalid', type: 'boolean', default: 'false', description: 'Adds is-invalid and aria-invalid="true".' },
     { name: '@valid', type: 'boolean', default: 'false', description: 'Adds is-valid. Ignored when @invalid is set.' },
-    { name: '@auto', type: 'boolean', default: 'false', description: 'Adds m-auto so the input sizes to its content instead of filling the row.' },
+    { name: '@auto', type: 'boolean', default: 'false', description: 'Adds m-auto so the input takes the browser default width (about 20 characters) instead of filling the row. It does not grow with the text.' },
     { name: '@clearable', type: 'boolean', default: 'false', description: 'Shows a clear button whenever there is a value.' },
     { name: '@prefixIcon', type: 'string', default: '', description: 'Glyph rendered before the input inside the wrap.' },
     { name: '@suffixIcon', type: 'string', default: '', description: 'Glyph rendered after the input. Replaced by the clear button while clearable and non-empty.' },
