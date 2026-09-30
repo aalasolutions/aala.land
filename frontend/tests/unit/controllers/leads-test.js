@@ -326,6 +326,51 @@ module('Unit | Controller | leads', function (hooks) {
     });
   });
 
+  module('column collapse', function () {
+    function withStore(ctx, auth) {
+      const store = {};
+      ctx.owner.register(
+        'service:preferences',
+        {
+          get: (key, fallback) =>
+            `${auth.currentUser.id}-${key}` in store
+              ? store[`${auth.currentUser.id}-${key}`]
+              : fallback,
+          set: (key, value) => (store[`${auth.currentUser.id}-${key}`] = value),
+          remove: (key) => delete store[`${auth.currentUser.id}-${key}`],
+        },
+        { instantiate: false },
+      );
+      ctx.owner.register('service:auth', auth, { instantiate: false });
+      return store;
+    }
+
+    test('toggle persists per board and column, expand removes the key', function (assert) {
+      const auth = { currentUser: { id: 'u1' } };
+      const store = withStore(this, auth);
+      const controller = makeController(this);
+
+      controller.toggleColumn('pipeline', 'WON');
+      assert.true(controller.isColumnCollapsed('pipeline', 'WON'));
+      assert.false(controller.isColumnCollapsed('temperature', 'WON'));
+      assert.deepEqual(store, { 'u1-kanban-pipeline-WON': true });
+
+      controller.toggleColumn('pipeline', 'WON');
+      assert.false(controller.isColumnCollapsed('pipeline', 'WON'));
+      assert.deepEqual(store, {});
+    });
+
+    test('a collapsed column does not leak to another user', function (assert) {
+      const auth = { currentUser: { id: 'u1' } };
+      withStore(this, auth);
+      const controller = makeController(this);
+
+      controller.toggleColumn('agent', 'unassigned');
+      auth.currentUser = { id: 'u2' };
+      assert.false(controller.isColumnCollapsed('agent', 'unassigned'));
+    });
+  });
+
   module('make-room drag', function () {
     function dragging(ctx, origin) {
       const controller = ctx.owner.lookup('controller:leads');

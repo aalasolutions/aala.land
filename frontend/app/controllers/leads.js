@@ -39,6 +39,10 @@ export function moveLead(leads, leadId, status, beforeId) {
   return [...rest.slice(0, at), moved, ...rest.slice(at)];
 }
 
+export function columnPrefKey(board, columnKey) {
+  return `kanban-${board}-${columnKey}`;
+}
+
 export function columnIds(leads, status) {
   return leads.filter((l) => l.status === status).map((l) => l.id);
 }
@@ -81,6 +85,8 @@ export default class LeadsController extends Controller {
   limit = 50;
   status = '';
 
+  // Keyed by user too: the controller outlives logout and impersonation switches.
+  @tracked collapsedColumns = {};
   @tracked showModal = false;
   @tracked showAssignModal = false;
   @tracked showDetailModal = false;
@@ -296,6 +302,28 @@ export default class LeadsController extends Controller {
     this.preferences.set(FILTER_PREF_KEY, filter);
   }
 
+  isColumnCollapsed = (board, columnKey) => {
+    const prefKey = columnPrefKey(board, columnKey);
+    return (
+      this.collapsedColumns[`${this.auth.currentUser?.id}-${prefKey}`] ??
+      this.preferences.get(prefKey, false)
+    );
+  };
+
+  @action toggleColumn(board, columnKey) {
+    const prefKey = columnPrefKey(board, columnKey);
+    const collapsed = !this.isColumnCollapsed(board, columnKey);
+    this.collapsedColumns = {
+      ...this.collapsedColumns,
+      [`${this.auth.currentUser?.id}-${prefKey}`]: collapsed,
+    };
+    if (collapsed) {
+      this.preferences.set(prefKey, true);
+    } else {
+      this.preferences.remove(prefKey);
+    }
+  }
+
   @action setViewMode(mode) {
     this.viewMode = mode;
     this.preferences.set('leads-view-mode', mode);
@@ -472,10 +500,29 @@ export default class LeadsController extends Controller {
     }
   }
 
+  // setDragImage copies the frame during dragstart, so it can be removed next frame.
+  setTiltedDragImage(card, event) {
+    const rect = card.getBoundingClientRect();
+    const frame = document.createElement('div');
+    frame.className = 'nu-kanban__drag-image';
+    frame.style.setProperty('--kanban-drag-width', `${rect.width}px`);
+    const clone = card.cloneNode(true);
+    frame.append(clone);
+    document.body.append(frame);
+    const pad = clone.offsetLeft;
+    event.dataTransfer.setDragImage(
+      frame,
+      event.clientX - rect.left + pad,
+      event.clientY - rect.top + pad,
+    );
+    requestAnimationFrame(() => frame.remove());
+  }
+
   @action async handleDragStart(lead, event) {
     event.dataTransfer.setData('text/plain', lead.id);
     event.dataTransfer.effectAllowed = 'move';
     const card = event.currentTarget;
+    this.setTiltedDragImage(card, event);
     card
       .closest('.nu-kanban')
       ?.style.setProperty('--kanban-drag-height', `${card.offsetHeight}px`);

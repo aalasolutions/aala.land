@@ -53,17 +53,37 @@
                 (eq this.dropGap.anchor 'end')
               )
               'is-drop-end'
+            }}
+            {{if
+              (this.isColumnCollapsed 'pipeline' column.status)
+              'is-collapsed'
             }}"
-          role="button"
-          draggable="true"
           {{on "dragover" (fn this.handleDragOver column.status)}}
           {{on "dragleave" (fn this.clearDropTarget "dropTargetStatus")}}
           {{on "drop" (fn this.handleDrop column.status)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">{{column.label}}</span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          {{#let
+            (this.isColumnCollapsed "pipeline" column.status)
+            as |collapsed|
+          }}
+            <button
+              type="button"
+              class="nu-kanban__column-header"
+              aria-expanded={{if collapsed "false" "true"}}
+              data-test-column-toggle
+              {{on "click" (fn this.toggleColumn "pipeline" column.status)}}
+            >
+              <span class="nu-kanban__column-title">{{column.label}}</span>
+              <span
+                class="nu-kanban__column-count"
+              >{{column.leads.length}}</span>
+              <Ui::Ph
+                @icon={{if collapsed "caret-right" "caret-down"}}
+                class="nu-kanban__column-toggle"
+                aria-hidden="true"
+              />
+            </button>
+          {{/let}}
 
           {{#each column.leads as |lead|}}
             <Nuvo::Panel
@@ -191,19 +211,45 @@
         <div
           data-test-kanban-column
           data-test-column-temp={{column.temperature}}
-          class="nu-kanban__column column-temp-{{lowercase column.temperature}} {{if (eq this.dropTargetTemp column.temperature) 'is-drag-over'}}"
+          class="nu-kanban__column column-temp-{{lowercase column.temperature}}
+            {{if (eq this.dropTargetTemp column.temperature) 'is-drag-over'}}
+            {{if
+              (this.isColumnCollapsed 'temperature' column.temperature)
+              'is-collapsed'
+            }}"
           {{on "dragover" (fn this.handleTempDragOver column.temperature)}}
           {{on "dragleave" (fn this.clearDropTarget "dropTargetTemp")}}
           {{on "drop" (fn this.handleTempDrop column.temperature)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">
-              <span class="nu-kanban__column-accent"></span>
-              <Ui::Ph @icon={{column.icon}} />
-              {{column.label}}
-            </span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          {{#let
+            (this.isColumnCollapsed "temperature" column.temperature)
+            as |collapsed|
+          }}
+            <button
+              type="button"
+              class="nu-kanban__column-header"
+              aria-expanded={{if collapsed "false" "true"}}
+              data-test-column-toggle
+              {{on
+                "click"
+                (fn this.toggleColumn "temperature" column.temperature)
+              }}
+            >
+              <span class="nu-kanban__column-title">
+                <span class="nu-kanban__column-accent"></span>
+                <Ui::Ph @icon={{column.icon}} />
+                {{column.label}}
+              </span>
+              <span
+                class="nu-kanban__column-count"
+              >{{column.leads.length}}</span>
+              <Ui::Ph
+                @icon={{if collapsed "caret-right" "caret-down"}}
+                class="nu-kanban__column-toggle"
+                aria-hidden="true"
+              />
+            </button>
+          {{/let}}
 
           {{#each column.leads as |lead|}}
             <Nuvo::Panel
@@ -312,18 +358,47 @@
         <div
           data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
-          class="nu-kanban__column {{if (eq this.dropTargetAgent (or column.agentId "unassigned")) 'is-drag-over'}}"
+          class="nu-kanban__column
+            {{if
+              (eq this.dropTargetAgent (or column.agentId 'unassigned'))
+              'is-drag-over'
+            }}
+            {{if
+              (this.isColumnCollapsed 'agent' (or column.agentId 'unassigned'))
+              'is-collapsed'
+            }}"
           {{on "dragover" (fn this.handleAgentDragOver column.agentId)}}
           {{on "dragleave" (fn this.clearDropTarget "dropTargetAgent")}}
           {{on "drop" (fn this.handleAgentDrop column.agentId)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">
-              <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
-              {{column.agentName}}
-            </span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          {{#let
+            (this.isColumnCollapsed "agent" (or column.agentId "unassigned"))
+            as |collapsed|
+          }}
+            <button
+              type="button"
+              class="nu-kanban__column-header"
+              aria-expanded={{if collapsed "false" "true"}}
+              data-test-column-toggle
+              {{on
+                "click"
+                (fn this.toggleColumn "agent" (or column.agentId "unassigned"))
+              }}
+            >
+              <span class="nu-kanban__column-title">
+                <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
+                {{column.agentName}}
+              </span>
+              <span
+                class="nu-kanban__column-count"
+              >{{column.leads.length}}</span>
+              <Ui::Ph
+                @icon={{if collapsed "caret-right" "caret-down"}}
+                class="nu-kanban__column-toggle"
+                aria-hidden="true"
+              />
+            </button>
+          {{/let}}
 
           <div class="agent-load-bar">
             <div class="agent-load-fill {{column.loadClass}}"></div>
