@@ -25,7 +25,12 @@ module('Unit | Controller | leases/detail', function (hooks) {
   test('a limited contact shows first name and last initial', function (assert) {
     const controller = controllerWith(this.owner, {
       ...LEASE,
-      contact: { id: 'contact-1', firstName: 'Test', lastName: 'User' },
+      contact: {
+        id: 'contact-1',
+        accessLevel: 'LIMITED',
+        firstName: 'Test',
+        lastInitial: 'U.',
+      },
     });
     assert.strictEqual(controller.tenantName, 'Test U.');
   });

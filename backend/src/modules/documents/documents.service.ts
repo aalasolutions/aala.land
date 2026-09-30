@@ -6,7 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
-import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import {
   PropertyDocument,
   DocumentCategory,
@@ -26,6 +33,10 @@ import {
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
 import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import {
+  ContactPrivacyService,
+  ContactViewer,
+} from '../contacts/contact-privacy.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
 import {
@@ -113,7 +124,21 @@ export class DocumentsService {
     private readonly mediaService: MediaService,
     private readonly dataSource: DataSource,
     private readonly storagePurge: StoragePurgeService,
+    private readonly contactPrivacy: ContactPrivacyService,
   ) {}
+
+  // A contact's documents follow its privacy: a viewer who sees the contact LIMITED never sees them.
+  private hideLimitedContactDocuments(
+    qb: SelectQueryBuilder<PropertyDocument>,
+    viewer: ContactViewer,
+  ): void {
+    const full = this.contactPrivacy.fullAccessSql('dc', viewer);
+    if (!full) return;
+    qb.andWhere(
+      `(doc.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts dc WHERE dc.id = doc.contact_id AND ${full.sql}))`,
+      full.params,
+    );
+  }
 
   async uploadAndCreate(
     companyId: string,
@@ -181,6 +206,7 @@ export class DocumentsService {
     unitId?: string,
     filters?: DocumentListFilters,
     regionCodes?: string[],
+    userId?: string,
   ): Promise<{
     data: SanitizedDocument[];
     total: number;
@@ -224,6 +250,8 @@ export class DocumentsService {
         'leaseContact.firstName',
         'leaseContact.lastName',
         'leaseContact.phone',
+        'leaseContact.regionCode',
+        'leaseContact.createdBy',
       ])
       .leftJoin(
         'doc.workOrder',
@@ -240,6 +268,13 @@ export class DocumentsService {
         { scopedCodes },
       );
     }
+
+    const viewer: ContactViewer = {
+      userId: userId ?? '',
+      role: userRole,
+      regionCodes: regionCodes ?? [],
+    };
+    this.hideLimitedContactDocuments(qb, viewer);
 
     if (category) {
       qb.andWhere('doc.category = :category', { category });
@@ -333,10 +368,19 @@ export class DocumentsService {
         )
       : new Map<string, string>();
 
+    const tenants = data
+      .map((d) => d.lease?.contact)
+      .filter((c): c is Contact => !!c);
+    const tenantLevels = await this.contactPrivacy.accessLevelFor(
+      companyId,
+      viewer,
+      tenants,
+    );
+
     return {
       data: data.map((d) => ({
         ...this.sanitize(d),
-        link: documentLink(d),
+        link: documentLink(d, tenantLevels),
         ...this.derivedFrom(d, includeDerived ? unitId : undefined),
         uploadedByName: d.uploadedBy
           ? (uploaderNames.get(d.uploadedBy) ?? null)
@@ -361,9 +405,10 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     regionCodes: string[],
+    userId: string,
   ): Promise<SanitizedDocument> {
     return this.sanitize(
-      await this.findOneEntity(id, companyId, userRole, regionCodes),
+      await this.findOneEntity(id, companyId, userRole, regionCodes, userId),
     );
   }
 
@@ -373,6 +418,7 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     regionCodes: string[],
+    userId: string,
   ): Promise<PropertyDocument> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
     const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
@@ -394,6 +440,11 @@ export class DocumentsService {
         { scopedCodes },
       );
     }
+    this.hideLimitedContactDocuments(qb, {
+      userId,
+      role: userRole,
+      regionCodes,
+    });
 
     const doc = await qb.getOne();
 
@@ -409,12 +460,14 @@ export class DocumentsService {
     userRole: string,
     dto: UpdateDocumentDto,
     regionCodes: string[],
+    userId: string,
   ): Promise<SanitizedDocument> {
     const existing = await this.findOneEntity(
       id,
       companyId,
       userRole,
       regionCodes,
+      userId,
     );
     const caller: RegionScope = { role: userRole, regionCodes };
     this.assertAccessLevelAllowed(userRole, dto.accessLevel);
@@ -485,8 +538,15 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     regionCodes: string[],
+    userId: string,
   ): Promise<void> {
-    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
+    const doc = await this.findOneEntity(
+      id,
+      companyId,
+      userRole,
+      regionCodes,
+      userId,
+    );
 
     const purgeIds = await this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(PropertyDocument, {
@@ -504,8 +564,15 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     regionCodes: string[],
+    userId: string,
   ): Promise<{ stream: NodeJS.ReadableStream; doc: PropertyDocument }> {
-    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
+    const doc = await this.findOneEntity(
+      id,
+      companyId,
+      userRole,
+      regionCodes,
+      userId,
+    );
     if (!doc.s3Key) {
       throw new NotFoundException('Document has no associated file in storage');
     }
@@ -518,8 +585,15 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     regionCodes: string[],
+    userId: string,
   ): Promise<SanitizedDocument[]> {
-    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
+    const doc = await this.findOneEntity(
+      id,
+      companyId,
+      userRole,
+      regionCodes,
+      userId,
+    );
     const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
     const versions: PropertyDocument[] = [doc];
 

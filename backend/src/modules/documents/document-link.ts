@@ -1,4 +1,6 @@
 import { contactDisplayNameOr } from '@shared/utils/contact.util';
+import { limitedDisplayName } from '@shared/utils/contact-privacy.util';
+import type { ContactAccessLevel } from '../contacts/contact-privacy.service';
 import { PropertyDocument } from '../properties/entities/property-document.entity';
 
 export type DocumentLinkType =
@@ -34,7 +36,11 @@ export interface DocumentLink {
 }
 
 // Reads the relations findAll joins; a parent that failed to join still yields its id.
-export function documentLink(doc: PropertyDocument): DocumentLink | null {
+// Contact documents reach only FULL viewers; a lease tenant is named at the viewer's level.
+export function documentLink(
+  doc: PropertyDocument,
+  tenantLevels?: Map<string, ContactAccessLevel>,
+): DocumentLink | null {
   if (doc.unitId) {
     const assetName = doc.unit?.asset?.name;
     const unitNumber = doc.unit?.unitNumber ?? '';
@@ -55,10 +61,11 @@ export function documentLink(doc: PropertyDocument): DocumentLink | null {
     };
   }
   if (doc.leaseId) {
-    const tenant = contactDisplayNameOr(
-      doc.lease?.contact ?? null,
-      'No tenant',
-    );
+    const contact = doc.lease?.contact ?? null;
+    const tenant =
+      contact && tenantLevels?.get(contact.id) !== 'FULL'
+        ? (limitedDisplayName(contact) ?? 'No tenant')
+        : contactDisplayNameOr(contact, 'No tenant');
     const startDate = doc.lease?.startDate ?? '';
     return {
       type: 'lease',

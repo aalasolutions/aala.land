@@ -16,6 +16,7 @@ import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
 import { MediaService } from '../properties/media.service';
 import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 import { DataSource } from 'typeorm';
 import { Role } from '@shared/enums/roles.enum';
 import { Company } from '../companies/entities/company.entity';
@@ -25,6 +26,7 @@ import { WorkOrder } from '../maintenance/entities/work-order.entity';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
+  let privacy: { fullAccessSql: jest.Mock; accessLevelFor: jest.Mock };
   let repo: any;
   let unitRepo: any;
   let unitQb: any;
@@ -172,10 +174,24 @@ describe('DocumentsService', () => {
         },
         { provide: DataSource, useValue: dataSource },
         { provide: StoragePurgeService, useValue: storagePurge },
+        {
+          provide: ContactPrivacyService,
+          useValue: {
+            fullAccessSql: jest.fn().mockReturnValue(null),
+            accessLevelFor: jest.fn(
+              async (
+                _companyId: string,
+                _viewer: unknown,
+                contacts: { id: string }[],
+              ) => new Map(contacts.map((c) => [c.id, 'FULL'])),
+            ),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<DocumentsService>(DocumentsService);
+    privacy = module.get(ContactPrivacyService);
     repo = module.get(getRepositoryToken(PropertyDocument));
     unitRepo = module.get(getRepositoryToken(Unit));
   });
@@ -474,6 +490,7 @@ describe('DocumentsService', () => {
         companyId,
         Role.COMPANY_ADMIN,
         callerRegions,
+        'user-uuid-1',
       );
       expect(result).toEqual(sanitizedMockDoc);
       expect(result).not.toHaveProperty('url');
@@ -485,7 +502,13 @@ describe('DocumentsService', () => {
       qb.getOne.mockResolvedValue(null);
 
       await expect(
-        service.findOne('bad-id', companyId, Role.COMPANY_ADMIN, callerRegions),
+        service.findOne(
+          'bad-id',
+          companyId,
+          Role.COMPANY_ADMIN,
+          callerRegions,
+          'user-uuid-1',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -501,6 +524,7 @@ describe('DocumentsService', () => {
         Role.COMPANY_ADMIN,
         { name: 'Updated Name' },
         callerRegions,
+        'user-uuid-1',
       );
 
       expect(result.name).toBe('Updated Name');
@@ -524,6 +548,7 @@ describe('DocumentsService', () => {
           Role.COMPANY_ADMIN,
           { name: 'Updated Name' },
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow(ConflictException);
       expect(manager.findOne).toHaveBeenCalledWith(Unit, {
@@ -551,6 +576,7 @@ describe('DocumentsService', () => {
         companyId,
         Role.COMPANY_ADMIN,
         callerRegions,
+        'user-uuid-1',
       );
 
       expect(manager.findOne).toHaveBeenCalledWith(PropertyDocument, {
@@ -574,6 +600,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.COMPANY_ADMIN,
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow(NotFoundException);
       expect(storagePurge.purge).not.toHaveBeenCalled();
@@ -589,6 +616,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.COMPANY_ADMIN,
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow('deadlock detected');
       expect(storagePurge.dispatch).not.toHaveBeenCalled();
@@ -604,6 +632,7 @@ describe('DocumentsService', () => {
           'other-company',
           Role.COMPANY_ADMIN,
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow(NotFoundException);
       expect(qb.andWhere).toHaveBeenCalledWith('doc.company_id = :companyId', {
@@ -728,6 +757,7 @@ describe('DocumentsService', () => {
         companyId,
         Role.COMPANY_ADMIN,
         callerRegions,
+        'user-uuid-1',
       );
 
       expect(mockMediaService.getDocumentStream).toHaveBeenCalledWith(
@@ -747,6 +777,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.ACCOUNTANT,
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow(NotFoundException);
       expect(mockMediaService.getDocumentStream).not.toHaveBeenCalled();
@@ -762,6 +793,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.COMPANY_ADMIN,
           callerRegions,
+          'user-uuid-1',
         ),
       ).rejects.toThrow(NotFoundException);
       expect(mockMediaService.getDocumentStream).not.toHaveBeenCalled();
@@ -792,6 +824,7 @@ describe('DocumentsService', () => {
         companyId,
         Role.COMPANY_ADMIN,
         callerRegions,
+        'user-uuid-1',
       );
 
       expect(result).toHaveLength(2);
@@ -832,6 +865,7 @@ describe('DocumentsService', () => {
         companyId,
         Role.MANAGER,
         callerRegions,
+        'user-uuid-1',
       );
 
       expect(result).toHaveLength(2);
@@ -885,7 +919,13 @@ describe('DocumentsService', () => {
         seedDocInRegion('punjab');
 
         await expect(
-          service.findOne('doc-uuid-1', companyId, Role.MANAGER, makkah),
+          service.findOne(
+            'doc-uuid-1',
+            companyId,
+            Role.MANAGER,
+            makkah,
+            'user-uuid-1',
+          ),
         ).rejects.toThrow(NotFoundException);
       });
 
@@ -893,7 +933,13 @@ describe('DocumentsService', () => {
         seedDocInRegion('punjab');
 
         await expect(
-          service.downloadStream('doc-uuid-1', companyId, Role.MANAGER, makkah),
+          service.downloadStream(
+            'doc-uuid-1',
+            companyId,
+            Role.MANAGER,
+            makkah,
+            'user-uuid-1',
+          ),
         ).rejects.toThrow(NotFoundException);
         expect(mockMediaService.getDocumentStream).not.toHaveBeenCalled();
       });
@@ -908,6 +954,7 @@ describe('DocumentsService', () => {
             Role.MANAGER,
             { name: 'Renamed.pdf' },
             makkah,
+            'user-uuid-1',
           ),
         ).rejects.toThrow(NotFoundException);
         expect(repo.save).not.toHaveBeenCalled();
@@ -917,7 +964,13 @@ describe('DocumentsService', () => {
         seedDocInRegion('punjab');
 
         await expect(
-          service.remove('doc-uuid-1', companyId, Role.MANAGER, makkah),
+          service.remove(
+            'doc-uuid-1',
+            companyId,
+            Role.MANAGER,
+            makkah,
+            'user-uuid-1',
+          ),
         ).rejects.toThrow(NotFoundException);
         expect(storagePurge.purge).not.toHaveBeenCalled();
         expect(storagePurge.dispatch).not.toHaveBeenCalled();
@@ -932,6 +985,7 @@ describe('DocumentsService', () => {
             companyId,
             Role.MANAGER,
             makkah,
+            'user-uuid-1',
           ),
         ).rejects.toThrow(NotFoundException);
       });
@@ -940,7 +994,13 @@ describe('DocumentsService', () => {
         seedDocInRegion('makkah');
 
         await expect(
-          service.findOne('doc-uuid-1', companyId, Role.MANAGER, []),
+          service.findOne(
+            'doc-uuid-1',
+            companyId,
+            Role.MANAGER,
+            [],
+            'user-uuid-1',
+          ),
         ).rejects.toThrow(NotFoundException);
         expect(repo.createQueryBuilder).not.toHaveBeenCalled();
       });
@@ -953,6 +1013,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.MANAGER,
           makkahAndPunjab,
+          'user-uuid-1',
         );
 
         expect(result.id).toBe('doc-uuid-1');
@@ -966,6 +1027,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.COMPANY_ADMIN,
           makkah,
+          'user-uuid-1',
         );
 
         expect(result.id).toBe('doc-uuid-1');
@@ -981,6 +1043,7 @@ describe('DocumentsService', () => {
           companyId,
           Role.MANAGER,
           makkah,
+          'user-uuid-1',
         );
 
         expect(result.id).toBe('doc-uuid-1');
@@ -1459,6 +1522,7 @@ describe('DocumentsService', () => {
           Role.COMPANY_ADMIN,
           { leaseId: null },
           callerRegions,
+          'user-uuid-1',
         );
 
         expect(result.leaseId).toBeNull();
@@ -1479,6 +1543,7 @@ describe('DocumentsService', () => {
           Role.COMPANY_ADMIN,
           { leaseId: null, workOrderId: 'wo-1' },
           callerRegions,
+          'user-uuid-1',
         );
 
         expect(result.leaseId).toBeNull();
@@ -1496,6 +1561,7 @@ describe('DocumentsService', () => {
             Role.COMPANY_ADMIN,
             { contactId: 'contact-1' },
             callerRegions,
+            'user-uuid-1',
           ),
         ).rejects.toThrow('A document can link to only one record');
         expect(repo.save).not.toHaveBeenCalled();
@@ -1511,6 +1577,7 @@ describe('DocumentsService', () => {
             Role.MANAGER,
             { accessLevel: DocumentAccessLevel.ADMIN },
             ['dubai'],
+            'user-uuid-1',
           ),
         ).rejects.toThrow(BadRequestException);
         expect(repo.save).not.toHaveBeenCalled();
@@ -1714,6 +1781,75 @@ describe('DocumentsService', () => {
           unitNumber: '402',
           areaId: null,
           assetName: 'Marina Tower',
+        });
+      });
+
+      it('hides documents of contacts the viewer sees LIMITED', async () => {
+        privacy.fullAccessSql.mockReturnValueOnce({
+          sql: '(dc.created_by = :fullAccessUserId)',
+          params: { fullAccessUserId: 'agent-1' },
+        });
+
+        await service.findAll(
+          companyId,
+          Role.AGENT,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          ['dubai'],
+          'agent-1',
+        );
+
+        expect(privacy.fullAccessSql).toHaveBeenCalledWith('dc', {
+          userId: 'agent-1',
+          role: Role.AGENT,
+          regionCodes: ['dubai'],
+        });
+        expect(qb().andWhere).toHaveBeenCalledWith(
+          '(doc.contact_id IS NULL OR EXISTS (SELECT 1 FROM contacts dc WHERE dc.id = doc.contact_id AND (dc.created_by = :fullAccessUserId)))',
+          { fullAccessUserId: 'agent-1' },
+        );
+      });
+
+      it('names a LIMITED lease tenant by first name and initial only', async () => {
+        privacy.accessLevelFor.mockResolvedValueOnce(
+          new Map([['contact-2', 'LIMITED']]),
+        );
+        const row = {
+          ...mockDoc,
+          id: 'd4',
+          leaseId: 'lease-1',
+          lease: {
+            id: 'lease-1',
+            startDate: '2026-01-01',
+            contact: {
+              id: 'contact-2',
+              firstName: 'Test',
+              lastName: 'Tenant',
+              phone: '+971500000001',
+            },
+          },
+        };
+        qb().getManyAndCount.mockResolvedValue([[row], 1]);
+
+        const result = await service.findAll(
+          companyId,
+          Role.AGENT,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          ['dubai'],
+          'agent-1',
+        );
+
+        expect(result.data[0].link).toEqual({
+          type: 'lease',
+          id: 'lease-1',
+          label: 'Test T. 2026-01-01',
         });
       });
     });

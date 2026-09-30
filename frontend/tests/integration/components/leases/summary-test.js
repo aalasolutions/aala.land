@@ -82,7 +82,12 @@ module('Integration | Component | leases/summary', function (hooks) {
   test('a limited contact never prints undefined', async function (assert) {
     this.lease = {
       ...LEASE,
-      contact: { id: 'contact-1', firstName: 'Test', lastName: 'T' },
+      contact: {
+        id: 'contact-1',
+        accessLevel: 'LIMITED',
+        firstName: 'Test',
+        lastInitial: 'T.',
+      },
     };
     await render(
       hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,

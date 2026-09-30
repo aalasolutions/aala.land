@@ -14,6 +14,8 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     agentId: { refreshModel: true },
     isWhatsapp: { refreshModel: true },
     company: { refreshModel: true },
+    companyExact: { refreshModel: true },
+    region: { refreshModel: true },
     nationality: { refreshModel: true },
     dateFrom: { refreshModel: true },
     dateTo: { refreshModel: true },
@@ -28,6 +30,8 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     agentId = '',
     isWhatsapp = '',
     company = '',
+    companyExact = '',
+    region = '',
     nationality = '',
     dateFrom = '',
     dateTo = '',
@@ -42,6 +46,9 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     if (agentId) params.set('agentId', agentId);
     if (isWhatsapp) params.set('isWhatsapp', 'true');
     if (company) params.set('company', company);
+    if (company && companyExact === 'true') params.set('companyExact', 'true');
+    // A company link names its region; fetchJson then leaves the active region off.
+    if (region) params.set('regionCode', region);
     if (nationality) params.set('nationality', nationality);
     const fromIso = localMidnightIso(dateFrom);
     const toIso = localMidnightIso(dateTo, 1);

@@ -369,6 +369,20 @@ describe('ContactsService', () => {
       );
     });
 
+    it('matches the whole company name when the link asks for it', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        company: 'Acme',
+        companyExact: true,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))',
+        { company: 'Acme' },
+      );
+    });
+
     it('narrows the assigned set to the region asked for', async () => {
       const qb = arrangeList();
 
@@ -579,7 +593,7 @@ describe('ContactsService', () => {
   describe('findCompanies', () => {
     function arrangeCompanies() {
       const qb = qbMock({ getRawMany: [{ name: 'Acme', count: 3 }] });
-      ['clone', 'offset', 'limit'].forEach((key) => {
+      ['clone', 'offset', 'limit', 'addGroupBy'].forEach((key) => {
         qb[key] = jest.fn().mockReturnValue(qb);
       });
       qb.getRawOne = jest.fn().mockResolvedValue({ total: 1 });
@@ -620,6 +634,48 @@ describe('ContactsService', () => {
 
       expect(result.total).toBe(0);
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('lists one row per company per region across the caller regions when all regions is on', async () => {
+      const qb = arrangeCompanies();
+
+      await service.findCompanies(
+        companyId,
+        1,
+        20,
+        'makkah',
+        {
+          userId: 'manager-uuid-1',
+          role: Role.MANAGER,
+          regionCodes: ['makkah', 'punjab'],
+        },
+        true,
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah', 'punjab'] },
+      );
+      expect(qb.groupBy).toHaveBeenCalledWith('LOWER(TRIM(c.contact_company))');
+      expect(qb.addGroupBy).toHaveBeenCalledWith('c.region_code');
+    });
+
+    it('does not narrow a company admin by region when all regions is on', async () => {
+      const qb = arrangeCompanies();
+
+      await service.findCompanies(
+        companyId,
+        1,
+        20,
+        'makkah',
+        { userId: 'admin-uuid-1', role: Role.COMPANY_ADMIN, regionCodes: [] },
+        true,
+      );
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        expect.anything(),
+      );
     });
   });
 

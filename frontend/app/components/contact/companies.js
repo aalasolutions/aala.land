@@ -4,7 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { modifier } from 'ember-modifier';
 
-// Company names in the active region with how many contacts each has.
+// Contacts per company and region: the active region, or every region the caller holds.
 export default class ContactCompaniesComponent extends Component {
   @service auth;
   @service region;
@@ -17,21 +17,35 @@ export default class ContactCompaniesComponent extends Component {
   @tracked error = '';
   loadToken = 0;
   regionCode = this.region.regionCode;
+  allRegions = this.args.allRegions;
 
   columns = [
     { name: 'Company', valuePath: 'name', width: 320, isFixed: 'left' },
-    { name: 'People', valuePath: 'count', width: 140, numeric: true, isFixed: 'right' },
+    { name: 'Region', valuePath: 'regionCode', width: 180 },
+    {
+      name: 'People',
+      valuePath: 'count',
+      width: 140,
+      numeric: true,
+      isFixed: 'right',
+    },
   ];
+
+  regionName = (code) =>
+    this.region.regions.find((r) => r.code === code)?.name ?? code;
 
   constructor() {
     super(...arguments);
     this.load(1);
   }
 
-  // A region switch refreshes the route without re-creating this component.
-  reloadOnRegion = modifier((element, [regionCode]) => {
-    if (regionCode === this.regionCode) return;
+  // A region switch or the All regions toggle refreshes without re-creating this component.
+  reloadOnRegion = modifier((element, [regionCode, allRegions]) => {
+    if (regionCode === this.regionCode && allRegions === this.allRegions) {
+      return;
+    }
     this.regionCode = regionCode;
+    this.allRegions = allRegions;
     this.load(1);
   });
 
@@ -47,6 +61,7 @@ export default class ContactCompaniesComponent extends Component {
       page: String(page),
       limit: String(this.limit),
     });
+    if (this.allRegions) params.set('allRegions', 'true');
     try {
       const json = await this.auth.fetchJson(
         `/contacts/companies?${params.toString()}`,

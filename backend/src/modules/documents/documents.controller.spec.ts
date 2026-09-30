@@ -138,6 +138,7 @@ describe('DocumentsController', () => {
           includeDerived: false,
         },
         callerRegions,
+        userId,
       );
     });
 
@@ -161,6 +162,7 @@ describe('DocumentsController', () => {
           includeDerived: false,
         },
         callerRegions,
+        userId,
       );
     });
 
@@ -184,6 +186,7 @@ describe('DocumentsController', () => {
           includeDerived: false,
         },
         callerRegions,
+        userId,
       );
     });
 
@@ -265,6 +268,7 @@ describe('DocumentsController', () => {
           includeDerived: true,
         }),
         callerRegions,
+        userId,
       );
     });
 
@@ -349,6 +353,7 @@ describe('DocumentsController', () => {
         companyId,
         role,
         callerRegions,
+        userId,
       );
     });
   });
@@ -364,6 +369,7 @@ describe('DocumentsController', () => {
         companyId,
         role,
         callerRegions,
+        userId,
       );
     });
   });
@@ -387,6 +393,7 @@ describe('DocumentsController', () => {
         companyId,
         role,
         callerRegions,
+        userId,
       );
       expect(res.setHeader).toHaveBeenCalledWith(
         'Content-Type',
@@ -508,6 +515,7 @@ describe('DocumentsController', () => {
         role,
         { name: 'Renamed.pdf' },
         callerRegions,
+        userId,
       );
     });
   });
@@ -523,6 +531,7 @@ describe('DocumentsController', () => {
         companyId,
         role,
         callerRegions,
+        userId,
       );
     });
   });

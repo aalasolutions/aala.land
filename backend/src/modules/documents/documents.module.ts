@@ -12,6 +12,7 @@ import { Lease } from '../leases/entities/lease.entity';
 import { WorkOrder } from '../maintenance/entities/work-order.entity';
 import { PropertiesModule } from '../properties/properties.module';
 import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
+import { ContactsModule } from '../contacts/contacts.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
     ]),
     PropertiesModule,
     StoragePurgeModule,
+    ContactsModule,
   ],
   controllers: [DocumentsController],
   providers: [DocumentsService],

@@ -1,7 +1,7 @@
 <Nuvo::Card
   data-test-contact-companies
   ...attributes
-  {{this.reloadOnRegion this.region.regionCode}}
+  {{this.reloadOnRegion this.region.regionCode @allRegions}}
 >
   {{#if this.isLoading}}
     <div class="flex center py-8">
@@ -16,16 +16,28 @@
       @pinColumns={{true}}
       @sortable={{true}}
       @tableId="contact-companies"
+      @showOptions={{true}}
       data-test-contact-companies-table
       as |cell|
     >
       {{#if (eq cell.key "name")}}
         <LinkTo
           @route="contacts.index"
-          @query={{hash tab="contacts" company=cell.value page=1}}
+          @query={{hash
+            tab="contacts"
+            company=cell.value
+            companyExact="true"
+            region=cell.row.regionCode
+            allRegions="false"
+            page=1
+          }}
           class="text-primary font-bold whitespace-nowrap"
           data-test-contact-company={{cell.value}}
         >{{cell.value}}</LinkTo>
+      {{else if (eq cell.key "regionCode")}}
+        <span data-test-contact-company-region>{{this.regionName
+            cell.value
+          }}</span>
       {{else}}
         <span class="text-muted">{{cell.value}}</span>
       {{/if}}

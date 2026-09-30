@@ -109,6 +109,12 @@ export class ContactsController {
   })
   @ApiQuery({ name: 'isWhatsapp', required: false, type: Boolean })
   @ApiQuery({ name: 'company', required: false, type: String })
+  @ApiQuery({
+    name: 'companyExact',
+    required: false,
+    type: Boolean,
+    description: 'true matches the whole company name instead of part of it',
+  })
   @ApiQuery({ name: 'nationality', required: false, type: String })
   @ApiQuery({
     name: 'dateFrom',
@@ -131,6 +137,7 @@ export class ContactsController {
     @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
     @Query('isWhatsapp') isWhatsapp?: string,
     @Query('company') company?: string,
+    @Query('companyExact') companyExact?: string,
     @Query('nationality') nationality?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
@@ -163,6 +170,7 @@ export class ContactsController {
         agentId: agentId || undefined,
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
         company: company || undefined,
+        companyExact: companyExact === 'true',
         nationality: nationality || undefined,
         regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
@@ -178,16 +186,24 @@ export class ContactsController {
   @Get('companies')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({
-    summary: 'Company names with their contact counts (MANAGER+)',
+    summary: 'Contact counts per company and region (MANAGER+)',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'allRegions',
+    required: false,
+    type: Boolean,
+    description:
+      'true lists every region the caller may see; regionCode is ignored',
+  })
   findCompanies(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
+    @Query('allRegions') allRegions?: string,
   ) {
     return this.contactsService.findCompanies(
       requireCompanyId(req.user),
@@ -195,6 +211,7 @@ export class ContactsController {
       limit,
       regionCode || undefined,
       req.user,
+      allRegions === 'true',
     );
   }
 

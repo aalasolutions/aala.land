@@ -7,6 +7,7 @@ import { isDestroying, isDestroyed } from '@ember/destroyable';
 import { modifier } from 'ember-modifier';
 import { validPage } from 'land/utils/page-number';
 import { ROLES, isAdminRole } from 'land/utils/roles';
+import { contactName } from 'land/utils/contact-display';
 import { closeDeleteModal, openDeleteModal } from 'land/utils/delete-modal';
 import {
   ACCESS_LEVELS,
@@ -80,16 +81,14 @@ const RECORD_PICKERS = {
     searchUrl: '/contacts',
     searchParam: 'search',
     placeholder: 'Search name, phone or email...',
-    label: (contact) =>
-      contact.displayName ??
-      [contact.firstName, contact.lastInitial].filter(Boolean).join(' '),
+    label: (contact) => contactName(contact),
   }),
   lease: recordPicker('lease', {
     searchUrl: '/leases',
     searchParam: 'search',
     placeholder: 'Search tenant, unit or registration ref...',
     label: (lease) =>
-      `${lease.contact?.displayName ?? 'No tenant'} ${lease.startDate ?? ''}`.trim(),
+      `${lease.contact ? contactName(lease.contact) : 'No tenant'} ${lease.startDate ?? ''}`.trim(),
   }),
   work_order: recordPicker('work_order', {
     listUrl: '/maintenance?page=1&limit=500',

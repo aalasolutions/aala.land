@@ -37,6 +37,8 @@ export default class ContactsIndexController extends PaginatedController {
     'agentId',
     'isWhatsapp',
     'company',
+    'companyExact',
+    'region',
     'nationality',
     'dateFrom',
     'dateTo',
@@ -48,6 +50,8 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked agentId = '';
   @tracked isWhatsapp = false;
   @tracked company = '';
+  @tracked companyExact = '';
+  @tracked region = '';
   @tracked nationality = '';
   @tracked dateFrom = '';
   @tracked dateTo = '';
@@ -106,6 +110,8 @@ export default class ContactsIndexController extends PaginatedController {
     this.agentId = '';
     this.isWhatsapp = false;
     this.company = '';
+    this.companyExact = '';
+    this.region = '';
     this.nationality = '';
     this.dateFrom = '';
     this.dateTo = '';
@@ -137,11 +143,12 @@ export default class ContactsIndexController extends PaginatedController {
   get hasActiveFilters() {
     return Boolean(
       this.agentId ||
-        this.isWhatsapp ||
-        this.company ||
-        this.nationality ||
-        this.dateFrom ||
-        this.dateTo,
+      this.isWhatsapp ||
+      this.company ||
+      this.region ||
+      this.nationality ||
+      this.dateFrom ||
+      this.dateTo,
     );
   }
 
@@ -182,6 +189,7 @@ export default class ContactsIndexController extends PaginatedController {
 
   @action toggleAllRegions(checked) {
     this.allRegions = checked ? 'true' : 'false';
+    this.region = '';
     this.page = 1;
   }
 
@@ -207,6 +215,8 @@ export default class ContactsIndexController extends PaginatedController {
 
   applyFilter(fieldName, value) {
     this[fieldName] = value;
+    // Typing a company is a partial search again, not the exact name a company link set.
+    if (fieldName === 'company') this.companyExact = '';
     this.page = 1;
   }
 
@@ -224,6 +234,8 @@ export default class ContactsIndexController extends PaginatedController {
     this.agentId = '';
     this.isWhatsapp = false;
     this.company = '';
+    this.companyExact = '';
+    this.region = '';
     this.nationality = '';
     this.dateFrom = '';
     this.dateTo = '';

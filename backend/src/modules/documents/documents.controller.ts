@@ -255,6 +255,7 @@ export class DocumentsController {
         includeDerived: includeDerived === 'true',
       },
       req.user.regionCodes,
+      req.user.userId,
     );
   }
 
@@ -277,6 +278,7 @@ export class DocumentsController {
       requireCompanyId(req.user),
       req.user.role,
       req.user.regionCodes,
+      req.user.userId,
     );
   }
 
@@ -299,6 +301,7 @@ export class DocumentsController {
       requireCompanyId(req.user),
       req.user.role,
       req.user.regionCodes,
+      req.user.userId,
     );
   }
 
@@ -326,6 +329,7 @@ export class DocumentsController {
       requireCompanyId(req.user),
       req.user.role,
       req.user.regionCodes,
+      req.user.userId,
     );
     // Strips quotes/control chars so a name can't inject headers or break Content-Disposition.
     const safeFileName = (doc.name || 'document').replace(
@@ -371,6 +375,7 @@ export class DocumentsController {
       req.user.role,
       dto,
       req.user.regionCodes,
+      req.user.userId,
     );
   }
 
@@ -389,6 +394,7 @@ export class DocumentsController {
       requireCompanyId(req.user),
       req.user.role,
       req.user.regionCodes,
+      req.user.userId,
     );
   }
 }

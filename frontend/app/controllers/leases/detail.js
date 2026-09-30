@@ -1,5 +1,5 @@
 import Controller from '@ember/controller';
-import { contactName } from '../../utils/contact-name';
+import { contactName } from '../../utils/contact-display';
 
 export default class LeasesDetailController extends Controller {
   get lease() {

@@ -60,6 +60,16 @@ module('Unit | Utility | contact-display', function () {
     assert.strictEqual(contactName(null), '');
   });
 
+  test('contactName returns the fallback when there is nothing to show', function (assert) {
+    assert.strictEqual(contactName(null, 'Unknown tenant'), 'Unknown tenant');
+    assert.strictEqual(contactName({}, 'Unknown tenant'), 'Unknown tenant');
+    assert.strictEqual(
+      contactName({ accessLevel: 'LIMITED' }, 'Unknown tenant'),
+      'Unknown tenant',
+    );
+    assert.strictEqual(contactName({ firstName: 'Sara' }, 'x'), 'Sara');
+  });
+
   test('contactPhone never hands out the real number of a limited contact', function (assert) {
     assert.strictEqual(contactPhone(FULL), '+971501112233');
     assert.strictEqual(contactPhone(LIMITED), '+971 50 *** **67');

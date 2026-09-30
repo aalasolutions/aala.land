@@ -81,10 +81,17 @@ const PHONE_SEARCH_MIN_DIGITS = SUBSCRIBER_DIGITS;
 const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
 
 // Additional list filters beyond search and role tag.
+export interface CompanyCount {
+  name: string;
+  regionCode: string;
+  count: number;
+}
+
 export interface ContactFilters {
   agentId?: string;
   isWhatsapp?: boolean;
   company?: string;
+  companyExact?: boolean;
   nationality?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -400,7 +407,12 @@ export class ContactsService {
       });
     }
 
-    if (filters?.company) {
+    if (filters?.company && filters.companyExact) {
+      // Same grouping as findCompanies, so a company link lists exactly its counted contacts.
+      qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
+        company: filters.company,
+      });
+    } else if (filters?.company) {
       qb.andWhere('c.contact_company ILIKE :company', {
         company: `%${filters.company}%`,
       });
@@ -455,14 +467,17 @@ export class ContactsService {
     limit = 20,
     regionCode?: string,
     caller?: ContactViewer,
+    allRegions = false,
   ): Promise<{
-    data: { name: string; count: number }[];
+    data: CompanyCount[];
     total: number;
     page: number;
     limit: number;
   }> {
     const take = contactListLimit(limit);
-    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    const regionCodes = allRegions
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(regionCode, caller);
     if (regionCodes?.length === 0) {
       return { data: [], total: 0, page, limit: take };
     }
@@ -475,24 +490,30 @@ export class ContactsService {
       qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
     }
 
-    const [rows, totalRow] = await Promise.all([
+    // One row per company per region; company names group case-insensitively.
+    const [data, totalRow] = await Promise.all([
       qb
         .clone()
         .select('MIN(TRIM(c.contact_company))', 'name')
+        .addSelect('c.region_code', 'regionCode')
         .addSelect('COUNT(*)::int', 'count')
         .groupBy('LOWER(TRIM(c.contact_company))')
+        .addGroupBy('c.region_code')
         .orderBy('count', 'DESC')
         .addOrderBy('name', 'ASC')
         .offset(pageSkip(page, take))
         .limit(take)
-        .getRawMany<{ name: string; count: number }>(),
+        .getRawMany<CompanyCount>(),
       qb
         .clone()
-        .select('COUNT(DISTINCT LOWER(TRIM(c.contact_company)))::int', 'total')
+        .select(
+          'COUNT(DISTINCT (LOWER(TRIM(c.contact_company)), c.region_code))::int',
+          'total',
+        )
         .getRawOne<{ total: number }>(),
     ]);
 
-    return { data: rows, total: totalRow?.total ?? 0, page, limit: take };
+    return { data, total: totalRow?.total ?? 0, page, limit: take };
   }
 
   // Every FULL view of a contact someone else created is audited, no dedup.
