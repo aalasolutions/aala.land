@@ -700,6 +700,12 @@
                         <span
                           class="notification-message"
                         >{{notif.message}}</span>
+                        {{#if notif.regionName}}
+                          <span
+                            class="notification-region"
+                            data-test-notification-region
+                          >Region: {{notif.regionName}}</span>
+                        {{/if}}
                         <span class="notification-time">{{format-date-time
                             notif.createdAt
                             region=notif.regionCode

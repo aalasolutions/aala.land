@@ -10,6 +10,30 @@ import {
   canManageRegions,
 } from '../utils/roles';
 
+// Where a bell click lands; regional pages list only the topbar region.
+function notificationTarget({ entityType, type }) {
+  if (entityType === 'ContactAccessRequest') {
+    return type === 'CONTACT_ACCESS_REQUESTED'
+      ? { route: 'access-requests', regional: false }
+      : {
+          route: 'contacts.index',
+          queryParams: { tab: 'requests' },
+          regional: false,
+        };
+  }
+  if (entityType === 'lead' || type.includes('LEAD')) {
+    return { route: 'leads', regional: true };
+  }
+  if (entityType === 'cheque' || type.includes('CHEQUE')) {
+    return { route: 'cheques', regional: true };
+  }
+  if (entityType === 'lease') return { route: 'leases', regional: true };
+  if (type === 'MAINTENANCE_UPDATE') {
+    return { route: 'maintenance', regional: true };
+  }
+  return null;
+}
+
 export default class ApplicationController extends Controller {
   @service session;
   @service auth;
@@ -18,6 +42,7 @@ export default class ApplicationController extends Controller {
   @service socket;
   @service whatsapp;
   @service uiSettings;
+  @service dialogs;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -387,6 +412,10 @@ export default class ApplicationController extends Controller {
 
   @action
   async markAsRead(notification) {
+    const target = notificationTarget(notification);
+    const region = target?.regional ? this.regionToEnter(notification) : null;
+    if (region && !(await this.confirmRegionSwitch(region))) return;
+
     try {
       await this.auth.fetchJson(`/notifications/${notification.id}/read`, {
         method: 'PATCH',
@@ -395,7 +424,7 @@ export default class ApplicationController extends Controller {
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
 
-      this.handleNotificationNavigation(notification);
+      this.openNotificationTarget(target, region);
     } catch (e) {
       console.error(
         '[APP-CTRL] Failed to mark notification as read:',
@@ -404,26 +433,38 @@ export default class ApplicationController extends Controller {
     }
   }
 
-  handleNotificationNavigation(notification) {
-    this.showNotifications = false;
-    const { entityType, type } = notification;
+  // An assigned region other than the active one; otherwise the page opens as is.
+  regionToEnter(notification) {
+    const code = notification.regionCode;
+    if (!code || code === this.region.regionCode) return null;
+    return this.region.regions.find((r) => r.code === code) ?? null;
+  }
 
-    if (entityType === 'ContactAccessRequest') {
-      if (type === 'CONTACT_ACCESS_REQUESTED') {
-        this.router.transitionTo('access-requests');
-      } else {
-        this.router.transitionTo('contacts.index', {
-          queryParams: { tab: 'requests' },
-        });
-      }
-    } else if (entityType === 'lead' || type.includes('LEAD')) {
-      this.router.transitionTo('leads');
-    } else if (entityType === 'cheque' || type.includes('CHEQUE')) {
-      this.router.transitionTo('cheques');
-    } else if (entityType === 'lease') {
-      this.router.transitionTo('leases');
-    } else if (type === 'MAINTENANCE_UPDATE') {
-      this.router.transitionTo('maintenance');
+  async confirmRegionSwitch(region) {
+    try {
+      return await this.dialogs.confirm({
+        title: 'Switch region?',
+        message: `You are leaving ${this.region.activeRegion?.name} region and going to ${region.name} region. Are you sure?`,
+        confirmText: `Go to ${region.name}`,
+      });
+    } catch {
+      // Another dialog is already open; this click is dropped.
+      return false;
+    }
+  }
+
+  openNotificationTarget(target, region) {
+    this.showNotifications = false;
+    if (!target) return;
+    if (region) this.region.switchRegion(region);
+    if (region && this.router.currentRouteName === target.route) {
+      this.router.refresh();
+    } else if (target.queryParams) {
+      this.router.transitionTo(target.route, {
+        queryParams: target.queryParams,
+      });
+    } else {
+      this.router.transitionTo(target.route);
     }
   }
 
