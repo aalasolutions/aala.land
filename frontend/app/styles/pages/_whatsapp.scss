@@ -395,6 +395,19 @@ $wa-tray-max-height: 16rem;
     }
   }
 
+  &.m-notice {
+    --wa-fill: var(--bg-alternate);
+
+    align-self: center;
+    align-items: center;
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+
+    &::before {
+      content: none;
+    }
+  }
+
   &.m-incoming + &.m-incoming {
     border-start-start-radius: nu-radius(lg);
   }

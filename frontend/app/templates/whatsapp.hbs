@@ -165,7 +165,11 @@
           {{#each this.currentChatMessages key="id" as |msg|}}
             <div
               class="wa-message
-                {{if msg.fromMe 'm-outgoing' 'm-incoming'}}
+                {{if
+                  (eq msg.mediaType 'size_notice')
+                  'm-notice'
+                  (if msg.fromMe 'm-outgoing' 'm-incoming')
+                }}
                 {{if msg.aiGenerated 'm-ai'}}
                 {{if msg.deletedAt 'm-deleted'}}"
               data-message-id={{msg.id}}
@@ -176,7 +180,12 @@
                 <div class="wa-sender-tag">{{msg.senderName}}</div>
               {{/if}}
 
-              {{#if msg.deletedAt}}
+              {{#if (eq msg.mediaType "size_notice")}}
+                <span class="flex x-center gap-1" data-test-wa-size-notice>
+                  <Ui::Ph @icon="warning-circle" />
+                  File too large. Check WhatsApp on your phone.
+                </span>
+              {{else if msg.deletedAt}}
                 <div class="wa-bubble is-deleted" data-test-wa-message-deleted>
                   <Ui::Ph @icon="prohibit" />
                   This message was deleted
@@ -203,7 +212,7 @@
                   >edited</span>
                 {{/if}}
 
-                {{#if msg.fromMe}}
+                {{#if (and msg.fromMe (not (eq msg.mediaType "size_notice")))}}
                   {{#if msg.aiGenerated}}
                     <Nuvo::Tag @variant="info" @size="sm" @text="AI" />
                   {{else}}

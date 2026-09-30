@@ -33,6 +33,7 @@ import {
   WA_MEDIA_QUEUE,
   WA_MESSAGE_NO_STORED_MEDIA,
   WA_PLACEHOLDER_BODIES,
+  WA_SIZE_NOTICE_TYPE,
   WaMediaJobData,
   WaMediaStatus,
   WaMessage,
@@ -44,6 +45,7 @@ import {
 import {
   CloudMedia,
   InboundMedia,
+  MEDIA_TOO_LARGE_CODE,
   resolveInboundMedia,
   revokeMediaDeletedBy,
   toWireMessage,
@@ -128,6 +130,7 @@ interface CloudStatus {
   id?: string;
   status?: string;
   timestamp?: string;
+  recipient_id?: string;
   errors?: CloudError[];
 }
 
@@ -905,11 +908,7 @@ export class WhatsappWebhookService {
     const media = resolveInboundMedia(echo);
     const body = media ? media.body : resolveStorableBody(echo);
     const timestamp = parseEpochSeconds(echo.timestamp);
-    if (!echo.id || !echo.to || body === null || (!media && !body)) {
-      // TEMP diagnostic: an echo dropped with nothing to store.
-      this.logger.warn(`WA_STATUS_PROBE echo ${JSON.stringify(echo)}`);
-      return;
-    }
+    if (!echo.id || !echo.to || body === null || (!media && !body)) return;
     if (!timestamp) return;
     const evt = buildCloudWaMessage(
       {
@@ -1193,6 +1192,52 @@ export class WhatsappWebhookService {
     return match;
   }
 
+  // Over 100 MB either way arrives only as a failed status; stored as ours so it opens no reply window or unread.
+  private async storeSizeNotice(
+    connection: WhatsappConnection,
+    waMessageId: string,
+    fields: { chatId: string; timestamp: number },
+  ): Promise<void> {
+    const { companyId, userId } = connection;
+    const evt = buildCloudWaMessage(
+      {
+        id: waMessageId,
+        chatId: fields.chatId,
+        senderId: '',
+        body: '',
+        mediaType: WA_SIZE_NOTICE_TYPE,
+        fromMe: true,
+        timestamp: fields.timestamp,
+        originUserId: userId,
+      },
+      {
+        body: '',
+        mediaType: WA_SIZE_NOTICE_TYPE,
+        mediaStatus: WaMediaStatus.TOO_LARGE,
+        mediaMetaId: null,
+        mediaMime: null,
+        mediaSha256: null,
+        mediaFileName: null,
+      },
+    );
+    const { inserted } = await this.store.addMessage(
+      companyId,
+      userId,
+      evt,
+      connection.phoneNumberId,
+    );
+    if (!inserted) return;
+    this.logger.log(`Stored a size notice for ${waMessageId} (Meta 131052)`);
+    try {
+      this.gateway.emitMessage(userId, toWireMessage(evt));
+    } catch (err) {
+      this.logger.error(
+        `Failed to push size notice ${waMessageId}`,
+        errorMessage(err, true),
+      );
+    }
+  }
+
   // Retrying is safe: applyMessageStatus is a rank-guarded, idempotent UPDATE.
   private async persistStatuses(
     connection: WhatsappConnection,
@@ -1224,11 +1269,12 @@ export class WhatsappWebhookService {
           errorCode,
         );
         if (!applied) {
-          // TEMP diagnostic: full payload of a failed status with no stored row.
-          if (mapped === WhatsappMessageStatus.FAILED) {
-            this.logger.warn(
-              `WA_STATUS_PROBE status ${JSON.stringify(status)}`,
-            );
+          if (errorCode === MEDIA_TOO_LARGE_CODE && status.recipient_id) {
+            await this.storeSizeNotice(connection, status.id, {
+              chatId: status.recipient_id,
+              timestamp: Math.floor(statusAt.getTime() / 1000),
+            });
+            continue;
           }
           this.logger.debug(
             `Status ${mapped} not stored for ${status.id}: unknown message or a stale status`,

@@ -97,7 +97,7 @@ export function revokeMediaDeletedBy(fromMe: boolean): string {
 }
 
 // Meta's error for an inbound file over its size limit; the file never arrives.
-const MEDIA_TOO_LARGE_CODE = '131052';
+export const MEDIA_TOO_LARGE_CODE = '131052';
 
 export interface CloudMedia {
   id?: string;
