@@ -1,0 +1,15 @@
+<button
+  type="button"
+  class="nu-kanban__column-header"
+  aria-expanded={{if @collapsed "false" "true"}}
+  data-test-column-toggle
+  {{on "click" @onToggle}}
+>
+  <span class="nu-kanban__column-title">{{yield}}</span>
+  <span class="nu-kanban__column-count">{{@count}}</span>
+  <Ui::Ph
+    @icon={{if @collapsed "caret-right" "caret-down"}}
+    class="nu-kanban__column-toggle"
+    aria-hidden="true"
+  />
+</button>

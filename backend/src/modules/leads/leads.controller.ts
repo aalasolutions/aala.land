@@ -105,7 +105,9 @@ export class LeadsController {
     Role.MANAGER,
     Role.AGENT,
   )
-  @ApiOperation({ summary: 'Set the manual order of leads in a status column' })
+  @ApiOperation({
+    summary: 'Move one lead between its neighbours in a kanban board column',
+  })
   reorder(@Body() dto: ReorderLeadsDto, @Request() req: AuthenticatedRequest) {
     return this.leadsService.reorder(
       requireCompanyId(req.user),
@@ -244,9 +246,11 @@ export class LeadsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leadsService.findActivities(id, requireCompanyId(req.user), {
-      role: req.user.role,
-      regionCodes: req.user.regionCodes,
-    });
+    return this.leadsService.findActivities(
+      id,
+      requireCompanyId(req.user),
+      { role: req.user.role, regionCodes: req.user.regionCodes },
+      req.user.userId,
+    );
   }
 }

@@ -32,6 +32,11 @@ export function canAccessWhatsapp(role) {
   ].includes(role);
 }
 
+// Backend `GET /leads` gives agents only their own and unassigned leads.
+export function seesOnlyOwnLeads(role) {
+  return role === ROLES.AGENT;
+}
+
 export function canManageFinancials(role) {
   return [
     ROLES.SUPER_ADMIN,

@@ -10,11 +10,19 @@ import {
   DataSource,
   EntityManager,
   Repository,
+  FindOptionsOrder,
+  FindOptionsSelect,
   FindOptionsWhere,
   In,
   IsNull,
 } from 'typeorm';
-import { Lead, LeadStatus } from './entities/lead.entity';
+import {
+  LEAD_BOARDS,
+  Lead,
+  LeadBoard,
+  LeadStatus,
+  LeadTemperature,
+} from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
@@ -48,6 +56,7 @@ import {
   paginationOptions,
 } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
+import { generateJitteredKeyBetween } from '../../shared/utils/rank.util';
 import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
@@ -70,6 +79,19 @@ function viewerOf(
   return userId && caller
     ? { userId, role: caller.role, regionCodes: caller.regionCodes }
     : undefined;
+}
+
+// Agents see their own leads and the unassigned pool; every other role sees all.
+function withAssigneeScope(
+  base: FindOptionsWhere<Lead>,
+  caller: RegionScope | undefined,
+  userId: string | undefined,
+): FindOptionsWhere<Lead> | FindOptionsWhere<Lead>[] {
+  if (caller?.role !== Role.AGENT) return base;
+  return [
+    { ...base, assignedTo: IsNull() },
+    ...(userId ? [{ ...base, assignedTo: userId }] : []),
+  ];
 }
 
 export type LeadActivityResponse = Omit<LeadActivity, 'performer'> & {
@@ -166,6 +188,8 @@ export class LeadsService {
       companyId,
       regionCode,
     });
+    lead.status ??= LeadStatus.NEW;
+    lead.temperature ??= LeadTemperature.WARM;
     const saved = await this.dataSource.transaction(async (manager) => {
       if (unitId) {
         await this.assertUnitNotArchivedLocked(
@@ -175,6 +199,7 @@ export class LeadsService {
           'This unit is archived.',
         );
       }
+      await this.rankOnTop(manager, lead, ['pipeline', 'temperature', 'agent']);
       return manager.getRepository(Lead).save(lead);
     });
 
@@ -270,16 +295,17 @@ export class LeadsService {
     viewer?: ContactViewer,
   ): Promise<PaginatedLeadResponse> {
     const take = contactListLimit(limit);
-    const where: FindOptionsWhere<Lead> = { companyId };
-    if (regionCode) where.regionCode = regionCode;
-    if (contactId) where.contactId = contactId;
+    const base: FindOptionsWhere<Lead> = { companyId };
+    if (regionCode) base.regionCode = regionCode;
+    if (contactId) base.contactId = contactId;
+    const where = withAssigneeScope(base, viewer, viewer?.userId);
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,
       relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
       ...paginationOptions(page, take),
       order: {
-        position: { direction: 'ASC', nulls: 'FIRST' },
+        rank: 'ASC',
         createdAt: 'DESC',
       },
     });
@@ -296,7 +322,12 @@ export class LeadsService {
     companyId: string,
     caller?: ContactViewer,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
+    const lead = await this.findLeadEntityOrThrow(
+      id,
+      companyId,
+      caller,
+      caller?.userId,
+    );
     return this.serializeLead(companyId, lead, caller);
   }
 
@@ -318,7 +349,12 @@ export class LeadsService {
     userRole?: string,
     caller?: RegionScope,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
+    const lead = await this.findLeadEntityOrThrow(
+      id,
+      companyId,
+      caller,
+      userId,
+    );
     const viewer = viewerOf(userId, caller);
 
     if (dto.localityId && dto.localityId !== lead.localityId) {
@@ -367,6 +403,17 @@ export class LeadsService {
     const statusChanged = hasStatusUpdate && dto.status !== previousStatus;
     const assignmentChanged =
       hasAssignmentUpdate && dto.assignedTo !== previousAssignedTo;
+    const temperatureChanged =
+      dto.temperature !== undefined && dto.temperature !== lead.temperature;
+    const enteredBoards = (
+      [
+        [statusChanged, 'pipeline'],
+        [temperatureChanged, 'temperature'],
+        [assignmentChanged, 'agent'],
+      ] as const
+    )
+      .filter(([changed]) => changed)
+      .map(([, board]) => board);
 
     Object.assign(lead, dto);
 
@@ -384,10 +431,8 @@ export class LeadsService {
       }
     }
 
-    // A new column starts the lead unpositioned, on top, like a new lead.
     if (statusChanged) {
       lead.stageEnteredAt = new Date();
-      lead.position = null;
     }
 
     await this.dataSource.transaction(async (manager) => {
@@ -405,6 +450,7 @@ export class LeadsService {
           'This unit is archived.',
         );
       }
+      await this.rankOnTop(manager, lead, enteredBoards);
       await manager.getRepository(Lead).save(lead);
     });
 
@@ -501,7 +547,12 @@ export class LeadsService {
     reason?: string,
     caller?: RegionScope,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
+    const lead = await this.findLeadEntityOrThrow(
+      id,
+      companyId,
+      caller,
+      performedBy,
+    );
     const agent = await this.findAssignableAgentOrThrow(agentId, companyId);
 
     if (lead.assignedTo) {
@@ -511,6 +562,7 @@ export class LeadsService {
       lead.transferReason = reason;
     }
 
+    const reassigned = lead.assignedTo !== agentId;
     lead.assignedTo = agentId;
     lead.assignedAgent = agent as User;
     await this.dataSource.transaction(async (manager) => {
@@ -520,6 +572,7 @@ export class LeadsService {
         companyId,
         'pessimistic_write',
       );
+      if (reassigned) await this.rankOnTop(manager, lead, ['agent']);
       await manager.getRepository(Lead).save(lead);
     });
 
@@ -577,9 +630,13 @@ export class LeadsService {
     performedBy?: string,
     caller?: RegionScope,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
+    const lead = await this.findLeadEntityOrThrow(
+      id,
+      companyId,
+      caller,
+      performedBy,
+    );
     const previousStatus = lead.status;
-    if (previousStatus !== LeadStatus.WON) lead.position = null;
     lead.status = LeadStatus.WON;
     const updated = await this.dataSource.transaction(async (manager) => {
       await this.lockLeadUnitNotArchived(
@@ -588,6 +645,9 @@ export class LeadsService {
         companyId,
         'pessimistic_write',
       );
+      if (previousStatus !== LeadStatus.WON) {
+        await this.rankOnTop(manager, lead, ['pipeline']);
+      }
       return manager.getRepository(Lead).save(lead);
     });
 
@@ -623,7 +683,7 @@ export class LeadsService {
     performedBy?: string,
     caller?: RegionScope,
   ): Promise<LeadActivity> {
-    await this.findLeadEntityOrThrow(leadId, companyId, caller);
+    await this.findLeadEntityOrThrow(leadId, companyId, caller, performedBy);
 
     const activity = this.activityRepository.create({
       leadId,
@@ -646,8 +706,9 @@ export class LeadsService {
     leadId: string,
     companyId: string,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<LeadActivityResponse[]> {
-    await this.findLeadEntityOrThrow(leadId, companyId, caller);
+    await this.findLeadEntityOrThrow(leadId, companyId, caller, userId);
 
     const activities = await this.activityRepository.find({
       where: { leadId, companyId },
@@ -669,53 +730,86 @@ export class LeadsService {
     userId?: string,
     caller?: RegionScope,
   ): Promise<{ updated: number }> {
+    if (dto.board === 'agent' && caller?.role === Role.AGENT) {
+      throw new ForbiddenException('Agents cannot order the agent board');
+    }
     const scopedCodes = scopedRegionCodes(caller);
     if (scopedCodes?.length === 0) {
       throw new NotFoundException('Lead not found');
     }
+    const ids = [dto.leadId, dto.aboveId, dto.belowId].filter(
+      (id): id is string => !!id,
+    );
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('A lead cannot be its own neighbour');
+    }
 
-    const updated = await this.dataSource.transaction(async (manager) => {
+    const base: FindOptionsWhere<Lead> = {
+      id: In(ids),
+      companyId,
+      ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+    };
+    const { field, rank } = LEAD_BOARDS[dto.board];
+
+    await this.dataSource.transaction(async (manager) => {
       const rows = await manager.find(Lead, {
-        where: {
-          id: In(dto.orderedIds),
-          companyId,
-          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
-        },
-        select: { id: true, status: true },
+        where: withAssigneeScope(base, caller, userId),
+        select: { id: true, [field]: true, [rank]: true },
         lock: { mode: 'pessimistic_write' },
       });
-      if (rows.length !== dto.orderedIds.length) {
+      if (rows.length !== ids.length) {
         throw new NotFoundException('Lead not found');
       }
-
-      const inStatus = new Set(
-        rows.filter((row) => row.status === dto.status).map((row) => row.id),
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      const column = byId.get(dto.leadId)![field];
+      const above = dto.aboveId ? byId.get(dto.aboveId)![rank] : null;
+      const below = dto.belowId ? byId.get(dto.belowId)![rank] : null;
+      if (
+        rows.some((row) => row[field] !== column) ||
+        (above !== null && below !== null && above >= below)
+      ) {
+        throw new ConflictException('The board changed, refresh and try again');
+      }
+      await manager.update(
+        Lead,
+        { id: dto.leadId, companyId },
+        { [rank]: generateJitteredKeyBetween(above, below) },
       );
-      const ids = dto.orderedIds.filter((id) => inStatus.has(id));
-      if (ids.length === 0) return 0;
-
-      const positions = ids.map((id) => dto.orderedIds.indexOf(id));
-      await manager.query(
-        `UPDATE "leads" l SET "position" = o."position"
-         FROM unnest($1::uuid[], $2::int[]) AS o("id", "position")
-         WHERE l."id" = o."id" AND l."company_id" = $3 AND l."status" = $4`,
-        [ids, positions, companyId, dto.status],
-      );
-      return ids.length;
     });
 
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
-      status: dto.status,
+      id: dto.leadId,
       updatedBy: userId,
     });
 
-    return { updated };
+    return { updated: 1 };
+  }
+
+  // A lead entering a column without a drop position goes on top of it.
+  private async rankOnTop(
+    manager: EntityManager,
+    lead: Lead,
+    boards: readonly LeadBoard[],
+  ): Promise<void> {
+    for (const board of boards) {
+      const { field, rank } = LEAD_BOARDS[board];
+      const first = await manager.findOne(Lead, {
+        where: {
+          companyId: lead.companyId,
+          [field]: lead[field] ?? IsNull(),
+        } as FindOptionsWhere<Lead>,
+        order: { [rank]: 'ASC' } as FindOptionsOrder<Lead>,
+        select: { id: true, [rank]: true } as FindOptionsSelect<Lead>,
+      });
+      lead[rank] = generateJitteredKeyBetween(null, first?.[rank] ?? null);
+    }
   }
 
   private async findLeadEntityOrThrow(
     id: string,
     companyId: string,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<Lead> {
     const scopedCodes = scopedRegionCodes(caller);
     // No assignment means no access, and an empty IN () is invalid SQL.
@@ -723,12 +817,13 @@ export class LeadsService {
       throw new NotFoundException('Lead not found');
     }
 
+    const base: FindOptionsWhere<Lead> = {
+      id,
+      companyId,
+      ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+    };
     const lead = await this.leadRepository.findOne({
-      where: {
-        id,
-        companyId,
-        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
-      },
+      where: withAssigneeScope(base, caller, userId),
       relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
     });
     if (!lead) {

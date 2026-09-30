@@ -5,6 +5,7 @@ import {
   columnIds,
   insertionIndex,
   moveLead,
+  neighbours,
 } from 'land/controllers/leads';
 
 // The leads save path branches per field:
@@ -188,8 +189,8 @@ module('Unit | Controller | leads', function (hooks) {
     });
 
     test('moveLead reorders within a column before the anchor', function (assert) {
-      const next = moveLead(leads, 'c', 'NEW', 'a');
-      assert.deepEqual(columnIds(next, 'NEW'), ['c', 'a', 'b']);
+      const next = moveLead(leads, 'c', 'status', 'NEW', 'a');
+      assert.deepEqual(columnIds(next, 'status', 'NEW'), ['c', 'a', 'b']);
       assert.strictEqual(
         next.find((l) => l.id === 'c'),
         leads[2],
@@ -197,27 +198,30 @@ module('Unit | Controller | leads', function (hooks) {
     });
 
     test('moveLead drops at the end of the column', function (assert) {
-      const next = moveLead(leads, 'a', 'NEW', DROP_AT_END);
-      assert.deepEqual(columnIds(next, 'NEW'), ['b', 'c', 'a']);
+      const next = moveLead(leads, 'a', 'status', 'NEW', DROP_AT_END);
+      assert.deepEqual(columnIds(next, 'status', 'NEW'), ['b', 'c', 'a']);
     });
 
     test('moveLead changes status and places at the drop index', function (assert) {
-      const next = moveLead(leads, 'x', 'NEW', 'b');
-      assert.deepEqual(columnIds(next, 'NEW'), ['a', 'x', 'b', 'c']);
-      assert.deepEqual(columnIds(next, 'CONTACTED'), []);
+      const next = moveLead(leads, 'x', 'status', 'NEW', 'b');
+      assert.deepEqual(columnIds(next, 'status', 'NEW'), ['a', 'x', 'b', 'c']);
+      assert.deepEqual(columnIds(next, 'status', 'CONTACTED'), []);
       assert.strictEqual(leads[3].status, 'CONTACTED', 'input is not mutated');
     });
 
     test('moveLead into an empty column', function (assert) {
-      const next = moveLead(leads, 'a', 'WON', DROP_AT_END);
-      assert.deepEqual(columnIds(next, 'WON'), ['a']);
+      const next = moveLead(leads, 'a', 'status', 'WON', DROP_AT_END);
+      assert.deepEqual(columnIds(next, 'status', 'WON'), ['a']);
     });
 
     function dropEvent() {
       return { preventDefault() {}, currentTarget: null, clientY: 0 };
     }
 
-    async function drop(ctx, { lead, status, anchor, fail }) {
+    async function drop(
+      ctx,
+      { lead, board = 'pipeline', status: value, anchor, fail },
+    ) {
       const controller = makeController(ctx);
       const calls = [];
       const errors = [];
@@ -234,7 +238,7 @@ module('Unit | Controller | leads', function (hooks) {
         },
       };
       controller.draggedLead = lead;
-      await controller.handleDrop(status, dropEvent());
+      await controller.handleDrop(board, value, dropEvent());
       return { controller, calls, errors };
     }
 
@@ -247,7 +251,7 @@ module('Unit | Controller | leads', function (hooks) {
       assert.deepEqual(calls, [
         {
           path: '/leads/reorder',
-          body: { status: 'NEW', orderedIds: ['c', 'a', 'b'] },
+          body: { board: 'pipeline', leadId: 'c', belowId: 'a' },
         },
       ]);
     });
@@ -262,7 +266,7 @@ module('Unit | Controller | leads', function (hooks) {
         { path: '/leads/x', body: { status: 'NEW' } },
         {
           path: '/leads/reorder',
-          body: { status: 'NEW', orderedIds: ['a', 'x', 'b', 'c'] },
+          body: { board: 'pipeline', leadId: 'x', aboveId: 'a', belowId: 'b' },
         },
       ]);
     });
@@ -284,7 +288,87 @@ module('Unit | Controller | leads', function (hooks) {
         fail: '/leads/reorder',
       });
       assert.deepEqual(errors, ['nope']);
-      assert.deepEqual(columnIds(controller.allLeads, 'NEW'), ['a', 'b', 'c']);
+      assert.deepEqual(columnIds(controller.allLeads, 'status', 'NEW'), [
+        'a',
+        'b',
+        'c',
+      ]);
+    });
+
+    test('temperature drop changes temperature then orders that board', async function (assert) {
+      const { calls } = await drop(this, {
+        lead: { id: 'a', status: 'NEW', temperature: 'WARM' },
+        board: 'temperature',
+        status: 'HOT',
+        anchor: DROP_AT_END,
+      });
+      assert.deepEqual(calls, [
+        { path: '/leads/a', body: { temperature: 'HOT' } },
+        {
+          path: '/leads/reorder',
+          body: { board: 'temperature', leadId: 'a' },
+        },
+      ]);
+    });
+
+    test('agent drop assigns, or unassigns into Unassigned', async function (assert) {
+      const assigned = await drop(this, {
+        lead: { id: 'a', status: 'NEW', assignedTo: null },
+        board: 'agent',
+        status: 'agent-1',
+        anchor: DROP_AT_END,
+      });
+      assert.deepEqual(assigned.calls[0], {
+        path: '/leads/a/assign',
+        body: { agentId: 'agent-1' },
+      });
+      assert.strictEqual(assigned.calls[1].body.board, 'agent');
+
+      const unassigned = await drop(this, {
+        lead: { id: 'a', status: 'NEW', assignedTo: 'agent-1' },
+        board: 'agent',
+        status: null,
+        anchor: DROP_AT_END,
+      });
+      assert.deepEqual(unassigned.calls[0], {
+        path: '/leads/a',
+        body: { assignedTo: null },
+      });
+    });
+
+    test('each board sorts by its own rank', function (assert) {
+      const controller = makeController(this);
+      controller.model = {
+        data: [
+          { id: 'a', rank: 'a1', temperatureRank: 'a2' },
+          { id: 'b', rank: 'a2', temperatureRank: 'a1' },
+        ],
+      };
+      assert.deepEqual(
+        controller.sortedFor('pipeline').map((l) => l.id),
+        ['a', 'b'],
+      );
+      assert.deepEqual(
+        controller.sortedFor('temperature').map((l) => l.id),
+        ['b', 'a'],
+      );
+    });
+  });
+
+  module('neighbours', function () {
+    test('names the leads directly above and below', function (assert) {
+      assert.deepEqual(neighbours(['a', 'b', 'c'], 'b'), {
+        aboveId: 'a',
+        belowId: 'c',
+      });
+      assert.deepEqual(neighbours(['a', 'b'], 'a'), {
+        aboveId: undefined,
+        belowId: 'b',
+      });
+      assert.deepEqual(neighbours(['a', 'b'], 'b'), {
+        aboveId: 'a',
+        belowId: undefined,
+      });
     });
   });
 
@@ -323,6 +407,39 @@ module('Unit | Controller | leads', function (hooks) {
       controller.setFilter('all');
       assert.strictEqual(controller.filterType, 'all');
       assert.deepEqual(saved, { 'leads-filter': 'all' });
+    });
+  });
+
+  module('agent role', function () {
+    function tabIds(controller) {
+      return {
+        views: controller.viewTabs.map((tab) => tab.id),
+        filters: controller.filterTabs.map((tab) => tab.id),
+      };
+    }
+
+    test('an agent gets no Agent board and no Others filter', function (assert) {
+      this.owner.register(
+        'service:auth',
+        { currentUser: { id: 'u1', role: 'agent' } },
+        { instantiate: false },
+      );
+      assert.deepEqual(tabIds(makeController(this)), {
+        views: ['pipeline', 'temperature', 'list'],
+        filters: ['all', 'mine', 'unassigned'],
+      });
+    });
+
+    test('a manager keeps every board and filter', function (assert) {
+      this.owner.register(
+        'service:auth',
+        { currentUser: { id: 'u1', role: 'manager' } },
+        { instantiate: false },
+      );
+      assert.deepEqual(tabIds(makeController(this)), {
+        views: ['pipeline', 'temperature', 'agent', 'list'],
+        filters: ['all', 'mine', 'others', 'unassigned'],
+      });
     });
   });
 
@@ -380,32 +497,51 @@ module('Unit | Controller | leads', function (hooks) {
     }
 
     test('no gap until the pointer is over a column', function (assert) {
-      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      const controller = dragging(this, {
+        board: 'pipeline',
+        value: 'NEW',
+        anchor: 'l3',
+      });
       assert.strictEqual(controller.dropGap, null);
     });
 
     test("no gap over the card's own slot", function (assert) {
-      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
-      controller.dropTargetStatus = 'NEW';
+      const controller = dragging(this, {
+        board: 'pipeline',
+        value: 'NEW',
+        anchor: 'l3',
+      });
+      controller.dropTarget = { board: 'pipeline', value: 'NEW' };
       controller.dropBeforeId = 'l3';
       assert.strictEqual(controller.dropGap, null);
     });
 
     test('a gap opens anywhere else, including another column end', function (assert) {
-      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
-      controller.dropTargetStatus = 'NEW';
-      controller.dropBeforeId = 'l1';
-      assert.deepEqual(controller.dropGap, { status: 'NEW', anchor: 'l1' });
-      controller.dropTargetStatus = 'CONTACTED';
-      controller.dropBeforeId = 'end';
-      assert.deepEqual(controller.dropGap, {
-        status: 'CONTACTED',
-        anchor: 'end',
+      const controller = dragging(this, {
+        board: 'pipeline',
+        value: 'NEW',
+        anchor: 'l3',
       });
+      controller.dropTarget = { board: 'pipeline', value: 'NEW' };
+      controller.dropBeforeId = 'l1';
+      assert.deepEqual(controller.dropGap, {
+        board: 'pipeline',
+        value: 'NEW',
+        anchor: 'l1',
+      });
+      assert.true(controller.isGapAt('pipeline', 'NEW', 'l1'));
+      assert.false(controller.isGapAt('temperature', 'NEW', 'l1'));
+      controller.dropTarget = { board: 'pipeline', value: 'CONTACTED' };
+      controller.dropBeforeId = 'end';
+      assert.true(controller.isGapAt('pipeline', 'CONTACTED', 'end'));
     });
 
     test('the card becomes the empty slot only after the drag image is taken', function (assert) {
-      const controller = dragging(this, { status: 'NEW', anchor: 'l3' });
+      const controller = dragging(this, {
+        board: 'pipeline',
+        value: 'NEW',
+        anchor: 'l3',
+      });
       assert.strictEqual(controller.dragSourceId, null);
       controller._sourceShown = true;
       assert.strictEqual(controller.dragSourceId, 'l2');
@@ -425,17 +561,17 @@ module('Unit | Controller | leads', function (hooks) {
       const column = document.createElement('div');
       const card = document.createElement('div');
       column.appendChild(card);
-      controller.dropTargetStatus = 'NEW';
-      controller.clearDropTarget('dropTargetStatus', {
+      controller.dropTarget = { board: 'pipeline', value: 'NEW' };
+      controller.clearDropTarget({
         currentTarget: column,
         relatedTarget: card,
       });
-      assert.strictEqual(controller.dropTargetStatus, 'NEW');
-      controller.clearDropTarget('dropTargetStatus', {
+      assert.true(controller.isDropTarget('pipeline', 'NEW'));
+      controller.clearDropTarget({
         currentTarget: column,
         relatedTarget: document.body,
       });
-      assert.strictEqual(controller.dropTargetStatus, null);
+      assert.strictEqual(controller.dropTarget, null);
     });
   });
 });
