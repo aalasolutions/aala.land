@@ -80,10 +80,14 @@ export class BillingService {
     private readonly dataSource: DataSource,
   ) {}
 
-  /** Race-safe via company lock, re-read, Stripe idempotency key, and UNIQUE index as backstops. */
+  /** Race-safe via company lock, re-read, provider idempotency key, and UNIQUE index as backstops. */
   async ensureCompanyCustomer(company: Company): Promise<string> {
-    // Fast path: already resolved, no lock needed.
-    if (company.billingCustomerId) return company.billingCustomerId;
+    // Fast path: already resolved by the active provider, no lock needed.
+    if (
+      company.billingCustomerId &&
+      company.billingProvider === this.provider.name
+    )
+      return company.billingCustomerId;
 
     return withCompanyLock(
       this.dataSource,
@@ -93,7 +97,11 @@ export class BillingService {
         const fresh = await manager.findOne(Company, {
           where: { id: company.id },
         });
-        if (fresh?.billingCustomerId) return fresh.billingCustomerId;
+        if (
+          fresh?.billingCustomerId &&
+          fresh.billingProvider === this.provider.name
+        )
+          return fresh.billingCustomerId;
 
         const customerId = await this.provider.ensureCustomer({
           companyId: company.id,
@@ -102,11 +110,16 @@ export class BillingService {
         });
         await manager.update(Company, company.id, {
           billingCustomerId: customerId,
-          billingProvider: 'stripe',
+          billingProvider: this.provider.name,
         });
         return customerId;
       },
     );
+  }
+
+  /** A price id minted by a previous provider does not count as synced. */
+  isPriceSynced(row: BillingPrice): boolean {
+    return !!row.providerPriceId && row.provider === this.provider.name;
   }
 
   /** Per-row failures persist, not throw, so one bad row doesn't abort the rest. */
@@ -119,7 +132,7 @@ export class BillingService {
     let synced = 0;
     let failed = 0;
     for (const row of rows) {
-      if (row.providerPriceId) continue;
+      if (this.isPriceSynced(row)) continue;
       try {
         const priceId = await this.provider.ensurePrice(
           row.kind,
@@ -127,6 +140,7 @@ export class BillingService {
           row.unitAmount,
         );
         await this.priceRepo.update(row.id, {
+          provider: this.provider.name,
           providerPriceId: priceId,
           lastSyncError: null,
           lastSyncErrorAt: null,
@@ -624,7 +638,7 @@ export class BillingService {
     return this.userRepo.count({ where: { companyId, isActive: true } });
   }
 
-  /** Throws if not found or not yet synced to Stripe (providerPriceId is null). */
+  /** Throws if not found or not yet synced to the active provider. */
   private async getProviderPriceId(
     kind: 'SEAT' | 'ENTERPRISE_BASE',
     currency: string,
@@ -638,9 +652,9 @@ export class BillingService {
           `Run POST /billing/prices/sync first.`,
       );
     }
-    if (!row.providerPriceId) {
+    if (!this.isPriceSynced(row) || !row.providerPriceId) {
       throw new BadRequestException(
-        `${kind} price for ${currency} has not been synced to Stripe yet. ` +
+        `${kind} price for ${currency} has not been synced to the billing provider yet. ` +
           `Run POST /billing/prices/sync first.`,
       );
     }

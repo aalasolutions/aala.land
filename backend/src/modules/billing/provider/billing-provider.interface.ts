@@ -12,16 +12,16 @@ export interface EnsureCustomerInput {
 }
 
 export interface ProviderWebhookEvent {
-  /** UNIQUE idempotency key (Stripe evt_...). */
+  /** UNIQUE idempotency key (the provider's event id). */
   providerEventId: string;
   providerEventType: string;
-  /** Full raw event body, persisted in stripe_events.payload. */
+  /** Full raw event body, persisted in billing_events.payload. */
   payload: Record<string, unknown>;
   events: NormalizedBillingEvent[];
 }
 
 export interface CreateSubscriptionInput {
-  /** Stripe customer id (must already exist). */
+  /** Provider customer id (must already exist). */
   customerId: string;
   /** BillingPrice.providerPriceId for the SEAT price ($25) in this currency. */
   seatPriceId: string;
@@ -31,7 +31,7 @@ export interface CreateSubscriptionInput {
   plan: BillingPlan;
   /** SEAT units: PRO = active users (min 1); ENTERPRISE = active users minus 1 (0 omits line). */
   quantity: number;
-  /** Stripe-format success URL (?session_id={CHECKOUT_SESSION_ID} appended by provider). */
+  /** Return URL after a completed checkout; the provider may append its own query params. */
   successUrl: string;
   cancelUrl: string;
   /** Passed in metadata so the webhook can resolve companyId without a DB lookup. */
@@ -60,6 +60,9 @@ export interface ChangePlanInput extends SubscriptionRef {
 }
 
 export interface BillingProvider {
+  /** Stored on companies.billing_provider and billing_prices.provider. */
+  readonly name: string;
+
   /** Create a customer with the company in metadata; returns the provider customer id. */
   ensureCustomer(input: EnsureCustomerInput): Promise<string>;
 

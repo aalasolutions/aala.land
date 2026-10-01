@@ -63,11 +63,11 @@ describe('BillingHistoryService', () => {
   });
 
   describe('recordPayment', () => {
-    it('upserts a payment_succeeded row keyed on (stripeInvoiceId, type) with a recency guard', async () => {
+    it('upserts a payment_succeeded row keyed on (providerInvoiceId, type) with a recency guard', async () => {
       await service.recordPayment(succeeded);
       expect(repo.query).toHaveBeenCalledTimes(1);
       const [sql, params] = repo.query.mock.calls[0];
-      expect(sql).toContain('ON CONFLICT (stripe_invoice_id, type) DO UPDATE');
+      expect(sql).toContain('ON CONFLICT (provider_invoice_id, type) DO UPDATE');
       // Recency guard: an older redelivery must not regress a newer row.
       expect(sql).toContain(
         'WHERE billing_history.occurred_at <= EXCLUDED.occurred_at',

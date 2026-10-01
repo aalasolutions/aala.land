@@ -8,7 +8,7 @@ import {
 import { BillingWebhookService, planToTier } from './billing-webhook.service';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
-import { StripeEvent } from './entities/stripe-event.entity';
+import { BillingEvent } from './entities/billing-event.entity';
 import {
   Company,
   SubscriptionTier,
@@ -24,7 +24,7 @@ import { NormalizedBillingEvent } from './events/billing-events';
 describe('BillingWebhookService', () => {
   let service: BillingWebhookService;
   let dispatcher: BillingEventDispatcher;
-  let eventRepo: jest.Mocked<Repository<StripeEvent>>;
+  let eventRepo: jest.Mocked<Repository<BillingEvent>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>>;
   let historyService: jest.Mocked<Pick<BillingHistoryService, 'recordPayment'>>;
@@ -79,7 +79,7 @@ describe('BillingWebhookService', () => {
         BillingWebhookService,
         BillingEventDispatcher,
         {
-          provide: getRepositoryToken(StripeEvent),
+          provide: getRepositoryToken(BillingEvent),
           useValue: {
             insert: jest.fn().mockResolvedValue({}),
             update: jest.fn().mockResolvedValue({}),
@@ -107,7 +107,7 @@ describe('BillingWebhookService', () => {
 
     service = module.get(BillingWebhookService);
     dispatcher = module.get(BillingEventDispatcher);
-    eventRepo = module.get(getRepositoryToken(StripeEvent));
+    eventRepo = module.get(getRepositoryToken(BillingEvent));
     companyRepo = module.get(getRepositoryToken(Company));
     provider = module.get(BILLING_PROVIDER);
     historyService = module.get(BillingHistoryService);
@@ -164,7 +164,7 @@ describe('BillingWebhookService', () => {
       eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
       eventRepo.findOne.mockResolvedValue({
         processedAt: new Date(),
-      } as StripeEvent);
+      } as BillingEvent);
       const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
@@ -184,7 +184,7 @@ describe('BillingWebhookService', () => {
       eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
       eventRepo.findOne.mockResolvedValue({
         processedAt: null,
-      } as unknown as StripeEvent);
+      } as unknown as BillingEvent);
       const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({

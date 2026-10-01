@@ -38,11 +38,11 @@ export class BillingHistoryService {
     await this.historyRepo.query(
       `
             INSERT INTO billing_history
-                (company_id, stripe_invoice_id, type, amount, currency,
+                (company_id, provider_invoice_id, type, amount, currency,
                  hosted_invoice_url, invoice_pdf_url, period_start, period_end,
                  attempt_count, occurred_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT (stripe_invoice_id, type) DO UPDATE SET
+            ON CONFLICT (provider_invoice_id, type) DO UPDATE SET
                 company_id = EXCLUDED.company_id,
                 amount = EXCLUDED.amount,
                 currency = EXCLUDED.currency,

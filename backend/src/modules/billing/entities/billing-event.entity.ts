@@ -6,13 +6,13 @@ import {
   Unique,
 } from 'typeorm';
 
-@Entity('stripe_events')
-@Unique('UQ_stripe_events_provider_event_id', ['providerEventId'])
-export class StripeEvent {
+@Entity('billing_events')
+@Unique('UQ_billing_events_provider_event_id', ['providerEventId'])
+export class BillingEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  /** Provider-side event id (Stripe evt_...). The idempotency key. */
+  /** Provider-side event id. The idempotency key. */
   @Column({ name: 'provider_event_id', type: 'varchar', length: 255 })
   providerEventId: string;
 

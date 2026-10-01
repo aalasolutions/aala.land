@@ -119,6 +119,7 @@ describe('ConsoleService', () => {
   let billingService: {
     getSubscriptionState: jest.Mock;
     syncPrices: jest.Mock;
+    isPriceSynced: jest.Mock;
     refundCardPayment: jest.Mock;
     creditNextBill: jest.Mock;
   };
@@ -150,6 +151,9 @@ describe('ConsoleService', () => {
       syncPrices: jest
         .fn()
         .mockResolvedValue({ synced: 0, failed: 0, total: 0 }),
+      isPriceSynced: jest.fn(
+        (row: { providerPriceId: string | null }) => !!row.providerPriceId,
+      ),
       refundCardPayment: jest.fn().mockResolvedValue({ refundId: 're_1' }),
       creditNextBill: jest.fn().mockResolvedValue({ creditId: 'cbtxn_1' }),
     };
@@ -511,7 +515,7 @@ describe('ConsoleService', () => {
     const paidRow = {
       id: 'bh-1',
       companyId: 'co-1',
-      stripeInvoiceId: 'in_1',
+      providerInvoiceId: 'in_1',
       type: 'payment_succeeded',
       amount: 250000,
       currency: 'usd',

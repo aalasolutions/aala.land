@@ -751,7 +751,7 @@ export class ConsoleService {
   // Auto-syncs missing rows on read; per-row failures persist, not throw, so Fix is rarely needed.
   async getPriceHealth(): Promise<Record<string, unknown>> {
     let rows = await this.activePricesSorted();
-    if (rows.some((r) => !r.providerPriceId)) {
+    if (rows.some((r) => !this.billingService.isPriceSynced(r))) {
       try {
         await this.billingService.syncPrices();
       } catch (err) {
@@ -761,21 +761,24 @@ export class ConsoleService {
       rows = await this.activePricesSorted();
     }
 
-    const items = rows.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      currency: row.currency,
-      unitAmount: row.unitAmount,
-      status: row.providerPriceId
-        ? 'registered'
-        : row.lastSyncError
-          ? 'failed'
-          : 'missing',
-      lastError: row.providerPriceId ? null : row.lastSyncError,
-      lastErrorAt: row.providerPriceId
-        ? null
-        : (row.lastSyncErrorAt?.toISOString() ?? null),
-    }));
+    const items = rows.map((row) => {
+      const synced = this.billingService.isPriceSynced(row);
+      return {
+        id: row.id,
+        kind: row.kind,
+        currency: row.currency,
+        unitAmount: row.unitAmount,
+        status: synced
+          ? 'registered'
+          : row.lastSyncError
+            ? 'failed'
+            : 'missing',
+        lastError: synced ? null : row.lastSyncError,
+        lastErrorAt: synced
+          ? null
+          : (row.lastSyncErrorAt?.toISOString() ?? null),
+      };
+    });
     return {
       rows: items,
       total: items.length,
@@ -1077,7 +1080,7 @@ export class ConsoleService {
         companyId: row.companyId,
         paymentAmount: row.amount,
         currency: row.currency,
-        invoiceId: row.stripeInvoiceId,
+        invoiceId: row.providerInvoiceId,
       };
     }
     const payment = await this.paymentRepo.findOne({

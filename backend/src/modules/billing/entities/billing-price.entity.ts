@@ -26,8 +26,8 @@ export class BillingPrice {
   @Column({ name: 'unit_amount', type: 'integer' })
   unitAmount: number;
 
-  @Column({ type: 'varchar', length: 32, default: 'stripe' })
-  provider: string;
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  provider: string | null;
 
   @Column({
     name: 'provider_price_id',

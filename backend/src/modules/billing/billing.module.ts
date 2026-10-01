@@ -4,7 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { BillingPrice } from './entities/billing-price.entity';
-import { StripeEvent } from './entities/stripe-event.entity';
+import { BillingEvent } from './entities/billing-event.entity';
 import { BillingHistory } from './entities/billing-history.entity';
 import { BillingService } from './billing.service';
 import { BillingHistoryService } from './billing-history.service';
@@ -22,7 +22,7 @@ import { BILLING_PROVIDER } from './provider/billing-provider.interface';
       Company,
       User,
       BillingPrice,
-      StripeEvent,
+      BillingEvent,
       BillingHistory,
     ]),
   ],

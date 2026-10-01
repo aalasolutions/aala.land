@@ -13,7 +13,7 @@ import {
   SubscriptionTier,
   TIER_LIMITS,
 } from '../companies/entities/company.entity';
-import { StripeEvent } from './entities/stripe-event.entity';
+import { BillingEvent } from './entities/billing-event.entity';
 import {
   BILLING_PROVIDER,
   BillingPlan,
@@ -49,8 +49,8 @@ export class BillingWebhookService implements OnModuleInit {
   private readonly logger = new Logger(BillingWebhookService.name);
 
   constructor(
-    @InjectRepository(StripeEvent)
-    private readonly eventRepo: Repository<StripeEvent>,
+    @InjectRepository(BillingEvent)
+    private readonly eventRepo: Repository<BillingEvent>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
     @Inject(BILLING_PROVIDER)
@@ -266,7 +266,7 @@ export class BillingWebhookService implements OnModuleInit {
     }
   }
 
-  /** <= not <: Stripe timestamps are shared by several events, so < would drop all but one. */
+  /** <= not <: provider timestamps are shared by several events, so < would drop all but one. */
   private async applyRecencyGuardedSync(
     companyId: string,
     eventName: string,

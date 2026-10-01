@@ -133,6 +133,7 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
 
 @Injectable()
 export class StripeBillingProvider implements BillingProvider {
+  readonly name = 'stripe';
   private readonly logger = new Logger(StripeBillingProvider.name);
   private readonly stripe: Stripe;
   private productIdCache: string | null = null;

@@ -35,11 +35,11 @@ import {
 
 /** Inline DTO used only for self-serve checkout (COMPANY_ADMIN). */
 class StartCheckoutDto {
-  @ApiProperty({ description: 'URL Stripe redirects to on success' })
+  @ApiProperty({ description: 'URL the provider redirects to on success' })
   @IsString()
   successUrl: string;
 
-  @ApiProperty({ description: 'URL Stripe redirects to on cancel' })
+  @ApiProperty({ description: 'URL the provider redirects to on cancel' })
   @IsString()
   cancelUrl: string;
 

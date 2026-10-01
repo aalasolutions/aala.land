@@ -38,6 +38,7 @@ const makeCompany = (overrides: Partial<Company> = {}): Company =>
   }) as Company;
 
 const mockProviderMethods = {
+  name: 'stripe',
   ensureCustomer: jest.fn(),
   ensurePrice: jest.fn(),
   createSubscription: jest.fn(),
@@ -186,6 +187,26 @@ describe('BillingService', () => {
       expect(result).toBe('cus_new456');
     });
 
+    it('creates a new customer when the saved id belongs to a different provider', async () => {
+      const company = makeCompany({
+        billingCustomerId: 'cus_old',
+        billingProvider: 'other',
+      });
+      managerMock.findOne.mockResolvedValue(
+        makeCompany({ billingCustomerId: 'cus_old', billingProvider: 'other' }),
+      );
+      (provider.ensureCustomer as jest.Mock).mockResolvedValue('cus_new789');
+
+      const result = await service.ensureCompanyCustomer(company);
+
+      expect(provider.ensureCustomer).toHaveBeenCalled();
+      expect(managerMock.update).toHaveBeenCalledWith(Company, companyId, {
+        billingCustomerId: 'cus_new789',
+        billingProvider: 'stripe',
+      });
+      expect(result).toBe('cus_new789');
+    });
+
     it('propagates provider errors upward', async () => {
       const company = makeCompany();
       managerMock.findOne.mockResolvedValue(makeCompany());
@@ -207,6 +228,7 @@ describe('BillingService', () => {
           currency: 'usd',
           unitAmount: 2500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing',
         },
         {
@@ -215,6 +237,7 @@ describe('BillingService', () => {
           currency: 'aed',
           unitAmount: 9500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing2',
         },
       ];
@@ -242,6 +265,7 @@ describe('BillingService', () => {
           currency: 'aed',
           unitAmount: 9500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing',
         },
         {
@@ -269,6 +293,33 @@ describe('BillingService', () => {
         25000,
       );
       expect(result).toEqual({ synced: 2, failed: 0, total: 3 });
+    });
+
+    it('re-syncs a row whose price id belongs to a different provider', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-1',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          provider: 'other',
+          providerPriceId: 'price_other',
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_new');
+      (priceRepo.update as jest.Mock).mockResolvedValue({ affected: 1 });
+
+      const result = await service.syncPrices();
+
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-1', {
+        provider: 'stripe',
+        providerPriceId: 'price_new',
+        lastSyncError: null,
+        lastSyncErrorAt: null,
+      });
+      expect(result).toEqual({ synced: 1, failed: 0, total: 1 });
     });
 
     it('returns zero counts when no active prices exist', async () => {
@@ -314,6 +365,7 @@ describe('BillingService', () => {
       });
       // The success clears any previously recorded error.
       expect(priceRepo.update).toHaveBeenCalledWith('bp-2', {
+        provider: 'stripe',
         providerPriceId: 'price_new_usd',
         lastSyncError: null,
         lastSyncErrorAt: null,
@@ -448,6 +500,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const basePriceRow: Partial<BillingPrice> = {
@@ -456,6 +509,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 95000,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_base',
     };
 
@@ -630,6 +684,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const basePriceRow: Partial<BillingPrice> = {
@@ -638,6 +693,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 95000,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_base',
     };
 
@@ -778,6 +834,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const baseCompany = makeCompany({
@@ -892,6 +949,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const baseCompany = makeCompany({
