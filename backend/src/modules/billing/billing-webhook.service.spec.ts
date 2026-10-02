@@ -8,7 +8,7 @@ import {
 import { BillingWebhookService, planToTier } from './billing-webhook.service';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
-import { StripeEvent } from './entities/stripe-event.entity';
+import { BillingEvent } from './entities/billing-event.entity';
 import {
   Company,
   SubscriptionTier,
@@ -24,7 +24,7 @@ import { NormalizedBillingEvent } from './events/billing-events';
 describe('BillingWebhookService', () => {
   let service: BillingWebhookService;
   let dispatcher: BillingEventDispatcher;
-  let eventRepo: jest.Mocked<Repository<StripeEvent>>;
+  let eventRepo: jest.Mocked<Repository<BillingEvent>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>>;
   let historyService: jest.Mocked<Pick<BillingHistoryService, 'recordPayment'>>;
@@ -79,7 +79,7 @@ describe('BillingWebhookService', () => {
         BillingWebhookService,
         BillingEventDispatcher,
         {
-          provide: getRepositoryToken(StripeEvent),
+          provide: getRepositoryToken(BillingEvent),
           useValue: {
             insert: jest.fn().mockResolvedValue({}),
             update: jest.fn().mockResolvedValue({}),
@@ -92,6 +92,9 @@ describe('BillingWebhookService', () => {
             update: jest.fn().mockResolvedValue({ affected: 1 }),
             createQueryBuilder: jest.fn(() => seatUpdateQB),
             exists: jest.fn().mockResolvedValue(true),
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ id: companyId, billingCustomerId: 'cus_1' }),
           },
         },
         {
@@ -107,7 +110,7 @@ describe('BillingWebhookService', () => {
 
     service = module.get(BillingWebhookService);
     dispatcher = module.get(BillingEventDispatcher);
-    eventRepo = module.get(getRepositoryToken(StripeEvent));
+    eventRepo = module.get(getRepositoryToken(BillingEvent));
     companyRepo = module.get(getRepositoryToken(Company));
     provider = module.get(BILLING_PROVIDER);
     historyService = module.get(BillingHistoryService);
@@ -164,7 +167,7 @@ describe('BillingWebhookService', () => {
       eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
       eventRepo.findOne.mockResolvedValue({
         processedAt: new Date(),
-      } as StripeEvent);
+      } as BillingEvent);
       const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
@@ -184,7 +187,7 @@ describe('BillingWebhookService', () => {
       eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
       eventRepo.findOne.mockResolvedValue({
         processedAt: null,
-      } as unknown as StripeEvent);
+      } as unknown as BillingEvent);
       const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
@@ -277,6 +280,62 @@ describe('BillingWebhookService', () => {
       });
     });
 
+    describe('late SubscriptionActivated after a newer event', () => {
+      const activated = {
+        name: 'SubscriptionActivated' as const,
+        ...baseEvent,
+        plan: 'PRO' as const,
+        quantity: 4,
+        status: 'active',
+        currency: 'usd',
+        currentPeriodEnd: null,
+      };
+
+      it('fills the missing subscription id and currency once', async () => {
+        seatUpdateQB.execute
+          .mockResolvedValueOnce({ affected: 0 })
+          .mockResolvedValueOnce({ affected: 1 });
+        provider.parseWebhook.mockResolvedValue(parsedWith([activated]));
+        await service.handleWebhook(rawBody, signature);
+        expect(seatUpdateQB.set).toHaveBeenCalledTimes(2);
+        expect(seatUpdateQB.set.mock.calls[1][0]).toEqual({
+          billingSubscriptionId: 'sub_1',
+          billingCurrency: 'usd',
+        });
+        expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+          'billing_subscription_id IS NULL',
+        );
+      });
+
+      it('does nothing when a subscription id already exists', async () => {
+        seatUpdateQB.execute.mockResolvedValue({ affected: 0 });
+        provider.parseWebhook.mockResolvedValue(parsedWith([activated]));
+        await service.handleWebhook(rawBody, signature);
+        // The set-once write only matches a row whose id is still NULL.
+        expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+          'billing_subscription_id IS NULL',
+        );
+        expect(companyRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('does nothing for a FREE company', async () => {
+        seatUpdateQB.execute.mockResolvedValue({ affected: 0 });
+        provider.parseWebhook.mockResolvedValue(parsedWith([activated]));
+        await service.handleWebhook(rawBody, signature);
+        expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+          'subscription_tier <> :free',
+          { free: SubscriptionTier.FREE },
+        );
+        expect(companyRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('skips the set-once write when the guarded sync applied', async () => {
+        provider.parseWebhook.mockResolvedValue(parsedWith([activated]));
+        await service.handleWebhook(rawBody, signature);
+        expect(seatUpdateQB.set).toHaveBeenCalledTimes(1);
+      });
+    });
+
     it('SubscriptionUpdated writes seats and the carried status', async () => {
       provider.parseWebhook.mockResolvedValue(
         parsedWith([
@@ -334,6 +393,43 @@ describe('BillingWebhookService', () => {
         { occurredAt },
       );
       expect(companyRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('PlanChanged to the stored tier writes the tier only and keeps operator limits', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        billingCustomerId: 'cus_1',
+        subscriptionTier: SubscriptionTier.PRO,
+      } as Company);
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          { name: 'PlanChanged', ...baseEvent, plan: 'PRO', quantity: 5 },
+        ]),
+      );
+      await service.handleWebhook(rawBody, signature);
+      expect(seatSyncPatch()).toEqual({
+        subscriptionTier: SubscriptionTier.PRO,
+      });
+    });
+
+    it('PlanChanged to a different stored tier writes the tier limits', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        billingCustomerId: 'cus_1',
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+      } as Company);
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          { name: 'PlanChanged', ...baseEvent, plan: 'PRO', quantity: 5 },
+        ]),
+      );
+      await service.handleWebhook(rawBody, signature);
+      expect(seatSyncPatch()).toEqual({
+        subscriptionTier: SubscriptionTier.PRO,
+        maxUsers: TIER_LIMITS[SubscriptionTier.PRO].maxUsers,
+        maxRegions: TIER_LIMITS[SubscriptionTier.PRO].maxRegions,
+        maxProperties: TIER_LIMITS[SubscriptionTier.PRO].maxProperties,
+      });
     });
 
     it('SubscriptionCanceled drops to FREE, clears the subscription id, syncs FREE caps THROUGH the recency guard', async () => {
@@ -439,6 +535,53 @@ describe('BillingWebhookService', () => {
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
         received: true,
       });
+      expect(eventRepo.update).toHaveBeenCalledWith(
+        { providerEventId: 'evt_1' },
+        { processedAt: expect.any(Date) },
+      );
+    });
+  });
+
+  describe('customer ownership', () => {
+    const seatEvent = (customerId: string) =>
+      parsedWith([
+        { name: 'SeatQuantityChanged', ...baseEvent, customerId, quantity: 4 },
+      ]);
+
+    it('dispatches when the event customer matches the stored customer', async () => {
+      provider.parseWebhook.mockResolvedValue(seatEvent('cus_1'));
+      const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+      await service.handleWebhook(rawBody, signature);
+      expect(companyRepo.findOne).toHaveBeenCalledWith({
+        where: { id: companyId },
+        select: ['id', 'billingCustomerId'],
+      });
+      expect(dispatchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips a mismatched customer and still marks the event processed', async () => {
+      provider.parseWebhook.mockResolvedValue(seatEvent('cus_other'));
+      const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+      await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+        received: true,
+      });
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(seatUpdateQB.execute).not.toHaveBeenCalled();
+      expect(eventRepo.update).toHaveBeenCalledWith(
+        { providerEventId: 'evt_1' },
+        { processedAt: expect.any(Date) },
+      );
+    });
+
+    it('skips when the company has no stored customer', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        billingCustomerId: null,
+      } as Company);
+      provider.parseWebhook.mockResolvedValue(seatEvent('cus_1'));
+      const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+      await service.handleWebhook(rawBody, signature);
+      expect(dispatchSpy).not.toHaveBeenCalled();
       expect(eventRepo.update).toHaveBeenCalledWith(
         { providerEventId: 'evt_1' },
         { processedAt: expect.any(Date) },

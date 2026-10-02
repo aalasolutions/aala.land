@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   HttpException,
@@ -10,7 +11,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -18,11 +26,13 @@ import {
   SubscriptionTier,
 } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { Role } from '@shared/enums/roles.enum';
 import { BillingPrice } from './entities/billing-price.entity';
 import {
   BillingPlan,
   BillingProvider,
   BILLING_PROVIDER,
+  CreateSubscriptionInput,
   SubscriptionRef,
 } from './provider/billing-provider.interface';
 import {
@@ -80,10 +90,14 @@ export class BillingService {
     private readonly dataSource: DataSource,
   ) {}
 
-  /** Race-safe via company lock, re-read, Stripe idempotency key, and UNIQUE index as backstops. */
+  /** Race-safe via company lock, re-read, provider idempotency key, and UNIQUE index as backstops. */
   async ensureCompanyCustomer(company: Company): Promise<string> {
-    // Fast path: already resolved, no lock needed.
-    if (company.billingCustomerId) return company.billingCustomerId;
+    // Fast path: already resolved by the active provider, no lock needed.
+    if (
+      company.billingCustomerId &&
+      company.billingProvider === this.provider.name
+    )
+      return company.billingCustomerId;
 
     return withCompanyLock(
       this.dataSource,
@@ -93,19 +107,74 @@ export class BillingService {
         const fresh = await manager.findOne(Company, {
           where: { id: company.id },
         });
-        if (fresh?.billingCustomerId) return fresh.billingCustomerId;
+        if (
+          fresh?.billingCustomerId &&
+          fresh.billingProvider === this.provider.name
+        )
+          return fresh.billingCustomerId;
 
         const customerId = await this.provider.ensureCustomer({
           companyId: company.id,
           companyName: company.name,
+          email: await this.findBillingEmail(company.id),
           idempotencyKey: `ensure-customer:${company.id}`,
         });
         await manager.update(Company, company.id, {
           billingCustomerId: customerId,
-          billingProvider: 'stripe',
+          billingProvider: this.provider.name,
         });
         return customerId;
       },
+    );
+  }
+
+  /** A price id minted by a previous provider does not count as synced. */
+  isPriceSynced(row: BillingPrice): boolean {
+    return !!row.providerPriceId && row.provider === this.provider.name;
+  }
+
+  /** True when syncPrices has work: an unsynced active row, or a deactivated override still on its base. */
+  async needsPriceSync(): Promise<boolean> {
+    const { rows, removedOverrides } = await this.loadPriceSyncRows();
+    return rows.some(
+      (r) =>
+        !this.isPriceSynced(r) ||
+        (!r.countryCodes &&
+          this.removedOverridesOf(r, removedOverrides).length > 0),
+    );
+  }
+
+  /** Active rows, plus deactivated overrides that may still ride on a base price. */
+  private async loadPriceSyncRows(): Promise<{
+    rows: BillingPrice[];
+    removedOverrides: BillingPrice[];
+  }> {
+    const loaded = await this.priceRepo.find({
+      where: [
+        { active: true },
+        {
+          active: false,
+          countryCodes: Not(IsNull()),
+          providerPriceId: Not(IsNull()),
+        },
+      ],
+    });
+    return {
+      rows: loaded.filter((r) => r.active),
+      removedOverrides: loaded.filter((r) => !r.active),
+    };
+  }
+
+  private removedOverridesOf(
+    base: BillingPrice,
+    removedOverrides: BillingPrice[],
+  ): BillingPrice[] {
+    return removedOverrides.filter(
+      (r) =>
+        r.kind === base.kind &&
+        r.currency === base.currency &&
+        !!base.providerPriceId &&
+        r.providerPriceId === base.providerPriceId,
     );
   }
 
@@ -115,36 +184,128 @@ export class BillingService {
     failed: number;
     total: number;
   }> {
-    const rows = await this.priceRepo.find({ where: { active: true } });
+    const { rows, removedOverrides } = await this.loadPriceSyncRows();
+    const baseRows = rows.filter((r) => !r.countryCodes);
+    const overridesOf = (base: BillingPrice) =>
+      rows.filter(
+        (r) =>
+          r.countryCodes &&
+          r.kind === base.kind &&
+          r.currency === base.currency,
+      );
     let synced = 0;
     let failed = 0;
-    for (const row of rows) {
-      if (row.providerPriceId) continue;
+    for (const row of baseRows) {
+      const overrides = overridesOf(row);
+      const removed = this.removedOverridesOf(row, removedOverrides);
+      // A new, repointed or removed override re-creates the base price (create-and-supersede).
+      const upToDate =
+        this.isPriceSynced(row) &&
+        removed.length === 0 &&
+        overrides.every(
+          (o) =>
+            this.isPriceSynced(o) && o.providerPriceId === row.providerPriceId,
+        );
+      if (upToDate) continue;
+      const group = [row, ...overrides];
+      const groupIds = group.map((m) => m.id);
+      const duplicates = this.duplicateCountries(overrides);
+      if (duplicates.length) {
+        const message = `Countries ${duplicates.join(', ')} appear in more than one active ${row.kind} ${row.currency} override`;
+        this.logger.error(
+          `Price sync skipped for ${row.kind}/${row.currency}: ${message}`,
+        );
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          { lastSyncError: message, lastSyncErrorAt: new Date() },
+        );
+        failed += group.length;
+        continue;
+      }
+      const previousPriceId = this.isPriceSynced(row)
+        ? row.providerPriceId
+        : null;
       try {
         const priceId = await this.provider.ensurePrice(
           row.kind,
           row.currency,
           row.unitAmount,
+          overrides.map((o) => ({
+            countryCodes: o.countryCodes as string[],
+            currency: o.currency,
+            unitAmount: o.unitAmount,
+          })),
         );
-        await this.priceRepo.update(row.id, {
-          providerPriceId: priceId,
-          lastSyncError: null,
-          lastSyncErrorAt: null,
-        });
-        synced++;
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          {
+            provider: this.provider.name,
+            providerPriceId: priceId,
+            lastSyncError: null,
+            lastSyncErrorAt: null,
+          },
+        );
+        synced += group.length;
+        if (removed.length) {
+          await this.priceRepo.update(
+            { id: In(removed.map((r) => r.id)) },
+            { providerPriceId: null },
+          );
+        }
+        if (previousPriceId && previousPriceId !== priceId) {
+          await this.archiveSupersededPrice(previousPriceId);
+        }
       } catch (err) {
         const message = errorMessage(err);
         this.logger.error(
           `Price sync failed for ${row.kind}/${row.currency}: ${message}`,
         );
-        await this.priceRepo.update(row.id, {
-          lastSyncError: message,
-          lastSyncErrorAt: new Date(),
-        });
-        failed++;
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          { lastSyncError: message, lastSyncErrorAt: new Date() },
+        );
+        failed += group.length;
       }
     }
+    for (const orphan of rows.filter(
+      (r) =>
+        r.countryCodes &&
+        !this.isPriceSynced(r) &&
+        !baseRows.some((b) => b.kind === r.kind && b.currency === r.currency),
+    )) {
+      await this.priceRepo.update(orphan.id, {
+        lastSyncError: `No active base ${orphan.kind} price in ${orphan.currency} to carry this override`,
+        lastSyncErrorAt: new Date(),
+      });
+      failed++;
+    }
     return { synced, failed, total: rows.length };
+  }
+
+  /** Upper-cased countries listed by more than one override; the provider rejects a repeat. */
+  private duplicateCountries(overrides: BillingPrice[]): string[] {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const o of overrides) {
+      for (const code of new Set(
+        (o.countryCodes ?? []).map((c) => c.toUpperCase()),
+      )) {
+        if (seen.has(code)) duplicates.add(code);
+        seen.add(code);
+      }
+    }
+    return [...duplicates].sort();
+  }
+
+  /** Non-fatal: rows already point at the new price. */
+  private async archiveSupersededPrice(priceId: string): Promise<void> {
+    try {
+      await this.provider.archivePrice(priceId);
+    } catch (err) {
+      this.logger.warn(
+        `Could not archive superseded price ${priceId}: ${errorMessage(err)}`,
+      );
+    }
   }
 
   async getSubscriptionState(companyId: string): Promise<SubscriptionState> {
@@ -153,16 +314,21 @@ export class BillingService {
     const hasSubscription = !!company.billingSubscriptionId;
     const [seatPrice, basePrice, seatPrices, activeUsers] = await Promise.all([
       this.priceRepo.findOne({
-        where: { kind: 'SEAT', currency, active: true },
+        where: { kind: 'SEAT', currency, active: true, countryCodes: IsNull() },
       }),
       this.priceRepo.findOne({
-        where: { kind: 'ENTERPRISE_BASE', currency, active: true },
+        where: {
+          kind: 'ENTERPRISE_BASE',
+          currency,
+          active: true,
+          countryCodes: IsNull(),
+        },
       }),
       // Selector options are only needed before the currency is locked.
       hasSubscription
         ? Promise.resolve<BillingPrice[]>([])
         : this.priceRepo.find({
-            where: { kind: 'SEAT', active: true },
+            where: { kind: 'SEAT', active: true, countryCodes: IsNull() },
           }),
       this.countActiveUsers(companyId),
     ]);
@@ -236,7 +402,7 @@ export class BillingService {
 
     const seatPriceId = await this.getProviderPriceId('SEAT', currency);
 
-    const result = await this.provider.createSubscription({
+    return this.createProviderCheckout({
       customerId,
       seatPriceId,
       basePriceId: null,
@@ -246,7 +412,6 @@ export class BillingService {
       cancelUrl,
       companyId,
     });
-    return result;
   }
 
   /** ENTERPRISE requires basePriceId; PRO does not. */
@@ -279,7 +444,7 @@ export class BillingService {
     const seatUnits =
       plan === 'ENTERPRISE' ? Math.max(quantity - 1, 0) : quantity;
 
-    const result = await this.provider.createSubscription({
+    return this.createProviderCheckout({
       customerId,
       seatPriceId,
       basePriceId,
@@ -289,7 +454,23 @@ export class BillingService {
       cancelUrl,
       companyId,
     });
-    return result;
+  }
+
+  private async createProviderCheckout(
+    input: CreateSubscriptionInput,
+  ): Promise<CheckoutResult> {
+    try {
+      return await this.provider.createSubscription(input);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      const msg = errorMessage(err);
+      this.logger.error(
+        `Checkout provider call failed for company ${input.companyId}: ${msg}`,
+      );
+      throw new BadGatewayException(
+        `The payment provider rejected the checkout: ${msg}`,
+      );
+    }
   }
 
   /** Uses the LIVE provider quantity, not company.purchasedSeats, which is a stale read model. */
@@ -620,17 +801,26 @@ export class BillingService {
     }
   }
 
+  private async findBillingEmail(companyId: string): Promise<string | null> {
+    const admin = await this.userRepo.findOne({
+      where: { companyId, role: Role.COMPANY_ADMIN, isActive: true },
+      select: ['email'],
+      order: { createdAt: 'ASC' },
+    });
+    return admin?.email ?? null;
+  }
+
   private async countActiveUsers(companyId: string): Promise<number> {
     return this.userRepo.count({ where: { companyId, isActive: true } });
   }
 
-  /** Throws if not found or not yet synced to Stripe (providerPriceId is null). */
+  /** Throws if not found or not yet synced to the active provider. */
   private async getProviderPriceId(
     kind: 'SEAT' | 'ENTERPRISE_BASE',
     currency: string,
   ): Promise<string> {
     const row = await this.priceRepo.findOne({
-      where: { kind, currency, active: true },
+      where: { kind, currency, active: true, countryCodes: IsNull() },
     });
     if (!row) {
       throw new BadRequestException(
@@ -638,9 +828,9 @@ export class BillingService {
           `Run POST /billing/prices/sync first.`,
       );
     }
-    if (!row.providerPriceId) {
+    if (!this.isPriceSynced(row) || !row.providerPriceId) {
       throw new BadRequestException(
-        `${kind} price for ${currency} has not been synced to Stripe yet. ` +
+        `${kind} price for ${currency} has not been synced to the billing provider yet. ` +
           `Run POST /billing/prices/sync first.`,
       );
     }

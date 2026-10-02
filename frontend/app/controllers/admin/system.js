@@ -16,6 +16,7 @@ export default class AdminSystemController extends Controller {
 
   columns = [
     { name: 'Price', valuePath: 'label', width: 240, isFixed: 'left' },
+    { name: 'Countries', valuePath: 'countries', width: 180 },
     { name: 'Amount', valuePath: 'unitAmount', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 260 },
   ];
@@ -23,8 +24,8 @@ export default class AdminSystemController extends Controller {
   get rows() {
     return (this.data?.rows ?? []).map((row) => ({
       ...row,
-      id: `${row.kind}-${row.currency}`,
       label: `${row.kind} / ${(row.currency || '').toUpperCase()}`,
+      countries: row.countryCodes?.length ? row.countryCodes.join(', ') : '-',
     }));
   }
 

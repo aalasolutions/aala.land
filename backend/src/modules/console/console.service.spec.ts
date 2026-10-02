@@ -119,6 +119,8 @@ describe('ConsoleService', () => {
   let billingService: {
     getSubscriptionState: jest.Mock;
     syncPrices: jest.Mock;
+    needsPriceSync: jest.Mock;
+    isPriceSynced: jest.Mock;
     refundCardPayment: jest.Mock;
     creditNextBill: jest.Mock;
   };
@@ -150,6 +152,10 @@ describe('ConsoleService', () => {
       syncPrices: jest
         .fn()
         .mockResolvedValue({ synced: 0, failed: 0, total: 0 }),
+      needsPriceSync: jest.fn().mockResolvedValue(false),
+      isPriceSynced: jest.fn(
+        (row: { providerPriceId: string | null }) => !!row.providerPriceId,
+      ),
       refundCardPayment: jest.fn().mockResolvedValue({ refundId: 're_1' }),
       creditNextBill: jest.fn().mockResolvedValue({ creditId: 'cbtxn_1' }),
     };
@@ -511,7 +517,7 @@ describe('ConsoleService', () => {
     const paidRow = {
       id: 'bh-1',
       companyId: 'co-1',
-      stripeInvoiceId: 'in_1',
+      providerInvoiceId: 'in_1',
       type: 'payment_succeeded',
       amount: 250000,
       currency: 'usd',
@@ -668,18 +674,8 @@ describe('ConsoleService', () => {
   // ---- F. Price health ----------------------------------------------------
 
   describe('getPriceHealth', () => {
-    it('auto-syncs when rows are missing their registration, then reports statuses', async () => {
-      const before = [
-        {
-          id: 'p1',
-          kind: 'SEAT',
-          currency: 'usd',
-          unitAmount: 2500,
-          providerPriceId: null,
-          lastSyncError: null,
-          lastSyncErrorAt: null,
-        },
-      ];
+    it('auto-syncs when the billing service reports pending work, then reports statuses', async () => {
+      billingService.needsPriceSync.mockResolvedValue(true);
       const after = [
         {
           id: 'p1',
@@ -691,7 +687,7 @@ describe('ConsoleService', () => {
           lastSyncErrorAt: null,
         },
       ];
-      priceRepo.find.mockResolvedValueOnce(before).mockResolvedValueOnce(after);
+      priceRepo.find.mockResolvedValue(after);
       const health = (await service.getPriceHealth()) as {
         rows: { status: string }[];
         registered: number;
@@ -701,7 +697,45 @@ describe('ConsoleService', () => {
       expect(health.registered).toBe(1);
     });
 
-    it('reports a failed row with the provider error verbatim, no sync when all registered rows exist', async () => {
+    it('does not sync when the billing service reports no pending work', async () => {
+      priceRepo.find.mockResolvedValue([]);
+      await service.getPriceHealth();
+      expect(billingService.syncPrices).not.toHaveBeenCalled();
+    });
+
+    it('returns country codes, null for a base row', async () => {
+      priceRepo.find.mockResolvedValue([
+        {
+          id: 'p1',
+          kind: 'SEAT',
+          currency: 'usd',
+          countryCodes: null,
+          unitAmount: 2500,
+          providerPriceId: 'price_1',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+        {
+          id: 'p2',
+          kind: 'SEAT',
+          currency: 'usd',
+          countryCodes: ['IN', 'PK'],
+          unitAmount: 1000,
+          providerPriceId: 'price_1',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+      ]);
+      const health = (await service.getPriceHealth()) as {
+        rows: { countryCodes: string[] | null }[];
+      };
+      expect(health.rows.map((r) => r.countryCodes)).toEqual([
+        null,
+        ['IN', 'PK'],
+      ]);
+    });
+
+    it('reports a failed row with the provider error verbatim', async () => {
       const errAt = new Date();
       priceRepo.find.mockResolvedValue([
         {
@@ -728,7 +762,6 @@ describe('ConsoleService', () => {
         rows: { status: string; lastError: string | null }[];
         failed: number;
       };
-      // A row with a recorded error still triggers a retrying auto-sync.
       expect(health.rows[1].status).toBe('failed');
       expect(health.rows[1].lastError).toBe(
         'Invalid currency: pkr is not supported for this account',

@@ -750,32 +750,35 @@ export class ConsoleService {
 
   // Auto-syncs missing rows on read; per-row failures persist, not throw, so Fix is rarely needed.
   async getPriceHealth(): Promise<Record<string, unknown>> {
-    let rows = await this.activePricesSorted();
-    if (rows.some((r) => !r.providerPriceId)) {
+    if (await this.billingService.needsPriceSync()) {
       try {
         await this.billingService.syncPrices();
       } catch (err) {
         // Sync-level failure: each row keeps its persisted error via syncPrices; log and continue.
         this.logger.error(`Auto price sync failed: ${errorMessage(err)}`);
       }
-      rows = await this.activePricesSorted();
     }
+    const rows = await this.activePricesSorted();
 
-    const items = rows.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      currency: row.currency,
-      unitAmount: row.unitAmount,
-      status: row.providerPriceId
-        ? 'registered'
-        : row.lastSyncError
-          ? 'failed'
-          : 'missing',
-      lastError: row.providerPriceId ? null : row.lastSyncError,
-      lastErrorAt: row.providerPriceId
-        ? null
-        : (row.lastSyncErrorAt?.toISOString() ?? null),
-    }));
+    const items = rows.map((row) => {
+      const synced = this.billingService.isPriceSynced(row);
+      return {
+        id: row.id,
+        kind: row.kind,
+        currency: row.currency,
+        countryCodes: row.countryCodes,
+        unitAmount: row.unitAmount,
+        status: synced
+          ? 'registered'
+          : row.lastSyncError
+            ? 'failed'
+            : 'missing',
+        lastError: synced ? null : row.lastSyncError,
+        lastErrorAt: synced
+          ? null
+          : (row.lastSyncErrorAt?.toISOString() ?? null),
+      };
+    });
     return {
       rows: items,
       total: items.length,
@@ -860,7 +863,7 @@ export class ConsoleService {
 
     const [{ states, activeDeals }, prices, coverage] = await Promise.all([
       this.lockStateService.getLockStates(companies),
-      this.priceRepo.find({ where: { active: true } }),
+      this.priceRepo.find({ where: { active: true, countryCodes: IsNull() } }),
       this.latestCoveringPayments(companies.map((c) => c.id)),
     ]);
     const priceByKey = new Map(
@@ -1077,7 +1080,7 @@ export class ConsoleService {
         companyId: row.companyId,
         paymentAmount: row.amount,
         currency: row.currency,
-        invoiceId: row.stripeInvoiceId,
+        invoiceId: row.providerInvoiceId,
       };
     }
     const payment = await this.paymentRepo.findOne({

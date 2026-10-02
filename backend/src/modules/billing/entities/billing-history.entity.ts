@@ -8,9 +8,9 @@ import {
 
 export type BillingHistoryType = 'payment_succeeded' | 'payment_failed';
 
-/** Keys on (stripe_invoice_id, type), not event id: one payment fires two events. */
+/** Keys on (provider_invoice_id, type), not event id: one payment fires two events. */
 @Entity('billing_history')
-@Index('UQ_billing_history_invoice_type', ['stripeInvoiceId', 'type'], {
+@Index('UQ_billing_history_invoice_type', ['providerInvoiceId', 'type'], {
   unique: true,
 })
 @Index('IDX_billing_history_company_occurred', ['companyId', 'occurredAt'])
@@ -22,9 +22,9 @@ export class BillingHistory {
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  /** Stripe invoice id (in_...). Part of the idempotency key. */
-  @Column({ name: 'stripe_invoice_id', type: 'varchar', length: 255 })
-  stripeInvoiceId: string;
+  /** Provider invoice id. Part of the idempotency key. */
+  @Column({ name: 'provider_invoice_id', type: 'varchar', length: 255 })
+  providerInvoiceId: string;
 
   @Column({ type: 'varchar', length: 32 })
   type: BillingHistoryType;
@@ -37,11 +37,11 @@ export class BillingHistory {
   @Column({ type: 'varchar', length: 3 })
   currency: string;
 
-  /** Stripe hosted invoice page; the "view / download" link. Null if Stripe omitted it. */
+  /** Provider hosted invoice page; the "view / download" link. Null if the provider omitted it. */
   @Column({ name: 'hosted_invoice_url', type: 'text', nullable: true })
   hostedInvoiceUrl: string | null;
 
-  /** Stripe-generated PDF link. Null if Stripe omitted it. */
+  /** Provider-generated PDF link. Null if the provider omitted it. */
   @Column({ name: 'invoice_pdf_url', type: 'text', nullable: true })
   invoicePdfUrl: string | null;
 
@@ -51,11 +51,11 @@ export class BillingHistory {
   @Column({ name: 'period_end', type: 'timestamptz', nullable: true })
   periodEnd: Date | null;
 
-  /** Stripe dunning attempt count; only meaningful for failures. */
+  /** Provider dunning attempt count; only meaningful for failures. */
   @Column({ name: 'attempt_count', type: 'integer', nullable: true })
   attemptCount: number | null;
 
-  /** When the payment event occurred at Stripe (event.created). */
+  /** When the payment event occurred at the provider. */
   @Column({ name: 'occurred_at', type: 'timestamptz' })
   occurredAt: Date;
 

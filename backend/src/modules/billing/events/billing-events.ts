@@ -55,11 +55,11 @@ export interface SubscriptionCanceledEvent extends BillingEventBase {
   endedAt: Date | null;
 }
 
-/** All fields default null when Stripe omits them. */
+/** All fields default null when the provider omits them. */
 export interface InvoiceDetail {
-  /** Stripe hosted invoice page (view / download link). */
+  /** Provider hosted invoice page (view / download link). */
   hostedInvoiceUrl: string | null;
-  /** Stripe-generated invoice PDF link. */
+  /** Provider-generated invoice PDF link. */
   invoicePdfUrl: string | null;
   periodStart: Date | null;
   periodEnd: Date | null;

@@ -120,9 +120,9 @@ export class Company {
     name: 'billing_provider',
     type: 'varchar',
     length: 32,
-    default: 'stripe',
+    nullable: true,
   })
-  billingProvider: string;
+  billingProvider: string | null;
 
   @Column({
     name: 'billing_customer_id',

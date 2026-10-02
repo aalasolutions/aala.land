@@ -11,7 +11,11 @@ import { BillingPriceKind } from '../provider/billing-provider.interface';
 @Entity('billing_prices')
 @Index('UQ_billing_prices_active', ['kind', 'currency'], {
   unique: true,
-  where: '"active" = true',
+  where: '"active" = true AND "country_codes" IS NULL',
+})
+@Index('UQ_billing_prices_active_override', ['kind', 'countryCodes'], {
+  unique: true,
+  where: '"active" = true AND "country_codes" IS NOT NULL',
 })
 export class BillingPrice {
   @PrimaryGeneratedColumn('uuid')
@@ -26,8 +30,12 @@ export class BillingPrice {
   @Column({ name: 'unit_amount', type: 'integer' })
   unitAmount: number;
 
-  @Column({ type: 'varchar', length: 32, default: 'stripe' })
-  provider: string;
+  /** Null = base row for (kind, currency); a list = custom price for those ISO country codes. */
+  @Column({ name: 'country_codes', type: 'text', array: true, nullable: true })
+  countryCodes: string[] | null;
+
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  provider: string | null;
 
   @Column({
     name: 'provider_price_id',
