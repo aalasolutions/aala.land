@@ -50,7 +50,7 @@ export class PropertyDocument {
   @Column({ type: 'varchar', length: 255 })
   url: string;
 
-  @Column({ name: 'file_type', type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'file_type', type: 'varchar', length: 255, nullable: true })
   fileType: string | null;
 
   @Index('IDX_PROPERTY_DOCUMENTS_UNIT_ID')
