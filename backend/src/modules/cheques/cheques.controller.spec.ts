@@ -243,8 +243,21 @@ describe('ChequesController', () => {
       expect(service.getCollectionSchedule).toHaveBeenCalledWith(
         companyId,
         mockReq.user,
+        undefined,
       );
       expect(result).toEqual(schedule);
+    });
+
+    it('passes the regionCode query to the service', async () => {
+      service.getCollectionSchedule.mockResolvedValue({} as any);
+
+      await controller.getCollectionSchedule(mockReq, 'punjab');
+
+      expect(service.getCollectionSchedule).toHaveBeenCalledWith(
+        companyId,
+        mockReq.user,
+        'punjab',
+      );
     });
   });
 

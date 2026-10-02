@@ -962,14 +962,15 @@ export class ChequesService {
   async getCollectionSchedule(
     companyId: string,
     caller?: RegionScope,
+    regionCode?: string,
   ): Promise<{
     overdue: Cheque[];
     thisWeek: Cheque[];
     nextWeek: Cheque[];
     thisMonth: Cheque[];
   }> {
-    const scopedCodes = scopedRegionCodes(caller);
-    // No assignment means no rows, and an empty IN () is invalid SQL.
+    const scopedCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
     if (scopedCodes?.length === 0) {
       return { overdue: [], thisWeek: [], nextWeek: [], thisMonth: [] };
     }

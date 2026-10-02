@@ -97,10 +97,15 @@ export class ChequesController {
   @ApiOperation({
     summary: 'Get cheque collection schedule grouped by due date',
   })
-  getCollectionSchedule(@Request() req: AuthenticatedRequest) {
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getCollectionSchedule(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
     return this.chequesService.getCollectionSchedule(
       requireCompanyId(req.user),
       req.user,
+      regionCode,
     );
   }
 
