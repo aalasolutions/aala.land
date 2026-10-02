@@ -26,8 +26,6 @@ export default class CompanyController extends Controller {
   @tracked isBillingBusy = false;
   @tracked showDowngradeConfirm = false;
   @tracked showRegionRemovalConfirm = false;
-  // Selected payment currency (default USD), sent at checkout.
-  @tracked selectedCurrency = 'usd';
 
   // Bound to its own property because route setup resets activeTab on every entry.
   queryParams = ['tab'];
@@ -87,7 +85,6 @@ export default class CompanyController extends Controller {
     this.expandedCountries = [];
     this.showDowngradeConfirm = false;
     this.showRegionRemovalConfirm = false;
-    this.selectedCurrency = 'usd';
   }
 
   @action toggleCountry(countryCode) {
@@ -192,15 +189,6 @@ export default class CompanyController extends Controller {
     return this.auth.currentUser?.role === 'company_admin';
   }
 
-  // Currency choices for the upgrade selector; backend returns [] once subscribed.
-  get paymentCurrencyOptions() {
-    const options = this.billing?.currencyOptions ?? [];
-    return options.map((o) => ({
-      value: o.currency,
-      label: `${o.currency.toUpperCase()}: ${o.seatAmount / 100} per seat / month`,
-    }));
-  }
-
   // Downgrade blocked mid-request or when backend would 409, to avoid a guaranteed-fail confirm.
   get isDowngradeDisabled() {
     return this.isBillingBusy || !this.billing?.canDowngradeToFree;
@@ -297,11 +285,15 @@ export default class CompanyController extends Controller {
     this[fieldName] = value;
   }
 
-  // Stripe spells it `canceled` (one L); app badges use the correct `cancelled` spelling.
+  // Stripe and Paddle spell it `canceled` (one L); app badges use the correct `cancelled` spelling.
   get billingStatusBadgeValue() {
     const status = this.billing?.billingStatus;
     if (!status) return null;
     return status === 'canceled' ? 'cancelled' : status;
+  }
+
+  get billingStatusLabel() {
+    return this.billingStatusBadgeValue?.replaceAll('_', ' ') ?? null;
   }
 
   get settingsTabs() {
@@ -376,11 +368,7 @@ export default class CompanyController extends Controller {
       const cancelUrl = `${window.location.origin}${this.router.urlFor('billing.cancel')}`;
       const res = await this.auth.fetchJson('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({
-          successUrl,
-          cancelUrl,
-          currency: this.selectedCurrency,
-        }),
+        body: JSON.stringify({ successUrl, cancelUrl }),
       });
       const url = res?.data?.checkoutUrl;
       if (url) {
@@ -393,7 +381,7 @@ export default class CompanyController extends Controller {
       this.notifications.error(e.message);
       this.isBillingBusy = false;
     }
-    // Deliberately not cleared on success: the browser is navigating to Stripe.
+    // Deliberately not cleared on success: the browser is navigating to checkout.
   }
 
   @action openDowngradeConfirm() {

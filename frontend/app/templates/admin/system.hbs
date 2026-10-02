@@ -47,6 +47,10 @@
             class="font-bold"
             data-test-system-price-row={{cell.row.id}}
           >{{cell.value}}</span>
+        {{else if (eq cell.key "countries")}}
+          <span
+            data-test-system-price-countries={{cell.row.id}}
+          >{{cell.value}}</span>
         {{else if (eq cell.key "unitAmount")}}
           {{format-money cell.value cell.row.currency}}
         {{else if (eq cell.key "status")}}

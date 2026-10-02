@@ -26,11 +26,15 @@ export class AdminCheckoutDto {
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Stripe-format success redirect URL' })
+  @ApiProperty({
+    description: 'Absolute success redirect URL on an allowed origin',
+  })
   @IsString()
   successUrl: string;
 
-  @ApiProperty({ description: 'Stripe-format cancel redirect URL' })
+  @ApiProperty({
+    description: 'Absolute cancel redirect URL on an allowed origin',
+  })
   @IsString()
   cancelUrl: string;
 

@@ -142,7 +142,7 @@
             {{#if this.billing.billingStatus}}
               <Nuvo::Tag
                 class="tag-sub-{{this.billingStatusBadgeValue}}"
-                @text={{this.billing.billingStatus}}
+                @text={{this.billingStatusLabel}}
                 data-test-billing-status
               />
             {{/if}}
@@ -165,25 +165,6 @@
         </div>
 
         {{#if this.isFreeTier}}
-          {{#if this.paymentCurrencyOptions.length}}
-            <Nuvo::Field
-              @label="Select your Payment currency"
-              class="mb-3"
-              @tooltip="Pick the currency you will be billed in. It is locked to your account once you subscribe, so contact support to change it later."
-              data-test-currency-select
-            >
-              <Nuvo::Dropdown
-                @align="start"
-                @value={{this.selectedCurrency}}
-                @onSelect={{fn this.setFieldValue "selectedCurrency"}}
-                @options={{this.paymentCurrencyOptions}}
-              />
-              <p
-                class="text-sm text-muted mt-1"
-                data-test-currency-lock-note
-              >Locked to your account once you subscribe.</p>
-            </Nuvo::Field>
-          {{/if}}
           <Nuvo::Button
             @variant="primary"
             @loading={{this.isBillingBusy}}

@@ -6,6 +6,7 @@ import { StripeBillingProvider } from './stripe-billing.provider';
 const mockCreate = jest.fn();
 const mockSearch = jest.fn();
 const mockPricesCreate = jest.fn();
+const mockPricesUpdate = jest.fn();
 const mockSubRetrieve = jest.fn();
 const mockSubUpdate = jest.fn();
 const mockSubItemUpdate = jest.fn();
@@ -33,6 +34,7 @@ const mockStripeClient = {
   },
   prices: {
     create: mockPricesCreate,
+    update: mockPricesUpdate,
   },
   subscriptions: {
     retrieve: mockSubRetrieve,
@@ -158,6 +160,16 @@ describe('StripeBillingProvider', () => {
     });
   });
 
+  describe('archivePrice', () => {
+    it('deactivates the price', async () => {
+      mockPricesUpdate.mockResolvedValue({ id: 'price_old', active: false });
+      await provider.archivePrice('price_old');
+      expect(mockPricesUpdate).toHaveBeenCalledWith('price_old', {
+        active: false,
+      });
+    });
+  });
+
   describe('ensurePrice', () => {
     it('creates a recurring monthly Price with correct args and returns the price id', async () => {
       mockPricesCreate.mockResolvedValue({ id: 'price_seat_usd' });
@@ -199,6 +211,15 @@ describe('StripeBillingProvider', () => {
       expect(mockPricesCreate).toHaveBeenCalledWith(
         expect.objectContaining({ product: 'prod_existing' }),
       );
+    });
+
+    it('rejects country price overrides without creating a price', async () => {
+      await expect(
+        provider.ensurePrice('SEAT', 'usd', 2500, [
+          { countryCodes: ['IN'], currency: 'usd', unitAmount: 1000 },
+        ]),
+      ).rejects.toThrow('does not support country price overrides');
+      expect(mockPricesCreate).not.toHaveBeenCalled();
     });
 
     it('lowercases currency before calling stripe', async () => {

@@ -11,6 +11,13 @@ export interface EnsureCustomerInput {
   idempotencyKey?: string;
 }
 
+/** Custom price for a list of ISO country codes, carried on the base price. */
+export interface PriceOverride {
+  countryCodes: string[];
+  currency: string;
+  unitAmount: number;
+}
+
 export interface ProviderWebhookEvent {
   /** UNIQUE idempotency key (the provider's event id). */
   providerEventId: string;
@@ -63,6 +70,9 @@ export interface BillingProvider {
   /** Stored on companies.billing_provider and billing_prices.provider. */
   readonly name: string;
 
+  /** Lowercase HTTP header that carries the webhook signature. */
+  readonly signatureHeader: string;
+
   /** Create a customer with the company in metadata; returns the provider customer id. */
   ensureCustomer(input: EnsureCustomerInput): Promise<string>;
 
@@ -71,7 +81,11 @@ export interface BillingProvider {
     kind: BillingPriceKind,
     currency: string,
     unitAmount: number,
+    overrides?: PriceOverride[],
   ): Promise<string>;
+
+  /** Deactivates a superseded price; existing subscriptions keep billing on it. */
+  archivePrice(priceId: string): Promise<void>;
 
   /** Verifies signature, translates raw webhook to normalized events; throws on bad signature. */
   parseWebhook(

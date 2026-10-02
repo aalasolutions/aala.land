@@ -17,7 +17,6 @@ export class ProviderNeutralBillingNames1779700000022 implements MigrationInterf
       `ALTER TABLE "billing_history" RENAME COLUMN "stripe_invoice_id" TO "provider_invoice_id"`,
     );
 
-    // The adapter in use writes its own name; null means no provider yet.
     await queryRunner.query(
       `ALTER TABLE "companies" ALTER COLUMN "billing_provider" DROP DEFAULT, ALTER COLUMN "billing_provider" DROP NOT NULL`,
     );

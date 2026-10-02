@@ -23,6 +23,7 @@ import {
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
 import {
+  NormalizedBillingEvent,
   PaymentFailedEvent,
   PaymentSucceededEvent,
   PlanChangedEvent,
@@ -124,6 +125,9 @@ export class BillingWebhookService implements OnModuleInit {
 
     try {
       for (const event of parsed.events) {
+        if (!(await this.isCompanyCustomer(parsed.providerEventId, event))) {
+          continue;
+        }
         await this.dispatcher.dispatch(event);
       }
     } catch (err) {
@@ -141,6 +145,23 @@ export class BillingWebhookService implements OnModuleInit {
     return { received: true };
   }
 
+  /** A checkout opened client-side can name any company, so the customer must be the one the server stored. */
+  private async isCompanyCustomer(
+    providerEventId: string,
+    event: NormalizedBillingEvent,
+  ): Promise<boolean> {
+    const company = await this.companyRepo.findOne({
+      where: { id: event.companyId },
+      select: ['id', 'billingCustomerId'],
+    });
+    const stored = company?.billingCustomerId ?? null;
+    if (stored && stored === event.customerId) return true;
+    this.logger.warn(
+      `Webhook ${providerEventId} (${event.name}): customer ${event.customerId} does not match company ${event.companyId} customer ${stored ?? 'none'}; skipped`,
+    );
+    return false;
+  }
+
   // Only writer of purchasedSeats, billingStatus, and billingSubscriptionId in the codebase.
 
   private async onSubscriptionActivated(
@@ -149,7 +170,7 @@ export class BillingWebhookService implements OnModuleInit {
     const tier = planToTier(event.plan);
     const limits = TIER_LIMITS[tier];
     // Guards purchasedSeats against stale/out-of-order delivery via billing_last_event_at.
-    await this.applyRecencyGuardedSync(
+    const applied = await this.applyRecencyGuardedSync(
       event.companyId,
       event.name,
       event.occurredAt,
@@ -165,6 +186,19 @@ export class BillingWebhookService implements OnModuleInit {
         maxProperties: limits.maxProperties,
       },
     );
+    if (applied) return;
+    // A late create still fills a paid company left without a subscription id.
+    await this.companyRepo
+      .createQueryBuilder()
+      .update(Company)
+      .set({
+        billingSubscriptionId: event.subscriptionId,
+        billingCurrency: event.currency,
+      })
+      .where('id = :companyId', { companyId: event.companyId })
+      .andWhere('billing_subscription_id IS NULL')
+      .andWhere('subscription_tier <> :free', { free: SubscriptionTier.FREE })
+      .execute();
   }
 
   private async onSubscriptionUpdated(
@@ -197,17 +231,26 @@ export class BillingWebhookService implements OnModuleInit {
   private async onPlanChanged(event: PlanChangedEvent): Promise<void> {
     const tier = planToTier(event.plan);
     const limits = TIER_LIMITS[tier];
+    const stored = await this.companyRepo.findOne({
+      where: { id: event.companyId },
+      select: ['id', 'subscriptionTier'],
+    });
+    // Same tier (renewal, scheduled cancel): keep operator-set limits.
+    const patch =
+      stored?.subscriptionTier === tier
+        ? { subscriptionTier: tier }
+        : {
+            subscriptionTier: tier,
+            maxUsers: limits.maxUsers,
+            maxRegions: limits.maxRegions,
+            maxProperties: limits.maxProperties,
+          };
     // Recency-guarded too: an out-of-order/retried plan swap could clobber newer tier state.
     await this.applyRecencyGuardedSync(
       event.companyId,
       event.name,
       event.occurredAt,
-      {
-        subscriptionTier: tier,
-        maxUsers: limits.maxUsers,
-        maxRegions: limits.maxRegions,
-        maxProperties: limits.maxProperties,
-      },
+      patch,
     );
   }
 
@@ -273,7 +316,7 @@ export class BillingWebhookService implements OnModuleInit {
     occurredAt: Date,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     patch: Record<string, any>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const result = await this.companyRepo
       .createQueryBuilder()
       .update(Company)
@@ -285,7 +328,7 @@ export class BillingWebhookService implements OnModuleInit {
       )
       .execute();
 
-    if (result.affected) return;
+    if (result.affected) return true;
 
     // 0 rows: either the company is gone, or a newer event already landed.
     const exists = await this.companyRepo.exists({ where: { id: companyId } });
@@ -299,5 +342,6 @@ export class BillingWebhookService implements OnModuleInit {
           `(event time ${occurredAt.toISOString()} is older than the last applied sync)`,
       );
     }
+    return false;
   }
 }

@@ -9,6 +9,7 @@ import {
   CreateSubscriptionInput,
   CreateSubscriptionResult,
   EnsureCustomerInput,
+  PriceOverride,
   ProviderWebhookEvent,
   SubscriptionRef,
 } from './billing-provider.interface';
@@ -134,6 +135,7 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
 @Injectable()
 export class StripeBillingProvider implements BillingProvider {
   readonly name = 'stripe';
+  readonly signatureHeader = 'stripe-signature';
   private readonly logger = new Logger(StripeBillingProvider.name);
   private readonly stripe: Stripe;
   private productIdCache: string | null = null;
@@ -168,7 +170,13 @@ export class StripeBillingProvider implements BillingProvider {
     kind: BillingPriceKind,
     currency: string,
     unitAmount: number,
+    overrides: PriceOverride[] = [],
   ): Promise<string> {
+    if (overrides.length) {
+      throw new Error(
+        'The Stripe billing adapter does not support country price overrides',
+      );
+    }
     const product = await this.ensureProduct();
     const price = await this.stripe.prices.create({
       product,
@@ -178,6 +186,10 @@ export class StripeBillingProvider implements BillingProvider {
       metadata: { kind, currency },
     });
     return price.id;
+  }
+
+  async archivePrice(priceId: string): Promise<void> {
+    await this.stripe.prices.update(priceId, { active: false });
   }
 
   async parseWebhook(
