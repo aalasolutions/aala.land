@@ -38,6 +38,7 @@ import {
   SubscriptionUpdatedEvent,
 } from '../events/billing-events';
 import { errorMessage } from '@shared/utils/error.util';
+import { PADDLE_COUNTRIES } from './paddle-countries';
 
 /** Seat ops hold a PG advisory lock; the SDK has no timeout option, so calls are raced. */
 const REQUEST_TIMEOUT_MS = 8000;
@@ -223,10 +224,52 @@ function money(
   };
 }
 
+// Paddle's payment currencies (the SDK CurrencyCode union).
+const PADDLE_CURRENCIES: readonly string[] = [
+  'usd',
+  'eur',
+  'gbp',
+  'jpy',
+  'aud',
+  'cad',
+  'chf',
+  'clp',
+  'hkd',
+  'sgd',
+  'sek',
+  'ars',
+  'brl',
+  'cny',
+  'cop',
+  'czk',
+  'dkk',
+  'huf',
+  'ils',
+  'inr',
+  'krw',
+  'mxn',
+  'nok',
+  'nzd',
+  'pen',
+  'pln',
+  'rub',
+  'thb',
+  'try',
+  'twd',
+  'uah',
+  'vnd',
+  'zar',
+];
+
 @Injectable()
 export class PaddleBillingProvider implements BillingProvider {
   readonly name = 'paddle';
   readonly signatureHeader = 'paddle-signature';
+  readonly baseCurrencies = ['usd'];
+  readonly supportsCountryOverrides = true;
+  readonly supportsTaxMode = true;
+  readonly supportedCurrencies = PADDLE_CURRENCIES;
+  readonly supportedCountries = PADDLE_COUNTRIES;
   private readonly logger = new Logger(PaddleBillingProvider.name);
   private readonly paddle: Paddle;
   private productIdCache: string | null = null;
@@ -280,6 +323,7 @@ export class PaddleBillingProvider implements BillingProvider {
     currency: string,
     unitAmount: number,
     overrides: PriceOverride[] = [],
+    taxInclusive = true,
   ): Promise<string> {
     const productId = await this.ensureProduct();
     // Always a new price: amounts are never mutated, the row is repointed instead.
@@ -300,6 +344,7 @@ export class PaddleBillingProvider implements BillingProvider {
           unitPrice: money(o.unitAmount, o.currency),
         })),
         customData: { kind, currency },
+        taxMode: taxInclusive ? 'internal' : 'external',
       }),
     );
     return price.id;

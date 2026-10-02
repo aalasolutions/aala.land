@@ -1,4 +1,5 @@
 import { helper } from '@ember/component/helper';
+import { currencyFractionDigits } from 'land/utils/currency-digits';
 
 // Currency is explicit per value: invoices bill in the currency pinned at checkout.
 export default helper(function formatMoney([minorAmount, currency]) {
@@ -15,7 +16,7 @@ export default helper(function formatMoney([minorAmount, currency]) {
       currency: code,
     });
     // Minor-to-major divisor is currency-specific; derive it rather than assuming /100.
-    const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+    const digits = currencyFractionDigits(code);
     return formatter.format(num / 10 ** digits);
   } catch {
     return `${code} ${(num / 100).toLocaleString(locale, {

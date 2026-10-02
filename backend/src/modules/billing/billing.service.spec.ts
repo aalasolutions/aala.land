@@ -41,6 +41,9 @@ const makeCompany = (overrides: Partial<Company> = {}): Company =>
 
 const mockProviderMethods = {
   name: 'stripe',
+  supportsCountryOverrides: true,
+  supportsTaxMode: true,
+  supportedCountries: null,
   ensureCustomer: jest.fn(),
   ensurePrice: jest.fn(),
   archivePrice: jest.fn(),
@@ -259,9 +262,13 @@ describe('BillingService', () => {
       const result = await service.syncPrices();
 
       expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
-      expect(provider.ensurePrice).toHaveBeenCalledWith('SEAT', 'usd', 2500, [
-        { countryCodes: ['PK'], currency: 'usd', unitAmount: 1000 },
-      ]);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['PK'], currency: 'usd', unitAmount: 1000 }],
+        undefined,
+      );
       // One update repoints the whole group.
       expect(priceRepo.update).toHaveBeenCalledTimes(1);
       expect(priceRepo.update).toHaveBeenCalledWith(
@@ -400,6 +407,7 @@ describe('BillingService', () => {
         'usd',
         2500,
         [],
+        undefined,
       );
       expect(priceRepo.update).toHaveBeenCalledWith(
         { id: In(['bp-base']) },
@@ -444,6 +452,170 @@ describe('BillingService', () => {
       expect(priceRepo.update).not.toHaveBeenCalled();
     });
 
+    describe('retired base prices', () => {
+      const active: Partial<BillingPrice> = {
+        id: 'bp-base',
+        kind: 'SEAT',
+        currency: 'usd',
+        unitAmount: 3000,
+        active: true,
+        countryCodes: null,
+        provider: 'stripe',
+        providerPriceId: 'pri_current',
+      };
+      const retired = (
+        o: Partial<BillingPrice> = {},
+      ): Partial<BillingPrice> => ({
+        ...active,
+        id: 'bp-base-old',
+        unitAmount: 2500,
+        active: false,
+        providerPriceId: 'pri_old',
+        ...o,
+      });
+
+      it('archives the price of a deactivated base row and clears its id', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([active, retired()]);
+
+        await expect(service.needsPriceSync()).resolves.toBe(true);
+        await service.syncPrices();
+
+        expect(provider.ensurePrice).not.toHaveBeenCalled();
+        expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+        expect(priceRepo.update).toHaveBeenCalledWith(
+          { id: In(['bp-base-old']) },
+          { providerPriceId: null },
+        );
+      });
+
+      it('keeps the id when the archive call fails, so the next sync retries', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([active, retired()]);
+        (provider.archivePrice as jest.Mock).mockRejectedValueOnce(
+          new Error('archive failed'),
+        );
+
+        await service.syncPrices();
+
+        expect(priceRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('leaves a retired price minted by another provider', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([
+          active,
+          retired({ id: 'bp-other', provider: 'paddle' }),
+        ]);
+
+        await expect(service.needsPriceSync()).resolves.toBe(false);
+        await service.syncPrices();
+
+        expect(provider.archivePrice).not.toHaveBeenCalled();
+      });
+
+      describe('a replacement base still selling on the superseded price', () => {
+        const pendingRows = [
+          { ...active, taxInclusive: true },
+          retired({ providerPriceId: 'pri_current' }),
+          retired({ id: 'bp-base-older', providerPriceId: 'pri_current' }),
+        ];
+
+        it('counts as pending work and reports the row as pending', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+
+          await expect(service.needsPriceSync()).resolves.toBe(true);
+          await expect(service.pendingPriceChangeIds()).resolves.toEqual(
+            new Set(['bp-base']),
+          );
+        });
+
+        it('registers the new price, then archives the old one once and clears every retired row', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+          (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+          await service.syncPrices();
+
+          expect(provider.ensurePrice).toHaveBeenCalledWith(
+            'SEAT',
+            'usd',
+            3000,
+            [],
+            true,
+          );
+          expect(provider.archivePrice).toHaveBeenCalledTimes(1);
+          expect(provider.archivePrice).toHaveBeenCalledWith('pri_current');
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base-old', 'bp-base-older']) },
+            { providerPriceId: null },
+          );
+        });
+
+        it('keeps selling on the old price when the provider refuses the new one', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+          (provider.ensurePrice as jest.Mock).mockRejectedValueOnce(
+            new Error('provider down'),
+          );
+
+          const result = await service.syncPrices();
+
+          expect(provider.archivePrice).not.toHaveBeenCalled();
+          expect(priceRepo.update).toHaveBeenCalledTimes(1);
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base']) },
+            {
+              lastSyncError: 'provider down',
+              lastSyncErrorAt: expect.any(Date),
+            },
+          );
+          expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
+        });
+
+        it('repoints its overrides and still archives the old price once', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue([
+            pendingRows[0],
+            {
+              ...active,
+              id: 'bp-pk',
+              unitAmount: 1000,
+              countryCodes: ['PK'],
+            },
+            pendingRows[1],
+          ]);
+          (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+          await service.syncPrices();
+
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base', 'bp-pk']) },
+            expect.objectContaining({ providerPriceId: 'pri_new' }),
+          );
+          expect(provider.archivePrice).toHaveBeenCalledTimes(1);
+          expect(provider.archivePrice).toHaveBeenCalledWith('pri_current');
+        });
+      });
+
+      it('archives the old price in the same sync that replaces a base carrying overrides', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([
+          { ...active, provider: null, providerPriceId: null },
+          {
+            ...active,
+            id: 'bp-pk',
+            unitAmount: 1000,
+            countryCodes: ['PK'],
+            providerPriceId: 'pri_old',
+          },
+          retired(),
+        ]);
+        (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+        await service.syncPrices();
+
+        expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+        expect(priceRepo.update).toHaveBeenCalledWith(
+          { id: In(['bp-base-old']) },
+          { providerPriceId: null },
+        );
+      });
+    });
+
     it('fails the whole group without calling the provider when override countries overlap', async () => {
       const rows: Partial<BillingPrice>[] = [
         {
@@ -483,11 +655,314 @@ describe('BillingService', () => {
         { id: In(['bp-base', 'bp-pk', 'bp-pk-in']) },
         {
           lastSyncError:
-            'Countries PK appear in more than one active SEAT usd override',
+            'Countries PK appear in more than one active SEAT override',
           lastSyncErrorAt: expect.any(Date),
         },
       );
       expect(result).toEqual({ synced: 0, failed: 3, total: 3 });
+    });
+
+    it('attaches an override in another currency to the base of its kind', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-de',
+          kind: 'SEAT',
+          currency: 'eur',
+          unitAmount: 2000,
+          active: true,
+          countryCodes: ['DE'],
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-ent',
+          kind: 'ENTERPRISE_BASE',
+          currency: 'usd',
+          unitAmount: 25000,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock)
+        .mockResolvedValueOnce('pri_seat')
+        .mockResolvedValueOnce('pri_ent');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['DE'], currency: 'eur', unitAmount: 2000 }],
+        undefined,
+      );
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'ENTERPRISE_BASE',
+        'usd',
+        25000,
+        [],
+        undefined,
+      );
+      expect(result).toEqual({ synced: 3, failed: 0, total: 3 });
+    });
+
+    it('requires the default checkout currency as a base when the provider has no base rule', () => {
+      expect(service.requiredBaseCurrencies).toEqual(['usd']);
+
+      Object.assign(provider, { baseCurrencies: ['usd', 'eur'] });
+      expect(service.requiredBaseCurrencies).toEqual(['usd', 'eur']);
+    });
+
+    it('fails a base row outside the provider base currencies without calling the provider', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-aed',
+          kind: 'SEAT',
+          currency: 'aed',
+          unitAmount: 9500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).not.toHaveBeenCalled();
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-aed', {
+        lastSyncError:
+          'Currency aed is not a base currency for the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
+    });
+
+    it('leaves an override for an unsold country out of its group and fails only that row', async () => {
+      Object.assign(provider, { supportedCountries: ['PK', 'IN'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-ir',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 900,
+          active: true,
+          countryCodes: ['IR', 'IN'],
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_seat');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['PK'], currency: 'usd', unitAmount: 1000 }],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-ir', {
+        lastSyncError: 'The stripe provider does not sell to: IR',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base', 'bp-pk']) },
+        expect.objectContaining({ providerPriceId: 'price_seat' }),
+      );
+      expect(result).toEqual({ synced: 2, failed: 1, total: 3 });
+
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        { ...rows[0], provider: 'stripe', providerPriceId: 'price_seat' },
+        { ...rows[1], provider: 'stripe', providerPriceId: 'price_seat' },
+        {
+          ...rows[2],
+          lastSyncError: 'The stripe provider does not sell to: IR',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('syncs bases alone and fails override rows when the provider has no country overrides', async () => {
+      Object.assign(provider, { supportsCountryOverrides: false });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_seat');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-pk', {
+        lastSyncError:
+          'Custom prices by country are not supported by the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base']) },
+        expect.objectContaining({ providerPriceId: 'price_seat' }),
+      );
+      expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
+
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        { ...rows[0], provider: 'stripe', providerPriceId: 'price_seat' },
+        {
+          ...rows[1],
+          lastSyncError:
+            'Custom prices by country are not supported by the stripe provider',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('runs concurrent calls one after the other', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      const order: string[] = [];
+      let release!: () => void;
+      (provider.ensurePrice as jest.Mock)
+        .mockImplementationOnce(async () => {
+          order.push('first:start');
+          await new Promise<void>((resolve) => (release = resolve));
+          order.push('first:end');
+          return 'price_a';
+        })
+        .mockImplementationOnce(() => {
+          order.push('second:start');
+          return Promise.resolve('price_b');
+        });
+
+      const first = service.syncPrices();
+      const second = service.syncPrices();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(order).toEqual(['first:start']);
+      release();
+      await Promise.all([first, second]);
+
+      expect(order).toEqual(['first:start', 'first:end', 'second:start']);
+    });
+
+    it('keeps the queue running after a failed run', async () => {
+      (priceRepo.find as jest.Mock)
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce([]);
+
+      await expect(service.syncPrices()).rejects.toThrow('db down');
+      await expect(service.syncPrices()).resolves.toEqual({
+        synced: 0,
+        failed: 0,
+        total: 0,
+      });
+    });
+
+    it('fails only the override whose currency the provider cannot charge', async () => {
+      Object.assign(provider, { supportedCurrencies: ['usd'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'pkr',
+          unitAmount: 280000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_base');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-pk', {
+        lastSyncError: 'Currency pkr is not supported by the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
     });
 
     it('marks an override with no base row as failed without calling the provider', async () => {
@@ -508,8 +983,7 @@ describe('BillingService', () => {
 
       expect(provider.ensurePrice).not.toHaveBeenCalled();
       expect(priceRepo.update).toHaveBeenCalledWith('bp-eur', {
-        lastSyncError:
-          'No active base SEAT price in eur to carry this override',
+        lastSyncError: 'No active base SEAT price to carry this override',
         lastSyncErrorAt: expect.any(Date),
       });
       expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
@@ -586,12 +1060,14 @@ describe('BillingService', () => {
         'usd',
         2500,
         [],
+        undefined,
       );
       expect(provider.ensurePrice).toHaveBeenCalledWith(
         'ENTERPRISE_BASE',
         'usd',
         25000,
         [],
+        undefined,
       );
       expect(result).toEqual({ synced: 2, failed: 0, total: 3 });
     });
@@ -725,6 +1201,23 @@ describe('BillingService', () => {
       await expect(service.needsPriceSync()).resolves.toBe(true);
     });
 
+    it('is false for a base row already marked as an unsupported base currency', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        base,
+        {
+          ...base,
+          id: 'bp-aed',
+          currency: 'aed',
+          provider: null,
+          providerPriceId: null,
+          lastSyncError:
+            'Currency aed is not a base currency for the stripe provider',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
     it('is true when an active row is unsynced', async () => {
       (priceRepo.find as jest.Mock).mockResolvedValue([
         { ...base, providerPriceId: null },
@@ -733,7 +1226,98 @@ describe('BillingService', () => {
     });
   });
 
+  describe('getProviderPriceId', () => {
+    it('uses the base row in the given currency when the provider has no base rule', async () => {
+      priceRepo.findOne.mockResolvedValue({
+        provider: 'stripe',
+        providerPriceId: 'pri_eur',
+      } as BillingPrice);
+      await expect(service['getProviderPriceId']('SEAT', 'eur')).resolves.toBe(
+        'pri_eur',
+      );
+      expect(priceRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          kind: 'SEAT',
+          active: true,
+          countryCodes: IsNull(),
+          currency: 'eur',
+        },
+      });
+    });
+
+    it('uses the base of the kind in the provider base currency, whatever the company currency', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      priceRepo.findOne.mockResolvedValue({
+        provider: 'stripe',
+        providerPriceId: 'pri_base',
+      } as BillingPrice);
+      await expect(service['getProviderPriceId']('SEAT', 'eur')).resolves.toBe(
+        'pri_base',
+      );
+      expect(priceRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          kind: 'SEAT',
+          active: true,
+          countryCodes: IsNull(),
+          currency: In(['usd']),
+        },
+      });
+    });
+
+    it('keeps the not-found error when no base row exists', async () => {
+      priceRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service['getProviderPriceId']('SEAT', 'eur'),
+      ).rejects.toThrow('No active SEAT price found for currency eur.');
+    });
+
+    it('keeps the not-synced error for an unsynced base row', async () => {
+      priceRepo.findOne.mockResolvedValue({
+        provider: null,
+        providerPriceId: null,
+      } as BillingPrice);
+      await expect(
+        service['getProviderPriceId']('SEAT', 'eur'),
+      ).rejects.toThrow(
+        'SEAT price for eur has not been synced to the billing provider yet.',
+      );
+    });
+  });
+
   describe('getSubscriptionState', () => {
+    beforeEach(() => {
+      priceRepo.find.mockResolvedValue([]);
+    });
+
+    it('lists the amount still being charged while a replacement price is registering', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      const base = {
+        id: 'bp-base',
+        kind: 'SEAT',
+        currency: 'usd',
+        unitAmount: 3000,
+        active: true,
+        countryCodes: null,
+        provider: 'stripe',
+        providerPriceId: 'pri_old',
+      };
+      priceRepo.findOne.mockResolvedValue(base as BillingPrice);
+      priceRepo.find.mockResolvedValue([
+        base,
+        { ...base, id: 'bp-base-old', unitAmount: 2500, active: false },
+      ] as BillingPrice[]);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(2500);
+    });
+
     it('returns the rich billing snapshot for a FREE company with no subscription', async () => {
       companyRepo.findOne.mockResolvedValue(makeCompany());
       priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
@@ -985,6 +1569,7 @@ describe('BillingService', () => {
 
     it('throws BadRequestException when no active SEAT price is found', async () => {
       priceRepo.findOne.mockResolvedValue(null);
+      priceRepo.find.mockResolvedValue([]);
       await expect(
         service.startCheckout(
           companyId,

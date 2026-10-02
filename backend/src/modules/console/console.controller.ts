@@ -40,6 +40,7 @@ import { GrantDealDto } from './dto/deal.dto';
 import { LiftLockDto } from './dto/lift-lock.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { ApplyRemedyDto } from './dto/apply-remedy.dto';
+import { ChangePriceAmountDto, CreatePriceDto } from './dto/price.dto';
 
 const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 
@@ -242,6 +243,44 @@ export class ConsoleController {
   })
   getPriceHealth() {
     return this.consoleService.getPriceHealth();
+  }
+
+  @Post('prices')
+  @ApiOperation({
+    summary:
+      'Add a base or country custom price; syncs to the provider and returns price health',
+  })
+  @ApiBody({ type: CreatePriceDto })
+  createPrice(
+    @Body() dto: CreatePriceDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.consoleService.createPrice(dto, this.actor(req));
+  }
+
+  @Post('prices/:id/amount')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Change an amount (create-and-supersede); existing subscribers keep the old price',
+  })
+  @ApiBody({ type: ChangePriceAmountDto })
+  changePriceAmount(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangePriceAmountDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.consoleService.changePriceAmount(id, dto, this.actor(req));
+  }
+
+  @Post('prices/:id/deactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deactivate a price; returns price health' })
+  deactivatePrice(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.consoleService.deactivatePrice(id, this.actor(req));
   }
 
   @Get('reports/marketers')

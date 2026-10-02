@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, In, IsNull, Repository } from 'typeorm';
+import { EntityManager, ILike, In, IsNull, Repository } from 'typeorm';
 import {
   Company,
   SubscriptionTier,
@@ -48,6 +48,7 @@ import { GrantDealDto } from './dto/deal.dto';
 import { LiftLockDto } from './dto/lift-lock.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { ApplyRemedyDto } from './dto/apply-remedy.dto';
+import { ChangePriceAmountDto, CreatePriceDto } from './dto/price.dto';
 
 // Operator identity stamped on every intent; assistants act with full power under this identity.
 export interface OperatorActor {
@@ -758,23 +759,145 @@ export class ConsoleService {
         this.logger.error(`Auto price sync failed: ${errorMessage(err)}`);
       }
     }
+    return this.priceHealthPayload();
+  }
+
+  async createPrice(
+    dto: CreatePriceDto,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const countryCodes = dto.countryCodes
+      ? [...new Set(dto.countryCodes.map((c) => c.toUpperCase()))].sort()
+      : null;
+    const draft = {
+      kind: dto.kind,
+      currency: dto.currency.toLowerCase(),
+      unitAmount: dto.unitAmount,
+      countryCodes,
+      // Tax inside the amount is the default; a custom price follows the base it rides on.
+      taxInclusive: countryCodes ? true : (dto.taxInclusive ?? true),
+    };
+    const price = await this.writePrices(async (manager) => {
+      await this.assertPriceAllowed(manager, draft);
+      return manager.save(manager.create(BillingPrice, draft));
+    });
+    this.auditPrice(actor, 'price_created', price);
+    return this.syncAfterPriceWrite();
+  }
+
+  // Create-and-supersede: subscribers stay on the old provider price until migrated.
+  async changePriceAmount(
+    id: string,
+    dto: ChangePriceAmountDto,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const { previous, price } = await this.writePrices(async (manager) => {
+      const previous = await this.findActivePrice(manager, id);
+      const isBase = !previous.countryCodes;
+      const taxInclusive = isBase
+        ? (dto.taxInclusive ?? previous.taxInclusive)
+        : previous.taxInclusive;
+      if (
+        dto.unitAmount === previous.unitAmount &&
+        (!isBase || taxInclusive === previous.taxInclusive)
+      ) {
+        throw new ConflictException(
+          'This price already has that amount and tax setting.',
+        );
+      }
+      // A base keeps selling on the superseded provider price until the sync registers its own.
+      const carried =
+        isBase && this.billingService.isPriceSynced(previous)
+          ? {
+              provider: previous.provider,
+              providerPriceId: previous.providerPriceId,
+            }
+          : {};
+      const draft = {
+        kind: previous.kind,
+        currency: previous.currency,
+        unitAmount: dto.unitAmount,
+        countryCodes: previous.countryCodes,
+        taxInclusive,
+        ...carried,
+      };
+      await this.assertPriceAllowed(manager, draft, previous.id);
+      await manager.update(BillingPrice, previous.id, { active: false });
+      const price = await manager.save(manager.create(BillingPrice, draft));
+      return { previous, price };
+    });
+    this.auditPrice(actor, 'price_amount_changed', price, previous);
+    return this.syncAfterPriceWrite();
+  }
+
+  async deactivatePrice(
+    id: string,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const price = await this.writePrices(async (manager) => {
+      const price = await this.findActivePrice(manager, id);
+      if (!price.countryCodes) {
+        const others = (
+          await manager.find(BillingPrice, {
+            where: { kind: price.kind, active: true },
+          })
+        ).filter((r) => r.id !== price.id);
+        const otherBases = others.filter((r) => !r.countryCodes);
+        // Checkout needs a base in a required currency.
+        const { requiredBaseCurrencies } = this.billingService;
+        if (
+          requiredBaseCurrencies.includes(price.currency) &&
+          !otherBases.some((r) => requiredBaseCurrencies.includes(r.currency))
+        ) {
+          throw new ConflictException(
+            `This is the last active ${price.kind} base price. Checkouts need one; change its amount instead.`,
+          );
+        }
+        // Custom prices ride every base the provider accepts; the last such base cannot go first.
+        const carries = (r: BillingPrice) =>
+          !this.billingService.priceRowError(r);
+        if (
+          carries(price) &&
+          others.some((r) => r.countryCodes) &&
+          !otherBases.some(carries)
+        ) {
+          throw new ConflictException(
+            `Active custom ${price.kind} prices ride on this base price. Remove the custom prices first.`,
+          );
+        }
+      }
+      await manager.update(BillingPrice, price.id, { active: false });
+      return price;
+    });
+    this.auditPrice(actor, 'price_deactivated', price);
+    return this.syncAfterPriceWrite();
+  }
+
+  private async priceHealthPayload(): Promise<Record<string, unknown>> {
     const rows = await this.activePricesSorted();
+
+    const pendingIds = await this.billingService.pendingPriceChangeIds();
 
     const items = rows.map((row) => {
       const synced = this.billingService.isPriceSynced(row);
+      // Pending: still selling on the superseded price until the new one registers.
+      const settled = synced && !pendingIds.has(row.id);
       return {
         id: row.id,
         kind: row.kind,
         currency: row.currency,
         countryCodes: row.countryCodes,
         unitAmount: row.unitAmount,
-        status: synced
+        taxInclusive: row.taxInclusive,
+        status: settled
           ? 'registered'
-          : row.lastSyncError
-            ? 'failed'
-            : 'missing',
-        lastError: synced ? null : row.lastSyncError,
-        lastErrorAt: synced
+          : synced
+            ? 'pending'
+            : row.lastSyncError
+              ? 'failed'
+              : 'missing',
+        lastError: settled ? null : row.lastSyncError,
+        lastErrorAt: settled
           ? null
           : (row.lastSyncErrorAt?.toISOString() ?? null),
       };
@@ -783,8 +906,10 @@ export class ConsoleService {
       rows: items,
       total: items.length,
       registered: items.filter((i) => i.status === 'registered').length,
+      pending: items.filter((i) => i.status === 'pending').length,
       missing: items.filter((i) => i.status === 'missing').length,
       failed: items.filter((i) => i.status === 'failed').length,
+      supportsTaxMode: this.billingService.supportsTaxMode,
       checkedAt: new Date().toISOString(),
     };
   }
@@ -1051,6 +1176,113 @@ export class ConsoleService {
 
   private async hasManualPayments(companyId: string): Promise<boolean> {
     return this.paymentRepo.exists({ where: { companyId } });
+  }
+
+  // One writer at a time: the country-overlap rule spans rows no unique index covers.
+  private async writePrices<T>(
+    fn: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await this.priceRepo.manager.transaction(async (manager) => {
+        await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+          'billing_prices',
+        ]);
+        return fn(manager);
+      });
+    } catch (err) {
+      if (this.isUniqueViolation(err)) {
+        throw new ConflictException(
+          'An active price with the same kind, currency or countries already exists.',
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async findActivePrice(
+    manager: EntityManager,
+    id: string,
+  ): Promise<BillingPrice> {
+    const price = await manager.findOne(BillingPrice, { where: { id } });
+    if (!price) throw new NotFoundException('Price not found');
+    if (!price.active) {
+      throw new ConflictException('This price is no longer active.');
+    }
+    return price;
+  }
+
+  private async assertPriceAllowed(
+    manager: EntityManager,
+    draft: Pick<BillingPrice, 'kind' | 'currency' | 'countryCodes'>,
+    replacingId?: string,
+  ): Promise<void> {
+    const providerError = this.billingService.priceRowError(draft);
+    if (providerError) throw new BadRequestException(`${providerError}.`);
+    const { kind, currency, countryCodes } = draft;
+    const active = (
+      await manager.find(BillingPrice, { where: { kind, active: true } })
+    ).filter((r) => r.id !== replacingId);
+    if (!countryCodes) {
+      if (active.some((r) => !r.countryCodes && r.currency === currency)) {
+        throw new ConflictException(
+          `An active ${kind} base price in ${currency} already exists. Change its amount instead.`,
+        );
+      }
+      return;
+    }
+    if (!active.some((r) => !r.countryCodes)) {
+      throw new BadRequestException(
+        `Add an active ${kind} base price before a custom price.`,
+      );
+    }
+    const taken = new Set(
+      active.flatMap((r) => (r.countryCodes ?? []).map((c) => c.toUpperCase())),
+    );
+    const overlap = countryCodes.filter((c) => taken.has(c));
+    if (overlap.length) {
+      throw new ConflictException(
+        `Countries ${overlap.join(', ')} already have an active ${kind} custom price.`,
+      );
+    }
+  }
+
+  // Sync is best-effort: the write stands and the row shows its provider error.
+  private async syncAfterPriceWrite(): Promise<Record<string, unknown>> {
+    try {
+      await this.billingService.syncPrices();
+    } catch (err) {
+      this.logger.error(
+        `Price sync after console write failed: ${errorMessage(err)}`,
+      );
+    }
+    return this.priceHealthPayload();
+  }
+
+  // Prices are global: audit_logs requires a company, so price writes go to the operator log.
+  private auditPrice(
+    actor: OperatorActor,
+    event: string,
+    price: BillingPrice,
+    previous?: BillingPrice,
+  ): void {
+    this.logger.log(
+      JSON.stringify({
+        event,
+        operator: actor.email,
+        operatorId: actor.userId,
+        priceId: price.id,
+        providerPriceId: price.providerPriceId ?? null,
+        kind: price.kind,
+        currency: price.currency,
+        countryCodes: price.countryCodes,
+        unitAmount: price.unitAmount,
+        taxInclusive: price.taxInclusive,
+        previousPriceId: previous?.id ?? null,
+        previousProviderPriceId: previous?.providerPriceId ?? null,
+        previousUnitAmount: previous?.unitAmount ?? null,
+        previousTaxInclusive: previous?.taxInclusive ?? null,
+      }),
+    );
   }
 
   private async activePricesSorted(): Promise<BillingPrice[]> {

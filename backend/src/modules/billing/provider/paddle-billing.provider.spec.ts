@@ -273,6 +273,7 @@ describe('PaddleBillingProvider', () => {
         quantity: { minimum: 1, maximum: 10000 },
         unitPriceOverrides: [],
         customData: { kind: 'SEAT', currency: 'usd' },
+        taxMode: 'internal',
       });
     });
 
@@ -290,6 +291,18 @@ describe('PaddleBillingProvider', () => {
             },
           ],
         }),
+      );
+    });
+
+    it('includes tax in the amount by default and adds it on top when told to', async () => {
+      await provider.ensurePrice('SEAT', 'usd', 2500, []);
+      expect(client.prices.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ taxMode: 'internal' }),
+      );
+
+      await provider.ensurePrice('SEAT', 'usd', 2500, [], false);
+      expect(client.prices.create).toHaveBeenLastCalledWith(
+        expect.objectContaining({ taxMode: 'external' }),
       );
     });
 

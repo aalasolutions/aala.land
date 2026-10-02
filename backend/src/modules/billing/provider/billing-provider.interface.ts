@@ -73,15 +73,31 @@ export interface BillingProvider {
   /** Lowercase HTTP header that carries the webhook signature. */
   readonly signatureHeader: string;
 
+  /** Lowercase ISO-4217 currencies a base price may use; null = any. */
+  readonly baseCurrencies: readonly string[] | null;
+
+  /** True when a base price can carry custom prices for a list of countries. */
+  readonly supportsCountryOverrides: boolean;
+
+  /** True when a price can state whether tax is inside its amount. */
+  readonly supportsTaxMode: boolean;
+
+  /** Lowercase ISO-4217 currencies the provider can charge in; null = any. */
+  readonly supportedCurrencies: readonly string[] | null;
+
+  /** Upper-case ISO 3166-1 alpha-2 countries a custom price may list; null = any. */
+  readonly supportedCountries: readonly string[] | null;
+
   /** Create a customer with the company in metadata; returns the provider customer id. */
   ensureCustomer(input: EnsureCustomerInput): Promise<string>;
 
-  /** Creates a recurring monthly Price for (kind, currency, amount); returns the price id. */
+  /** Creates a recurring monthly Price; tax is inside the amount unless taxInclusive is false. Returns the price id. */
   ensurePrice(
     kind: BillingPriceKind,
     currency: string,
     unitAmount: number,
     overrides?: PriceOverride[],
+    taxInclusive?: boolean,
   ): Promise<string>;
 
   /** Deactivates a superseded price; existing subscriptions keep billing on it. */

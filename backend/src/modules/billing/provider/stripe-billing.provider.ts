@@ -136,6 +136,11 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
 export class StripeBillingProvider implements BillingProvider {
   readonly name = 'stripe';
   readonly signatureHeader = 'stripe-signature';
+  readonly baseCurrencies = null;
+  readonly supportsCountryOverrides = false;
+  readonly supportsTaxMode = false;
+  readonly supportedCurrencies = null;
+  readonly supportedCountries = null;
   private readonly logger = new Logger(StripeBillingProvider.name);
   private readonly stripe: Stripe;
   private productIdCache: string | null = null;

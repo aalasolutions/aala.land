@@ -4,6 +4,10 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
 import {
+  currencyFractionDigits,
+  toMinorUnits,
+} from 'land/utils/currency-digits';
+import {
   formatCalendarDate,
   localDateString,
   localEndOfDayIso,
@@ -237,10 +241,10 @@ export default class AdminCompaniesCompanyController extends Controller {
       const amt =
         this.remedyScope === 'full'
           ? this.remedyAnchor?.amountMinor
-          : this.toMinor(this.remedyAmount, this.remedyAnchor?.currency);
+          : toMinorUnits(this.remedyAmount, this.remedyAnchor?.currency);
       return `Refund ${this.formatMoney(amt || 0, this.remedyAnchor?.currency)}`;
     }
-    const amt = this.toMinor(this.remedyAmount, this.remedyAnchor?.currency);
+    const amt = toMinorUnits(this.remedyAmount, this.remedyAnchor?.currency);
     return `Discount next bill by ${this.formatMoney(
       amt || 0,
       this.remedyAnchor?.currency,
@@ -335,7 +339,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   async submitDeal() {
     if (this.dealBusy) return;
-    const price = this.toMinor(this.dealPrice, this.dealCurrency);
+    const price = toMinorUnits(this.dealPrice, this.dealCurrency);
     const seatCap = parseInt(this.dealSeatCap, 10);
     const currency = (this.dealCurrency || '').trim().toLowerCase();
 
@@ -638,7 +642,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   async submitPayment() {
     if (this.payBusy) return;
-    const amount = this.toMinor(this.payAmount, this.payCurrency);
+    const amount = toMinorUnits(this.payAmount, this.payCurrency);
     const currency = (this.payCurrency || '').trim().toLowerCase();
     if (amount == null || amount < 1) {
       this.notifications.error('Enter a valid amount.');
@@ -773,7 +777,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (this.remedyKind === 'refund') {
       body.scope = this.remedyScope;
       if (this.remedyScope === 'partial') {
-        const amount = this.toMinor(this.remedyAmount, currency);
+        const amount = toMinorUnits(this.remedyAmount, currency);
         if (amount == null || amount < 1 || amount > anchorAmount) {
           this.notifications.error(
             'Enter a partial amount up to the payment total.',
@@ -783,7 +787,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         body.amount = amount;
       }
     } else {
-      const amount = this.toMinor(this.remedyAmount, currency);
+      const amount = toMinorUnits(this.remedyAmount, currency);
       if (amount == null || amount < 1 || amount > anchorAmount) {
         this.notifications.error(
           'Enter a discount amount up to the payment total.',
@@ -856,24 +860,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   minorDigits(currency) {
-    const code = (currency || 'usd').toUpperCase();
-    try {
-      const fmt = new Intl.NumberFormat(navigator.language || 'en', {
-        style: 'currency',
-        currency: code,
-      });
-      return fmt.resolvedOptions().maximumFractionDigits ?? 2;
-    } catch {
-      return 2;
-    }
-  }
-
-  /** Major-unit input to minor units; null when the input is not a number. */
-  toMinor(major, currency) {
-    if (major === '' || major === null || major === undefined) return null;
-    const num = Number(major);
-    if (Number.isNaN(num)) return null;
-    return Math.round(num * 10 ** this.minorDigits(currency));
+    return currencyFractionDigits(currency || 'usd');
   }
 
   toMajor(minor, currency) {
@@ -889,8 +876,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         style: 'currency',
         currency: code,
       });
-      const digits = fmt.resolvedOptions().maximumFractionDigits ?? 2;
-      return fmt.format(num / 10 ** digits);
+      return fmt.format(num / 10 ** this.minorDigits(code));
     } catch {
       return `${code} ${(num / 100).toFixed(2)}`;
     }

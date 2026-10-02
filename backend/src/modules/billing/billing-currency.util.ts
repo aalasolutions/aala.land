@@ -4,6 +4,9 @@ import { getRegionByCode } from '@shared/constants/regions';
 export const BILLING_CURRENCIES = ['usd', 'aed', 'sar'] as const;
 export type BillingCurrency = (typeof BILLING_CURRENCIES)[number];
 
+/** Charged when checkout names no currency, so its base price must always exist. */
+export const DEFAULT_BILLING_CURRENCY: BillingCurrency = 'usd';
+
 export function isBillingCurrency(value: string): value is BillingCurrency {
   return (BILLING_CURRENCIES as readonly string[]).includes(value);
 }

@@ -34,6 +34,10 @@ export class BillingPrice {
   @Column({ name: 'country_codes', type: 'text', array: true, nullable: true })
   countryCodes: string[] | null;
 
+  /** Base rows: true = tax inside the amount, false = added on top. A custom price follows its base. */
+  @Column({ name: 'tax_inclusive', type: 'boolean', default: true })
+  taxInclusive: boolean;
+
   @Column({ type: 'varchar', length: 32, nullable: true })
   provider: string | null;
 
