@@ -96,6 +96,13 @@ export class ContactsController {
     description: 'Filter by derived role tag',
   })
   @ApiQuery({
+    name: 'tagCounts',
+    required: false,
+    type: Boolean,
+    description:
+      'true adds tagCounts (all plus one total per tag) for the same filters, tag excluded',
+  })
+  @ApiQuery({
     name: 'agentId',
     required: false,
     type: String,
@@ -137,6 +144,7 @@ export class ContactsController {
     @Query('regionCode') regionCode?: string,
     @Query('allRegions') allRegions?: string,
     @Query('sort') sort?: string,
+    @Query('tagCounts') tagCounts?: string,
   ) {
     if (sort && sort !== 'name') {
       throw new BadRequestException('sort must be name');
@@ -169,6 +177,7 @@ export class ContactsController {
         dateTo: dateTo || undefined,
         allRegions: allRegions === 'true',
         sort: sort === 'name' ? 'name' : undefined,
+        tagCounts: tagCounts === 'true' ? true : undefined,
       },
       req.user,
     );
