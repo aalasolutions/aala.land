@@ -914,7 +914,7 @@ export class ConsoleService {
     };
   }
 
-  // List price only, no coupons; excludes expired/locked deals; null group is unattributed.
+  // Stored net charged, else price row; skips expired/locked deals; null group unattributed.
   async getMarketersReport(): Promise<{ rows: Record<string, unknown>[] }> {
     const companies = await this.companyRepo.find();
     const mrrMap = await this.computeMrrMap(companies);
@@ -1029,8 +1029,13 @@ export class ConsoleService {
         const currency =
           company.billingCurrency ??
           resolveBillingCurrency(company.defaultRegionCode);
-        const seat = priceByKey.get(`SEAT|${currency}`) ?? 0;
-        const base = priceByKey.get(`ENTERPRISE_BASE|${currency}`) ?? 0;
+        // Stored net charged amounts first: they hold override and grandfathered prices.
+        const seat =
+          company.chargedSeatNet ?? priceByKey.get(`SEAT|${currency}`) ?? 0;
+        const base =
+          company.chargedBaseNet ??
+          priceByKey.get(`ENTERPRISE_BASE|${currency}`) ??
+          0;
         const seats = Math.max(company.purchasedSeats, 1);
         const amountMinor =
           company.subscriptionTier === SubscriptionTier.ENTERPRISE
@@ -1305,7 +1310,7 @@ export class ConsoleService {
       if (!row) throw new NotFoundException('Card payment not found');
       if (row.type !== 'payment_succeeded') {
         throw new BadRequestException(
-          'A remedy anchors to a PAID payment; this record is a failed attempt.',
+          'A remedy anchors to a PAID payment; this record has no card charge.',
         );
       }
       return {

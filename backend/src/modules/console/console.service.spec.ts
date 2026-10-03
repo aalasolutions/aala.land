@@ -628,6 +628,28 @@ describe('ConsoleService', () => {
       expect(billingService.creditNextBill).not.toHaveBeenCalled();
     });
 
+    it('rejects anchoring to a zero-charge settlement', async () => {
+      billingHistoryRepo.findOne.mockResolvedValue({
+        ...paidRow,
+        type: 'settled_without_charge',
+        amount: 0,
+        creditApplied: 2498,
+      });
+      await expect(
+        service.applyRemedy(
+          {
+            source: 'card',
+            paymentId: 'bh-1',
+            remedy: 'refund',
+            scope: 'full',
+            whyNote: 'x',
+          },
+          ACTOR,
+        ),
+      ).rejects.toThrow('PAID payment');
+      expect(billingService.refundCardPayment).not.toHaveBeenCalled();
+    });
+
     it('rejects anchoring to a failed payment', async () => {
       billingHistoryRepo.findOne.mockResolvedValue({
         ...paidRow,
@@ -1378,6 +1400,86 @@ describe('ConsoleService', () => {
       const usd = overview.mrr.find((m) => m.currency === 'usd');
       // ENT: 25000 base + 2 extra seats x 2500 = 30000; flat deal adds 80000.
       expect(usd!.mrrMinor).toBe(30000 + 80000);
+    });
+
+    it('uses the stored net charged amounts before the price rows', async () => {
+      // Grandfathered PRO: list price is 2500, the subscription still pays 2000 net.
+      const grandfathered = company({
+        id: 'co-old-price',
+        billingSubscriptionId: 'sub_g',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 3,
+        chargedSeatNet: 2000,
+        chargedSeatGross: 2100,
+      });
+      const ent = company({
+        id: 'co-ent-charged',
+        billingSubscriptionId: 'sub_e2',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+        purchasedSeats: 3,
+        chargedSeatNet: 2381,
+        chargedBaseNet: 23809,
+        chargedBaseGross: 24999,
+      });
+      wireCompanies([grandfathered, ent]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number }[];
+      };
+      const usd = overview.mrr.find((m) => m.currency === 'usd');
+      expect(usd!.mrrMinor).toBe(3 * 2000 + 23809 + 2 * 2381);
+    });
+
+    it('falls back per kind to the price row when only the seat amount is stored', async () => {
+      const ent = company({
+        id: 'co-ent-seat-only',
+        billingSubscriptionId: 'sub_e3',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+        purchasedSeats: 2,
+        chargedSeatNet: 2381,
+        chargedBaseNet: null,
+      });
+      wireCompanies([ent]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number }[];
+      };
+      expect(overview.mrr).toEqual([
+        { currency: 'usd', mrrMinor: 25000 + 2381, companies: 1 },
+      ]);
+    });
+
+    it('gives a company pinned to a currency with no price row a real MRR once amounts are stored', async () => {
+      const eurBuyer = company({
+        id: 'co-eur',
+        billingSubscriptionId: 'sub_eur',
+        billingStatus: 'active',
+        billingCurrency: 'eur',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 2,
+        chargedSeatNet: 900,
+        chargedSeatGross: 1062,
+      });
+      const eurUnstored = company({
+        id: 'co-eur-unstored',
+        billingSubscriptionId: 'sub_eur2',
+        billingStatus: 'active',
+        billingCurrency: 'eur',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 2,
+      });
+      wireCompanies([eurBuyer, eurUnstored]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number; companies: number }[];
+      };
+      // The unstored company keeps the old fallback: no eur row, so 0.
+      expect(overview.mrr).toEqual([
+        { currency: 'eur', mrrMinor: 2 * 900, companies: 2 },
+      ]);
     });
 
     it('counts a zero-cost deal company as a customer but NEVER as paying (F2)', async () => {

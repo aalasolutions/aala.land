@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { errorMessage } from '@shared/utils/error.util';
 import { BillingEventDispatcher } from '../billing/events/billing-event-dispatcher';
 import {
@@ -15,7 +15,7 @@ function planLabel(plan: BillingPlan): string {
 
 // Best-effort: failure is logged and swallowed so it can't fail the webhook or trigger a retry.
 @Injectable()
-export class BillingEmailListener implements OnModuleInit {
+export class BillingEmailListener implements OnApplicationBootstrap {
   private readonly logger = new Logger(BillingEmailListener.name);
 
   constructor(
@@ -23,7 +23,8 @@ export class BillingEmailListener implements OnModuleInit {
     private readonly email: SystemEmailService,
   ) {}
 
-  onModuleInit(): void {
+  // Runs after all onModuleInit hooks so the email follows the seat reconcile.
+  onApplicationBootstrap(): void {
     this.dispatcher.register('SubscriptionActivated', (e) =>
       this.safe(() =>
         this.email.sendPurchaseConfirmationToCompany(
@@ -34,14 +35,7 @@ export class BillingEmailListener implements OnModuleInit {
       ),
     );
     this.dispatcher.register('PaymentSucceeded', (e) =>
-      this.safe(() =>
-        this.email.sendPaymentSucceededToCompany(
-          e.companyId,
-          (e as PaymentSucceededEvent).amount,
-          (e as PaymentSucceededEvent).currency,
-          (e as PaymentSucceededEvent).hostedInvoiceUrl,
-        ),
-      ),
+      this.safe(() => this.onPaymentSucceeded(e)),
     );
     this.dispatcher.register('PaymentFailed', (e) =>
       this.safe(() =>
@@ -52,6 +46,26 @@ export class BillingEmailListener implements OnModuleInit {
           (e as PaymentFailedEvent).attemptCount,
         ),
       ),
+    );
+  }
+
+  private onPaymentSucceeded(e: PaymentSucceededEvent): Promise<void> {
+    if (!e.settledWithoutCharge) {
+      return this.email.sendPaymentSucceededToCompany(
+        e.companyId,
+        e.amount,
+        e.currency,
+        e.hostedInvoiceUrl,
+      );
+    }
+    const creditApplied = e.creditApplied ?? 0;
+    const creditIssued = e.creditIssued ?? 0;
+    if (creditApplied <= 0 && creditIssued <= 0) return Promise.resolve();
+    return this.email.sendSettledWithoutChargeToCompany(
+      e.companyId,
+      creditApplied,
+      creditIssued,
+      e.currency,
     );
   }
 

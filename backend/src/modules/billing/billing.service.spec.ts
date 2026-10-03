@@ -64,6 +64,7 @@ let managerMock: {
   query: jest.Mock;
   findOne: jest.Mock;
   update: jest.Mock;
+  count: jest.Mock;
 };
 
 describe('BillingService', () => {
@@ -79,6 +80,7 @@ describe('BillingService', () => {
       query: jest.fn().mockResolvedValue(undefined),
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      count: jest.fn(),
     };
     const dataSourceMock = {
       transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
@@ -1428,6 +1430,61 @@ describe('BillingService', () => {
       });
     });
 
+    it('returns the stored charged gross amounts once the currency is pinned', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.ENTERPRISE,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          billingCurrency: 'eur',
+          chargedSeatNet: 900,
+          chargedSeatGross: 1062,
+          chargedBaseNet: 21000,
+          chargedBaseGross: 24999,
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue(null);
+      userRepo.count.mockResolvedValue(2);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.currency).toBe('eur');
+      expect(state.seatAmount).toBe(1062);
+      expect(state.baseAmount).toBe(24999);
+    });
+
+    it('falls back per kind to the base row when only one charged amount is stored', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.PRO,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          billingCurrency: 'usd',
+          chargedSeatGross: 2000,
+          chargedBaseGross: null,
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(2000);
+      expect(state.baseAmount).toBe(2500);
+    });
+
+    it('ignores stored amounts while no billing currency is pinned', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({ billingCurrency: null, chargedSeatGross: 1062 }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(9500);
+    });
+
     it('returns seatAmount null when no active SEAT price exists', async () => {
       companyRepo.findOne.mockResolvedValue(makeCompany());
       priceRepo.findOne.mockResolvedValue(null);
@@ -2055,6 +2112,182 @@ describe('BillingService', () => {
         .catch((e) => e);
       expect(err).toBeInstanceOf(HttpException);
       expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+    });
+  });
+
+  describe('reconcileSeatsToActiveUsers', () => {
+    const subscribed = (overrides: Partial<Company> = {}) =>
+      makeCompany({
+        subscriptionTier: SubscriptionTier.PRO,
+        billingSubscriptionId: 'sub_1',
+        billingCustomerId: 'cus_1',
+        billingCurrency: 'usd',
+        ...overrides,
+      });
+    const seatRow = {
+      kind: 'SEAT',
+      currency: 'usd',
+      unitAmount: 2500,
+      active: true,
+      countryCodes: null,
+      provider: 'stripe',
+      providerPriceId: 'pri_seat',
+    } as BillingPrice;
+
+    beforeEach(() => {
+      priceRepo.findOne.mockResolvedValue(seatRow);
+    });
+
+    it('sets a PRO seat line to the active users under the company lock', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(5);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(2);
+
+      expect(managerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(managerMock.count).toHaveBeenCalledWith(User, {
+        where: { companyId, isActive: true },
+      });
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        { subscriptionId: 'sub_1', customerId: 'cus_1' },
+        2,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('does not settle at once when the reconcile raises the quantity', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(4);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(2);
+
+      await service.reconcileSeatsToActiveUsers(companyId, 'sub_1');
+
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        4,
+        'pri_seat',
+        false,
+      );
+    });
+
+    it('floors a PRO seat line at one', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(0);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(3);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(1);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        1,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('sets an ENTERPRISE seat line to active users minus the base seat', async () => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed({ subscriptionTier: SubscriptionTier.ENTERPRISE }),
+      );
+      managerMock.count.mockResolvedValue(4);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(0);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(4);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        3,
+        'pri_seat',
+        false,
+      );
+    });
+
+    it('floors an ENTERPRISE seat line at zero for a solo team', async () => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed({ subscriptionTier: SubscriptionTier.ENTERPRISE }),
+      );
+      managerMock.count.mockResolvedValue(1);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(2);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(1);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        0,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('makes no provider write when the live quantity already matches', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(3);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(3);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(3);
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['a replaced subscription', { billingSubscriptionId: 'sub_other' }],
+      ['a canceled subscription', { billingSubscriptionId: null }],
+      ['a FREE company', { subscriptionTier: SubscriptionTier.FREE }],
+    ])('skips %s without calling the provider', async (_label, overrides) => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed(overrides as Partial<Company>),
+      );
+      managerMock.count.mockResolvedValue(2);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBeNull();
+      expect(provider.getSeatQuantity).not.toHaveBeenCalled();
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it('skips a missing company', async () => {
+      managerMock.findOne.mockResolvedValue(null);
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBeNull();
+    });
+
+    it('throws when the provider rejects the seat change so the event is retried', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(5);
+      (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(
+        new Error('provider down'),
+      );
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).rejects.toThrow('provider down');
+    });
+
+    it('throws when the live quantity cannot be read', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockRejectedValueOnce(
+        new Error('timeout'),
+      );
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).rejects.toBeInstanceOf(HttpException);
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
     });
   });
 });

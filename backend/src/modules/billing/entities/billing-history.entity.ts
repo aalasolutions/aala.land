@@ -6,7 +6,10 @@ import {
   Index,
 } from 'typeorm';
 
-export type BillingHistoryType = 'payment_succeeded' | 'payment_failed';
+export type BillingHistoryType =
+  | 'payment_succeeded'
+  | 'payment_failed'
+  | 'settled_without_charge';
 
 /** Keys on (provider_invoice_id, type), not event id: one payment fires two events. */
 @Entity('billing_history')
@@ -32,6 +35,18 @@ export class BillingHistory {
   /** Minor units (cents / fils / halalas): amount_paid on success, amount_due on failure. */
   @Column({ type: 'integer' })
   amount: number;
+
+  /** Minor units of credit used to pay this invoice. */
+  @Column({ name: 'credit_applied', type: 'integer', default: 0 })
+  creditApplied: number;
+
+  /** Minor units of credit added by this transaction. */
+  @Column({ name: 'credit_issued', type: 'integer', default: 0 })
+  creditIssued: number;
+
+  /** Provider's raw reason for the transaction. */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  origin: string | null;
 
   /** Lowercase ISO 4217. */
   @Column({ type: 'varchar', length: 3 })

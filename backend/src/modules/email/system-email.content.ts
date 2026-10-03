@@ -260,6 +260,57 @@ export function paymentSucceededEmail(vars: {
   };
 }
 
+/** Zero-charge notice: paid from credit, or credit issued. */
+export function settledWithoutChargeEmail(vars: {
+  name: string;
+  creditAppliedMinor: number;
+  creditIssuedMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const applied = money(vars.creditAppliedMinor, vars.currency);
+  const issued = money(vars.creditIssuedMinor, vars.currency);
+  const lines: string[] = [];
+  if (vars.creditAppliedMinor > 0) {
+    lines.push(
+      `An invoice of ${applied} was paid in full from your account credit balance.`,
+    );
+  }
+  if (vars.creditIssuedMinor > 0) {
+    lines.push(
+      `A change to your subscription added ${issued} to your account credit balance. It will be used on your future invoices.`,
+    );
+  }
+  lines.push(`Nothing was charged to your payment method.`);
+  const subject =
+    vars.creditAppliedMinor > 0
+      ? `Invoice paid from your credit balance: ${applied}`
+      : `Credit added to your balance: ${issued}`;
+  const body =
+    p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(line)).join('');
+  return {
+    subject,
+    html: renderLayout({
+      title:
+        vars.creditAppliedMinor > 0
+          ? 'Invoice paid from credit'
+          : 'Credit added to your balance',
+      previewText: lines[0],
+      bodyHtml: body,
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
 export function paymentFailedEmail(vars: {
   name: string;
   amountMinor: number;

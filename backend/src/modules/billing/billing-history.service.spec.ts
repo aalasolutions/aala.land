@@ -72,6 +72,9 @@ describe('BillingHistoryService', () => {
       expect(sql).toContain(
         'WHERE billing_history.occurred_at <= EXCLUDED.occurred_at',
       );
+      expect(sql).toContain('credit_applied = EXCLUDED.credit_applied');
+      expect(sql).toContain('credit_issued = EXCLUDED.credit_issued');
+      expect(sql).toContain('origin = EXCLUDED.origin');
       expect(params).toEqual([
         'company-uuid-1',
         'in_1',
@@ -84,14 +87,61 @@ describe('BillingHistoryService', () => {
         base.periodEnd,
         null,
         occurredAt,
+        0,
+        0,
+        null,
       ]);
     });
 
-    it('records payment_failed with the attempt count', async () => {
+    it('stores the credits and origin a provider reports on a charge', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        creditApplied: 500,
+        creditIssued: 0,
+        origin: 'subscription_recurring',
+        settledWithoutCharge: false,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('payment_succeeded');
+      expect(params[3]).toBe(2500);
+      expect(params.slice(11)).toEqual([500, 0, 'subscription_recurring']);
+    });
+
+    it('records a zero-charge settlement as settled_without_charge with its credit', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        amount: 0,
+        creditApplied: 2498,
+        creditIssued: 0,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('settled_without_charge');
+      expect(params[3]).toBe(0);
+      expect(params.slice(11)).toEqual([2498, 0, 'subscription_update']);
+    });
+
+    it('records credit issued to the balance on a zero-charge settlement', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        amount: 0,
+        creditApplied: 0,
+        creditIssued: 2500,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('settled_without_charge');
+      expect(params.slice(11)).toEqual([0, 2500, 'subscription_update']);
+    });
+
+    it('records payment_failed with the attempt count and no credits', async () => {
       await service.recordPayment(failed);
       const params = repo.query.mock.calls[0][1] as unknown[];
       expect(params[2]).toBe('payment_failed');
       expect(params[9]).toBe(2); // attempt_count
+      expect(params.slice(11)).toEqual([0, 0, null]);
     });
 
     it('skips (no write) when the invoice id is missing', async () => {

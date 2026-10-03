@@ -446,8 +446,9 @@
             {{on "change" (fn this.setRemoveMode "deactivate")}}
           />
           <span><strong>Deactivate</strong>
-            (recommended): the member loses access and frees the seat. Their
-            email address stays reserved for them. Reversible.</span>
+            (recommended): the member loses access{{#unless this.hasPaidSeats}}
+              and frees the seat{{/unless}}. Their email address stays reserved
+            for them. Reversible.</span>
         </label>
         <label class="flex gap-2 x-center">
           <input
@@ -462,6 +463,12 @@
             their email address is freed, so they can be invited elsewhere.
             Their history stays in the audit log. Irreversible.</span>
         </label>
+        {{#if this.hasPaidSeats}}
+          <p class="text-muted text-sm" data-test-seat-removal-note>
+            This frees one seat. The unused part of this billing period is
+            credited on your next bill.
+          </p>
+        {{/if}}
       </div>
 
       <Nuvo::Field

@@ -8,6 +8,7 @@ import {
 import { BillingWebhookService, planToTier } from './billing-webhook.service';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
+import { BillingService } from './billing.service';
 import { BillingEvent } from './entities/billing-event.entity';
 import {
   Company,
@@ -19,15 +20,24 @@ import {
   BillingProvider,
   ProviderWebhookEvent,
 } from './provider/billing-provider.interface';
-import { NormalizedBillingEvent } from './events/billing-events';
+import {
+  NormalizedBillingEvent,
+  PaymentSucceededEvent,
+  SubscriptionActivatedEvent,
+} from './events/billing-events';
 
 describe('BillingWebhookService', () => {
   let service: BillingWebhookService;
   let dispatcher: BillingEventDispatcher;
   let eventRepo: jest.Mocked<Repository<BillingEvent>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
-  let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>>;
+  let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>> & {
+    checkoutQuantityEditable: boolean;
+  };
   let historyService: jest.Mocked<Pick<BillingHistoryService, 'recordPayment'>>;
+  let billingService: jest.Mocked<
+    Pick<BillingService, 'reconcileSeatsToActiveUsers'>
+  >;
   // Captures the last conditional-update QueryBuilder so seat-sync assertions
   // can read the .set() patch and .execute() affected count.
   let seatUpdateQB: {
@@ -99,11 +109,17 @@ describe('BillingWebhookService', () => {
         },
         {
           provide: BILLING_PROVIDER,
-          useValue: { parseWebhook: jest.fn() },
+          useValue: { parseWebhook: jest.fn(), checkoutQuantityEditable: true },
         },
         {
           provide: BillingHistoryService,
           useValue: { recordPayment: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: BillingService,
+          useValue: {
+            reconcileSeatsToActiveUsers: jest.fn().mockResolvedValue(null),
+          },
         },
       ],
     }).compile();
@@ -114,6 +130,7 @@ describe('BillingWebhookService', () => {
     companyRepo = module.get(getRepositoryToken(Company));
     provider = module.get(BILLING_PROVIDER);
     historyService = module.get(BillingHistoryService);
+    billingService = module.get(BillingService);
 
     // The bare testing module does not run lifecycle hooks; register handlers.
     service.onModuleInit();
@@ -443,6 +460,10 @@ describe('BillingWebhookService', () => {
         subscriptionTier: SubscriptionTier.FREE,
         billingSubscriptionId: null,
         billingStatus: 'canceled',
+        chargedSeatNet: null,
+        chargedSeatGross: null,
+        chargedBaseNet: null,
+        chargedBaseGross: null,
         maxUsers: TIER_LIMITS[SubscriptionTier.FREE].maxUsers,
         maxRegions: TIER_LIMITS[SubscriptionTier.FREE].maxRegions,
         maxProperties: TIER_LIMITS[SubscriptionTier.FREE].maxProperties,
@@ -508,6 +529,98 @@ describe('BillingWebhookService', () => {
       });
     });
 
+    it('PaymentSucceeded writes the charged amounts of the kinds present with the status, outside the recency guard', async () => {
+      const succeeded: PaymentSucceededEvent = {
+        name: 'PaymentSucceeded',
+        ...baseEvent,
+        ...paymentDetail,
+        amount: 2500,
+        currency: 'usd',
+        invoiceId: 'txn_1',
+        settledWithoutCharge: false,
+        chargedUnitAmounts: [{ kind: 'SEAT', net: 2381, gross: 2500 }],
+      };
+      provider.parseWebhook.mockResolvedValue(parsedWith([succeeded]));
+      await service.handleWebhook(rawBody, signature);
+      expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+        chargedSeatNet: 2381,
+        chargedSeatGross: 2500,
+        billingStatus: 'active',
+      });
+      expect(seatUpdateQB.execute).not.toHaveBeenCalled();
+    });
+
+    it('PaymentSucceeded writes both kinds when base and seat are charged', async () => {
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          {
+            name: 'PaymentSucceeded',
+            ...baseEvent,
+            ...paymentDetail,
+            amount: 29999,
+            currency: 'usd',
+            invoiceId: 'txn_2',
+            chargedUnitAmounts: [
+              { kind: 'ENTERPRISE_BASE', net: 23809, gross: 24999 },
+              { kind: 'SEAT', net: 4200, gross: 5000 },
+            ],
+          },
+        ]),
+      );
+      await service.handleWebhook(rawBody, signature);
+      expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+        chargedBaseNet: 23809,
+        chargedBaseGross: 24999,
+        chargedSeatNet: 4200,
+        chargedSeatGross: 5000,
+        billingStatus: 'active',
+      });
+    });
+
+    it('a zero-charge settlement records history and never writes billing status', async () => {
+      const settled: PaymentSucceededEvent = {
+        name: 'PaymentSucceeded',
+        ...baseEvent,
+        ...paymentDetail,
+        amount: 0,
+        currency: 'usd',
+        invoiceId: 'txn_3',
+        creditApplied: 2498,
+        creditIssued: 0,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+        chargedUnitAmounts: [],
+      };
+      provider.parseWebhook.mockResolvedValue(parsedWith([settled]));
+      await service.handleWebhook(rawBody, signature);
+      expect(historyService.recordPayment).toHaveBeenCalledWith(settled);
+      expect(companyRepo.update).not.toHaveBeenCalled();
+      expect(seatUpdateQB.execute).not.toHaveBeenCalled();
+    });
+
+    it('a zero-charge settlement still stores full-period amounts without touching status', async () => {
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          {
+            name: 'PaymentSucceeded',
+            ...baseEvent,
+            ...paymentDetail,
+            amount: 0,
+            currency: 'usd',
+            invoiceId: 'txn_4',
+            creditApplied: 2500,
+            settledWithoutCharge: true,
+            chargedUnitAmounts: [{ kind: 'SEAT', net: 2381, gross: 2500 }],
+          },
+        ]),
+      );
+      await service.handleWebhook(rawBody, signature);
+      expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+        chargedSeatNet: 2381,
+        chargedSeatGross: 2500,
+      });
+    });
+
     it('PaymentSucceeded with a null subscription id records history but does not touch company status', async () => {
       const succeeded = {
         name: 'PaymentSucceeded' as const,
@@ -539,6 +652,107 @@ describe('BillingWebhookService', () => {
         { providerEventId: 'evt_1' },
         { processedAt: expect.any(Date) },
       );
+    });
+  });
+
+  describe('seat reconcile after SubscriptionActivated', () => {
+    const activated = (): SubscriptionActivatedEvent => ({
+      name: 'SubscriptionActivated',
+      ...baseEvent,
+      plan: 'PRO',
+      quantity: 5,
+      status: 'active',
+      currency: 'usd',
+      currentPeriodEnd: null,
+    });
+
+    it('reconciles after the company write and hands later handlers the reconciled count', async () => {
+      billingService.reconcileSeatsToActiveUsers.mockResolvedValue(2);
+      const seen: number[] = [];
+      dispatcher.register('SubscriptionActivated', (e) => {
+        seen.push(e.quantity);
+        return Promise.resolve();
+      });
+      provider.parseWebhook.mockResolvedValue(parsedWith([activated()]));
+      await service.handleWebhook(rawBody, signature);
+      expect(billingService.reconcileSeatsToActiveUsers).toHaveBeenCalledWith(
+        companyId,
+        'sub_1',
+      );
+      expect(seatUpdateQB.execute.mock.invocationCallOrder[0]).toBeLessThan(
+        billingService.reconcileSeatsToActiveUsers.mock.invocationCallOrder[0],
+      );
+      expect(seen).toEqual([2]);
+    });
+
+    it('skips the reconcile and keeps the checkout count when checkout quantity is not editable', async () => {
+      provider.checkoutQuantityEditable = false;
+      billingService.reconcileSeatsToActiveUsers.mockResolvedValue(2);
+      const seen: number[] = [];
+      dispatcher.register('SubscriptionActivated', (e) => {
+        seen.push(e.quantity);
+        return Promise.resolve();
+      });
+      provider.parseWebhook.mockResolvedValue(parsedWith([activated()]));
+      await service.handleWebhook(rawBody, signature);
+      expect(billingService.reconcileSeatsToActiveUsers).not.toHaveBeenCalled();
+      expect(seen).toEqual([5]);
+    });
+
+    it('keeps the checkout count when the reconcile is skipped', async () => {
+      const seen: number[] = [];
+      dispatcher.register('SubscriptionActivated', (e) => {
+        seen.push(e.quantity);
+        return Promise.resolve();
+      });
+      provider.parseWebhook.mockResolvedValue(parsedWith([activated()]));
+      await service.handleWebhook(rawBody, signature);
+      expect(seen).toEqual([5]);
+    });
+
+    it('still reconciles a late activation that only filled the subscription id', async () => {
+      seatUpdateQB.execute
+        .mockResolvedValueOnce({ affected: 0 })
+        .mockResolvedValueOnce({ affected: 1 });
+      provider.parseWebhook.mockResolvedValue(parsedWith([activated()]));
+      await service.handleWebhook(rawBody, signature);
+      expect(billingService.reconcileSeatsToActiveUsers).toHaveBeenCalledWith(
+        companyId,
+        'sub_1',
+      );
+    });
+
+    it('a failed reconcile returns 500, leaves the event unprocessed and stops later handlers', async () => {
+      billingService.reconcileSeatsToActiveUsers.mockRejectedValue(
+        new Error('provider down'),
+      );
+      const later = jest.fn().mockResolvedValue(undefined);
+      dispatcher.register('SubscriptionActivated', later);
+      provider.parseWebhook.mockResolvedValue(parsedWith([activated()]));
+      await expect(
+        service.handleWebhook(rawBody, signature),
+      ).rejects.toBeInstanceOf(InternalServerErrorException);
+      expect(later).not.toHaveBeenCalled();
+      expect(eventRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('the update events the reconcile itself causes never call the provider again', async () => {
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          {
+            name: 'SubscriptionUpdated',
+            ...baseEvent,
+            plan: 'PRO',
+            quantity: 2,
+            status: 'active',
+            currentPeriodEnd: null,
+          },
+          { name: 'SeatQuantityChanged', ...baseEvent, quantity: 2 },
+          { name: 'PlanChanged', ...baseEvent, plan: 'PRO', quantity: 2 },
+        ]),
+      );
+      await service.handleWebhook(rawBody, signature);
+      expect(billingService.reconcileSeatsToActiveUsers).not.toHaveBeenCalled();
     });
   });
 

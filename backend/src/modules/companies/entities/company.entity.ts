@@ -157,6 +157,19 @@ export class Company {
   })
   billingCurrency: string | null;
 
+  // Last charged unit amounts, minor units in billingCurrency; null uses price rows.
+  @Column({ name: 'charged_seat_net', type: 'integer', nullable: true })
+  chargedSeatNet: number | null;
+
+  @Column({ name: 'charged_seat_gross', type: 'integer', nullable: true })
+  chargedSeatGross: number | null;
+
+  @Column({ name: 'charged_base_net', type: 'integer', nullable: true })
+  chargedBaseNet: number | null;
+
+  @Column({ name: 'charged_base_gross', type: 'integer', nullable: true })
+  chargedBaseGross: number | null;
+
   @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
   billingMeta: Record<string, unknown> | null;
 

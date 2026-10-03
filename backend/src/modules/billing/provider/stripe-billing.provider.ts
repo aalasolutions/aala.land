@@ -139,6 +139,7 @@ export class StripeBillingProvider implements BillingProvider {
   readonly baseCurrencies = null;
   readonly supportsCountryOverrides = false;
   readonly supportsTaxMode = false;
+  readonly checkoutQuantityEditable = false;
   readonly supportedCurrencies = null;
   readonly supportedCountries = null;
   private readonly logger = new Logger(StripeBillingProvider.name);

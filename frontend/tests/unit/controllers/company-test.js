@@ -461,4 +461,45 @@ module('Unit | Controller | company', function (hooks) {
       assert.deepEqual(controller.formActiveRegions, ['dxb', 'auh']);
     });
   });
+
+  module('seatPriceKind', function () {
+    function kindFor(context, billing, company = { subscriptionTier: 'FREE' }) {
+      return controllerWith.call(context, { billing, model: { company } })
+        .seatPriceKind;
+    }
+
+    test('FREE shows no price line', function (assert) {
+      const billing = { tier: 'FREE', seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), null);
+    });
+
+    test('PRO with an amount and currency is a per-seat line', function (assert) {
+      const billing = { tier: 'PRO', seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), 'per-seat');
+    });
+
+    test('ENTERPRISE keeps the custom pricing line', function (assert) {
+      const billing = { tier: 'ENTERPRISE', seatAmount: 5000, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), 'enterprise');
+    });
+
+    test('a missing amount or currency shows nothing', function (assert) {
+      assert.strictEqual(
+        kindFor(this, { tier: 'PRO', seatAmount: null, currency: 'usd' }),
+        null,
+      );
+      assert.strictEqual(
+        kindFor(this, { tier: 'PRO', seatAmount: 2500, currency: null }),
+        null,
+      );
+    });
+
+    test('the tier falls back to the company when billing omits it', function (assert) {
+      const billing = { seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(
+        kindFor(this, billing, { subscriptionTier: 'PRO' }),
+        'per-seat',
+      );
+    });
+  });
 });

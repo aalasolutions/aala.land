@@ -419,7 +419,7 @@ describe('PaddleBillingProvider', () => {
   });
 
   describe('updateSeatQuantity', () => {
-    it('sends the full item list with the new seat quantity', async () => {
+    it('sends the full item list with the new seat quantity, charged from the next period', async () => {
       client.subscriptions.get.mockResolvedValue(
         subscription([baseLine(), seatLine(2)]),
       );
@@ -428,6 +428,20 @@ describe('PaddleBillingProvider', () => {
         items: [
           { priceId: 'pri_base', quantity: 1 },
           { priceId: 'pri_seat', quantity: 3 },
+        ],
+        prorationBillingMode: 'prorated_next_billing_period',
+      });
+    });
+
+    it('settles the seat change at once when asked', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        subscription([baseLine(), seatLine(3)]),
+      );
+      await provider.updateSeatQuantity(ref, 1, undefined, true);
+      expect(client.subscriptions.update).toHaveBeenCalledWith('sub_1', {
+        items: [
+          { priceId: 'pri_base', quantity: 1 },
+          { priceId: 'pri_seat', quantity: 1 },
         ],
         prorationBillingMode: 'prorated_immediately',
       });
@@ -440,7 +454,7 @@ describe('PaddleBillingProvider', () => {
       await provider.updateSeatQuantity(ref, 0);
       expect(client.subscriptions.update).toHaveBeenCalledWith('sub_1', {
         items: [{ priceId: 'pri_base', quantity: 1 }],
-        prorationBillingMode: 'prorated_immediately',
+        prorationBillingMode: 'prorated_next_billing_period',
       });
     });
 
@@ -458,7 +472,7 @@ describe('PaddleBillingProvider', () => {
           { priceId: 'pri_base', quantity: 1 },
           { priceId: 'pri_seat', quantity: 1 },
         ],
-        prorationBillingMode: 'prorated_immediately',
+        prorationBillingMode: 'prorated_next_billing_period',
       });
     });
 
@@ -476,7 +490,7 @@ describe('PaddleBillingProvider', () => {
       seatPriceId: 'pri_seat',
     };
 
-    it('PRO to ENTERPRISE adds the base and moves one seat into it', async () => {
+    it('PRO to ENTERPRISE adds the base and moves one seat into it, prorated immediately', async () => {
       client.subscriptions.get.mockResolvedValue(
         subscription([seatLine(3)], {
           customData: { companyId: 'company-1', plan: 'PRO' },

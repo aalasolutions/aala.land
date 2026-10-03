@@ -293,6 +293,27 @@
                 currency=cell.row.currency
                 minor=true
               }}</span>
+          {{else if (eq cell.key "creditApplied")}}
+            {{#let (billing-history-status cell.row) as |status|}}
+              {{#if status.creditAmount}}
+                <span class="font-bold" data-test-payment-credit>{{format-money
+                    status.creditAmount
+                    currency=cell.row.currency
+                    minor=true
+                  }}</span>
+                <span class="text-muted text-sm">{{status.creditNote}}</span>
+              {{else}}
+                <span class="text-muted">-</span>
+              {{/if}}
+            {{/let}}
+          {{else if (eq cell.key "type")}}
+            {{#let (billing-history-status cell.row) as |status|}}
+              <Nuvo::Tag
+                class={{status.tagClass}}
+                @text={{status.label}}
+                data-test-payment-status
+              />
+            {{/let}}
           {{else if (eq cell.key "notes")}}
             <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
           {{else if (eq cell.key "hasReceipt")}}

@@ -58,8 +58,9 @@ export interface SubscriptionState {
   activeUsers: number;
   /** Pinned billing currency for a subscribed company; the region-derived fallback otherwise. */
   currency: string;
+  /** Stored charged gross, else the price row amount. */
   seatAmount: number | null;
-  /** $250 base fee (minor units) for the first ENTERPRISE seat; null if unavailable in currency. */
+  /** ENTERPRISE base fee, minor units; null if unavailable in currency. */
   baseAmount: number | null;
   /** Per-currency seat prices for the checkout selector; empty once subscribed. */
   currencyOptions: { currency: string; seatAmount: number }[];
@@ -503,6 +504,8 @@ export class BillingService {
         );
       }
     }
+    // Stored amounts apply only once the currency is pinned.
+    const pinned = !!company.billingCurrency;
     return {
       tier: company.subscriptionTier,
       billingStatus: company.billingStatus ?? null,
@@ -510,8 +513,12 @@ export class BillingService {
       purchasedSeats: company.purchasedSeats,
       activeUsers,
       currency,
-      seatAmount: this.chargedAmount(seatPrice, retiredBases),
-      baseAmount: this.chargedAmount(basePrice, retiredBases),
+      seatAmount:
+        (pinned ? company.chargedSeatGross : null) ??
+        this.chargedAmount(seatPrice, retiredBases),
+      baseAmount:
+        (pinned ? company.chargedBaseGross : null) ??
+        this.chargedAmount(basePrice, retiredBases),
       currencyOptions,
       canDowngradeToFree: activeUsers <= 1,
       cancelAtPeriodEnd,
@@ -780,6 +787,7 @@ export class BillingService {
   async setSeatQuantity(
     company: Company,
     quantity: number,
+    settleNow = false,
   ): Promise<SubscriptionRef> {
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
       throw new HttpException(
@@ -792,8 +800,47 @@ export class BillingService {
       customerId: company.billingCustomerId,
     };
     const seatPriceId = await this.resolveSeatPriceId(company);
-    await this.provider.updateSeatQuantity(ref, quantity, seatPriceId);
+    await this.provider.updateSeatQuantity(
+      ref,
+      quantity,
+      seatPriceId,
+      settleNow,
+    );
     return ref;
+  }
+
+  /** Aligns the seat line to active users; returns total seats, null when skipped. */
+  async reconcileSeatsToActiveUsers(
+    companyId: string,
+    subscriptionId: string,
+  ): Promise<number | null> {
+    return withCompanyLock(this.dataSource, companyId, async (manager) => {
+      const company = await manager.findOne(Company, {
+        where: { id: companyId },
+      });
+      // Skip canceled or replaced subscriptions.
+      if (
+        !company ||
+        company.billingSubscriptionId !== subscriptionId ||
+        company.subscriptionTier === SubscriptionTier.FREE
+      ) {
+        return null;
+      }
+      const activeUsers = await manager.count(User, {
+        where: { companyId, isActive: true },
+      });
+      // PRO bills every seat (min 1); the ENTERPRISE base covers the first.
+      const enterprise =
+        company.subscriptionTier === SubscriptionTier.ENTERPRISE;
+      const target = enterprise
+        ? Math.max(activeUsers - 1, 0)
+        : Math.max(activeUsers, 1);
+      const live = await this.getLiveSeatQuantity(company);
+      if (live !== target) {
+        await this.setSeatQuantity(company, target, target < live);
+      }
+      return enterprise ? target + 1 : target;
+    });
   }
 
   /** Null for FREE and for a paid comp account with no subscription. */

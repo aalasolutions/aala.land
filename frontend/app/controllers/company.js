@@ -165,18 +165,13 @@ export default class CompanyController extends Controller {
     return `${seatPhrase}, ${activeUsers} active ${userWord}`;
   }
 
-  get seatPriceLabel() {
-    const currency = this.billing?.currency?.toUpperCase();
-    const seat = this.billing?.seatAmount
-      ? this.billing.seatAmount / 100
-      : null;
+  get seatPriceKind() {
     const tier = this.billing?.tier || this.company?.subscriptionTier || 'FREE';
-    if (!currency || !seat) return null;
+    if (!this.billing?.currency || !this.billing?.seatAmount) return null;
     // FREE is $0; the Upgrade section explains Pro pricing, so no price line here.
     if (tier === 'FREE') return null;
-    if (tier === 'ENTERPRISE') return 'Custom Enterprise pricing';
-    // PRO is pure per-seat with no base fee; the owner is the first paid seat.
-    return `${seat} ${currency} per seat per month`;
+    if (tier === 'ENTERPRISE') return 'enterprise';
+    return 'per-seat';
   }
 
   // The locked payment currency, shown once the company has a subscription.
@@ -253,7 +248,8 @@ export default class CompanyController extends Controller {
       numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Status', valuePath: 'type', width: 140 },
+    { name: 'Credit', valuePath: 'creditApplied', width: 180, numeric: true },
+    { name: 'Status', valuePath: 'type', width: 160 },
     { name: 'Invoice', valuePath: 'hostedInvoiceUrl', width: 160 },
   ];
 

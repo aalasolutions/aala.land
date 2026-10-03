@@ -1,4 +1,7 @@
-import type { BillingPlan } from '../provider/billing-provider.interface';
+import type {
+  BillingPlan,
+  BillingPriceKind,
+} from '../provider/billing-provider.interface';
 
 /** Frozen: adding, trimming, or merging names is a breaking change to every registered handler. */
 export type BillingEventName =
@@ -65,6 +68,15 @@ export interface InvoiceDetail {
   periodEnd: Date | null;
 }
 
+/** Full-period unit amount for one price kind, minor units. */
+export interface ChargedUnitAmount {
+  kind: BillingPriceKind;
+  /** Before tax. */
+  net: number;
+  /** Including tax. */
+  gross: number;
+}
+
 export interface PaymentSucceededEvent extends BillingEventBase, InvoiceDetail {
   name: 'PaymentSucceeded';
   /** Minor units (cents / fils / halalas). */
@@ -72,6 +84,16 @@ export interface PaymentSucceededEvent extends BillingEventBase, InvoiceDetail {
   /** Lowercase ISO 4217. */
   currency: string;
   invoiceId: string | null;
+  /** Credit balance used to pay this invoice. */
+  creditApplied?: number;
+  /** Credit added to the balance. */
+  creditIssued?: number;
+  /** Provider's raw reason for the transaction. */
+  origin?: string | null;
+  /** Nothing charged; never a paid-status signal. */
+  settledWithoutCharge?: boolean;
+  /** Absent kinds keep their stored amount. */
+  chargedUnitAmounts?: ChargedUnitAmount[];
 }
 
 export interface PaymentFailedEvent extends BillingEventBase, InvoiceDetail {

@@ -28,6 +28,7 @@ import {
   SubscriptionRef,
 } from './billing-provider.interface';
 import {
+  ChargedUnitAmount,
   NormalizedBillingEvent,
   PaymentFailedEvent,
   PaymentSucceededEvent,
@@ -45,7 +46,10 @@ const REQUEST_TIMEOUT_MS = 8000;
 export const PADDLE_SIGNATURE_TOLERANCE_SECONDS = 300;
 const SEAT_QUANTITY_MAX = 10000;
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
-const PRORATION = 'prorated_immediately' as const;
+// Seats bill from the next period; plan switches prorate at once.
+const SEAT_PRORATION = 'prorated_next_billing_period' as const;
+const PLAN_PRORATION = 'prorated_immediately' as const;
+const SEAT_SETTLE_NOW_PRORATION = 'prorated_immediately' as const;
 const CHECKOUT_PAGE_PATH = '/checkout';
 
 /** Webhook bodies are read raw (snake_case); only the fields used here are typed. */
@@ -75,8 +79,24 @@ interface PaddleRawTransaction {
     starts_at?: string | null;
     ends_at?: string | null;
   } | null;
-  details?: { totals?: { grand_total?: string | null } | null } | null;
+  origin?: string | null;
+  items?: { price?: PaddleRawPrice | null }[] | null;
+  details?: {
+    totals?: {
+      grand_total?: string | null;
+      credit?: string | null;
+      credit_to_balance?: string | null;
+    } | null;
+    line_items?: PaddleRawLineItem[] | null;
+  } | null;
   payments?: unknown[] | null;
+}
+
+interface PaddleRawLineItem {
+  price_id?: string | null;
+  quantity?: number | null;
+  proration?: unknown;
+  unit_totals?: { subtotal?: string | null; total?: string | null } | null;
 }
 
 interface PaddleRawEvent {
@@ -184,6 +204,34 @@ export function allocateRefund(
   return out;
 }
 
+function isPriceKind(value: unknown): value is BillingPriceKind {
+  return value === 'SEAT' || value === 'ENTERPRISE_BASE';
+}
+
+/** One amount per kind from full-period lines; prorated lines never set a price. */
+export function chargedUnitAmounts(
+  txn: PaddleRawTransaction,
+): ChargedUnitAmount[] {
+  const kindByPrice = new Map<string, BillingPriceKind>();
+  for (const item of txn.items ?? []) {
+    const priceId = stringOrNull(item.price?.id);
+    const kind = item.price?.custom_data?.kind;
+    if (priceId && isPriceKind(kind)) kindByPrice.set(priceId, kind);
+  }
+  const out: ChargedUnitAmount[] = [];
+  for (const line of txn.details?.line_items ?? []) {
+    const priceId = stringOrNull(line.price_id);
+    const kind = priceId ? kindByPrice.get(priceId) : undefined;
+    if (!kind || line.proration || (line.quantity ?? 0) < 1) continue;
+    if (out.some((c) => c.kind === kind)) continue;
+    const net = minorUnits(line.unit_totals?.subtotal);
+    const gross = minorUnits(line.unit_totals?.total);
+    if (net == null || gross == null) continue;
+    out.push({ kind, net, gross });
+  }
+  return out;
+}
+
 function rawLines(sub: PaddleRawSubscription): PaddleLine[] {
   return (sub.items ?? []).flatMap((item) => {
     const priceId = stringOrNull(item.price?.id);
@@ -268,6 +316,7 @@ export class PaddleBillingProvider implements BillingProvider {
   readonly baseCurrencies = ['usd'];
   readonly supportsCountryOverrides = true;
   readonly supportsTaxMode = true;
+  readonly checkoutQuantityEditable = true;
   readonly supportedCurrencies = PADDLE_CURRENCIES;
   readonly supportedCountries = PADDLE_COUNTRIES;
   private readonly logger = new Logger(PaddleBillingProvider.name);
@@ -521,11 +570,15 @@ export class PaddleBillingProvider implements BillingProvider {
       };
       return [failed];
     }
-    // Downgrades and credit-covered changes settle at $0; no money moved, so no payment.
-    if (amount === 0) return [];
+    // Zero-total completions are recorded, never a paid-status signal.
     const succeeded: PaymentSucceededEvent = {
       name: 'PaymentSucceeded',
       ...common,
+      creditApplied: minorUnits(txn.details?.totals?.credit) ?? 0,
+      creditIssued: minorUnits(txn.details?.totals?.credit_to_balance) ?? 0,
+      origin: stringOrNull(txn.origin),
+      settledWithoutCharge: amount === 0,
+      chargedUnitAmounts: chargedUnitAmounts(txn),
     };
     return [succeeded];
   }
@@ -651,6 +704,7 @@ export class PaddleBillingProvider implements BillingProvider {
     ref: SubscriptionRef,
     quantity: number,
     seatPriceId?: string,
+    settleNow = false,
   ): Promise<void> {
     const sub = await this.getSubscription(ref.subscriptionId);
     const lines = apiLines(sub);
@@ -674,7 +728,9 @@ export class PaddleBillingProvider implements BillingProvider {
     await this.call('subscriptions.update', () =>
       this.paddle.subscriptions.update(ref.subscriptionId, {
         items: next.map((l) => ({ priceId: l.priceId, quantity: l.quantity })),
-        prorationBillingMode: PRORATION,
+        prorationBillingMode: settleNow
+          ? SEAT_SETTLE_NOW_PRORATION
+          : SEAT_PRORATION,
       }),
     );
   }
@@ -712,7 +768,7 @@ export class PaddleBillingProvider implements BillingProvider {
     await this.call('subscriptions.update', () =>
       this.paddle.subscriptions.update(input.subscriptionId, {
         items: next,
-        prorationBillingMode: PRORATION,
+        prorationBillingMode: PLAN_PRORATION,
       }),
     );
   }

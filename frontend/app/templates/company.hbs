@@ -150,11 +150,20 @@
           <p class="text-sm text-muted mt-2" data-test-seat-count>
             {{this.seatSummaryLabel}}
           </p>
-          {{#if this.seatPriceLabel}}
-            <p
-              class="text-sm text-muted"
-              data-test-seat-price
-            >{{this.seatPriceLabel}}</p>
+          {{#if this.seatPriceKind}}
+            <p class="text-sm text-muted" data-test-seat-price>
+              {{#if (eq this.seatPriceKind "enterprise")}}
+                Custom Enterprise pricing
+              {{else}}
+                {{format-money
+                  this.billing.seatAmount
+                  currency=this.billing.currency
+                  minor=true
+                  compact=false
+                }}
+                per seat per month
+              {{/if}}
+            </p>
           {{/if}}
           {{#if this.purchasedCurrency}}
             <p class="text-sm text-muted" data-test-billed-currency>
@@ -173,6 +182,9 @@
           >
             {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
           </Nuvo::Button>
+          <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
+            Pro starts with your current team. Add members later under Team.
+          </p>
           <p class="text-sm text-muted mt-3">
             Every Pro seat adds 5 GB of storage. Need white-label, ERP
             integration, or dedicated infrastructure?
@@ -246,20 +258,32 @@
                   currency=cell.row.currency
                   minor=true
                 }}</span>
+            {{else if (eq cell.key "creditApplied")}}
+              {{#let (billing-history-status cell.row) as |status|}}
+                {{#if status.creditAmount}}
+                  <span
+                    class="font-bold"
+                    data-test-history-credit
+                  >{{format-money
+                      status.creditAmount
+                      currency=cell.row.currency
+                      minor=true
+                    }}</span>
+                  <span
+                    class="text-muted text-sm"
+                  >{{status.creditNote}}</span>
+                {{else}}
+                  <span class="text-muted">-</span>
+                {{/if}}
+              {{/let}}
             {{else if (eq cell.key "type")}}
-              {{#if (eq cell.value "payment_succeeded")}}
+              {{#let (billing-history-status cell.row) as |status|}}
                 <Nuvo::Tag
-                  class="tag-txn-completed"
-                  @text="Paid"
+                  class={{status.tagClass}}
+                  @text={{status.label}}
                   data-test-history-status
                 />
-              {{else}}
-                <Nuvo::Tag
-                  class="tag-txn-failed"
-                  @text="Failed"
-                  data-test-history-status
-                />
-              {{/if}}
+              {{/let}}
             {{else if (eq cell.key "hostedInvoiceUrl")}}
               {{#if cell.value}}
                 <a

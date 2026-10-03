@@ -14,6 +14,7 @@ import {
   purchaseConfirmationEmail,
   quotaExceededEmail,
   RenderedEmail,
+  settledWithoutChargeEmail,
   upcomingInvoiceEmail,
   welcomeEmail,
 } from './system-email.content';
@@ -174,6 +175,37 @@ export class SystemEmailService {
         invoiceUrl,
         billingUrl: `${appUrl()}/settings/billing`,
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
+      }),
+    );
+  }
+
+  /** Zero-charge notice. Suppressible (billing). */
+  async sendSettledWithoutChargeToCompany(
+    companyId: string,
+    creditAppliedMinor: number,
+    creditIssuedMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    if (!(await this.preferences.accepts(recipient.id, 'billing'))) {
+      this.logger.debug(
+        `Skipping credit notice for ${recipient.email}: billing emails muted`,
+      );
+      return;
+    }
+    await this.send(
+      recipient.email,
+      settledWithoutChargeEmail({
+        name: recipient.name,
+        creditAppliedMinor,
+        creditIssuedMinor,
+        currency,
+        billingUrl: `${appUrl()}/settings/billing`,
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
       }),
     );
   }

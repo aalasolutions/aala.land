@@ -110,6 +110,8 @@ export default class AdminCompaniesCompanyController extends Controller {
       numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
+    { name: 'Credit', valuePath: 'creditApplied', width: 180, numeric: true },
+    { name: 'Status', valuePath: 'type', width: 160 },
     { name: 'Covers', valuePath: 'coversLabel', width: 200 },
     { name: 'Source', valuePath: 'source', width: 120 },
     { name: 'Notes', valuePath: 'notes', width: 220 },
@@ -564,6 +566,9 @@ export default class AdminCompaniesCompanyController extends Controller {
         date: p.receivedAt,
         amount: p.amount,
         currency: p.currency,
+        type: 'payment_succeeded',
+        creditApplied: 0,
+        creditIssued: 0,
         coversLabel: `${this.formatDate(p.coversStart)} – ${this.formatDate(
           p.coversEnd,
         )}`,
@@ -578,6 +583,9 @@ export default class AdminCompaniesCompanyController extends Controller {
         date: h.occurredAt,
         amount: h.amount,
         currency: h.currency,
+        type: h.type,
+        creditApplied: h.creditApplied ?? 0,
+        creditIssued: h.creditIssued ?? 0,
         coversLabel:
           h.periodStart && h.periodEnd
             ? `${this.formatDate(h.periodStart)} – ${this.formatDate(

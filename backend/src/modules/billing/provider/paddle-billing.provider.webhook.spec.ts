@@ -2,6 +2,7 @@ import { createHmac } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import {
   PaddleBillingProvider,
+  chargedUnitAmounts,
   deriveSubscriptionShape,
   minorUnits,
   verifyPaddleSignature,
@@ -102,6 +103,161 @@ function transactionEvent(
     },
   };
 }
+
+// Shapes copied from sandbox payloads; ids replaced.
+const unitTotals = (subtotal: string, total: string) => ({
+  subtotal,
+  total,
+  tax: String(Number(total) - Number(subtotal)),
+  discount: '0',
+});
+const proration = {
+  rate: '0.99904',
+  billing_period: {
+    starts_at: '2026-10-01T19:29:40.387Z',
+    ends_at: '2026-11-01T18:46:53.070625Z',
+  },
+};
+const txnItem = (
+  priceId: string,
+  kind: string,
+  quantity: number,
+  prorated = false,
+) => ({
+  quantity,
+  proration: prorated ? proration : null,
+  price: { id: priceId, custom_data: { kind, currency: 'usd' } },
+});
+const txnLine = (
+  priceId: string,
+  quantity: number,
+  subtotal: string,
+  total: string,
+  prorated = false,
+) => ({
+  price_id: priceId,
+  quantity,
+  proration: prorated ? proration : null,
+  unit_totals: unitTotals(subtotal, total),
+});
+
+function completedTransaction(data: {
+  currency?: string;
+  origin: string;
+  totals: Record<string, string>;
+  items: unknown[];
+  lineItems: unknown[];
+}): Record<string, unknown> {
+  return {
+    event_id: 'evt_txn_1',
+    event_type: 'transaction.completed',
+    occurred_at: '2026-10-01T19:29:42.235557Z',
+    data: {
+      id: 'txn_1',
+      status: 'completed',
+      origin: data.origin,
+      customer_id: 'ctm_1',
+      subscription_id: 'sub_1',
+      currency_code: data.currency ?? 'USD',
+      custom_data: { companyId: 'company-1' },
+      billing_period: {
+        starts_at: '2026-10-01T18:46:53.070625Z',
+        ends_at: '2026-11-01T18:46:53.070625Z',
+      },
+      items: data.items,
+      details: {
+        totals: {
+          fee: '0',
+          discount: '0',
+          balance: '0',
+          ...data.totals,
+          currency_code: data.currency ?? 'USD',
+        },
+        line_items: data.lineItems,
+      },
+      payments: [],
+    },
+  };
+}
+
+const firstCharge = completedTransaction({
+  origin: 'api',
+  totals: {
+    subtotal: '2381',
+    tax: '119',
+    total: '2500',
+    credit: '0',
+    credit_to_balance: '0',
+    grand_total: '2500',
+  },
+  items: [txnItem('pri_seat', 'SEAT', 1)],
+  lineItems: [txnLine('pri_seat', 1, '2381', '2500')],
+});
+
+const paidFromCredit = completedTransaction({
+  origin: 'subscription_update',
+  totals: {
+    subtotal: '2379',
+    tax: '119',
+    total: '2498',
+    credit: '2498',
+    credit_to_balance: '0',
+    grand_total: '0',
+  },
+  items: [txnItem('pri_seat', 'SEAT', 1, true)],
+  lineItems: [txnLine('pri_seat', 1, '2379', '2498', true)],
+});
+
+const creditIssued = completedTransaction({
+  origin: 'subscription_update',
+  totals: {
+    subtotal: '-2381',
+    tax: '-119',
+    total: '-2500',
+    credit: '0',
+    credit_to_balance: '2500',
+    grand_total: '0',
+  },
+  items: [txnItem('pri_seat', 'SEAT', -1, true)],
+  lineItems: [txnLine('pri_seat', -1, '2381', '2500', true)],
+});
+
+// PRO to ENTERPRISE: prorated base added, one prorated seat released into it.
+const planSwitch = completedTransaction({
+  origin: 'subscription_update',
+  totals: {
+    subtotal: '21428',
+    tax: '1071',
+    total: '22499',
+    credit: '0',
+    credit_to_balance: '0',
+    grand_total: '22499',
+  },
+  items: [
+    txnItem('pri_base', 'ENTERPRISE_BASE', 1, true),
+    txnItem('pri_seat', 'SEAT', -1, true),
+  ],
+  lineItems: [
+    txnLine('pri_base', 1, '23809', '24999', true),
+    txnLine('pri_seat', -1, '2381', '2500', true),
+  ],
+});
+
+// Country override buyer charged in EUR on the USD seat price.
+const overrideCharge = completedTransaction({
+  currency: 'EUR',
+  origin: 'api',
+  totals: {
+    subtotal: '900',
+    tax: '162',
+    total: '1062',
+    credit: '0',
+    credit_to_balance: '0',
+    grand_total: '1062',
+  },
+  items: [txnItem('pri_seat', 'SEAT', 1)],
+  lineItems: [txnLine('pri_seat', 1, '900', '1062')],
+});
 
 describe('PaddleBillingProvider webhook parsing', () => {
   let provider: PaddleBillingProvider;
@@ -325,15 +481,6 @@ describe('PaddleBillingProvider webhook parsing', () => {
   });
 
   describe('transaction events', () => {
-    it('transaction.completed with a $0 total emits nothing', async () => {
-      const raw = transactionEvent('transaction.completed');
-      (raw.data as { details: unknown }).details = {
-        totals: { grand_total: '0' },
-      };
-      const parsed = await parse(raw);
-      expect(parsed.events).toEqual([]);
-    });
-
     it('transaction.completed emits PaymentSucceeded', async () => {
       const parsed = await parse(transactionEvent('transaction.completed'));
       expect(parsed.events).toEqual([
@@ -350,8 +497,86 @@ describe('PaddleBillingProvider webhook parsing', () => {
           amount: 7875,
           currency: 'usd',
           invoiceId: 'txn_1',
+          creditApplied: 0,
+          creditIssued: 0,
+          origin: null,
+          settledWithoutCharge: false,
+          chargedUnitAmounts: [],
         },
       ]);
+    });
+
+    it('a full-period charge carries its credits, origin and unit amounts', async () => {
+      const parsed = await parse(firstCharge);
+      expect(parsed.events).toEqual([
+        {
+          name: 'PaymentSucceeded',
+          companyId: 'company-1',
+          customerId: 'ctm_1',
+          subscriptionId: 'sub_1',
+          occurredAt: new Date('2026-10-01T19:29:42.235557Z'),
+          hostedInvoiceUrl: null,
+          invoicePdfUrl: null,
+          periodStart: new Date('2026-10-01T18:46:53.070625Z'),
+          periodEnd: new Date('2026-11-01T18:46:53.070625Z'),
+          amount: 2500,
+          currency: 'usd',
+          invoiceId: 'txn_1',
+          creditApplied: 0,
+          creditIssued: 0,
+          origin: 'api',
+          settledWithoutCharge: false,
+          chargedUnitAmounts: [{ kind: 'SEAT', net: 2381, gross: 2500 }],
+        },
+      ]);
+    });
+
+    it('an invoice paid from credit is emitted as settled without charge', async () => {
+      const parsed = await parse(paidFromCredit);
+      expect(parsed.events).toHaveLength(1);
+      expect(parsed.events[0]).toMatchObject({
+        name: 'PaymentSucceeded',
+        amount: 0,
+        creditApplied: 2498,
+        creditIssued: 0,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+        // Prorated line: never sets the stored price.
+        chargedUnitAmounts: [],
+      });
+    });
+
+    it('a change that issues credit is emitted as settled without charge', async () => {
+      const parsed = await parse(creditIssued);
+      expect(parsed.events).toHaveLength(1);
+      expect(parsed.events[0]).toMatchObject({
+        name: 'PaymentSucceeded',
+        amount: 0,
+        creditApplied: 0,
+        creditIssued: 2500,
+        settledWithoutCharge: true,
+        chargedUnitAmounts: [],
+      });
+    });
+
+    it('a prorated plan switch is a charge that sets no unit amount', async () => {
+      const parsed = await parse(planSwitch);
+      expect(parsed.events[0]).toMatchObject({
+        name: 'PaymentSucceeded',
+        amount: 22499,
+        settledWithoutCharge: false,
+        chargedUnitAmounts: [],
+      });
+    });
+
+    it('an override buyer stores the amount charged in the transaction currency', async () => {
+      const parsed = await parse(overrideCharge);
+      expect(parsed.events[0]).toMatchObject({
+        name: 'PaymentSucceeded',
+        amount: 1062,
+        currency: 'eur',
+        chargedUnitAmounts: [{ kind: 'SEAT', net: 900, gross: 1062 }],
+      });
     });
 
     it('transaction.payment_failed emits PaymentFailed with the attempt count', async () => {
@@ -364,6 +589,8 @@ describe('PaddleBillingProvider webhook parsing', () => {
         invoiceId: 'txn_1',
         attemptCount: 2,
       });
+      expect(parsed.events[0]).not.toHaveProperty('settledWithoutCharge');
+      expect(parsed.events[0]).not.toHaveProperty('chargedUnitAmounts');
     });
 
     it('a transaction without a subscription emits nothing', async () => {
@@ -391,6 +618,60 @@ describe('PaddleBillingProvider webhook parsing', () => {
     await expect(parse({ event_type: 'subscription.updated' })).rejects.toThrow(
       'no event_id',
     );
+  });
+
+  describe('chargedUnitAmounts', () => {
+    it('reads base and seat from full-period lines by the price kind', () => {
+      expect(
+        chargedUnitAmounts({
+          items: [
+            txnItem('pri_base', 'ENTERPRISE_BASE', 1),
+            txnItem('pri_seat', 'SEAT', 3),
+          ],
+          details: {
+            line_items: [
+              txnLine('pri_base', 1, '23809', '24999'),
+              txnLine('pri_seat', 3, '2381', '2500'),
+            ],
+          },
+        }),
+      ).toEqual([
+        { kind: 'ENTERPRISE_BASE', net: 23809, gross: 24999 },
+        { kind: 'SEAT', net: 2381, gross: 2500 },
+      ]);
+    });
+
+    it('keeps the full line when a renewal also carries a prorated catch-up line', () => {
+      expect(
+        chargedUnitAmounts({
+          items: [txnItem('pri_seat', 'SEAT', 2)],
+          details: {
+            line_items: [
+              txnLine('pri_seat', 1, '2379', '2498', true),
+              txnLine('pri_seat', 2, '2381', '2500'),
+            ],
+          },
+        }),
+      ).toEqual([{ kind: 'SEAT', net: 2381, gross: 2500 }]);
+    });
+
+    it('ignores a line with a quantity below 1 even without a proration object', () => {
+      expect(
+        chargedUnitAmounts({
+          items: [txnItem('pri_seat', 'SEAT', -1)],
+          details: { line_items: [txnLine('pri_seat', -1, '2381', '2500')] },
+        }),
+      ).toEqual([]);
+    });
+
+    it('ignores a line whose price carries no known kind', () => {
+      expect(
+        chargedUnitAmounts({
+          items: [txnItem('pri_other', 'ADDON', 1)],
+          details: { line_items: [txnLine('pri_other', 1, '100', '119')] },
+        }),
+      ).toEqual([]);
+    });
   });
 
   describe('deriveSubscriptionShape', () => {

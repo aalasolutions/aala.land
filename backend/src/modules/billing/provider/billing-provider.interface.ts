@@ -82,6 +82,9 @@ export interface BillingProvider {
   /** True when a price can state whether tax is inside its amount. */
   readonly supportsTaxMode: boolean;
 
+  /** True when the buyer can change the seat quantity at checkout. */
+  readonly checkoutQuantityEditable: boolean;
+
   /** Lowercase ISO-4217 currencies the provider can charge in; null = any. */
   readonly supportedCurrencies: readonly string[] | null;
 
@@ -117,14 +120,15 @@ export interface BillingProvider {
   /** Reads LIVE SEAT count, not the stale webhook-synced purchasedSeats; 0 for solo ENTERPRISE. */
   getSeatQuantity(ref: SubscriptionRef): Promise<number>;
 
-  /** Sets SEAT units: creates, updates in place, or deletes at 0. Immediate proration. */
+  /** Sets SEAT units: creates, updates in place, or deletes at 0. settleNow settles the difference at once. */
   updateSeatQuantity(
     ref: SubscriptionRef,
     quantity: number,
     seatPriceId?: string,
+    settleNow?: boolean,
   ): Promise<void>;
 
-  /** PRO/ENTERPRISE: toggles base line, shifts SEAT line by 1 (Model A). Immediate proration. */
+  /** PRO/ENTERPRISE: toggles base line, shifts SEAT line by 1 (Model A). */
   changePlan(input: ChangePlanInput): Promise<void>;
 
   /** Cancels at period end; SubscriptionCanceled webhook alone drops tier to FREE. */

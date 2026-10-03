@@ -113,6 +113,11 @@ export default class TeamController extends PaginatedController {
     );
   }
 
+  get hasPaidSeats() {
+    const tier = this.model?.seatInfo?.tier;
+    return !!tier && tier !== 'FREE';
+  }
+
   get reassignOptions() {
     return this.reassignCandidates.map((u) => ({
       value: u.id,

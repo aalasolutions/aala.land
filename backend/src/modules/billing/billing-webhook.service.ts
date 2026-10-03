@@ -22,7 +22,9 @@ import {
 } from './provider/billing-provider.interface';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
+import { BillingService } from './billing.service';
 import {
+  ChargedUnitAmount,
   NormalizedBillingEvent,
   PaymentFailedEvent,
   PaymentSucceededEvent,
@@ -38,6 +40,32 @@ import { errorMessage } from '@shared/utils/error.util';
 export function planToTier(plan: BillingPlan): SubscriptionTier {
   const tier = (SubscriptionTier as Record<string, SubscriptionTier>)[plan];
   return tier ?? SubscriptionTier.PRO;
+}
+
+type ChargedAmountColumns = Partial<
+  Pick<
+    Company,
+    | 'chargedSeatNet'
+    | 'chargedSeatGross'
+    | 'chargedBaseNet'
+    | 'chargedBaseGross'
+  >
+>;
+
+function chargedAmountPatch(
+  lines: ChargedUnitAmount[] | undefined,
+): ChargedAmountColumns {
+  const patch: ChargedAmountColumns = {};
+  for (const line of lines ?? []) {
+    if (line.kind === 'SEAT') {
+      patch.chargedSeatNet = line.net;
+      patch.chargedSeatGross = line.gross;
+    } else {
+      patch.chargedBaseNet = line.net;
+      patch.chargedBaseGross = line.gross;
+    }
+  }
+  return patch;
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -58,11 +86,16 @@ export class BillingWebhookService implements OnModuleInit {
     private readonly provider: BillingProvider,
     private readonly dispatcher: BillingEventDispatcher,
     private readonly history: BillingHistoryService,
+    private readonly billing: BillingService,
   ) {}
 
   onModuleInit(): void {
     this.dispatcher.register('SubscriptionActivated', (e) =>
       this.onSubscriptionActivated(e),
+    );
+    // Registered second: resizes only after the company row holds the subscription.
+    this.dispatcher.register('SubscriptionActivated', (e) =>
+      this.reconcileSeats(e),
     );
     this.dispatcher.register('SubscriptionUpdated', (e) =>
       this.onSubscriptionUpdated(e),
@@ -162,7 +195,7 @@ export class BillingWebhookService implements OnModuleInit {
     return false;
   }
 
-  // Only writer of purchasedSeats, billingStatus, and billingSubscriptionId in the codebase.
+  // Only writer of purchasedSeats, billingStatus, billingSubscriptionId and charged_* amounts.
 
   private async onSubscriptionActivated(
     event: SubscriptionActivatedEvent,
@@ -199,6 +232,20 @@ export class BillingWebhookService implements OnModuleInit {
       .andWhere('billing_subscription_id IS NULL')
       .andWhere('subscription_tier <> :free', { free: SubscriptionTier.FREE })
       .execute();
+  }
+
+  /** Active team decides the seat count; a failure throws so the provider retries. */
+  private async reconcileSeats(
+    event: SubscriptionActivatedEvent,
+  ): Promise<void> {
+    if (!this.provider.checkoutQuantityEditable || !event.subscriptionId)
+      return;
+    const seats = await this.billing.reconcileSeatsToActiveUsers(
+      event.companyId,
+      event.subscriptionId,
+    );
+    // The purchase email runs after this and reports the reconciled count.
+    if (seats !== null) event.quantity = seats;
   }
 
   private async onSubscriptionUpdated(
@@ -267,6 +314,10 @@ export class BillingWebhookService implements OnModuleInit {
         subscriptionTier: SubscriptionTier.FREE,
         billingSubscriptionId: null,
         billingStatus: 'canceled',
+        chargedSeatNet: null,
+        chargedSeatGross: null,
+        chargedBaseNet: null,
+        chargedBaseGross: null,
         maxUsers: limits.maxUsers,
         maxRegions: limits.maxRegions,
         maxProperties: limits.maxProperties,
@@ -281,9 +332,14 @@ export class BillingWebhookService implements OnModuleInit {
     await this.history.recordPayment(event);
     // One-off invoices (future top-ups) carry no subscription: not our status.
     if (!event.subscriptionId) return;
-    await this.updateCompany(event.companyId, event.name, {
-      billingStatus: 'active',
-    });
+    // Not recency-guarded: a transaction may precede its activation.
+    const patch = {
+      ...chargedAmountPatch(event.chargedUnitAmounts),
+      // A zero-charge settlement never moves paid status.
+      ...(event.settledWithoutCharge ? {} : { billingStatus: 'active' }),
+    };
+    if (Object.keys(patch).length === 0) return;
+    await this.updateCompany(event.companyId, event.name, patch);
   }
 
   private async onPaymentFailed(event: PaymentFailedEvent): Promise<void> {

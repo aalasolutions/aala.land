@@ -50,6 +50,13 @@ describe('UpcomingInvoiceCron', () => {
     );
   });
 
+  it('reads the renewal from paid rows only, so a zero-charge settlement never sets the expected charge', async () => {
+    (companyRepo.query as jest.Mock).mockResolvedValue([]);
+    await cron.run();
+    const sql = (companyRepo.query as jest.Mock).mock.calls[0][0] as string;
+    expect(sql).toContain("AND type = 'payment_succeeded'");
+  });
+
   it('does nothing when no subscriptions are renewing', async () => {
     (companyRepo.query as jest.Mock).mockResolvedValue([]);
     await cron.run();

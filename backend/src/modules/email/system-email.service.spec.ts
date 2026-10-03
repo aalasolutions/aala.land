@@ -147,6 +147,41 @@ describe('SystemEmailService', () => {
     });
   });
 
+  describe('zero-charge credit notice', () => {
+    it('states the invoice was paid from the credit balance', async () => {
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
+      await service.sendSettledWithoutChargeToCompany('co-1', 2498, 0, 'usd');
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.to).toBe('admin@acme.com');
+      expect(arg.subject).toBe(
+        'Invoice paid from your credit balance: USD 24.98',
+      );
+      expect(arg.text).toContain(
+        'An invoice of USD 24.98 was paid in full from your account credit balance.',
+      );
+      expect(arg.text).toContain('Nothing was charged to your payment method.');
+      expect(arg.text).not.toContain('future invoices');
+    });
+
+    it('states the credit issued will be used on future invoices', async () => {
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
+      await service.sendSettledWithoutChargeToCompany('co-1', 0, 2500, 'usd');
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.subject).toBe('Credit added to your balance: USD 25.00');
+      expect(arg.text).toContain(
+        'A change to your subscription added USD 25.00 to your account credit balance. It will be used on your future invoices.',
+      );
+      expect(arg.html).toContain('https://app.aala.land/settings/billing');
+    });
+
+    it('skips when billing emails are muted', async () => {
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
+      (prefs.accepts as jest.Mock).mockResolvedValueOnce(false);
+      await service.sendSettledWithoutChargeToCompany('co-1', 2498, 0, 'usd');
+      expect(mail.sendMail).not.toHaveBeenCalled();
+    });
+  });
+
   describe('upcoming invoice', () => {
     it('sends a renewal reminder with a formatted date and amount', async () => {
       (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
