@@ -1,6 +1,6 @@
-import AuthenticatedRoute from './authenticated';
+import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
-import { safeJson } from '../utils/safe-json';
+import { safeJson } from '../../utils/safe-json';
 
 export default class LeasesRoute extends AuthenticatedRoute {
   @service auth;

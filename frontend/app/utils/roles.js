@@ -32,6 +32,11 @@ export function canAccessWhatsapp(role) {
   ].includes(role);
 }
 
+// Backend `GET /leads` gives agents only their own and unassigned leads.
+export function seesOnlyOwnLeads(role) {
+  return role === ROLES.AGENT;
+}
+
 export function canManageFinancials(role) {
   return [
     ROLES.SUPER_ADMIN,
@@ -51,6 +56,11 @@ const CONTACT_ACCESS_APPROVERS = [
 ];
 
 export function canApproveContactAccess(role) {
+  return CONTACT_ACCESS_APPROVERS.includes(role);
+}
+
+// Same roles see every contact in their regions in full; GET /contacts/companies uses this list.
+export function canViewContactCompanies(role) {
   return CONTACT_ACCESS_APPROVERS.includes(role);
 }
 

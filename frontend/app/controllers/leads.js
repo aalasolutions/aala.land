@@ -13,6 +13,7 @@ import {
   LEAD_SOURCE_OPTIONS,
   NONE_OPTION,
 } from 'land/constants';
+import { seesOnlyOwnLeads } from '../utils/roles';
 
 const HIGH_LOAD = 8;
 const MEDIUM_LOAD = 4;
@@ -20,27 +21,68 @@ const FILTER_PREF_KEY = 'leads-filter';
 const DEFAULT_FILTER = 'mine';
 export const DROP_AT_END = 'end';
 
+const VIEW_TABS = [
+  { id: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
+  { id: 'temperature', label: 'Temperature', icon: 'thermometer' },
+  { id: 'agent', label: 'Agent', icon: 'users' },
+  { id: 'list', label: 'List', icon: 'list' },
+];
+const OWN_VIEW_TABS = VIEW_TABS.filter((tab) => tab.id !== 'agent');
+
+const FILTER_TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'mine', label: 'Assigned to Me' },
+  { id: 'others', label: 'Others' },
+  { id: 'unassigned', label: 'Unassigned' },
+];
+const OWN_FILTER_TABS = FILTER_TABS.filter((tab) => tab.id !== 'others');
+
 export function insertionIndex(midpoints, pointerY) {
   return midpoints.filter((midpoint) => pointerY > midpoint).length;
 }
 
-export function moveLead(leads, leadId, status, beforeId) {
+// Each kanban board groups leads by `field` and orders a column by `rank`.
+export const BOARDS = {
+  pipeline: { field: 'status', rank: 'rank' },
+  temperature: { field: 'temperature', rank: 'temperatureRank' },
+  agent: { field: 'assignedTo', rank: 'agentRank' },
+};
+
+function inColumn(lead, field, value) {
+  return (lead[field] ?? null) === value;
+}
+
+export function moveLead(leads, leadId, field, value, beforeId) {
   const moving = leads.find((l) => l.id === leadId);
   if (!moving) return leads;
-  const moved = moving.status === status ? moving : { ...moving, status };
+  const moved = inColumn(moving, field, value)
+    ? moving
+    : { ...moving, [field]: value };
   const rest = leads.filter((l) => l.id !== leadId);
 
   let at =
     beforeId === DROP_AT_END ? -1 : rest.findIndex((l) => l.id === beforeId);
   if (at === -1) {
-    const lastInColumn = rest.findLastIndex((l) => l.status === status);
+    const lastInColumn = rest.findLastIndex((l) => inColumn(l, field, value));
     at = lastInColumn === -1 ? rest.length : lastInColumn + 1;
   }
   return [...rest.slice(0, at), moved, ...rest.slice(at)];
 }
 
-export function columnIds(leads, status) {
-  return leads.filter((l) => l.status === status).map((l) => l.id);
+export function neighbours(orderedIds, leadId) {
+  const at = orderedIds.indexOf(leadId);
+  return {
+    aboveId: orderedIds[at - 1],
+    belowId: orderedIds[at + 1],
+  };
+}
+
+export function columnPrefKey(board, columnKey) {
+  return `kanban-${board}-${columnKey}`;
+}
+
+export function columnIds(leads, field, value) {
+  return leads.filter((l) => inColumn(l, field, value)).map((l) => l.id);
 }
 
 export default class LeadsController extends Controller {
@@ -81,6 +123,8 @@ export default class LeadsController extends Controller {
   limit = 50;
   status = '';
 
+  // Keyed by user too: the controller outlives logout and impersonation switches.
+  @tracked collapsedColumns = {};
   @tracked showModal = false;
   @tracked showAssignModal = false;
   @tracked showDetailModal = false;
@@ -109,19 +153,17 @@ export default class LeadsController extends Controller {
     this._viewMode = val;
   }
 
-  viewTabs = [
-    { id: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
-    { id: 'temperature', label: 'Temperature', icon: 'thermometer' },
-    { id: 'agent', label: 'Agent', icon: 'users' },
-    { id: 'list', label: 'List', icon: 'list' },
-  ];
+  get viewTabs() {
+    return seesOnlyOwnLeads(this.auth.currentUser?.role)
+      ? OWN_VIEW_TABS
+      : VIEW_TABS;
+  }
 
-  filterTabs = [
-    { id: 'all', label: 'All' },
-    { id: 'mine', label: 'Assigned to Me' },
-    { id: 'others', label: 'Others' },
-    { id: 'unassigned', label: 'Unassigned' },
-  ];
+  get filterTabs() {
+    return seesOnlyOwnLeads(this.auth.currentUser?.role)
+      ? OWN_FILTER_TABS
+      : FILTER_TABS;
+  }
 
   @tracked _filterType = null;
 
@@ -146,9 +188,8 @@ export default class LeadsController extends Controller {
   @tracked suppressHover = false;
   // Set a frame after dragstart: the browser snapshots the drag image first, so it shows the full card.
   @tracked _sourceShown = false;
-  @tracked dropTargetStatus = null;
-  @tracked dropTargetTemp = null;
-  @tracked dropTargetAgent = null;
+  // `{ board, value }` of the column under the dragged card.
+  @tracked dropTarget = null;
   @tracked selectedAgentId = '';
   @tracked formRegionCode = '';
 
@@ -227,7 +268,10 @@ export default class LeadsController extends Controller {
   }
 
   get filteredLeads() {
-    const leads = this.allLeads;
+    return this.applyFilter(this.allLeads);
+  }
+
+  applyFilter(leads) {
     if (this.filterType === 'mine') {
       const currentUserId = this.auth.currentUser?.id;
       return leads.filter((l) => l.assignedTo === currentUserId);
@@ -242,19 +286,35 @@ export default class LeadsController extends Controller {
     return leads;
   }
 
+  // A board's leads in its own column order; after a drop the optimistic order already is.
+  sortedFor(board) {
+    if (
+      this._optimistic?.board === board &&
+      this.allLeads === this._optimistic.data
+    ) {
+      return this.allLeads;
+    }
+    const { rank } = BOARDS[board];
+    return [...this.allLeads].sort((a, b) =>
+      a[rank] < b[rank] ? -1 : a[rank] > b[rank] ? 1 : 0,
+    );
+  }
+
   get columns() {
+    const leads = this.applyFilter(this.sortedFor('pipeline'));
     return LEAD_STAGES.map((stage) => ({
       ...stage,
-      leads: this.filteredLeads.filter((l) => l.status === stage.status),
+      collapsed: this.isColumnCollapsed('pipeline', stage.status),
+      leads: leads.filter((l) => l.status === stage.status),
     }));
   }
 
   get temperatureColumns() {
+    const leads = this.applyFilter(this.sortedFor('temperature'));
     return TEMPERATURE_STAGES.map((stage) => ({
       ...stage,
-      leads: this.filteredLeads.filter(
-        (l) => l.temperature === stage.temperature,
-      ),
+      collapsed: this.isColumnCollapsed('temperature', stage.temperature),
+      leads: leads.filter((l) => l.temperature === stage.temperature),
     }));
   }
 
@@ -266,13 +326,18 @@ export default class LeadsController extends Controller {
   }
 
   get agentColumns() {
-    const leads = this.allLeads;
-    const column = (agentId, agentName, ownLeads) => ({
-      agentId,
-      agentName,
-      leads: ownLeads,
-      loadClass: this.loadClassFor(ownLeads.length),
-    });
+    const leads = this.sortedFor('agent');
+    const column = (agentId, agentName, ownLeads) => {
+      const key = agentId ?? 'unassigned';
+      return {
+        agentId,
+        key,
+        collapsed: this.isColumnCollapsed('agent', key),
+        agentName,
+        leads: ownLeads,
+        loadClass: this.loadClassFor(ownLeads.length),
+      };
+    };
 
     const unassigned = column(
       null,
@@ -294,6 +359,28 @@ export default class LeadsController extends Controller {
   @action setFilter(filter) {
     this.filterType = filter;
     this.preferences.set(FILTER_PREF_KEY, filter);
+  }
+
+  isColumnCollapsed = (board, columnKey) => {
+    const prefKey = columnPrefKey(board, columnKey);
+    return (
+      this.collapsedColumns[`${this.auth.currentUser?.id}-${prefKey}`] ??
+      this.preferences.get(prefKey, false)
+    );
+  };
+
+  @action toggleColumn(board, columnKey) {
+    const prefKey = columnPrefKey(board, columnKey);
+    const collapsed = !this.isColumnCollapsed(board, columnKey);
+    this.collapsedColumns = {
+      ...this.collapsedColumns,
+      [`${this.auth.currentUser?.id}-${prefKey}`]: collapsed,
+    };
+    if (collapsed) {
+      this.preferences.set(prefKey, true);
+    } else {
+      this.preferences.remove(prefKey);
+    }
   }
 
   @action setViewMode(mode) {
@@ -414,10 +501,6 @@ export default class LeadsController extends Controller {
     this.errorMsg = '';
   }
 
-  @action stopPropagation(e) {
-    e.stopPropagation();
-  }
-
   @action async loadLocalities(
     regionCode = this.formRegionCode || this.region.regionCode,
   ) {
@@ -472,15 +555,36 @@ export default class LeadsController extends Controller {
     }
   }
 
+  // setDragImage copies the frame during dragstart, so it can be removed next frame.
+  setTiltedDragImage(card, event) {
+    const rect = card.getBoundingClientRect();
+    const frame = document.createElement('div');
+    frame.className = 'nu-kanban__drag-image';
+    frame.style.setProperty('--kanban-drag-width', `${rect.width}px`);
+    const clone = card.cloneNode(true);
+    frame.append(clone);
+    document.body.append(frame);
+    const pad = clone.offsetLeft;
+    event.dataTransfer.setDragImage(
+      frame,
+      event.clientX - rect.left + pad,
+      event.clientY - rect.top + pad,
+    );
+    requestAnimationFrame(() => frame.remove());
+  }
+
   @action async handleDragStart(lead, event) {
     event.dataTransfer.setData('text/plain', lead.id);
     event.dataTransfer.effectAllowed = 'move';
     const card = event.currentTarget;
+    this.setTiltedDragImage(card, event);
     card
       .closest('.nu-kanban')
       ?.style.setProperty('--kanban-drag-height', `${card.offsetHeight}px`);
+    const board = this.viewMode;
     this.dragOrigin = {
-      status: lead.status,
+      board,
+      value: lead[BOARDS[board].field] ?? null,
       anchor: card.nextElementSibling?.dataset?.leadId ?? DROP_AT_END,
     };
     this.suppressHover = true;
@@ -497,13 +601,36 @@ export default class LeadsController extends Controller {
 
   // Where the make-room gap opens; null over no column or over the card's own slot.
   get dropGap() {
-    const status = this.dropTargetStatus;
+    const target = this.dropTarget;
     const anchor = this.dropBeforeId;
-    if (!this.draggedLead || !status || !anchor) return null;
+    if (!this.draggedLead || !target || !anchor) return null;
     const origin = this.dragOrigin;
-    if (origin?.status === status && origin.anchor === anchor) return null;
-    return { status, anchor };
+    if (
+      origin?.board === target.board &&
+      origin.value === target.value &&
+      origin.anchor === anchor
+    ) {
+      return null;
+    }
+    return { ...target, anchor };
   }
+
+  isDropTarget = (board, value) =>
+    this.dropTarget?.board === board && this.dropTarget.value === value;
+
+  isGapAt = (board, value, anchor) =>
+    this.isDropTarget(board, value) && this.dropGap?.anchor === anchor;
+
+  cardDragClass = (board, value, leadId) => {
+    const isSource = this.dragSourceId === leadId;
+    return [
+      this.isGapAt(board, value, leadId) && 'is-drop-before',
+      isSource && 'is-drag-source',
+      isSource && this.dropGap && 'is-collapsed',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  };
 
   @action releaseHover() {
     if (this.suppressHover) this.suppressHover = false;
@@ -513,9 +640,7 @@ export default class LeadsController extends Controller {
   @action handleDragEnd() {
     this.draggedLead = null;
     this.dragOrigin = null;
-    this.dropTargetStatus = null;
-    this.dropTargetTemp = null;
-    this.dropTargetAgent = null;
+    this.dropTarget = null;
     this.dropBeforeId = null;
   }
 
@@ -532,139 +657,88 @@ export default class LeadsController extends Controller {
     return cards[index]?.dataset.leadId ?? DROP_AT_END;
   }
 
-  @action handleDragOver(status, event) {
+  @action handleDragOver(board, value, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    if (this.dropTargetStatus !== status) this.dropTargetStatus = status;
+    if (!this.isDropTarget(board, value)) this.dropTarget = { board, value };
     const anchor = this.dropAnchorFor(event);
     if (this.dropBeforeId !== anchor) this.dropBeforeId = anchor;
   }
 
-  @action async handleDrop(newStatus, event) {
+  @action async handleDrop(board, value, event) {
     event.preventDefault();
     const lead = this.draggedLead;
     const anchor = lead ? this.dropAnchorFor(event) : null;
-    this.draggedLead = null;
-    this.dragOrigin = null;
-    this.dropTargetStatus = null;
-    this.dropBeforeId = null;
+    this.handleDragEnd();
     if (!lead) return;
 
-    const previous = this.allLeads;
-    const next = moveLead(previous, lead.id, newStatus, anchor);
-    const orderedIds = columnIds(next, newStatus);
-    const statusChanged = lead.status !== newStatus;
+    const { field } = BOARDS[board];
+    const previous = this.sortedFor(board);
+    const next = moveLead(previous, lead.id, field, value, anchor);
+    const orderedIds = columnIds(next, field, value);
+    const columnChanged = (lead[field] ?? null) !== value;
     if (
-      !statusChanged &&
-      orderedIds.join() === columnIds(previous, newStatus).join()
+      !columnChanged &&
+      orderedIds.join() === columnIds(previous, field, value).join()
     ) {
       return;
     }
 
-    this._optimistic = { source: this.model, data: next };
-    let statusSaved = false;
+    this._optimistic = { source: this.model, board, data: next };
+    let columnSaved = false;
     try {
-      if (statusChanged) {
-        await this.auth.fetchJson(`/leads/${lead.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: newStatus }),
-        });
-        statusSaved = true;
+      if (columnChanged) {
+        await this.moveToColumn(board, lead, value);
+        columnSaved = true;
       }
       await this.auth.fetchJson('/leads/reorder', {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus, orderedIds }),
+        body: JSON.stringify({
+          board,
+          leadId: lead.id,
+          ...neighbours(orderedIds, lead.id),
+        }),
       });
 
-      if (statusChanged) {
-        this.notifications.success(`Lead moved to ${newStatus}`);
+      if (columnChanged) {
+        this.notifications.success(this.movedMessage(board, value));
       }
       this.router.refresh('leads');
     } catch (e) {
       this._optimistic = null;
       this.notifications.error(e.message);
-      if (statusSaved) this.router.refresh('leads');
+      if (columnSaved) this.router.refresh('leads');
     }
+  }
+
+  moveToColumn(board, lead, value) {
+    if (board === 'agent' && value) {
+      return this.auth.fetchJson(`/leads/${lead.id}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({ agentId: value }),
+      });
+    }
+    return this.auth.fetchJson(`/leads/${lead.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ [BOARDS[board].field]: value }),
+    });
+  }
+
+  movedMessage(board, value) {
+    if (board === 'temperature') return `Lead temperature changed to ${value}`;
+    if (board === 'agent') {
+      const name = value
+        ? this.agents.find((a) => a.id === value)?.name || 'agent'
+        : 'Unassigned';
+      return `Lead reassigned to ${name}`;
+    }
+    return `Lead moved to ${value}`;
   }
 
   // Moving onto a card inside the column also fires dragleave; only a real exit clears.
-  @action clearDropTarget(key, event) {
+  @action clearDropTarget(event) {
     if (event?.currentTarget?.contains(event.relatedTarget)) return;
-    this[key] = null;
-  }
-
-  @action handleTempDragOver(temperature, event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    this.dropTargetTemp = temperature;
-  }
-
-  @action async handleTempDrop(newTemperature, event) {
-    event.preventDefault();
-    if (!this.draggedLead || this.draggedLead.temperature === newTemperature) {
-      this.draggedLead = null;
-      this.dropTargetTemp = null;
-      return;
-    }
-
-    try {
-      await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ temperature: newTemperature }),
-      });
-
-      this.notifications.success(
-        `Lead temperature changed to ${newTemperature}`,
-      );
-      this.router.refresh('leads');
-    } catch (e) {
-      this.notifications.error(e.message);
-    } finally {
-      this.draggedLead = null;
-      this.dropTargetTemp = null;
-    }
-  }
-
-  // Sentinel, not null: Unassigned column's id is null, so null would falsely mark it active.
-  @action handleAgentDragOver(agentId, event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    this.dropTargetAgent = agentId ?? 'unassigned';
-  }
-
-  @action async handleAgentDrop(newAgentId, event) {
-    event.preventDefault();
-    const currentAgent = this.draggedLead?.assignedTo || null;
-    if (!this.draggedLead || currentAgent === newAgentId) {
-      this.draggedLead = null;
-      this.dropTargetAgent = null;
-      return;
-    }
-
-    try {
-      if (newAgentId) {
-        await this.auth.fetchJson(`/leads/${this.draggedLead.id}/assign`, {
-          method: 'POST',
-          body: JSON.stringify({ agentId: newAgentId }),
-        });
-      } else {
-        await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ assignedTo: null }),
-        });
-      }
-
-      const label = newAgentId
-        ? this.agents.find((a) => a.id === newAgentId)?.name || 'agent'
-        : 'Unassigned';
-      this.notifications.success(`Lead reassigned to ${label}`);
-      this.router.refresh('leads');
-    } catch (e) {
-      this.notifications.error(e.message);
-    } finally {
-      this.draggedLead = null;
-      this.dropTargetAgent = null;
-    }
+    this.dropTarget = null;
   }
 
   @action async assignToAgent(event) {

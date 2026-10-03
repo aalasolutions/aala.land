@@ -6,20 +6,20 @@ export function isLimited(contact) {
 }
 
 // Mirrors the backend name: full name else phone; LIMITED: first name, initial, else masked phone.
-export function contactName(contact) {
-  if (!contact) return '';
+export function contactName(contact, fallback = '') {
+  if (!contact) return fallback;
   if (isLimited(contact)) {
     const name = [contact.firstName?.trim(), contact.lastInitial]
       .filter(Boolean)
       .join(' ');
-    return name || contact.phoneMasked || '';
+    return name || contact.phoneMasked || fallback;
   }
   if (contact.displayName) return contact.displayName;
   const name = [contact.firstName, contact.lastName]
     .filter(Boolean)
     .join(' ')
     .trim();
-  return name || contact.phone || '';
+  return name || contact.phone || fallback;
 }
 
 export function contactPhone(contact) {

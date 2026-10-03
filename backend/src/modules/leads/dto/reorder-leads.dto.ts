@@ -1,25 +1,23 @@
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  ArrayUnique,
-  IsArray,
-  IsEnum,
-  IsUUID,
-} from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { LeadStatus } from '../entities/lead.entity';
-import { MAX_PAGE_LIMIT } from '@shared/constants/pagination';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { LEAD_BOARDS, LeadBoard } from '../entities/lead.entity';
 
 export class ReorderLeadsDto {
-  @ApiProperty({ enum: LeadStatus })
-  @IsEnum(LeadStatus)
-  status: LeadStatus;
+  @ApiProperty({ enum: Object.keys(LEAD_BOARDS) })
+  @IsIn(Object.keys(LEAD_BOARDS))
+  board: LeadBoard;
 
-  @ApiProperty({ type: [String], description: 'Lead ids, top to bottom' })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(MAX_PAGE_LIMIT)
-  @ArrayUnique()
-  @IsUUID(undefined, { each: true })
-  orderedIds: string[];
+  @ApiProperty({ description: 'The lead being moved' })
+  @IsUUID()
+  leadId: string;
+
+  @ApiPropertyOptional({ description: 'Lead directly above after the move' })
+  @IsOptional()
+  @IsUUID()
+  aboveId?: string;
+
+  @ApiPropertyOptional({ description: 'Lead directly below after the move' })
+  @IsOptional()
+  @IsUUID()
+  belowId?: string;
 }

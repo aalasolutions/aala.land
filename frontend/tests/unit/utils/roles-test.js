@@ -7,6 +7,7 @@ import {
   canManageRegions,
   canManageUsers,
   canUpdateUser,
+  canViewContactCompanies,
   canViewReports,
   getVisibleGroups,
   isAdminRole,
@@ -33,6 +34,7 @@ module('Unit | Utility | roles', function () {
       canManageRegions,
       canViewReports,
       canApproveContactAccess,
+      canViewContactCompanies,
       listsAllRegionsByDefault,
     ]) {
       assert.false(predicate(undefined), `${predicate.name} on nothing`);
@@ -144,6 +146,7 @@ module('Unit | Utility | roles', function () {
       allowed((role) => getVisibleGroups(role).accessRequests),
       approvers,
     );
+    assert.deepEqual(allowed(canViewContactCompanies), approvers);
   });
 
   test('only the company owner and the operator list every region by default', function (assert) {

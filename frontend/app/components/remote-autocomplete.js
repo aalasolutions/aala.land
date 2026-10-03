@@ -5,6 +5,13 @@ import { service } from '@ember/service';
 import { modifier } from 'ember-modifier';
 import { fuzzyFilter } from '../utils/fuzzy-match';
 
+// Paginated endpoints wrap the array once more; mapItem lets the host shape each fetched item.
+export function toItems(payload, mapItem) {
+  const list = Array.isArray(payload) ? payload : payload?.data;
+  const items = Array.isArray(list) ? list : [];
+  return mapItem ? items.map((item) => mapItem(item)) : items;
+}
+
 // URL transport for Nuvo::Autocomplete: the kit owns the UI, the app owns fetching.
 // @listUrl preloads the whole list and filters it locally; @searchUrl queries per keystroke.
 export default class RemoteAutocompleteComponent extends Component {
@@ -29,8 +36,7 @@ export default class RemoteAutocompleteComponent extends Component {
     try {
       const result = await this.auth.fetchJson(url);
       if (this.listUrl !== url) return;
-      const payload = result?.data ?? result ?? [];
-      this.listItems = Array.isArray(payload) ? payload : [];
+      this.listItems = toItems(result?.data ?? result, this.args.mapItem);
       this.listFailed = false;
     } catch {
       if (this.listUrl === url) this.listFailed = true;
@@ -39,13 +45,7 @@ export default class RemoteAutocompleteComponent extends Component {
 
   get options() {
     if (!this.args.listUrl || this.listFailed) return undefined;
-    return this.mapItems(this.listItems ?? []);
-  }
-
-  // Optional @mapItem lets a host derive a label field the payload does not carry.
-  mapItems(items) {
-    const mapItem = this.args.mapItem;
-    return typeof mapItem === 'function' ? items.map(mapItem) : items;
+    return this.listItems ?? [];
   }
 
   get searchParam() {
@@ -66,11 +66,7 @@ export default class RemoteAutocompleteComponent extends Component {
     const separator = this.args.searchUrl.includes('?') ? '&' : '?';
     const url = `${this.args.searchUrl}${separator}${this.searchParam}=${encodeURIComponent(term)}`;
     const result = await this.auth.fetchJson(url);
-    const payload = result.data ?? result ?? [];
-    // Search endpoints return a bare array; paginated ones wrap it again.
-    return this.mapItems(
-      Array.isArray(payload) ? payload : (payload.data ?? []),
-    );
+    return toItems(result?.data ?? result, this.args.mapItem);
   }
 
   @action
@@ -82,7 +78,8 @@ export default class RemoteAutocompleteComponent extends Component {
       method: 'POST',
       body: JSON.stringify({ name: term, ...this.args.createPayload }),
     });
-    const created = result.data ?? result;
+    const raw = result.data ?? result;
+    const created = raw ? toItems([raw], this.args.mapItem)[0] : raw;
     if (
       created &&
       this.listItems &&
@@ -90,7 +87,7 @@ export default class RemoteAutocompleteComponent extends Component {
     ) {
       this.listItems = [...this.listItems, created];
     }
-    return created ? this.mapItems([created])[0] : created;
+    return created;
   }
 
   // A host @onCreate replaces the createUrl POST.

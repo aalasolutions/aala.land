@@ -71,6 +71,9 @@ describe('lead ownership against a real database', () => {
         assignedTo,
         stageEnteredAt,
         regionCode,
+        rank: 'a0',
+        temperatureRank: 'a0',
+        agentRank: 'a0',
       }),
     );
   }

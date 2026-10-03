@@ -271,7 +271,7 @@ export default class WhatsappService extends Service {
     if (previous !== undefined) this.notifications.remove(previous);
     this._toastIds.set(
       msg.chatId,
-      this.notifications.success(`New WhatsApp message from ${name}`, 0),
+      this.notifications.success(`New WhatsApp message from ${name}`),
     );
   }
 

@@ -114,6 +114,41 @@ export class ContactPrivacyService {
     return levels;
   }
 
+  // SQL twin of accessLevelFor, for paginated queries: true where `alias` is FULL to the viewer.
+  // The two must change together. Null means every contact is FULL for this viewer.
+  fullAccessSql(
+    alias: string,
+    viewer: ContactViewer | undefined,
+  ): { sql: string; params: Record<string, unknown> } | null {
+    if (viewer && seesAllRegions(viewer.role)) return null;
+    const regionScoped = !!viewer && REGION_SCOPED_ROLES.includes(viewer.role);
+    if (!viewer || (!regionScoped && viewer.role !== (Role.AGENT as string))) {
+      return { sql: 'FALSE', params: {} };
+    }
+
+    const parts: string[] = [];
+    const params: Record<string, unknown> = {};
+    const regions = viewer.regionCodes ?? [];
+    if (regionScoped && regions.length > 0) {
+      parts.push(`${alias}.region_code IN (:...fullAccessRegions)`);
+      params.fullAccessRegions = regions;
+    }
+    if (viewer.userId) {
+      parts.push(
+        `${alias}.created_by = :fullAccessUserId`,
+        `EXISTS (SELECT 1 FROM contact_access_requests fa WHERE fa.contact_id = ${alias}.id` +
+          ` AND fa.company_id = ${alias}.company_id AND fa.requester_id = :fullAccessUserId` +
+          ` AND fa.status = :fullAccessApproved AND (fa.expires_at IS NULL OR fa.expires_at > now()))`,
+      );
+      params.fullAccessUserId = viewer.userId;
+      params.fullAccessApproved = ContactAccessStatus.APPROVED;
+    }
+    return {
+      sql: parts.length > 0 ? `(${parts.join(' OR ')})` : 'FALSE',
+      params,
+    };
+  }
+
   // Ids among the given set the user has a PENDING request on; one query per page.
   async pendingContactIds(
     companyId: string,

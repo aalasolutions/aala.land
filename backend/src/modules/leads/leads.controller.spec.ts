@@ -246,6 +246,7 @@ describe('LeadsController', () => {
         'lead-uuid-1',
         companyId,
         caller,
+        mockReq.user.userId,
       );
     });
   });
@@ -253,8 +254,8 @@ describe('LeadsController', () => {
     it('passes companyId, dto, userId and the caller scope', async () => {
       service.reorder.mockResolvedValue({ updated: 1 });
       const dto = {
-        status: LeadStatus.NEW,
-        orderedIds: ['11111111-1111-4111-8111-111111111111'],
+        board: 'pipeline' as const,
+        leadId: '11111111-1111-4111-8111-111111111111',
       };
 
       const result = await controller.reorder(dto, mockReq);

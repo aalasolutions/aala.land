@@ -1,11 +1,11 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 
-module('Unit | Controller | leases', function (hooks) {
+module('Unit | Controller | leases/index', function (hooks) {
   setupTest(hooks);
 
   test('the tenant picker labels a limited contact without printing undefined', function (assert) {
-    const controller = this.owner.lookup('controller:leases');
+    const controller = this.owner.lookup('controller:leases/index');
     controller.model = {
       contacts: [
         { id: 'c-1', accessLevel: 'FULL', displayName: 'Sara Khan' },

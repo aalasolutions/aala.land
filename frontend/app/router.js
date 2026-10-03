@@ -59,8 +59,14 @@ Router.map(function () {
   this.route('leads');
   this.route('financials');
   this.route('commissions');
-  this.route('leases');
-  this.route('maintenance');
+  this.route('leases', function () {
+    this.route('index', { path: '/' });
+    this.route('detail', { path: '/:lease_id' });
+  });
+  this.route('maintenance', function () {
+    this.route('index', { path: '/' });
+    this.route('detail', { path: '/:work_order_id' });
+  });
   this.route('vendors');
   this.route('cheques');
   this.route('team');

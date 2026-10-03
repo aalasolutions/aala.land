@@ -201,10 +201,10 @@ describe('NotificationsService', () => {
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
       expect(repo.save).toHaveBeenCalled();
-      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(
-        userId,
-        mockNotification,
-      );
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, {
+        ...mockNotification,
+        regionName: null,
+      });
       expect(result).toEqual(mockNotification);
     });
 
@@ -230,10 +230,10 @@ describe('NotificationsService', () => {
       const result = await service.create(companyId, dto);
 
       expect(result).toEqual(mockNotification);
-      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(
-        userId,
-        mockNotification,
-      );
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, {
+        ...mockNotification,
+        regionName: null,
+      });
       expect(loggerErrorSpy).toHaveBeenCalledWith(
         'Failed to emit notification via socket: socket unavailable',
       );
@@ -272,10 +272,27 @@ describe('NotificationsService', () => {
         take: 20,
         order: { createdAt: 'DESC' },
       });
-      expect(result.data).toEqual([mockNotification]);
+      expect(result.data).toEqual([{ ...mockNotification, regionName: null }]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
       expect(result.limit).toBe(20);
+    });
+
+    it('labels every row with its region name, whatever region the viewer is in', async () => {
+      repo.findAndCount.mockResolvedValue([
+        [
+          { ...mockNotification, regionCode: 'dubai' } as Notification,
+          { ...mockNotification, regionCode: 'nowhere' } as Notification,
+        ],
+        2,
+      ]);
+
+      const result = await service.findAll(companyId, userId, 1, 20);
+
+      expect(result.data.map((n) => n.regionName)).toEqual([
+        'Dubai',
+        'nowhere',
+      ]);
     });
 
     it('respects pagination parameters', async () => {

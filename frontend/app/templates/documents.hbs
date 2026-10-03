@@ -1,344 +1,138 @@
 {{page-title "Documents"}}
 
 <div data-test-documents class="flex col gap-6">
-  <Nuvo::PageHeader
-    @title="Documents"
-    @subtitle="Store and organise property paperwork."
+  <Documents::Panel
+    @tableId="documents"
+    @filters={{this.panelFilters}}
+    @page={{this.page}}
+    @pageSize={{this.limit}}
+    @onPageChange={{this.setPage}}
+    @onPageSizeChange={{this.setLimit}}
   >
-    <:meta>
-      <p class="text-muted">{{format-number @model.total unit="document"}}</p>
-    </:meta>
-    <:actions>
-      <Nuvo::Button
-        @variant="primary"
-        data-test-upload-btn
-        @icon="upload-simple"
-        {{on "click" this.openCreate}}
+    <:header as |panel|>
+      <Nuvo::PageHeader
+        @title="Documents"
+        @subtitle="Store and organise property paperwork."
       >
-        Upload Document
-      </Nuvo::Button>
-    </:actions>
-  </Nuvo::PageHeader>
+        <:meta>
+          <p class="text-muted">{{format-number
+              panel.total
+              unit="document"
+            }}</p>
+        </:meta>
+        <:actions>
+          {{#if panel.canUpload}}
+            <Nuvo::Button
+              @variant="primary"
+              data-test-upload-btn
+              @icon="upload-simple"
+              {{on "click" panel.openUpload}}
+            >
+              Upload Document
+            </Nuvo::Button>
+          {{/if}}
+        </:actions>
+      </Nuvo::PageHeader>
 
-  <Nuvo::Accordion
-    @items={{array
-      (hash
-        id="filters"
-        title=(if this.hasActiveFilters "Filters · active" "Filters")
-      )
-    }}
-    data-test-filters-accordion
-  >
-    <div class="flex col gap-4">
-      <div class="flex gap-3 wrap">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="Search document name..."
-          class="grow"
-          value={{this.search}}
-          {{on "input" (fn this.updateFilter "search")}}
-          data-test-documents-search
-        />
-      </div>
-
-      <div class="flex gap-3 wrap x-end">
-        <Nuvo::Field class="grow" @label="Category">
-          <Nuvo::Dropdown
-            id="document-category-filter"
-            @align="start"
-            @value={{this.category}}
-            @onSelect={{this.setCategory}}
-            @options={{this.categories}}
-            @placeholder="All Categories"
-            data-test-category-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field
-          class="grow"
-          @label="Access Level"
-          @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
-        >
-          <Nuvo::Dropdown
-            id="document-access-filter"
-            @align="start"
-            @value={{this.accessLevel}}
-            @onSelect={{this.setAccessLevelFilter}}
-            @options={{this.accessLevelFilterOptions}}
-            data-test-access-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Uploaded from">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Uploaded from"
-            value={{this.dateFrom}}
-            {{on "change" this.setDateFrom}}
-            data-test-date-from-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Uploaded to">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Uploaded to"
-            value={{this.dateTo}}
-            {{on "change" this.setDateTo}}
-            data-test-date-to-filter
-          />
-        </Nuvo::Field>
-      </div>
-
-      {{#if this.hasActiveFilters}}
-        <div class="flex end">
-          <Nuvo::Button
-            @variant="danger"
-            @size="sm"
-            @icon="x"
-            {{on "click" this.clearFilters}}
-            data-test-clear-filters
-          >
-            Clear filters
-          </Nuvo::Button>
-        </div>
-      {{/if}}
-    </div>
-  </Nuvo::Accordion>
-
-  {{#if @model.documents.length}}
-    <Nuvo::Card>
-      <Nuvo::DataTable
-        @columns={{this.columns}}
-        @rows={{@model.documents}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="documents"
-        as |cell|
+      <Nuvo::Accordion
+        @items={{array
+          (hash
+            id="filters"
+            title=(if this.hasActiveFilters "Filters · active" "Filters")
+          )
+        }}
+        data-test-filters-accordion
       >
-        {{#if (eq cell.key "name")}}
-          <div class="flex x-center gap-2" data-test-document-row>
-            <Ui::Ph @icon="file-text" />
-            <span class="font-bold">{{cell.value}}</span>
-          </div>
-        {{else if (eq cell.key "category")}}
-          <Nuvo::Tag
-            class="tag-doc-{{lowercase cell.value}}"
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "accessLevel")}}
-          <Nuvo::Tag
-            class="tag-access-{{lowercase cell.value}}"
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "unit.assetName")}}
-          <span class="text-sm" data-test-document-property>
-            {{#if cell.row.unit}}
-              <LinkTo
-                @route="properties.unit"
-                @models={{array cell.row.unit.areaId cell.row.unit.id}}
-                class="text-primary"
-              >{{cell.row.unit.assetName}}
-                -
-                {{cell.row.unit.unitNumber}}</LinkTo>
-            {{else}}
-              <span class="text-muted">—</span>
-            {{/if}}
-          </span>
-        {{else if (eq cell.key "fileSize")}}
-          <span class="text-sm text-muted">{{format-bytes cell.value}}</span>
-        {{else if (eq cell.key "uploadedByName")}}
-          <span class="text-sm text-muted" data-test-document-uploader>
-            {{#if (eq cell.row.uploadedBy this.auth.currentUser.id)}}
-              ME
-            {{else}}
-              {{or cell.value "—"}}
-            {{/if}}
-          </span>
-        {{else if (eq cell.key "createdAt")}}
-          <span class="text-sm text-muted">{{format-date cell.value}}</span>
-        {{else if (eq cell.key "id")}}
-          <div class="flex">
-            <Nuvo::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              aria-label="Download {{cell.row.name}}"
-              data-tooltip="Download"
-              data-test-download-btn
-              @icon="download-simple"
-              {{on "click" (fn this.downloadDocument cell.row)}}
-            />
-            <Nuvo::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              aria-label="Edit {{cell.row.name}}"
-              data-tooltip="Edit"
-              data-test-edit-btn
-              @icon="pencil-simple"
-              {{on "click" (fn this.openEdit cell.row)}}
-            />
-            <Nuvo::Button
-              @subtle={{true}}
-              @variant="danger"
-              @size="xs"
-              aria-label="Delete {{cell.row.name}}"
-              data-tooltip="Delete"
-              data-test-delete-btn
-              @icon="trash"
-              {{on "click" (fn this.openDelete cell.row)}}
+        <div class="flex col gap-4">
+          <div class="flex gap-3 wrap">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="Search document name..."
+              class="grow"
+              value={{this.search}}
+              {{on "input" (fn this.updateFilter "search")}}
+              data-test-documents-search
             />
           </div>
-        {{else}}
-          <span class="text-muted">{{cell.value}}</span>
-        {{/if}}
-      </Nuvo::DataTable>
-    </Nuvo::Card>
-  {{else}}
-    {{#if @model.total}}
-      <Nuvo::Card>
-        <Nuvo::EmptyState
-          @description="No documents on page {{this.page}}. Navigate back to find documents."
-        />
-      </Nuvo::Card>
-    {{else}}
-      <Nuvo::Card>
-        <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
-          <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
-          <p class="text-muted">No documents yet. Upload your first document
-            above.</p>
-        </div>
-      </Nuvo::Card>
-    {{/if}}
-  {{/if}}
 
-  {{#if @model.total}}
-    <Nuvo::Pagination
-      @selectId="documents-limit"
-      @page={{this.page}}
-      @limit={{this.limit}}
-      @total={{@model.total}}
-      @onLimitChange={{this.setLimit}}
-      @onPrevious={{this.goToPreviousPage}}
-      @onNext={{this.goToNextPage}}
-      @onPageChange={{this.goToPage}}
-    />
-  {{/if}}
+          <div class="flex gap-3 wrap x-end">
+            <Nuvo::Field class="grow" @label="Category">
+              <Nuvo::Dropdown
+                id="document-category-filter"
+                @align="start"
+                @value={{this.category}}
+                @onSelect={{this.setCategory}}
+                @options={{this.categories}}
+                @placeholder="All Categories"
+                data-test-category-filter
+              />
+            </Nuvo::Field>
+            <Nuvo::Field
+              class="grow"
+              @label="Related To"
+              @tooltip="Filter by the kind of record a file is linked to. Library only means no link."
+            >
+              <Nuvo::Dropdown
+                id="document-related-filter"
+                @align="start"
+                @value={{this.related}}
+                @onSelect={{this.setRelated}}
+                @options={{this.relatedTypes}}
+                data-test-related-filter
+              />
+            </Nuvo::Field>
+            <Nuvo::Field
+              class="grow"
+              @label="Access Level"
+              @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
+            >
+              <Nuvo::Dropdown
+                id="document-access-filter"
+                @align="start"
+                @value={{this.accessLevel}}
+                @onSelect={{this.setAccessLevelFilter}}
+                @options={{this.accessLevelFilterOptions}}
+                data-test-access-filter
+              />
+            </Nuvo::Field>
+            <Nuvo::Field @label="Uploaded from">
+              <input
+                type="date"
+                class="nu-input"
+                aria-label="Uploaded from"
+                value={{this.dateFrom}}
+                {{on "change" this.setDateFrom}}
+                data-test-date-from-filter
+              />
+            </Nuvo::Field>
+            <Nuvo::Field @label="Uploaded to">
+              <input
+                type="date"
+                class="nu-input"
+                aria-label="Uploaded to"
+                value={{this.dateTo}}
+                {{on "change" this.setDateTo}}
+                data-test-date-to-filter
+              />
+            </Nuvo::Field>
+          </div>
+
+          {{#if this.hasActiveFilters}}
+            <div class="flex end">
+              <Nuvo::Button
+                @variant="danger"
+                @size="sm"
+                @icon="x"
+                {{on "click" this.clearFilters}}
+                data-test-clear-filters
+              >
+                Clear filters
+              </Nuvo::Button>
+            </div>
+          {{/if}}
+        </div>
+      </Nuvo::Accordion>
+    </:header>
+  </Documents::Panel>
 </div>
-
-<Nuvo::Drawer
-  @open={{this.showModal}}
-  @title={{if this.editDocument "Update Document" "Upload Document"}}
-  @placement="end"
-  @size="lg"
-  @onClose={{this.closeModal}}
-  @onClosed={{this.resetDrawer}}
->
-  <:body>
-    <form id="document-form" class="flex col gap-4" {{on "submit" this.saveDocument}}>
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="d-file">File
-          {{unless this.editDocument "*"}}</label>
-        <input
-          id="d-file"
-          type="file"
-          class="nu-input"
-          data-test-file-input
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
-          {{on "change" this.onFileSelect}}
-        />
-        {{#if this.selectedFile}}
-          <p class="text-xs text-muted" data-test-selected-file>
-            Selected:
-            {{this.selectedFile.name}}
-            ({{format-bytes this.selectedFile.size}})
-          </p>
-        {{/if}}
-      </div>
-
-      <Nuvo::Field @label="Document Name" @required={{true}}>
-        <Nuvo::Input
-          id="d-name"
-          type="text"
-          placeholder="Lease Agreement Q1 2026"
-          @value={{this.formName}}
-          @onInput={{fn this.setFieldValue "formName"}}
-          required={{true}}
-          data-test-field-name
-        />
-      </Nuvo::Field>
-
-      <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Category">
-          <Nuvo::Dropdown
-            id="d-category"
-            @align="start"
-            @value={{this.formCategory}}
-            @onSelect={{fn this.setFieldValue "formCategory"}}
-            @options={{this.categoryOptions}}
-            @placeholder="Select category..."
-            data-test-field-category
-          />
-        </Nuvo::Field>
-        <Nuvo::Field
-          class="grow"
-          @label="Access Level"
-          @tooltip="Team means every staff member can open this file. Admin means only admins can."
-        >
-          <Nuvo::Dropdown
-            id="d-access"
-            @align="start"
-            @value={{this.formAccessLevel}}
-            @onSelect={{fn this.setFieldValue "formAccessLevel"}}
-            @options={{this.accessLevels}}
-            @placeholder="Select access level..."
-            data-test-field-access
-          />
-        </Nuvo::Field>
-      </div>
-
-      {{#if this.uploadProgress}}
-        <p
-          class="text-sm text-muted"
-          data-test-upload-progress
-        >{{this.uploadProgress}}</p>
-      {{/if}}
-
-      {{#if this.errorMsg}}
-        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-      {{/if}}
-    </form>
-  </:body>
-  <:footer>
-    <Nuvo::Button
-      @variant="secondary"
-      @onClick={{this.closeModal}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
-      @variant="primary"
-      @type="submit"
-      form="document-form"
-      @loading={{this.isSaving}}
-      data-test-save-btn
-    >{{if
-        this.isSaving
-        "Uploading..."
-        (if this.editDocument "Update" "Upload")
-      }}</Nuvo::Button>
-  </:footer>
-</Nuvo::Drawer>
-
-<ConfirmModal
-  @open={{this.showDeleteModal}}
-  @title="Delete Document"
-  @message="Delete {{this.documentToDelete.name}}? This cannot be undone."
-  @confirmText="Delete"
-  @confirmVariant="danger"
-  @isConfirming={{this.isDeleting}}
-  @confirmingText="Deleting..."
-  @onClose={{this.closeDeleteModal}}
-  @onConfirm={{this.confirmDelete}}
-/>

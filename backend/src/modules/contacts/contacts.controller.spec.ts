@@ -102,6 +102,7 @@ describe('ContactsController', () => {
           agentId: undefined,
           isWhatsapp: undefined,
           company: undefined,
+          companyExact: false,
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
@@ -127,6 +128,7 @@ describe('ContactsController', () => {
           agentId: undefined,
           isWhatsapp: undefined,
           company: undefined,
+          companyExact: false,
           nationality: undefined,
           dateFrom: undefined,
           dateTo: undefined,
@@ -205,6 +207,7 @@ describe('ContactsController', () => {
           undefined,
           undefined,
           undefined,
+          undefined,
           sort,
         );
 
@@ -222,6 +225,7 @@ describe('ContactsController', () => {
         mockReq,
         1,
         20,
+        undefined,
         undefined,
         undefined,
         undefined,

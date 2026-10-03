@@ -1,0 +1,55 @@
+{{page-title this.title}}
+
+<div data-test-work-order-detail class="flex col gap-6">
+  <Nuvo::PageHeader @title={{this.title}} @subtitle="Work order">
+    <:breadcrumb>
+      <LinkTo
+        @route="maintenance.index"
+        class="text-muted text-sm"
+        data-test-breadcrumb-maintenance
+      >Maintenance</LinkTo>
+      <span class="text-muted">/</span>
+    </:breadcrumb>
+  </Nuvo::PageHeader>
+
+  {{#if @model.workOrder}}
+    <Maintenance::Summary
+      @workOrder={{@model.workOrder}}
+      @unit={{@model.unit}}
+      @vendor={{@model.vendor}}
+      @assignee={{@model.assignee}}
+    />
+
+    <section data-test-work-order-documents>
+      <Documents::Panel
+        @filters={{this.documentFilters}}
+        @presetLink={{this.presetLink}}
+        @compact={{true}}
+        @tableId="work-order-documents"
+      >
+        <:header as |panel|>
+          <div class="flex between x-center">
+            <h2 class="text-md font-bold">Documents</h2>
+            {{#if panel.canUpload}}
+              <Nuvo::Button
+                @variant="primary"
+                @size="sm"
+                @icon="upload-simple"
+                @text="Upload"
+                data-test-work-order-documents-upload
+                {{on "click" panel.openUpload}}
+              />
+            {{/if}}
+          </div>
+        </:header>
+      </Documents::Panel>
+    </section>
+  {{else}}
+    <Nuvo::Card>
+      <Nuvo::EmptyState
+        @description="Work order not found."
+        data-test-work-order-not-found
+      />
+    </Nuvo::Card>
+  {{/if}}
+</div>

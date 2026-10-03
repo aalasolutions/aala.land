@@ -24,6 +24,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DeleteContactDto } from './dto/delete-contact.dto';
@@ -88,10 +89,17 @@ const PHONE_SEARCH_MIN_DIGITS = SUBSCRIBER_DIGITS;
 const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
 
 // Additional list filters beyond search and role tag.
+export interface CompanyCount {
+  name: string;
+  regionCode: string;
+  count: number;
+}
+
 export interface ContactFilters {
   agentId?: string;
   isWhatsapp?: boolean;
   company?: string;
+  companyExact?: boolean;
   nationality?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -410,7 +418,12 @@ export class ContactsService {
       });
     }
 
-    if (filters?.company) {
+    if (filters?.company && filters.companyExact) {
+      // Same grouping as findCompanies, so a company link lists exactly its counted contacts.
+      qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
+        company: filters.company,
+      });
+    } else if (filters?.company) {
       qb.andWhere('c.contact_company ILIKE :company', {
         company: `%${filters.company}%`,
       });
@@ -467,6 +480,62 @@ export class ContactsService {
       page,
       limit: take,
     };
+  }
+
+  // Contacts grouped by company name (case and outer spaces ignored) inside the caller's regions.
+  async findCompanies(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    regionCode?: string,
+    caller?: ContactViewer,
+    allRegions = false,
+  ): Promise<{
+    data: CompanyCount[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const take = contactListLimit(limit);
+    const regionCodes = allRegions
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit: take };
+    }
+
+    const qb = this.contactRepository
+      .createQueryBuilder('c')
+      .where('c.company_id = :companyId', { companyId })
+      .andWhere("TRIM(COALESCE(c.contact_company, '')) <> ''");
+    if (regionCodes) {
+      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
+    }
+
+    // One row per company per region; company names group case-insensitively.
+    const [data, totalRow] = await Promise.all([
+      qb
+        .clone()
+        .select('MIN(TRIM(c.contact_company))', 'name')
+        .addSelect('c.region_code', 'regionCode')
+        .addSelect('COUNT(*)::int', 'count')
+        .groupBy('LOWER(TRIM(c.contact_company))')
+        .addGroupBy('c.region_code')
+        .orderBy('count', 'DESC')
+        .addOrderBy('name', 'ASC')
+        .offset(pageSkip(page, take))
+        .limit(take)
+        .getRawMany<CompanyCount>(),
+      qb
+        .clone()
+        .select(
+          'COUNT(DISTINCT (LOWER(TRIM(c.contact_company)), c.region_code))::int',
+          'total',
+        )
+        .getRawOne<{ total: number }>(),
+    ]);
+
+    return { data, total: totalRow?.total ?? 0, page, limit: take };
   }
 
   // Every FULL view of a contact someone else created is audited, no dedup.
@@ -663,6 +732,11 @@ export class ContactsService {
       );
       await manager.update(
         WhatsappChat,
+        { contactId: id, companyId },
+        { contactId: target.id },
+      );
+      await manager.update(
+        PropertyDocument,
         { contactId: id, companyId },
         { contactId: target.id },
       );

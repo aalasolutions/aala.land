@@ -7,10 +7,14 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  Check,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from './unit.entity';
 import { Asset } from './asset.entity';
+import { Contact } from '../../contacts/entities/contact.entity';
+import { Lease } from '../../leases/entities/lease.entity';
+import { WorkOrder } from '../../maintenance/entities/work-order.entity';
 
 export enum DocumentCategory {
   LEASE = 'LEASE',
@@ -31,6 +35,10 @@ export enum DocumentAccessLevel {
 }
 
 @Entity('property_documents')
+@Check(
+  'CHK_property_documents_single_link',
+  'num_nonnulls("unit_id", "asset_id", "contact_id", "lease_id", "work_order_id") <= 1',
+)
 @Index('IDX_property_documents_company_uploaded', ['companyId', 'uploadedBy'])
 export class PropertyDocument {
   @PrimaryGeneratedColumn('uuid')
@@ -42,7 +50,7 @@ export class PropertyDocument {
   @Column({ type: 'varchar', length: 255 })
   url: string;
 
-  @Column({ name: 'file_type', type: 'varchar', length: 50, nullable: true })
+  @Column({ name: 'file_type', type: 'varchar', length: 255, nullable: true })
   fileType: string | null;
 
   @Index('IDX_PROPERTY_DOCUMENTS_UNIT_ID')
@@ -63,6 +71,39 @@ export class PropertyDocument {
     foreignKeyConstraintName: 'FK_c7f883c7b620726dc402fcaf43f',
   })
   asset: Asset;
+
+  @Index('IDX_property_documents_contact')
+  @Column({ name: 'contact_id', type: 'uuid', nullable: true })
+  contactId: string | null;
+
+  @ManyToOne(() => Contact, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'contact_id',
+    foreignKeyConstraintName: 'FK_property_documents_contact',
+  })
+  contact: Contact | null;
+
+  @Index('IDX_property_documents_lease')
+  @Column({ name: 'lease_id', type: 'uuid', nullable: true })
+  leaseId: string | null;
+
+  @ManyToOne(() => Lease, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'lease_id',
+    foreignKeyConstraintName: 'FK_property_documents_lease',
+  })
+  lease: Lease | null;
+
+  @Index('IDX_property_documents_work_order')
+  @Column({ name: 'work_order_id', type: 'uuid', nullable: true })
+  workOrderId: string | null;
+
+  @ManyToOne(() => WorkOrder, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'work_order_id',
+    foreignKeyConstraintName: 'FK_property_documents_work_order',
+  })
+  workOrder: WorkOrder | null;
 
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;

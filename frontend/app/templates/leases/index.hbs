@@ -116,10 +116,13 @@
         as |cell|
       >
         {{#if (eq cell.key "contact.displayName")}}
-          <span class="font-bold" data-test-lease-row>{{or
-              (contact-name cell.row.contact)
-              "Unknown tenant"
-            }}</span>
+          <LinkTo
+            @route="leases.detail"
+            @model={{cell.row.id}}
+            class="font-bold text-primary"
+            data-test-lease-row
+            data-test-lease-detail-link
+          >{{or (contact-name cell.row.contact) "Unknown tenant"}}</LinkTo>
         {{else if (eq cell.key "unit.unitNumber")}}
           {{#if cell.row.unit}}
             <Nuvo::Button

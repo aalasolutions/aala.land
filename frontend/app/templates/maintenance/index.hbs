@@ -78,7 +78,12 @@
           as |cell|
         >
           {{#if (eq cell.key "title")}}
-            <p class="text-sm font-bold" data-test-work-order>{{cell.value}}</p>
+            <p class="text-sm font-bold" data-test-work-order><LinkTo
+                @route="maintenance.detail"
+                @model={{cell.row.id}}
+                class="text-primary"
+                data-test-work-order-detail-link
+              >{{cell.value}}</LinkTo></p>
             {{#if cell.row.vendorId}}<p class="text-muted text-xs"><Ui::Ph
                   @icon="toolbox"
                 />

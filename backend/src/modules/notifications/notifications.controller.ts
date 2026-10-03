@@ -61,14 +61,12 @@ export class NotificationsController {
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('regionCode') regionCode?: string,
   ) {
     return this.notificationsService.findAll(
       requireCompanyId(req.user),
       req.user.userId,
       page,
       limit,
-      regionCode || undefined,
     );
   }
 

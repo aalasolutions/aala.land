@@ -40,7 +40,23 @@ export enum LeadSource {
   OTHER = 'OTHER',
 }
 
+// Each kanban board groups leads by `field` and orders a column by `rank`.
+export const LEAD_BOARDS = {
+  pipeline: { field: 'status', rank: 'rank' },
+  temperature: { field: 'temperature', rank: 'temperatureRank' },
+  agent: { field: 'assignedTo', rank: 'agentRank' },
+} as const;
+
+export type LeadBoard = keyof typeof LEAD_BOARDS;
+
 @Entity('leads')
+@Index('IDX_LEADS_COMPANY_STATUS_RANK', ['companyId', 'status', 'rank'])
+@Index('IDX_LEADS_COMPANY_TEMPERATURE_RANK', [
+  'companyId',
+  'temperature',
+  'temperatureRank',
+])
+@Index('IDX_LEADS_COMPANY_AGENT_RANK', ['companyId', 'assignedTo', 'agentRank'])
 export class Lead {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -166,8 +182,14 @@ export class Lead {
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
   previousAgent: string | null;
 
-  @Column({ type: 'integer', nullable: true })
-  position: number | null;
+  @Column({ type: 'varchar', collation: 'C' })
+  rank: string;
+
+  @Column({ name: 'temperature_rank', type: 'varchar', collation: 'C' })
+  temperatureRank: string;
+
+  @Column({ name: 'agent_rank', type: 'varchar', collation: 'C' })
+  agentRank: string;
 
   @Index('IDX_LEADS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
