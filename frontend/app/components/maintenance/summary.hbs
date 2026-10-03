@@ -97,14 +97,14 @@
     <div class="nu-desc-list__group">
       <dt class="nu-desc-list__term">Estimated Cost</dt>
       <dd class="nu-desc-list__description" data-test-work-order-estimated>{{or
-          (format-currency @workOrder.estimatedCost)
+          (format-money @workOrder.estimatedCost currency=@workOrder.currency)
           "-"
         }}</dd>
     </div>
     <div class="nu-desc-list__group">
       <dt class="nu-desc-list__term">Actual Cost</dt>
       <dd class="nu-desc-list__description" data-test-work-order-actual>{{or
-          (format-currency @workOrder.actualCost)
+          (format-money @workOrder.actualCost currency=@workOrder.currency)
           "-"
         }}</dd>
     </div>

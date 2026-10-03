@@ -78,7 +78,7 @@
     <div class="nu-desc-list__group">
       <dt class="nu-desc-list__term">Monthly Rent</dt>
       <dd class="nu-desc-list__description" data-test-lease-rent>{{or
-          (format-currency @lease.monthlyRent)
+          (format-money @lease.monthlyRent currency=@lease.currency)
           "-"
         }}</dd>
     </div>
@@ -92,7 +92,7 @@
     <div class="nu-desc-list__group">
       <dt class="nu-desc-list__term">Security Deposit</dt>
       <dd class="nu-desc-list__description" data-test-lease-deposit>{{or
-          (format-currency @lease.securityDeposit)
+          (format-money @lease.securityDeposit currency=@lease.currency)
           "-"
         }}</dd>
     </div>

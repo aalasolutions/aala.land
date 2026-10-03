@@ -175,6 +175,7 @@ describe('ContactsController', () => {
           undefined,
           undefined,
           undefined,
+          undefined,
           tagCounts,
         );
 
