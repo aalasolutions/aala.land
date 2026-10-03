@@ -1,126 +1,132 @@
 {{page-title "Companies"}}
 
-<Nuvo::PageHeader
-  @title="Companies"
-  @subtitle="Every account, its rail, its deal, its lock state."
-/>
-
-<Nuvo::Card>
-  <div class="console-list-filters mb-4">
-    <Nuvo::Input
-      class="console-list-filters__search"
-      type="text"
-      placeholder="Search companies..."
-      aria-label="Search companies"
-      @value={{this.search}}
-      @onInput={{this.setSearch}}
-      data-test-companies-search
-    />
-    <Nuvo::Dropdown
-      class="console-list-filters__select"
-      aria-label="Filter by rail"
-      @align="start"
-      @value={{this.railFilter}}
-      @options={{this.railOptions}}
-      @onSelect={{this.setRail}}
-      data-test-companies-rail-filter
-    />
-    <Nuvo::Dropdown
-      class="console-list-filters__select"
-      aria-label="Filter by status"
-      @align="start"
-      @value={{this.statusFilter}}
-      @options={{this.statusOptions}}
-      @onSelect={{this.setStatus}}
-      data-test-companies-status-filter
-    />
-  </div>
-
-  {{#if this.rows.length}}
-    <Nuvo::DataTable
-      @columns={{this.columns}}
-      @rows={{this.rows}}
-      @onRowClick={{this.openCompany}}
-      @pinColumns={{true}}
-      @reorderable={{true}}
-      @sortable={{true}}
-      @showOptions={{true}}
-      @tableId="console-companies"
-      data-test-companies-table
-      as |cell|
-    >
-      {{#if (eq cell.key "name")}}
-        <span class="font-bold" data-test-companies-row={{cell.row.id}}>
-          <LinkTo
-            @route="admin.companies.company"
-            @model={{cell.row.id}}
-            class="console-row__name-link"
-          >{{cell.value}}</LinkTo>
-        </span>
-      {{else if (eq cell.key "tier")}}
-        <Nuvo::Tag
-          class="tag-plan-{{lowercase cell.value}}"
-          @text={{cell.value}}
-        />
-      {{else if (eq cell.key "rail")}}
-        {{if cell.value cell.value "—"}}
-      {{else if (eq cell.key "seatsUsed")}}
-        {{cell.value}}/{{cell.row.seatCap}}
-      {{else if (eq cell.key "mrr.amountMinor")}}
-        {{#if cell.row.mrr}}
-          {{format-money cell.row.mrr.amountMinor cell.row.mrr.currency}}
-        {{else}}
-          <span class="text-muted">—</span>
-        {{/if}}
-      {{else if (eq cell.key "status")}}
-        <span data-test-companies-status={{cell.row.id}}>
-          {{#if (eq cell.value "locked")}}
-            <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
-          {{else if (eq cell.value "lifted")}}
-            <Nuvo::Tag class="tag-account-lifted">
-              lifted until
-              {{format-date cell.row.lockState.liftUntil}}
-            </Nuvo::Tag>
-          {{else if (eq cell.value "deal")}}
-            <Nuvo::Tag class="tag-account-on_deal">
-              {{#if cell.row.deal.lifetime}}
-                lifetime deal
-              {{else}}
-                deal until
-                {{format-date cell.row.deal.untilDate}}
-              {{/if}}
-            </Nuvo::Tag>
-          {{else}}
-            <Nuvo::Tag class="tag-account-active" @text="active" />
-          {{/if}}
-        </span>
-      {{else if (eq cell.key "id")}}
-        <Nuvo::Button
-          @subtle={{true}}
-          @variant="secondary"
-          @size="xs"
-          @icon="caret-right"
-          aria-label="Open {{cell.row.name}}"
-          data-tooltip="Open"
-          data-test-companies-open={{cell.row.id}}
-          {{on "click" (fn this.openCompany cell.row)}}
-        />
-      {{else}}
-        {{cell.value}}
-      {{/if}}
-    </Nuvo::DataTable>
-  {{else}}
-    <p class="text-muted text-center p-4">No companies found.</p>
-  {{/if}}
-
-  <Nuvo::Pagination
-    @selectId="console-companies-limit"
-    @page={{this.page}}
-    @limit={{this.limit}}
-    @total={{this.total}}
-    @onPrevious={{this.previousPage}}
-    @onNext={{this.nextPage}}
-    @onPageChange={{this.goToPage}}
-    @onLimitChange={{this.changeLimit}}
+<div data-test-admin-companies-page class="flex col gap-6">
+  <Nuvo::PageHeader
+    @title="Companies"
+    @subtitle="Every account, its rail, its deal, its lock state."
   />
-</Nuvo::Card>
+
+  <Nuvo::Card>
+    <div class="console-list-filters mb-4">
+      <Nuvo::Input
+        class="console-list-filters__search"
+        type="text"
+        placeholder="Search companies..."
+        aria-label="Search companies"
+        @value={{this.search}}
+        @onInput={{this.setSearch}}
+        data-test-companies-search
+      />
+      <Nuvo::Dropdown
+        class="console-list-filters__select"
+        aria-label="Filter by rail"
+        @align="start"
+        @value={{this.railFilter}}
+        @options={{this.railOptions}}
+        @onSelect={{this.setRail}}
+        data-test-companies-rail-filter
+      />
+      <Nuvo::Dropdown
+        class="console-list-filters__select"
+        aria-label="Filter by status"
+        @align="start"
+        @value={{this.statusFilter}}
+        @options={{this.statusOptions}}
+        @onSelect={{this.setStatus}}
+        data-test-companies-status-filter
+      />
+    </div>
+
+    {{#if this.rows.length}}
+      <Nuvo::DataTable
+        @columns={{this.columns}}
+        @rows={{this.rows}}
+        @onRowClick={{this.openCompany}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="console-companies"
+        data-test-companies-table
+        as |cell|
+      >
+        {{#if (eq cell.key "name")}}
+          <span class="font-bold" data-test-companies-row={{cell.row.id}}>
+            <LinkTo
+              @route="admin.companies.company"
+              @model={{cell.row.id}}
+              class="console-row__name-link"
+            >{{cell.value}}</LinkTo>
+          </span>
+        {{else if (eq cell.key "tier")}}
+          <Nuvo::Tag
+            class="tag-plan-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "rail")}}
+          {{if cell.value cell.value "—"}}
+        {{else if (eq cell.key "seatsUsed")}}
+          {{cell.value}}/{{cell.row.seatCap}}
+        {{else if (eq cell.key "mrr.amountMinor")}}
+          {{#if cell.row.mrr}}
+            {{format-money
+              cell.row.mrr.amountMinor
+              currency=cell.row.mrr.currency
+              minor=true
+            }}
+          {{else}}
+            <span class="text-muted">—</span>
+          {{/if}}
+        {{else if (eq cell.key "status")}}
+          <span data-test-companies-status={{cell.row.id}}>
+            {{#if (eq cell.value "locked")}}
+              <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
+            {{else if (eq cell.value "lifted")}}
+              <Nuvo::Tag class="tag-account-lifted">
+                lifted until
+                {{format-date cell.row.lockState.liftUntil}}
+              </Nuvo::Tag>
+            {{else if (eq cell.value "deal")}}
+              <Nuvo::Tag class="tag-account-on_deal">
+                {{#if cell.row.deal.lifetime}}
+                  lifetime deal
+                {{else}}
+                  deal until
+                  {{format-date cell.row.deal.untilDate}}
+                {{/if}}
+              </Nuvo::Tag>
+            {{else}}
+              <Nuvo::Tag class="tag-account-active" @text="active" />
+            {{/if}}
+          </span>
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @subtle={{true}}
+            @variant="secondary"
+            @size="xs"
+            @icon="caret-right"
+            aria-label="Open {{cell.row.name}}"
+            data-tooltip="Open"
+            data-test-companies-open={{cell.row.id}}
+            {{on "click" (fn this.openCompany cell.row)}}
+          />
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </Nuvo::DataTable>
+    {{else}}
+      <p class="text-muted text-center p-4">No companies found.</p>
+    {{/if}}
+
+    <Nuvo::Pagination
+      @selectId="console-companies-limit"
+      @page={{this.page}}
+      @limit={{this.limit}}
+      @total={{this.total}}
+      @onPrevious={{this.previousPage}}
+      @onNext={{this.nextPage}}
+      @onPageChange={{this.goToPage}}
+      @onLimitChange={{this.changeLimit}}
+    />
+  </Nuvo::Card>
+</div>

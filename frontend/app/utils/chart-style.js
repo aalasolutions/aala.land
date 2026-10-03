@@ -1,3 +1,5 @@
+import { moneyFormatter as buildMoneyFormatter } from './money';
+
 const FALLBACKS = {
   '--primary': '#1ab5a5',
   '--success': '#059669',
@@ -39,18 +41,7 @@ export function withAlpha(color, alpha) {
 }
 
 export function moneyFormatter(locale, currency, fractionDigits = 0) {
-  try {
-    const format = new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: fractionDigits,
-    });
-    return (value) => format.format(value);
-  } catch (error) {
-    console.error(`moneyFormatter: currency "${currency}" rejected`, error);
-    return (value) =>
-      `${currency ?? ''} ${(Number(value) || 0).toLocaleString(locale)}`.trim();
-  }
+  return buildMoneyFormatter(locale, { currency, fractionDigits });
 }
 
 export function compactFormatter(locale) {

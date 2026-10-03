@@ -262,7 +262,8 @@
             {{else if (eq cell.key "amount")}}
               <span class="font-bold">{{format-money
                   cell.value
-                  cell.row.currency
+                  currency=cell.row.currency
+                  minor=true
                 }}</span>
             {{else if (eq cell.key "type")}}
               {{#if (eq cell.value "payment_succeeded")}}

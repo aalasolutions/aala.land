@@ -48,7 +48,7 @@
             data-test-system-price-row={{cell.row.id}}
           >{{cell.value}}</span>
         {{else if (eq cell.key "unitAmount")}}
-          {{format-money cell.value cell.row.currency}}
+          {{format-money cell.value currency=cell.row.currency minor=true}}
         {{else if (eq cell.key "status")}}
           {{#if (eq cell.value "registered")}}
             <Nuvo::Tag class="tag-sub-active" @text="Registered" />

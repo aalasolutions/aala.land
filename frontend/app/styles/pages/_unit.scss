@@ -1,22 +1,153 @@
-// Only the photo gallery is bespoke; everything else resolves to a kit component.
+// Only the photo gallery and the summary rail are bespoke; everything else resolves to a kit component.
 @use "@nuvoui/ember/styles/common/var" as *;
 @use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "../variables" as vars;
 
 .unit-detail-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: nu-space(6);
 
   @include media-down(lg) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.unit-media {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: nu-radius(2xl);
+  box-shadow: nu-shadow(md);
+
+  &:has(.unit-photo-placeholder) {
+    box-shadow: none;
+  }
+}
+
+.unit-media__tools {
+  position: absolute;
+  inset-block-start: nu-space(3);
+  inset-inline-end: nu-space(3);
+  z-index: nu-z(base);
+
+  .nu-btn {
+    box-shadow: nu-shadow(md);
+  }
+
+  .nu-spinner {
+    --nu-spinner--SpinColor: var(--text-inverted);
+    --nu-spinner--TrackColor: #{nu-tint(text-inverted, 35%)};
+  }
+}
+
+.unit-media__lane {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  display: flex;
+  gap: nu-space(2);
+  padding: nu-space(10) nu-space(3) nu-space(3);
+  overflow-x: auto;
+  background: linear-gradient(to top, nu-scrim(75%), transparent);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .unit-thumb {
+    flex-shrink: 0;
+    inline-size: 5.5rem;
+    block-size: 4rem;
+    border-color: var(--bg-surface);
+    box-shadow: nu-shadow(sm);
+  }
+
+  .unit-thumb-primary {
+    border-color: var(--primary);
+  }
+
+  .unit-thumb.is-active {
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+}
+
+.unit-summary {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(3);
+
+  > p {
+    margin: 0;
+  }
+}
+
+.unit-summary__heading {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+
+  > * {
+    margin: 0;
+  }
+}
+
+.unit-summary__price {
+  font-size: nu-font-size(2xl);
+  font-weight: nu-font-weight(bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--success);
+}
+
+.unit-summary__specs {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  padding-block: nu-space(3);
+  margin: 0;
+  border-block: 1px solid var(--border-base);
+}
+
+.unit-summary__spec {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: nu-space(1);
+  padding-inline: nu-space(4);
+
+  &:first-child {
+    padding-inline-start: 0;
+  }
+
+  & + & {
+    border-inline-start: 1px solid var(--border-base);
+  }
+
+  dt {
+    display: flex;
+    gap: nu-space(1);
+    align-items: center;
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: nu-font-size(lg);
+    font-weight: nu-font-weight(semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    color: var(--text-color);
   }
 }
 
 .unit-main-photo {
+  flex: 1 1 auto;
   inline-size: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: #{nu-radius(lg)};
   background: var(--bg-alternate);
 
   img {
@@ -99,7 +230,7 @@
 
 .upload-preview-active {
   position: relative;
-  border-radius: #{nu-radius(lg)};
+  border-radius: #{nu-radius(2xl)};
   overflow: hidden;
 
   img {
@@ -113,7 +244,7 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.15);
-    border-radius: #{nu-radius(lg)};
+    border-radius: #{nu-radius(2xl)};
   }
 }
 
@@ -123,9 +254,11 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  min-block-size: 300px;
+  flex: 1 1 auto;
+  aspect-ratio: 4 / 3;
   border: 2px dashed var(--border-base);
-  border-radius: #{nu-radius(lg)};
+  border-radius: #{nu-radius(2xl)};
+  background: vars.$empty-photo-tint;
   color: var(--text-muted);
   font-size: 64px;
 }

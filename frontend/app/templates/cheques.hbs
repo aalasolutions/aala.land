@@ -56,7 +56,10 @@
               {{/if}}
             </span>
           {{else if (eq cell.key "amount")}}
-            <span class="font-bold">{{format-currency cell.value}}</span>
+            <span class="font-bold"><Money
+                @amount={{cell.value}}
+                @currency={{cell.row.currency}}
+              /></span>
           {{else if (eq cell.key "dueDate")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "type")}}
@@ -232,16 +235,17 @@
                         {{format-date cheque.dueDate}}</p>
                     </:main>
                     <:actions>
-                      <p class="text-sm font-bold">{{format-currency
-                          cheque.amount
-                        }}</p>
+                      <p class="text-sm font-bold"><Money
+                          @amount={{cheque.amount}}
+                          @currency={{cheque.currency}}
+                        /></p>
                     </:actions>
                   </Nuvo::ListItem>
                 {{/each}}
               </div>
               {{#if group.totalAmount}}
                 <p class="text-sm font-bold text-end mt-2">Total:
-                  {{format-currency group.totalAmount}}</p>
+                  <Money @amount={{group.totalAmount}} /></p>
               {{/if}}
             </Nuvo::Panel>
           {{/each}}

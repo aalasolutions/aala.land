@@ -36,6 +36,11 @@ export default class PropertiesDetailController extends Controller {
     this.archived = value || 'exclude';
   }
 
+  detailViewOptions = [
+    { value: 'cards', label: 'Cards', icon: 'squares-four' },
+    { value: 'list', label: 'List', icon: 'list' },
+  ];
+
   @tracked detailView = null;
 
   get currentDetailView() {

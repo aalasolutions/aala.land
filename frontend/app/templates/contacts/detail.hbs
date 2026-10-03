@@ -23,7 +23,7 @@
           {{#each @model.contact.tags as |tag|}}
             <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
           {{else}}
-            <span class="text-muted text-sm">Contact</span>
+            <Nuvo::Tag class="tag-contact-other" @text="Contact" />
           {{/each}}
         </div>
       {{/if}}
@@ -298,7 +298,7 @@
                     @text={{cell.value}}
                   />
                 {{else if (eq cell.key "price")}}
-                  {{format-currency cell.value}}
+                  <Money @amount={{cell.value}} />
                 {{else if (eq cell.key "id")}}
                   <Nuvo::Button
                     @variant="secondary"
@@ -386,7 +386,7 @@
                 {{else if (eq cell.key "endDate")}}
                   {{format-date cell.value}}
                 {{else if (eq cell.key "monthlyRent")}}
-                  {{format-currency cell.value}}
+                  <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
                 {{else}}
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}
@@ -452,11 +452,11 @@
                       <span>Source: {{lead.source}}</span>
                       {{#if lead.budgetMin}}
                         <span>Budget:
-                          {{format-currency lead.budgetMin}}{{#if
+                          <Money @amount={{lead.budgetMin}} />{{#if
                             lead.budgetMax
                           }}
                             &ndash;
-                            {{format-currency lead.budgetMax}}{{/if}}</span>
+                            <Money @amount={{lead.budgetMax}} />{{/if}}</span>
                       {{/if}}
                       <span>Created {{format-date lead.createdAt}}</span>
                     </div>

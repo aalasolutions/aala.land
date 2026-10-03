@@ -135,7 +135,10 @@
             />
           {{/if}}
         {{else if (eq cell.key "monthlyRent")}}
-          <span class="text-muted">{{format-currency cell.value}}/mo</span>
+          <span class="text-muted"><Money
+              @amount={{cell.value}}
+              @currency={{cell.row.currency}}
+            />/mo</span>
         {{else if (eq cell.key "startDate")}}
           <span class="text-muted">{{format-date cell.value}} - {{format-date cell.row.endDate}}</span>
         {{else if (eq cell.key "status")}}

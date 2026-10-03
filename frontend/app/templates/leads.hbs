@@ -7,12 +7,6 @@
     @subtitle="Track and manage your leads through the pipeline."
   >
     <:actions>
-      <Nuvo::Segmented
-        @options={{this.viewTabs}}
-        @value={{this.viewMode}}
-        @onChange={{this.setViewMode}}
-        data-test-view-toggle
-      />
       <Nuvo::Button
         @variant="primary"
         @icon="plus"
@@ -24,7 +18,15 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  {{! Agent board columns are already the ownership breakdown }}
+  <div class="flex end" data-test-leads-toolbar>
+    <Nuvo::Segmented
+      @options={{this.viewTabs}}
+      @value={{this.viewMode}}
+      @onChange={{this.setViewMode}}
+      data-test-view-toggle
+    />
+  </div>
+ {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
     <Nuvo::Tabs
       @tabs={{this.filterTabs}}
@@ -33,7 +35,6 @@
       data-test-lead-filters
     />
   {{/unless}}
-
   {{#if (eq this.viewMode "pipeline")}}
     <div
       class="nu-kanban
@@ -610,10 +611,10 @@
           {{/if}}
           <Nuvo::InfoRow @label="Budget">
             {{#if this.detailLead.budgetMin}}
-              {{format-currency this.detailLead.budgetMin}}
+              <Money @amount={{this.detailLead.budgetMin}} />
               {{#if this.detailLead.budgetMax}}
                 &ndash;
-                {{format-currency this.detailLead.budgetMax}}
+                <Money @amount={{this.detailLead.budgetMax}} />
               {{/if}}
             {{else}}
               <span class="text-muted">Not specified</span>

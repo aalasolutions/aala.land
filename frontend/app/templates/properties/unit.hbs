@@ -54,153 +54,7 @@
     {{/if}}
 
     <div class="unit-detail-grid">
-      <div class="flex col gap-4">
-        <Nuvo::Card class="flex col gap-3">
-          <div class="flex between x-center">
-            <h1 data-test-unit-title class="text-2xl font-bold">Property
-              {{@model.unit.unitNumber}}</h1>
-            <div class="flex gap-2 wrap">
-              {{#unless this.isArchived}}
-                <Nuvo::Button
-                  @variant="secondary"
-                  @size="sm"
-                  @icon="pencil-simple"
-                  data-test-edit-btn
-                  {{on "click" this.openEdit}}
-                >
-                  Edit
-                </Nuvo::Button>
-                {{#if this.canArchiveUnit}}
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="sm"
-                    @icon="archive"
-                    data-test-archive-unit
-                    {{on "click" (fn this.openUnitAction "archive")}}
-                  >
-                    Archive
-                  </Nuvo::Button>
-                {{/if}}
-              {{/unless}}
-              {{#if this.canDeleteUnit}}
-                <Nuvo::Button
-                  @variant="danger"
-                  @size="sm"
-                  @icon="trash"
-                  data-test-delete-unit
-                  {{on "click" (fn this.openUnitAction "delete")}}
-                >
-                  Delete
-                </Nuvo::Button>
-              {{/if}}
-            </div>
-          </div>
-
-          {{#if @model.unit.asset}}
-            <p class="text-muted text-sm">
-              {{@model.unit.asset.name}}
-              {{#if @model.unit.asset.locality}}
-                &middot;
-                {{@model.unit.asset.locality.name}}
-              {{/if}}
-            </p>
-          {{/if}}
-
-          {{#if @model.unit.price}}
-            <p
-              data-test-unit-price
-              class="text-2xl font-bold text-success"
-            >{{format-currency @model.unit.price}}</p>
-          {{/if}}
-
-          <div class="flex gap-4 text-sm flex wrap" data-test-unit-specs>
-            {{#if @model.unit.bedrooms}}
-              <span class="flex x-center gap-1"><Ui::Ph @icon="bed" />
-                {{@model.unit.bedrooms}}
-                Beds</span>
-            {{/if}}
-            {{#if @model.unit.bathrooms}}
-              <span class="flex x-center gap-1"><Ui::Ph @icon="bathtub" />
-                {{@model.unit.bathrooms}}
-                Baths</span>
-            {{/if}}
-            {{#if @model.unit.sqFt}}
-              <span class="flex x-center gap-1"><Ui::Ph @icon="ruler" />
-                {{format-number @model.unit.sqFt}}
-                sqft</span>
-            {{/if}}
-            {{#if @model.unit.floor}}
-              <span class="flex x-center gap-1"><Ui::Ph @icon="stairs" />
-                Floor
-                {{@model.unit.floor}}</span>
-            {{/if}}
-          </div>
-
-          <div class="flex gap-3 x-center" data-test-unit-badges>
-            <Nuvo::Tag class="tag-unit-{{lowercase @model.unit.status}}">
-              {{capitalize @model.unit.status}}
-            </Nuvo::Tag>
-            {{#if @model.unit.propertyType}}
-              <Nuvo::Tag
-                class="tag-proptype-{{lowercase @model.unit.propertyType}}"
-              >
-                {{property-type-label @model.unit.propertyType}}
-              </Nuvo::Tag>
-            {{/if}}
-          </div>
-
-          {{#if @model.unit.owner}}
-            <div class="flex x-center gap-2 text-sm" data-test-unit-owner>
-              <Ui::Ph @icon="user" />
-              <span class="text-muted">Owner:</span>
-              <LinkTo
-                data-test-owner-link
-                @route="contacts.detail"
-                @model={{@model.unit.owner.id}}
-                class="text-primary owner-link"
-              >
-                {{contact-name @model.unit.owner}}
-              </LinkTo>
-            </div>
-          {{/if}}
-        </Nuvo::Card>
-
-        {{#if @model.unit.amenities.length}}
-          <Nuvo::Card data-test-amenities-card>
-            <h2
-              class="text-sm font-bold uppercase text-muted mb-3"
-            >Amenities</h2>
-            <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
-          </Nuvo::Card>
-        {{/if}}
-      </div>
-
-
-      <Nuvo::Card class="flex col gap-4">
-        <div class="flex between x-center mb-2">
-          <h2 class="text-sm font-bold uppercase text-muted">Photos</h2>
-          {{#unless this.isArchived}}
-            <label
-              class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
-              data-test-upload-photo-btn
-            >
-              <Ui::Ph @icon="camera-plus" />
-              <span class="nu-btn__label">{{if
-                  this.isUploading
-                  this.uploadStatus
-                  "Add Photo"
-                }}</span>
-              <input
-                data-test-photo-upload-input
-                type="file"
-                class="sr-only"
-                accept="image/jpeg,image/png,image/webp"
-                {{on "change" this.uploadPhoto}}
-              />
-            </label>
-          {{/unless}}
-        </div>
-
+      <div class="unit-media">
         {{#if this.isUploading}}
           <div class="upload-progress" data-test-upload-progress>
             <div class="upload-progress-bar">
@@ -218,7 +72,56 @@
               height="1000"
             />
           </div>
-          <div class="flex gap-2 wrap">
+        {{else if this.previewUrl}}
+          <div
+            class="unit-main-photo upload-preview-active"
+            data-test-upload-preview
+          >
+            <img
+              src={{this.previewUrl}}
+              alt="Uploading preview"
+              width="1600"
+              height="1000"
+            />
+          </div>
+        {{else}}
+          <div class="unit-photo-placeholder" data-test-photo-placeholder>
+            <Ui::Ph @icon="image" />
+            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
+          </div>
+        {{/if}}
+
+        {{#unless this.isArchived}}
+          <div class="unit-media__tools">
+            <label
+              class="nu-btn m-primary m-circle {{if this.isUploading 'is-disabled'}}"
+              data-tooltip="Add photo"
+              data-tooltip-position="start"
+              data-test-upload-photo-btn
+            >
+              {{#if this.isUploading}}
+                <Nuvo::Spinner @size="sm" />
+              {{else}}
+                <Ui::Ph @icon="camera-plus" />
+              {{/if}}
+              <span class="sr-only">{{if
+                  this.isUploading
+                  this.uploadStatus
+                  "Add photo"
+                }}</span>
+              <input
+                data-test-photo-upload-input
+                type="file"
+                class="sr-only"
+                accept="image/jpeg,image/png,image/webp"
+                {{on "change" this.uploadPhoto}}
+              />
+            </label>
+          </div>
+        {{/unless}}
+
+        {{#if @model.media.length}}
+          <div class="unit-media__lane">
             {{#each @model.media as |media|}}
               <div
                 class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}} {{if (eq media.id this.activePhoto.id) 'is-active'}}"
@@ -279,24 +182,143 @@
               </div>
             {{/if}}
           </div>
-        {{else if this.previewUrl}}
-          <div
-            class="unit-main-photo upload-preview-active"
-            data-test-upload-preview
-          >
-            <img
-              src={{this.previewUrl}}
-              alt="Uploading preview"
-              width="1600"
-              height="1000"
-            />
-          </div>
-        {{else}}
-          <div class="unit-photo-placeholder" data-test-photo-placeholder>
-            <Ui::Ph @icon="image" />
-            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
-          </div>
         {{/if}}
+      </div>
+
+      <Nuvo::Card>
+        <div class="unit-summary">
+          <div class="flex between x-center gap-2 wrap">
+            <div class="flex gap-1 wrap" data-test-unit-badges>
+              <Nuvo::Tag class="tag-unit-{{lowercase @model.unit.status}}">
+                {{capitalize @model.unit.status}}
+              </Nuvo::Tag>
+              <Nuvo::Tag
+                class="tag-proptype-{{lowercase @model.unit.propertyType}}"
+              >
+                {{property-type-label @model.unit.propertyType}}
+              </Nuvo::Tag>
+            </div>
+            <div class="flex gap-2 wrap">
+              {{#unless this.isArchived}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="sm"
+                  @icon="pencil-simple"
+                  data-test-edit-btn
+                  {{on "click" this.openEdit}}
+                >
+                  Edit
+                </Nuvo::Button>
+                {{#if this.canArchiveUnit}}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="sm"
+                    @icon="archive"
+                    data-test-archive-unit
+                    {{on "click" (fn this.openUnitAction "archive")}}
+                  >
+                    Archive
+                  </Nuvo::Button>
+                {{/if}}
+              {{/unless}}
+              {{#if this.canDeleteUnit}}
+                <Nuvo::Button
+                  @variant="danger"
+                  @outline={{true}}
+                  @size="sm"
+                  @icon="trash"
+                  data-test-delete-unit
+                  {{on "click" (fn this.openUnitAction "delete")}}
+                >
+                  Delete
+                </Nuvo::Button>
+              {{/if}}
+            </div>
+          </div>
+
+          <div class="unit-summary__heading">
+            <h1 data-test-unit-title class="text-2xl font-bold">Property
+              {{@model.unit.unitNumber}}</h1>
+            {{#if @model.unit.asset}}
+              <p class="text-muted text-sm">
+                {{@model.unit.asset.name}}
+                {{#if @model.unit.asset.locality}}
+                  &middot;
+                  {{@model.unit.asset.locality.name}}
+                {{/if}}
+              </p>
+            {{/if}}
+          </div>
+
+          {{#if @model.unit.price}}
+            <p
+              data-test-unit-price
+              class="unit-summary__price"
+            ><Money @amount={{@model.unit.price}} /></p>
+          {{/if}}
+
+          {{#if
+            (or
+              @model.unit.bedrooms
+              @model.unit.bathrooms
+              @model.unit.sqFt
+              @model.unit.floor
+            )
+          }}
+            <dl class="unit-summary__specs" data-test-unit-specs>
+              {{#if @model.unit.bedrooms}}
+                <div class="unit-summary__spec">
+                  <dt><Ui::Ph @icon="bed" /> Beds</dt>
+                  <dd>{{@model.unit.bedrooms}}</dd>
+                </div>
+              {{/if}}
+              {{#if @model.unit.bathrooms}}
+                <div class="unit-summary__spec">
+                  <dt><Ui::Ph @icon="bathtub" /> Baths</dt>
+                  <dd>{{@model.unit.bathrooms}}</dd>
+                </div>
+              {{/if}}
+              {{#if @model.unit.sqFt}}
+                <div class="unit-summary__spec">
+                  <dt><Ui::Ph @icon="ruler" /> sqft</dt>
+                  <dd>{{format-number @model.unit.sqFt}}</dd>
+                </div>
+              {{/if}}
+              {{#if @model.unit.floor}}
+                <div class="unit-summary__spec">
+                  <dt><Ui::Ph @icon="stairs" /> Floor</dt>
+                  <dd>{{@model.unit.floor}}</dd>
+                </div>
+              {{/if}}
+            </dl>
+          {{/if}}
+
+          {{#if @model.unit.owner}}
+            <div class="nu-info-row" data-test-unit-owner>
+              <span class="nu-info-row__label"><Ui::Ph @icon="user" />
+                Owner</span>
+              <span class="nu-info-row__value">
+                <LinkTo
+                  data-test-owner-link
+                  @route="contacts.detail"
+                  @model={{@model.unit.owner.id}}
+                  class="text-primary owner-link"
+                >
+                  {{contact-name @model.unit.owner}}
+                </LinkTo>
+              </span>
+            </div>
+          {{/if}}
+
+          {{#if @model.unit.amenities.length}}
+            <div data-test-amenities-card>
+              <h2
+                class="text-xs font-bold uppercase text-muted mb-2"
+              >Amenities</h2>
+              <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
+            </div>
+          {{/if}}
+        </div>
       </Nuvo::Card>
     </div>
 
@@ -364,7 +386,7 @@
           {{else if (eq cell.key "endDate")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "monthlyRent")}}
-            {{format-currency cell.value}}
+            <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
           {{else if (eq cell.key "status")}}
             <div class="flex gap-1 wrap">
               <Nuvo::Tag class="tag-lease-{{lowercase cell.value}}">

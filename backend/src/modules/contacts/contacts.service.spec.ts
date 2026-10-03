@@ -788,6 +788,88 @@ describe('ContactsService', () => {
         { dateTo: '2026-08-15' },
       );
     });
+
+    it('counts every tag on a clone taken after the filters and before the tag filter', async () => {
+      const qb = stubQueryBuilders();
+      const countQb = qbMock({});
+      countQb.getRawOne = jest.fn().mockResolvedValue({
+        total: '9',
+        lead: '4',
+        tenant: '2',
+        owner: '3',
+        portfolio_owner: '1',
+      });
+      let clausesAtClone: string[] = [];
+      qb.clone = jest.fn(() => {
+        clausesAtClone = qb.andWhere.mock.calls.map(([sql]) => String(sql));
+        return countQb;
+      });
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'lead',
+        {
+          isWhatsapp: true,
+          tagCounts: true,
+        },
+      );
+
+      expect(result.tagCounts).toEqual({
+        all: 9,
+        lead: 4,
+        tenant: 2,
+        owner: 3,
+        portfolio_owner: 1,
+      });
+      expect(clausesAtClone).toContain('c.is_whatsapp = :isWhatsapp');
+      expect(clausesAtClone.some((sql) => sql.includes('FROM leads l'))).toBe(
+        false,
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('FROM leads l'),
+      );
+      expect(countQb.select).toHaveBeenCalledWith('COUNT(*)', 'total');
+      expect(countQb.addSelect.mock.calls.map(([, alias]) => alias)).toEqual([
+        'lead',
+        'tenant',
+        'owner',
+        'portfolio_owner',
+      ]);
+    });
+
+    it('leaves tagCounts out unless asked', async () => {
+      const qb = stubQueryBuilders();
+      qb.clone = jest.fn();
+
+      const result = await service.findAll(companyId, 1, 20);
+
+      expect(result).not.toHaveProperty('tagCounts');
+      expect(qb.clone).not.toHaveBeenCalled();
+    });
+
+    it('returns zero tagCounts without a query when the caller holds no region', async () => {
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        { tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: [] },
+      );
+
+      expect(result.tagCounts).toEqual({
+        all: 0,
+        lead: 0,
+        tenant: 0,
+        owner: 0,
+        portfolio_owner: 0,
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
   });
 
   describe('remove', () => {

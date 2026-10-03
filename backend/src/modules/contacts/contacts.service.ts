@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { contactListLimit, pageSkip } from '@shared/utils/pagination.util';
-import { Brackets, DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
@@ -62,6 +68,8 @@ export function isContactTag(value: string): value is ContactTag {
   return (CONTACT_TAGS as readonly string[]).includes(value);
 }
 
+export type ContactTagCounts = Record<'all' | ContactTag, number>;
+
 // Roles that may fold new details into an existing contact; everyone else gets CONTACT_EXISTS.
 const MERGE_ROLES: string[] = [
   Role.SUPER_ADMIN,
@@ -100,6 +108,7 @@ export interface ContactFilters {
   allRegions?: boolean;
   // Default order is newest first.
   sort?: 'name';
+  tagCounts?: boolean;
 }
 
 export interface ResolvedContact {
@@ -364,6 +373,7 @@ export class ContactsService {
     total: number;
     page: number;
     limit: number;
+    tagCounts?: ContactTagCounts;
   }> {
     const take = contactListLimit(limit);
     // Search and the all-regions view are company-wide; the presenter guards the personal fields.
@@ -372,7 +382,13 @@ export class ContactsService {
       ? null
       : effectiveRegionCodes(filters?.regionCode, caller);
     if (regionCodes?.length === 0) {
-      return { data: [], total: 0, page, limit: take };
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit: take,
+        ...(filters?.tagCounts && { tagCounts: this.toTagCounts() }),
+      };
     }
 
     const qb = this.contactRepository
@@ -385,11 +401,6 @@ export class ContactsService {
 
     if (search?.trim()) {
       qb.andWhere(this.searchSql(search.trim()));
-    }
-
-    if (tag) {
-      // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
-      qb.andWhere(this.tagExistsSql('c.id', tag));
     }
 
     if (filters?.agentId) {
@@ -440,6 +451,16 @@ export class ContactsService {
       });
     }
 
+    // Cloned before the tag filter so every total shares the list's scope and filters.
+    const tagCounts = filters?.tagCounts
+      ? await this.countByTag(qb.clone())
+      : undefined;
+
+    if (tag) {
+      // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
+      qb.andWhere(this.tagExistsSql('c.id', tag));
+    }
+
     if (filters?.sort === 'name') {
       qb.orderBy('LOWER(c.first_name)', 'ASC', 'NULLS LAST')
         .addOrderBy('LOWER(c.last_name)', 'ASC', 'NULLS LAST')
@@ -454,6 +475,7 @@ export class ContactsService {
 
     return {
       data: await this.contactPrivacy.presentMany(companyId, caller, withTags),
+      ...(tagCounts && { tagCounts }),
       total,
       page,
       limit: take,
@@ -758,6 +780,27 @@ export class ContactsService {
       case 'portfolio_owner':
         return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
+  }
+
+  private async countByTag(
+    qb: SelectQueryBuilder<Contact>,
+  ): Promise<ContactTagCounts> {
+    qb.select('COUNT(*)', 'total');
+    for (const tag of CONTACT_TAGS) {
+      qb.addSelect(
+        `COUNT(*) FILTER (WHERE ${this.tagExistsSql('c.id', tag)})`,
+        tag,
+      );
+    }
+    return this.toTagCounts(await qb.getRawOne<Record<string, string>>());
+  }
+
+  private toTagCounts(raw: Record<string, string> = {}): ContactTagCounts {
+    const counts = { all: Number(raw.total ?? 0) } as ContactTagCounts;
+    for (const tag of CONTACT_TAGS) {
+      counts[tag] = Number(raw[tag] ?? 0);
+    }
+    return counts;
   }
 
   // Batch-computes tags for a page as 3 queries instead of N+1; every subquery is company-scoped.

@@ -71,3 +71,5 @@ $z-toast: 9999;
 $transition-fast: 150ms ease;
 $transition-normal: 200ms ease;
 $transition-slow: 300ms ease;
+
+$empty-photo-tint: color-mix(in srgb, var(--primary) 5%, var(--bg-surface));

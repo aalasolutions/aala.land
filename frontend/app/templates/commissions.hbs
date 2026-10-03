@@ -63,9 +63,15 @@
             @text={{cell.value}}
           />
         {{else if (eq cell.key "commissionAmount")}}
-          <span class="font-bold">{{format-currency cell.value}}
+          <span class="font-bold"><Money
+              @amount={{cell.value}}
+              @currency={{cell.row.currency}}
+            />
             /
-            {{format-currency cell.row.grossAmount}}</span>
+            <Money
+              @amount={{cell.row.grossAmount}}
+              @currency={{cell.row.currency}}
+            /></span>
         {{else if (eq cell.key "commissionRate")}}
           {{cell.value}}%
         {{else if (eq cell.key "status")}}

@@ -156,6 +156,39 @@ describe('ContactsController', () => {
     });
   });
 
+  describe('findAll tagCounts', () => {
+    it('asks for tag totals only on tagCounts=true', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const call = (tagCounts?: string) =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          tagCounts,
+        );
+
+      await call('true');
+      expect(service.findAll.mock.calls[0][5]?.tagCounts).toBe(true);
+
+      await call('false');
+      expect(service.findAll.mock.calls[1][5]?.tagCounts).toBeUndefined();
+
+      await call();
+      expect(service.findAll.mock.calls[2][5]?.tagCounts).toBeUndefined();
+    });
+  });
+
   describe('findAll sort', () => {
     it('passes sort=name and rejects any other value', async () => {
       service.findAll.mockResolvedValue(paginated as any);

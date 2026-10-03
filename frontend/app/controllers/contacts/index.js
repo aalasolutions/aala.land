@@ -13,6 +13,7 @@ import {
   contactToFormFields,
 } from '../../utils/contact-form';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
+import { formatNumber } from '../../helpers/format-number';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
 
 export const CONTACTS_TAB = 'contacts';
@@ -60,7 +61,14 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked tab = CONTACTS_TAB;
   @tracked requestedContactIds = [];
 
-  roleTabs = ROLE_TABS;
+  get roleTabs() {
+    const counts = this.model?.tagCounts;
+    if (!counts) return ROLE_TABS;
+    return ROLE_TABS.map((tab) => ({
+      ...tab,
+      label: `${tab.label} ${formatNumber([counts[tab.id || 'all']])}`,
+    }));
+  }
 
   get canViewCompanies() {
     return canViewContactCompanies(this.auth.currentUser?.role);

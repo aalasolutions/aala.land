@@ -20,20 +20,37 @@
 
 ---
 
-Manage properties, leads, leases, maintenance, cheques, commissions and teams from one dashboard. WhatsApp-first communication, multi-region currency support, and a boss dashboard for real-time agent tracking.
+Run your whole agency from one place: the properties, the leads, the leases, the money and the team. Built for brokerages that live on WhatsApp and work in more than one market. Free to self-host for your own business.
+
+## Why teams use it
+
+- **Keep your clients closer.** Every lead's WhatsApp conversation and history stay on the lead, not on one agent's phone, so a handover never starts from zero.
+- **Know what your team is doing today.** A live dashboard shows the pipeline, response times, red flags and who needs help.
+- **Stay on top of the money.** Income, expenses and commissions in one place, with every post-dated cheque on a collection schedule.
+- **Stop running the business on spreadsheets.** Properties, leases, maintenance and documents live in one system.
+- **Sell in more than one market.** Each region has its own currency and its own view of the data.
 
 ## Features
 
 | Area | What you get |
 | --- | --- |
-| Properties | Area, building and unit hierarchy with bulk CSV import; unit pages with photos, specs and amenities; occupancy analytics; rent and sale listings for portals |
-| Lead CRM | Kanban with pipeline, temperature, agent and list views; scoring, assignment and conversion tracking; stage duration and bottlenecks; transfer history with handover notifications |
-| Financial | Income and expense tracking by payment method; post-dated cheques with bounce tracking and a collection schedule; commission workflow (create, approve, pay); deposit reminders and rent collection queries |
-| Operations | Lease lifecycle (create, renew, terminate); maintenance work orders with vendor assignment and cost tracking; preventive maintenance schedules; documents with categories, access levels and versioning |
-| Communication | WhatsApp threads per lead through the Meta Cloud API, with inbound and outbound media; email templates with variables; a contact book for leads, tenants, owners and vendors; notifications with configurable reminder rules |
-| Boss dashboard | Real-time KPIs, red flags and pipeline funnel; agent comparison and achievements; response-time metrics and bottleneck analysis; activity feed from the audit log |
-| Multi-region | Configurable regions and cities for any market; automatic currency per region; region-filtered data in every module; active regions per company |
-| Security | Multi-tenant isolation, every query scoped by company; roles: super admin, company admin, admin, manager, agent, accountant; full audit log with mutation history; rate limiting, helmet, CORS and input validation |
+| Properties | Buildings and units with photos and specs, bulk import, occupancy, listings for rent and sale |
+| Leads | Kanban pipeline, scoring, assignment, transfer history |
+| WhatsApp | Conversations per lead on your own number, with media and optional AI replies |
+| Money | Income and expenses, post-dated cheques, commissions from creation to payout |
+| Leases and maintenance | Lease create, renew and terminate; work orders with vendors and costs; scheduled maintenance |
+| Contacts and documents | One contact book for leads, tenants, owners and vendors; documents with access levels and versions |
+| Boss dashboard | Live KPIs, red flags, agent comparison, activity feed |
+| Regions | Any market, its own currency, data filtered by region |
+| Access and audit | Roles from agent to company admin, each company's data isolated, every change logged |
+
+**Need an Enterprise setup or a customization?** Reach out at [info@aala.land](mailto:info@aala.land).
+
+---
+
+## For developers
+
+Everything below is for running, deploying and contributing to the code.
 
 ## Tech stack
 
@@ -44,7 +61,6 @@ Manage properties, leads, leases, maintenance, cheques, commissions and teams fr
 | Database | PostgreSQL 18 |
 | Cache and queues | Valkey (Redis-compatible), BullMQ |
 | Storage | Any S3-compatible bucket |
-| Mobile | Capacitor, shared codebase |
 
 ## Quick start
 
@@ -140,7 +156,6 @@ aala.land/
     app/components/        Reusable UI
     app/services/          Auth, session, region, notifications, WhatsApp
     app/templates/         Handlebars templates
-    nuvoui/                The NuvoUI Ember kit
     docker-compose.yml     Production frontend (nginx serving the build)
   docker-compose.yml       Local infrastructure (Postgres, Valkey, MinIO)
   deploy.sh                One-shot production deploy
@@ -150,16 +165,7 @@ aala.land/
 
 ## API
 
-All endpoints are prefixed with `/v1/`. Every response has the same envelope:
-
-```json
-{
-  "success": true,
-  "data": { }
-}
-```
-
-List endpoints support pagination (`?page=1&limit=20`) and region filtering (`?regionCode=dubai`). Modules cover auth, companies, users, properties, listings, occupancy, leads, contacts, financial, cheques, commissions, leases, maintenance, vendors, documents, WhatsApp, email templates, notifications, reminder rules, reports and audit. See `CODEBASE.md` for the map.
+All endpoints live under `/v1/`. Interactive API docs are served at `/docs` outside production, and `CODEBASE.md` maps the modules.
 
 ## Testing
 

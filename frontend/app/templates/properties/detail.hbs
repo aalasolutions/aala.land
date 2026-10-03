@@ -23,34 +23,6 @@
       <span class="text-muted">/</span>
     </:breadcrumb>
     <:actions>
-      {{! No filter panel on this page, so the visibility control lives in the header. }}
-      <Nuvo::Dropdown
-        @size="sm"
-        @value={{this.archivedFilterValue}}
-        @onSelect={{this.setArchivedFilter}}
-        @options={{this.archivedFilterOptions}}
-        data-test-archived-filter
-      />
-      <Nuvo::BtnGroup @attached={{true}}>
-        <Nuvo::Button
-          @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
-          @size="sm"
-          data-test-view-cards
-          @icon="squares-four"
-          {{on "click" (fn this.switchDetailView "cards")}}
-        >
-          Cards
-        </Nuvo::Button>
-        <Nuvo::Button
-          @variant={{if (eq this.currentDetailView "list") "primary" "secondary"}}
-          @size="sm"
-          data-test-view-list
-          @icon="list"
-          {{on "click" (fn this.switchDetailView "list")}}
-        >
-          List
-        </Nuvo::Button>
-      </Nuvo::BtnGroup>
       <Nuvo::Button
         @variant="primary"
         data-test-new-asset
@@ -61,6 +33,24 @@
       </Nuvo::Button>
     </:actions>
   </Nuvo::PageHeader>
+
+  <div class="flex end x-center gap-3 wrap" data-test-detail-toolbar>
+    <Nuvo::Dropdown
+      @size="xs"
+      @value={{this.archivedFilterValue}}
+      @onSelect={{this.setArchivedFilter}}
+      @options={{this.archivedFilterOptions}}
+      data-test-archived-filter
+    />
+    <Nuvo::Segmented
+      @options={{this.detailViewOptions}}
+      @value={{this.currentDetailView}}
+      @onChange={{this.switchDetailView}}
+      @iconOnly={{true}}
+      aria-label="Layout"
+      data-test-detail-view
+    />
+  </div>
 
   {{#if this.assetsWithHistory.length}}
     {{#if (eq this.currentDetailView "cards")}}
@@ -112,15 +102,12 @@
                         <div class="unit-card-icon-box">
                           <Ui::Ph @icon="door" />
                         </div>
-                        <p class="font-bold text-md">Property
-                          {{unit.unitNumber}}</p>
+                        <p class="font-bold text-md">{{unit.unitNumber}}</p>
                       </div>
-                      {{#if unit.propertyType}}
-                        <Nuvo::Tag
-                          class="tag-proptype-{{lowercase unit.propertyType}}"
-                          @text={{property-type-label unit.propertyType}}
-                        />
-                      {{/if}}
+                      <Nuvo::Tag
+                        class="tag-proptype-{{lowercase unit.propertyType}}"
+                        @text={{property-type-label unit.propertyType}}
+                      />
                     </div>
 
                     <div class="flex between x-center">
@@ -140,7 +127,7 @@
                       {{#if unit.price}}
                         <p
                           class="text-success font-bold text-md"
-                        >{{format-currency unit.price}}</p>
+                        ><Money @amount={{unit.price}} /></p>
                       {{/if}}
                     </div>
 
@@ -160,7 +147,7 @@
                       <span
                         class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}"
                       >
-                        <Ui::Ph @icon="selection" />
+                        <Ui::Ph @icon="ruler" />
                         {{if
                           (has-value unit.sqFt)
                           (format-number unit.sqFt)
@@ -270,7 +257,7 @@
         {{else if (eq cell.key "price")}}
           <span class="text-success">{{if
               cell.value
-              (format-currency cell.value)
+              (format-money cell.value)
               ""
             }}</span>
         {{else if (eq cell.key "id")}}

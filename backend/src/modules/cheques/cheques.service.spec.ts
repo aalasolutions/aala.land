@@ -2167,6 +2167,60 @@ describe('ChequesService', () => {
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
+    it('narrows the collection schedule to the requested region', async () => {
+      const builders = seedScheduleCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(
+        companyId,
+        admin,
+        'punjab',
+      );
+
+      expect(result.overdue.map((c) => c.id)).toEqual(['cheque-punjab']);
+      for (const qb of builders) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          'cheque.region_code IN (:...scopedCodes)',
+          { scopedCodes: ['punjab'] },
+        );
+      }
+    });
+
+    it('intersects the requested region with the caller assigned regions', async () => {
+      const builders = seedScheduleCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(
+        companyId,
+        twoRegionManager,
+        'punjab',
+      );
+
+      expect(result.overdue.map((c) => c.id)).toEqual(['cheque-punjab']);
+      for (const qb of builders) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          'cheque.region_code IN (:...scopedCodes)',
+          { scopedCodes: ['punjab'] },
+        );
+      }
+    });
+
+    it('returns an empty collection schedule for a region the caller is not assigned', async () => {
+      seedScheduleCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(
+        companyId,
+        makkahManager,
+        'punjab',
+      );
+
+      expect(result).toEqual({
+        overdue: [],
+        thisWeek: [],
+        nextWeek: [],
+        thisMonth: [],
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
     describe('unit binding', () => {
       // Writes the row the service built, so the stamped region is observable.
       function seedPassthroughWrites() {

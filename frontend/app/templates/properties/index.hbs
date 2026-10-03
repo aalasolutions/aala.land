@@ -222,45 +222,52 @@
           unit="property"
           plural="properties"
         }}</p>
-      <div class="browse-toolbar__sort">
-        <span class="browse-toolbar__sort-label" id="browse-sort-label">Sort by</span>
-        <Nuvo::BtnGroup
-          @attached={{true}}
-          role="group"
-          aria-labelledby="browse-sort-label"
-        >
-          <Nuvo::Dropdown
-            id="browse-sort-field"
-            @align="end"
-            @value={{this.sortField}}
-            @onSelect={{this.setSortField}}
-            @options={{this.sortFieldOptions}}
-            data-test-sort-field
-          />
-          {{! Tooltip on a wrapper: a disabled button receives no pointer events. }}
-          <span
-            data-tooltip={{if
-              (eq this.sortDirection "desc")
-              "Descending, click for ascending"
-              "Ascending, click for descending"
-            }}
-            data-tooltip-position="start"
-          >
-            <Nuvo::Button
-              @variant="secondary"
-              @icon={{if
-                (eq this.sortDirection "desc")
-                "sort-descending"
-                "sort-ascending"
-              }}
-              @shape="square"
-              @disabled={{not this.sortField}}
-              aria-label="Toggle sort direction"
-              {{on "click" this.toggleSortDirection}}
-              data-test-sort-direction
+      <div class="browse-toolbar__controls">
+        <div class="browse-toolbar__sort">
+          <Nuvo::BtnGroup @attached={{true}} role="group" aria-label="Sort by">
+            <Nuvo::Dropdown
+              id="browse-sort-field"
+              @size="xs"
+              @align="end"
+              @value={{this.sortField}}
+              @onSelect={{this.setSortField}}
+              @options={{this.sortFieldOptions}}
+              data-test-sort-field
             />
-          </span>
-        </Nuvo::BtnGroup>
+            {{! Tooltip on a wrapper: a disabled button receives no pointer events. }}
+            <span
+              data-tooltip={{if
+                (eq this.sortDirection "desc")
+                "Descending, click for ascending"
+                "Ascending, click for descending"
+              }}
+              data-tooltip-position="start"
+            >
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon={{if
+                  (eq this.sortDirection "desc")
+                  "sort-descending"
+                  "sort-ascending"
+                }}
+                @shape="square"
+                @disabled={{not this.sortField}}
+                aria-label="Toggle sort direction"
+                {{on "click" this.toggleSortDirection}}
+                data-test-sort-direction
+              />
+            </span>
+          </Nuvo::BtnGroup>
+        </div>
+        <Nuvo::Segmented
+          @options={{this.browseLayoutOptions}}
+          @value={{this.browseLayout}}
+          @onChange={{this.setBrowseLayout}}
+          @iconOnly={{true}}
+          aria-label="Layout"
+          data-test-browse-layout
+        />
       </div>
     </div>
 
@@ -270,15 +277,18 @@
         <p class="text-muted mt-2">Loading...</p>
       </Nuvo::Card>
     {{else if this.browseUnits.length}}
-      <div class="browse-unit-grid" data-test-browse-grid>
+      <div
+        class="browse-unit-grid {{if (eq this.browseLayout 'list') 'is-list'}}"
+        data-test-browse-grid
+      >
         {{#each this.browseUnits as |unit|}}
           <LinkTo
             @route="properties.unit"
             @models={{array unit.areaId unit.id}}
-            class="unit-browse-card nu-card m-interactive"
+            class="unit-browse-card"
             data-test-browse-unit={{unit.id}}
           >
-            <div class="unit-card-photo">
+            <div class="unit-browse-card__photo">
               {{#if unit.photos.length}}
                 <img
                   src={{object-at unit.photos 0}}
@@ -288,40 +298,45 @@
                   loading="lazy"
                 />
               {{else}}
-                <div class="unit-card-photo-empty"><Ui::Ph
-                    @icon="buildings"
-                  /></div>
+                <span class="unit-browse-card__mark" aria-hidden="true">
+                  {{#if (eq this.browseLayout "list")}}
+                    <Ui::Ph @icon="buildings" />
+                  {{else}}
+                    {{unit.unitNumber}}
+                  {{/if}}
+                </span>
               {{/if}}
             </div>
-            <div class="pt-4 flex col gap-2">
-              <div class="flex between x-center">
-                <p class="font-bold">Property {{unit.unitNumber}}</p>
-                <div class="flex gap-1 x-center">
-                  {{#if unit.deletedAt}}
-                    <Nuvo::Tag
-                      @variant="secondary"
-                      @text="Archived"
-                      data-test-archived-badge
-                    />
-                  {{/if}}
-                  <Nuvo::Tag
-                    class="tag-unit-{{lowercase unit.status}}"
-                    @text={{capitalize unit.status}}
-                  />
-                </div>
-              </div>
-              <p class="text-xs text-muted">{{unit.assetName}}
-                &middot;
-                {{unit.areaName}}</p>
-              {{#if unit.price}}
-                <p class="text-lg font-bold text-success">{{format-currency
-                    unit.price
-                  }}</p>
+            <div class="unit-browse-card__state">
+              {{#if unit.deletedAt}}
+                <Nuvo::Tag
+                  @variant="secondary"
+                  @text="Archived"
+                  data-test-archived-badge
+                />
               {{/if}}
+              <Nuvo::Tag
+                class="tag-unit-{{lowercase unit.status}}"
+                @text={{capitalize unit.status}}
+              />
+              <Nuvo::Tag
+                class="tag-proptype-{{lowercase unit.propertyType}}"
+                @text={{property-type-label unit.propertyType}}
+              />
+            </div>
+            <p class="unit-browse-card__title">{{unit.unitNumber}}</p>
+            {{#if unit.price}}
+              <p class="unit-browse-card__price"><Money @amount={{unit.price}} /></p>
+            {{/if}}
+            <p class="unit-browse-card__place">{{unit.assetName}}
+              &middot;
+              {{unit.areaName}}</p>
+            <div class="unit-browse-card__meta">
               {{! Missing value shows a dash so the row never collapses and stays sortable. }}
-              <div class="flex gap-3 text-xs text-muted">
+              <div class="unit-browse-card__stats">
                 <span
-                  class="unit-stat {{unless (has-value unit.bedrooms) 'is-unset'}}"
+                  class="unit-stat
+                    {{unless (has-value unit.bedrooms) 'is-unset'}}"
                   data-test-unit-beds
                 ><Ui::Ph @icon="bed" />
                   {{#if (has-value unit.bedrooms)}}
@@ -330,7 +345,8 @@
                   bed
                 </span>
                 <span
-                  class="unit-stat {{unless (has-value unit.bathrooms) 'is-unset'}}"
+                  class="unit-stat
+                    {{unless (has-value unit.bathrooms) 'is-unset'}}"
                   data-test-unit-baths
                 ><Ui::Ph @icon="bathtub" />
                   {{#if (has-value unit.bathrooms)}}
@@ -348,17 +364,11 @@
                   sqft
                 </span>
               </div>
-              {{#if unit.ownerName}}
-                <p class="text-xs text-muted"><Ui::Ph @icon="user" />
-                  {{unit.ownerName}}</p>
-              {{/if}}
-              {{#if unit.propertyType}}
-                <Nuvo::Tag
-                  class="tag-proptype-{{lowercase unit.propertyType}}"
-                  @text={{property-type-label unit.propertyType}}
-                />
-              {{/if}}
             </div>
+            {{#if unit.ownerName}}
+              <p class="unit-browse-card__owner"><Ui::Ph @icon="user" />
+                {{unit.ownerName}}</p>
+            {{/if}}
           </LinkTo>
         {{/each}}
       </div>
