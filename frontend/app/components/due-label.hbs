@@ -1,0 +1,4 @@
+<span data-test-due-label ...attributes>{{#let
+    (or @word (due-word @dueDate))
+    as |word|
+  }}{{#if word}}{{word}} &middot; {{/if}}{{/let}}{{@label}}</span>

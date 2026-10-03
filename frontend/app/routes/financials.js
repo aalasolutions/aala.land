@@ -68,30 +68,35 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         params.set('type', activeTab);
       }
 
-      const [txnJson, summaryJson, depositsJson, cashflowJson] =
-        await Promise.all([
-          this.auth.fetchJson(`/financial/transactions?${params}`),
-          this.auth.fetchJson(
-            `/financial/transactions/summary?${new URLSearchParams(bounds)}`,
-          ),
-          optional('/financial/deposit-reminders'),
-          optional(`/financial/cashflow-trend?${new URLSearchParams(bounds)}`),
-        ]);
+      const [
+        txnJson,
+        summaryJson,
+        depositsJson,
+        cashflowJson,
+        scheduleJson,
+        categoriesJson,
+      ] = await Promise.all([
+        this.auth.fetchJson(`/financial/transactions?${params}`),
+        this.auth.fetchJson(
+          `/financial/transactions/summary?${new URLSearchParams(bounds)}`,
+        ),
+        optional('/financial/deposit-reminders'),
+        optional(`/financial/cashflow-trend?${new URLSearchParams(bounds)}`),
+        optional('/cheques/collection-schedule'),
+        optional(
+          `/financial/category-breakdown?${new URLSearchParams(bounds)}`,
+        ),
+      ]);
 
       const transactions = txnJson.data ?? { data: [], total: 0 };
-      // The endpoint groups reminders into four exclusive buckets, ordered most urgent first.
-      const deposits = depositsJson?.data ?? {};
       return {
         transactions: transactions.data ?? [],
         total: transactions.total ?? 0,
         summary: summaryJson.data ?? null,
-        depositReminders: [
-          ...(deposits.overdue ?? []),
-          ...(deposits.dueToday ?? []),
-          ...(deposits.dueThisWeek ?? []),
-          ...(deposits.dueThisMonth ?? []),
-        ],
-        cashflow: cashflowJson?.data ?? [],
+        depositReminders: depositsJson ? (depositsJson.data ?? {}) : null,
+        cashflow: cashflowJson ? (cashflowJson.data ?? []) : null,
+        chequeSchedule: scheduleJson ? (scheduleJson.data ?? {}) : null,
+        categories: categoriesJson ? (categoriesJson.data ?? []) : null,
         page,
         limit,
         activeTab,
@@ -108,8 +113,10 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         transactions: [],
         total: 0,
         summary: null,
-        depositReminders: [],
-        cashflow: [],
+        depositReminders: null,
+        cashflow: null,
+        chequeSchedule: null,
+        categories: null,
         forbidden,
         error,
         page,

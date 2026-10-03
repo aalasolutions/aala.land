@@ -224,4 +224,7 @@ export const WA_PLACEHOLDER_BODIES: Record<string, string> = {
   location: '[Location]',
   contacts: '[Contact card]',
   media_placeholder: '[Media]',
+  size_notice: '[File too large]',
 };
+
+export const WA_SIZE_NOTICE_TYPE = 'size_notice';

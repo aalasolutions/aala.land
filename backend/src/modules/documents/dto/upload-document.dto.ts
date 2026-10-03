@@ -27,16 +27,34 @@ export class UploadDocumentDto {
   fileType?: string;
 
   @ApiProperty({ required: false })
-  @Transform(({ value }) => value || undefined)
+  @Transform(({ value }: { value: unknown }) => value || undefined)
   @IsOptional()
   @IsUUID()
   unitId?: string;
 
   @ApiProperty({ required: false })
-  @Transform(({ value }) => value || undefined)
+  @Transform(({ value }: { value: unknown }) => value || undefined)
   @IsOptional()
   @IsUUID()
   assetId?: string;
+
+  @ApiProperty({ required: false })
+  @Transform(({ value }: { value: unknown }) => value || undefined)
+  @IsOptional()
+  @IsUUID()
+  contactId?: string;
+
+  @ApiProperty({ required: false })
+  @Transform(({ value }: { value: unknown }) => value || undefined)
+  @IsOptional()
+  @IsUUID()
+  leaseId?: string;
+
+  @ApiProperty({ required: false })
+  @Transform(({ value }: { value: unknown }) => value || undefined)
+  @IsOptional()
+  @IsUUID()
+  workOrderId?: string;
 
   @ApiProperty({
     enum: DocumentCategory,

@@ -1,0 +1,95 @@
+<Nuvo::Panel
+  @compact={{true}}
+  @interactive={{true}}
+  class="flex col gap-2 {{@dragClass}}"
+  data-test-lead-card
+  data-test-lead-id={{@lead.id}}
+  data-lead-id={{@lead.id}}
+  draggable="true"
+  {{on "dragstart" (fn @onDragStart @lead)}}
+  {{on "dragend" @onDragEnd}}
+  {{on "click" (fn @onOpen @lead)}}
+>
+  <div class="flex between x-center">
+    <p class="text-sm font-bold flex gap-2 x-center">
+      {{contact-name @lead.contact}}
+      {{#if (is-limited-contact @lead.contact)}}
+        <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
+      {{/if}}
+    </p>
+    {{#if this.isTemperatureBoard}}
+      <Nuvo::Tag
+        class="tag-lead-{{lowercase @lead.status}}"
+        @text={{@lead.status}}
+      />
+    {{else}}
+      <Nuvo::Tag
+        class="tag-temp-{{lowercase @lead.temperature}}"
+        @text={{@lead.temperature}}
+      />
+    {{/if}}
+  </div>
+  <div class="flex gap-2 x-center">
+    <p class="text-muted text-xs" dir="ltr" data-test-lead-phone>{{contact-phone
+        @lead.contact
+      }}</p>
+    {{#if (can-whatsapp @lead.contact)}}
+      <a
+        href={{wa-link @lead.contact.phone}}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="wa-link"
+        aria-label="Open WhatsApp chat with {{contact-name @lead.contact}}"
+        data-test-wa-link
+        {{on "click" this.stopPropagation}}
+      >
+        <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+      </a>
+    {{/if}}
+  </div>
+  {{#if this.isAgentBoard}}
+    <Nuvo::Tag
+      class="tag-lead-{{lowercase @lead.status}}"
+      @text={{@lead.status}}
+    />
+  {{else}}
+    <p class="text-muted text-xs" data-test-lead-email>{{contact-email
+        @lead.contact
+      }}</p>
+  {{/if}}
+  {{#if @lead.locality}}
+    <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
+        @icon="buildings"
+      />
+      {{@lead.locality.name}}</p>
+  {{/if}}
+  {{#if (and this.isPipelineBoard @lead.unit)}}
+    <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph @icon="house" />
+      Property
+      {{@lead.unit.unitNumber}}</p>
+  {{/if}}
+  {{#if (and (not this.isAgentBoard) @lead.assignedAgentName)}}
+    <p class="lead-assign">{{@lead.assignedAgentName}}</p>
+  {{/if}}
+  <div class="flex between x-center mt-1">
+    <span class="text-xs text-muted">{{format-date @lead.createdAt}}</span>
+    <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
+      <Nuvo::Button
+        @variant="secondary"
+        @size="xs"
+        {{on "click" (fn @onEdit @lead)}}
+      >
+        Edit
+      </Nuvo::Button>
+      {{#if @onAssign}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="xs"
+          {{on "click" (fn @onAssign @lead)}}
+        >
+          Assign
+        </Nuvo::Button>
+      {{/if}}
+    </Nuvo::BtnGroup>
+  </div>
+</Nuvo::Panel>

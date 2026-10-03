@@ -1,27 +1,17 @@
-import { helper } from '@ember/component/helper';
-import { currencyFractionDigits } from 'land/utils/currency-digits';
+import Helper from '@ember/component/helper';
+import { service } from '@ember/service';
+import { formatMoney } from '../utils/money';
+import { localeForRegion } from '../utils/locale';
 
-// Currency is explicit per value: invoices bill in the currency pinned at checkout.
-export default helper(function formatMoney([minorAmount, currency]) {
-  const num = Number(minorAmount);
-  if (isNaN(num) || minorAmount === null || minorAmount === undefined)
-    return '';
+// Named args: currency (row's own, else region's), minor (integer minor units), compact (default true).
+export default class FormatMoney extends Helper {
+  @service region;
 
-  const code = (currency || 'usd').toUpperCase();
-  const locale = navigator.language || 'en';
-
-  try {
-    const formatter = new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: code,
+  compute([value], { currency, compact = true, minor = false } = {}) {
+    return formatMoney(value, localeForRegion(this.region.activeRegion), {
+      currency: currency ?? this.region.currencyCode,
+      compact,
+      minor,
     });
-    // Minor-to-major divisor is currency-specific; derive it rather than assuming /100.
-    const digits = currencyFractionDigits(code);
-    return formatter.format(num / 10 ** digits);
-  } catch {
-    return `${code} ${(num / 100).toLocaleString(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
   }
-});
+}

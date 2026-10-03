@@ -59,7 +59,7 @@
             data-test-system-price-countries={{cell.row.id}}
           >{{cell.value}}</span>
         {{else if (eq cell.key "unitAmount")}}
-          {{format-money cell.value cell.row.currency}}
+          {{format-money cell.value currency=cell.row.currency minor=true}}
         {{else if (eq cell.key "status")}}
           {{#if (eq cell.value "registered")}}
             <Nuvo::Tag class="tag-sub-active" @text="Registered" />
@@ -227,7 +227,12 @@
     <:body>
       <div class="flex col gap-4">
         <p class="text-sm">Current amount:
-          {{format-money this.amountRow.unitAmount this.amountRow.currency}}</p>
+          {{format-money
+            this.amountRow.unitAmount
+            currency=this.amountRow.currency
+            minor=true
+            compact=false
+          }}</p>
         <Nuvo::Field @label="New monthly amount" @flush={{true}}>
           <Nuvo::Input
             id="price-new-amount"

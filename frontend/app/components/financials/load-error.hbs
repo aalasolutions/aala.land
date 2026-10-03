@@ -1,0 +1,17 @@
+<Nuvo::Alert
+  @variant="danger"
+  @title={{@title}}
+  @description={{@description}}
+  ...attributes
+>
+  <:actions>
+    <Nuvo::Button
+      @variant="secondary"
+      @size="sm"
+      {{on "click" @onRetry}}
+      data-test-load-error-retry
+    >
+      Try again
+    </Nuvo::Button>
+  </:actions>
+</Nuvo::Alert>

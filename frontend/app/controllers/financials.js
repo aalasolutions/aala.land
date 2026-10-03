@@ -1,5 +1,5 @@
 import PaginatedController from './paginated-base';
-import { tracked } from '@glimmer/tracking';
+import { cached, tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import {
@@ -18,6 +18,7 @@ import {
   toDateOnly,
   todayInZone,
 } from 'land/utils/local-date';
+import { dueStatus } from 'land/utils/due-status';
 
 // An incoming cheque is recorded in Cheques Received, so a cheque here is money paid out.
 const CHEQUE_IS_ALWAYS = 'EXPENSE';
@@ -29,6 +30,8 @@ const CATEGORY_PINNED_TYPE = { RENT: 'INCOME', SALE: 'INCOME' };
 const INCOMING_ONLY_CATEGORIES = Object.keys(CATEGORY_PINNED_TYPE).filter(
   (key) => CATEGORY_PINNED_TYPE[key] === 'INCOME',
 );
+
+const QUEUE_LIMIT = 8;
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
@@ -166,27 +169,107 @@ export default class FinancialsController extends PaginatedController {
     return this.model?.cashflow ?? [];
   }
 
-  series(valueOf) {
-    return this.cashflow.map((point) => ({
-      month: point.month,
-      from: point.from,
-      to: point.to,
-      value: valueOf(point),
+  get cashflowFailed() {
+    return this.model?.cashflow === null;
+  }
+
+  get totals() {
+    const summary = this.model?.summary;
+    if (!summary) return null;
+    return {
+      income: summary.totalIncome,
+      expense: summary.totalExpense,
+      net: summary.net,
+    };
+  }
+
+  get categoriesFailed() {
+    return this.model?.categories === null;
+  }
+
+  @cached
+  get expenseCategories() {
+    const rows = (this.model?.categories ?? [])
+      .filter((row) => row.type === 'EXPENSE' && Number(row.total) > 0)
+      .map((row) => ({
+        category: row.category,
+        total: Number(row.total),
+      }))
+      .sort((a, b) => b.total - a.total);
+    const sum = rows.reduce((acc, row) => acc + row.total, 0);
+    return rows.map((row) => ({
+      ...row,
+      share: sum ? Math.round((row.total / sum) * 100) : 0,
     }));
   }
 
-  get incomePoints() {
-    return this.series((point) => Number(point.income) || 0);
-  }
-
-  get expensePoints() {
-    return this.series((point) => Number(point.expense) || 0);
-  }
-
-  get netPoints() {
-    return this.series(
-      (point) => (Number(point.income) || 0) - (Number(point.expense) || 0),
+  get queueFailed() {
+    return (
+      this.model?.chequeSchedule === null ||
+      this.model?.depositReminders === null
     );
+  }
+
+  @cached
+  get queue() {
+    return this.queueFor(todayInZone(this.region.activeRegion?.timezone));
+  }
+
+  queueFor(today) {
+    const schedule = this.model?.chequeSchedule ?? {};
+    const reminders = this.model?.depositReminders ?? {};
+    const cheque = (row) => ({
+      kind: 'cheque',
+      key: `cheque-${row.id}`,
+      id: row.id,
+      title: `Cheque ${row.chequeNumber}`,
+      detail: row.bankName,
+      holder: row.accountHolder,
+      dueDate: toDateOnly(row.dueDate),
+      amount: Number(row.amount) || 0,
+      currency: row.currency,
+    });
+    const payment = (row) => ({
+      kind: 'payment',
+      key: `payment-${row.id}`,
+      id: row.id,
+      title: row.description || 'Payment due',
+      detail: row.category,
+      areaId: row.areaId,
+      unitId: row.unitId,
+      unitNumber: row.unitNumber,
+      tenantContactId: row.tenantContactId,
+      tenantName: row.tenantName,
+      dueDate: toDateOnly(row.dueDate),
+      amount: Number(row.amount) || 0,
+      currency: row.currency,
+    });
+    const group = (cheques, payments) =>
+      [...(cheques ?? []).map(cheque), ...(payments ?? []).map(payment)]
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+        .map((row) => {
+          const status = dueStatus(row.dueDate, today);
+          return {
+            ...row,
+            isOverdue: status.isOverdue,
+            dueLabel: status.label,
+            dueWord: status.word,
+          };
+        });
+
+    const overdue = group(schedule.overdue, reminders.overdue);
+    const thisWeek = group(schedule.thisWeek, [
+      ...(reminders.dueToday ?? []),
+      ...(reminders.dueThisWeek ?? []),
+    ]);
+    const all = [...overdue, ...thisWeek];
+    return {
+      rows: all.slice(0, QUEUE_LIMIT),
+      hiddenCount: Math.max(0, all.length - QUEUE_LIMIT),
+      count: all.length,
+      overdueCount: overdue.length,
+      overdueTotal: overdue.reduce((sum, row) => sum + row.amount, 0),
+    };
   }
 
   // The API buckets by calendar month only when the selected range is one; a month point says so.

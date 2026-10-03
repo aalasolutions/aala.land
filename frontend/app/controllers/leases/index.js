@@ -1,4 +1,4 @@
-import PaginatedController from './paginated-base';
+import PaginatedController from '../paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -13,10 +13,10 @@ import {
   closeDeleteModal,
   confirmDeleteModal,
   openDeleteModal,
-} from '../utils/delete-modal';
-import { ROLES } from '../utils/roles';
-import { toDateOnly } from '../utils/local-date';
-import { contactName } from '../utils/contact-display';
+} from '../../utils/delete-modal';
+import { ROLES } from '../../utils/roles';
+import { toDateOnly } from '../../utils/local-date';
+import { contactName } from '../../utils/contact-display';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];

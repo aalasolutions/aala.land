@@ -3,10 +3,9 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
-import {
-  currencyFractionDigits,
-  toMinorUnits,
-} from 'land/utils/currency-digits';
+import { formatMoney, minorUnitDigits } from '../../../utils/money';
+import { localeForRegion } from '../../../utils/locale';
+import { toMinorUnits } from 'land/utils/currency-digits';
 import {
   formatCalendarDate,
   localDateString,
@@ -41,6 +40,7 @@ const HISTORY_EVENTS = {
 export default class AdminCompaniesCompanyController extends Controller {
   @service auth;
   @service notifications;
+  @service region;
   @service router;
 
   @tracked detail = null;
@@ -860,7 +860,10 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   minorDigits(currency) {
-    return currencyFractionDigits(currency || 'usd');
+    return minorUnitDigits(
+      currency || 'USD',
+      localeForRegion(this.region.activeRegion),
+    );
   }
 
   toMajor(minor, currency) {
@@ -869,17 +872,11 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   formatMoney(minor, currency) {
-    const code = (currency || 'usd').toUpperCase();
-    const num = Number(minor ?? 0);
-    try {
-      const fmt = new Intl.NumberFormat(navigator.language || 'en', {
-        style: 'currency',
-        currency: code,
-      });
-      return fmt.format(num / 10 ** this.minorDigits(code));
-    } catch {
-      return `${code} ${(num / 100).toFixed(2)}`;
-    }
+    return formatMoney(minor ?? 0, localeForRegion(this.region.activeRegion), {
+      currency: currency || 'USD',
+      compact: false,
+      minor: true,
+    });
   }
 
   formatDate(value) {

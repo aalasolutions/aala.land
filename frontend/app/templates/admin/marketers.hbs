@@ -38,7 +38,7 @@
               {{#each cell.value as |band|}}
                 <span class="console-chip">
                   <strong class="console-chip__code">{{band.currency}}</strong>
-                  {{format-money band.mrrMinor band.currency}}
+                  {{format-money band.mrrMinor currency=band.currency minor=true}}
                 </span>
               {{/each}}
             </span>

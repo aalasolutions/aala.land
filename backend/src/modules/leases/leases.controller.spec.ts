@@ -13,6 +13,9 @@ import { LeasesController } from './leases.controller';
 import { LeasesService } from './leases.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LeaseStatus, LeaseType } from './entities/lease.entity';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('LeasesController', () => {
   let controller: LeasesController;
@@ -233,11 +236,7 @@ describe('LeasesController', () => {
     it('passes through an explicit archived filter', async () => {
       service.findByUnit.mockResolvedValue([mockLease] as any);
 
-      await controller.findByUnit(
-        'unit-uuid-1',
-        mockReq,
-        'exclude' as any,
-      );
+      await controller.findByUnit('unit-uuid-1', mockReq, 'exclude' as any);
 
       expect(service.findByUnit).toHaveBeenCalledWith(
         'unit-uuid-1',
@@ -258,6 +257,17 @@ describe('LeasesController', () => {
         'lease-uuid-1',
         companyId,
         mockReq.user,
+      );
+    });
+
+    it('allows the same roles as the list, including AGENT and ACCOUNTANT', () => {
+      const rolesOf = (handler: (...args: any[]) => unknown) =>
+        new Reflector().get<Role[]>(ROLES_KEY, handler);
+      const oneRoles = rolesOf(LeasesController.prototype.findOne);
+
+      expect(oneRoles).toEqual(rolesOf(LeasesController.prototype.findAll));
+      expect(oneRoles).toEqual(
+        expect.arrayContaining([Role.AGENT, Role.ACCOUNTANT]),
       );
     });
   });

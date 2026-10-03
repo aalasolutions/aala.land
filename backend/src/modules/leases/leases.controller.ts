@@ -115,9 +115,7 @@ export class LeasesController {
     archived?: LeaseArchivedFilter,
   ) {
     if (req.user.role === Role.AGENT && !contactId) {
-      throw new ForbiddenException(
-        'Agents must filter leases by contactId',
-      );
+      throw new ForbiddenException('Agents must filter leases by contactId');
     }
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
@@ -177,7 +175,14 @@ export class LeasesController {
   }
 
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get a lease by ID' })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,

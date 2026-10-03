@@ -1,6 +1,7 @@
-// Only the browse grid and photo tile are bespoke; everything else resolves to a kit component.
+// Only the browse toolbar and the grid/list tile are bespoke; everything else resolves to a kit component.
 @use "@nuvoui/ember/styles/common/var" as *;
 @use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "../variables" as vars;
 
 .browse-toolbar {
   display: flex;
@@ -15,18 +16,18 @@
   }
 }
 
+.browse-toolbar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(3);
+  align-items: center;
+}
+
 // Label inline, not stacked: <Nuvo::Field>'s margin pushes the direction button out of line.
 .browse-toolbar__sort {
   display: flex;
   gap: nu-space(2);
   align-items: center;
-}
-
-.browse-toolbar__sort-label {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
-  color: var(--text-muted);
-  white-space: nowrap;
 }
 
 // Stats render unconditionally so the row never collapses; a missing value shows a dash.
@@ -36,7 +37,7 @@
 
 // Columns follow the width the sidebar leaves: tiles of at least 17.5rem, at most five per row.
 .browse-unit-grid {
-  --browse-grid-gap: #{nu-space(4)};
+  --browse-grid-gap: #{nu-space(6)};
 
   display: grid;
   grid-template-columns: repeat(
@@ -46,30 +47,51 @@
       1fr
     )
   );
-  gap: var(--browse-grid-gap);
+  gap: nu-space(12) var(--browse-grid-gap);
 }
 
-// Card padding removed so the photo bleeds to the edges; text block below re-adds it.
 .unit-browse-card {
-  --nu-card--Padding: 0;
-
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  text-decoration: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "photo photo"
+    "title price"
+    "place place"
+    "meta meta";
+  gap: nu-space(1) nu-space(3);
+  align-items: baseline;
   color: inherit;
+  text-decoration: none;
+  border-radius: nu-radius(2xl);
 
-  > *:not(.unit-card-photo) {
-    padding-inline: nu-space(4);
-    padding-block-end: nu-space(4);
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: nu-space(1);
+  }
+
+  &:hover .unit-browse-card__photo {
+    box-shadow: nu-shadow(lg);
+    transform: translateY(-3px);
   }
 }
 
-.unit-card-photo {
-  inline-size: 100%;
-  aspect-ratio: 16 / 10;
+.unit-browse-card__photo {
+  position: relative;
+  grid-area: photo;
+  aspect-ratio: 4 / 3;
+  margin-block-end: nu-space(2);
   overflow: hidden;
-  background: var(--bg-alternate);
+  background: vars.$empty-photo-tint;
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(2xl);
+  box-shadow: nu-shadow(sm);
+  transition:
+    transform nu-duration(normal) $nu-ease,
+    box-shadow nu-duration(normal) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
 
   img {
     inline-size: 100%;
@@ -78,14 +100,197 @@
   }
 }
 
-.unit-card-photo-empty {
+.unit-browse-card__mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-inline: nu-space(4);
+  overflow: hidden;
+  font-size: 3.5rem;
+  font-weight: nu-font-weight(bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--primary-200);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.unit-browse-card__state {
+  z-index: nu-z(base);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 100%;
-  block-size: 100%;
+  flex-wrap: wrap;
+  grid-area: photo;
+  gap: nu-space(1);
+  justify-content: flex-end;
+  align-self: start;
+  justify-self: end;
+  margin: nu-space(3);
+}
+
+.unit-browse-card__title {
+  grid-area: title;
+  margin: 0;
+  font-size: nu-font-size(md);
+  font-weight: nu-font-weight(bold);
+  color: var(--text-color);
+}
+
+.unit-browse-card__price {
+  grid-area: price;
+  margin: 0;
+  font-size: nu-font-size(md);
+  font-weight: nu-font-weight(bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-color);
+}
+
+.unit-browse-card__place {
+  grid-area: place;
+  margin: 0;
+  font-size: nu-font-size(sm);
   color: var(--text-muted);
-  font-size: 2rem;
+}
+
+.unit-browse-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: meta;
+  gap: nu-space(1) nu-space(3);
+  margin-block-start: nu-space(1);
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+.unit-browse-card__stats {
+  display: flex;
+  gap: nu-space(3);
+}
+
+.unit-browse-card__owner {
+  display: none;
+}
+
+.browse-unit-grid.is-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(2xl);
+
+  .unit-browse-card {
+    grid-template-columns:
+      4.5rem minmax(11rem, 2fr) minmax(12rem, 1.5fr) minmax(8rem, 1fr)
+      minmax(6rem, auto) minmax(8.5rem, auto);
+    grid-template-areas:
+      "photo title stats owner state price"
+      "photo place stats owner state price";
+    gap: 0 nu-space(4);
+    align-items: center;
+    padding: nu-space(3) nu-space(4);
+    border-block-end: 1px solid var(--border-base);
+    border-radius: 0;
+    transition: background-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:last-child {
+      border-block-end: 0;
+    }
+
+    &:hover {
+      background: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline-offset: -2px;
+    }
+
+    &:hover .unit-browse-card__photo {
+      box-shadow: none;
+      transform: none;
+    }
+  }
+
+  .unit-browse-card__photo {
+    margin-block-end: 0;
+    border: 1px solid var(--border-base);
+    border-radius: nu-radius(md);
+    box-shadow: none;
+  }
+
+  .unit-browse-card__mark {
+    padding: 0;
+    font-size: nu-font-size(lg);
+    font-weight: nu-font-weight(normal);
+    color: var(--primary-600);
+  }
+
+  .unit-browse-card__state {
+    grid-area: state;
+    justify-content: flex-start;
+    align-self: center;
+    justify-self: start;
+    margin: 0;
+  }
+
+  .unit-browse-card__title {
+    align-self: end;
+    font-size: nu-font-size(sm);
+  }
+
+  .unit-browse-card__place {
+    align-self: start;
+  }
+
+  .unit-browse-card__price {
+    align-self: center;
+    font-size: nu-font-size(sm);
+    color: var(--success-700);
+    text-align: end;
+  }
+
+  .unit-browse-card__meta {
+    display: contents;
+  }
+
+  .unit-browse-card__stats {
+    grid-area: stats;
+    font-size: nu-font-size(sm);
+  }
+
+  .unit-stat.is-unset {
+    opacity: 1;
+  }
+
+  .unit-browse-card__owner {
+    display: block;
+    grid-area: owner;
+    margin: 0;
+    overflow: hidden;
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @include media-down(lg) {
+    .unit-browse-card {
+      grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+      grid-template-areas:
+        "photo title state"
+        "photo place price";
+    }
+
+    .unit-browse-card__stats,
+    .unit-browse-card__owner {
+      display: none;
+    }
+  }
 }
 
 .import-preview--scroll {

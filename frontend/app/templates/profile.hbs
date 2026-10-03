@@ -1,106 +1,108 @@
 {{page-title "My Profile"}}
 
-<Nuvo::PageHeader
-  @title="My Profile"
-  @subtitle="Manage your account settings."
-/>
+<div data-test-profile-page class="flex col gap-6">
+  <Nuvo::PageHeader
+    @title="My Profile"
+    @subtitle="Manage your account settings."
+  />
 
-{{#if this.model}}
-  <Nuvo::Card class="profile-card">
-    <form class="flex col gap-4" {{on "submit" this.saveProfile}}>
-      <Nuvo::Field @label="Name" @required={{true}}>
-        <Nuvo::Input
-          id="profile-name"
-          type="text"
-          @value={{or this.formName this.model.name}}
-          @onInput={{fn this.setFieldValue "formName"}}
-          required={{true}}
-        />
-      </Nuvo::Field>
+  {{#if this.model}}
+    <Nuvo::Card class="profile-card">
+      <form class="flex col gap-4" {{on "submit" this.saveProfile}}>
+        <Nuvo::Field @label="Name" @required={{true}}>
+          <Nuvo::Input
+            id="profile-name"
+            type="text"
+            @value={{or this.formName this.model.name}}
+            @onInput={{fn this.setFieldValue "formName"}}
+            required={{true}}
+          />
+        </Nuvo::Field>
 
-      <Nuvo::Field @label="Email">
-        <Nuvo::Input
-          id="profile-email"
-          type="email"
-          @value={{this.model.email}}
-          @disabled={{true}}
-        />
-      </Nuvo::Field>
+        <Nuvo::Field @label="Email">
+          <Nuvo::Input
+            id="profile-email"
+            type="email"
+            @value={{this.model.email}}
+            @disabled={{true}}
+          />
+        </Nuvo::Field>
 
-      <Nuvo::Field @label="New Password">
-        <Nuvo::Input
-          id="profile-password"
-          type="password"
-          placeholder="Leave blank to keep current"
-          @value={{this.formPassword}}
-          @onInput={{fn this.setFieldValue "formPassword"}}
-        />
-      </Nuvo::Field>
+        <Nuvo::Field @label="New Password">
+          <Nuvo::Input
+            id="profile-password"
+            type="password"
+            placeholder="Leave blank to keep current"
+            @value={{this.formPassword}}
+            @onInput={{fn this.setFieldValue "formPassword"}}
+          />
+        </Nuvo::Field>
 
-      <Nuvo::Field @label="Role">
-        <Nuvo::Input
-          id="profile-role"
-          type="text"
-          @value={{format-role this.model.role}}
-          @disabled={{true}}
-        />
-      </Nuvo::Field>
+        <Nuvo::Field @label="Role">
+          <Nuvo::Input
+            id="profile-role"
+            type="text"
+            @value={{format-role this.model.role}}
+            @disabled={{true}}
+          />
+        </Nuvo::Field>
 
-      <div class="profile-connection-card">
-        <div class="profile-connection-heading">
-          <div class="profile-connection-icon" aria-hidden="true"></div>
-          <div class="profile-connection-text">
-            <div class="profile-connection-title">Connect your Google account</div>
-            <p class="profile-connection-copy">Use your existing account email
-              to sign in with Google next time.</p>
+        <div class="profile-connection-card">
+          <div class="profile-connection-heading">
+            <div class="profile-connection-icon" aria-hidden="true"></div>
+            <div class="profile-connection-text">
+              <div class="profile-connection-title">Connect your Google account</div>
+              <p class="profile-connection-copy">Use your existing account email
+                to sign in with Google next time.</p>
+            </div>
           </div>
+          {{#if this.isGoogleLinked}}
+            <div class="connected-account">
+              <Ui::Ph @icon="check-circle" @size="18px" />
+              <span>Google account connected</span>
+            </div>
+          {{else if this.googleAuth.isConfigured}}
+            <div
+              class="profile-google-action google-signin-section
+                {{unless this.isLinkingGoogle 'profile-google-button'}}"
+            >
+              {{#if this.isLinkingGoogle}}
+                <button
+                  type="button"
+                  class="profile-google-button profile-google-button--loading"
+                  disabled
+                >
+                  <span class="google-spinner"></span>
+                  Linking...
+                </button>
+              {{else}}
+                <div
+                  id="google-link-button"
+                  class="google-button-host"
+                  {{did-insert this.renderGoogleLinkButton}}
+                ></div>
+              {{/if}}
+            </div>
+          {{/if}}
         </div>
-        {{#if this.isGoogleLinked}}
-          <div class="connected-account">
-            <Ui::Ph @icon="check-circle" @size="18px" />
-            <span>Google account connected</span>
-          </div>
-        {{else if this.googleAuth.isConfigured}}
-          <div
-            class="profile-google-action google-signin-section
-              {{unless this.isLinkingGoogle 'profile-google-button'}}"
-          >
-            {{#if this.isLinkingGoogle}}
-              <button
-                type="button"
-                class="profile-google-button profile-google-button--loading"
-                disabled
-              >
-                <span class="google-spinner"></span>
-                Linking...
-              </button>
-            {{else}}
-              <div
-                id="google-link-button"
-                class="google-button-host"
-                {{did-insert this.renderGoogleLinkButton}}
-              ></div>
-            {{/if}}
-          </div>
+
+        {{#if this.errorMsg}}
+          <Nuvo::Alert @variant="danger" @description={{this.errorMsg}} />
         {{/if}}
-      </div>
 
-      {{#if this.errorMsg}}
-        <Nuvo::Alert @variant="danger" @description={{this.errorMsg}} />
-      {{/if}}
-
-      <Nuvo::FormActions>
-        <Nuvo::Button
-          type="submit"
-          @variant="primary"
-          @disabled={{this.isSaving}}
-          @loading={{this.isSaving}}
-        >
-          {{if this.isSaving "Saving..." "Save Changes"}}
-        </Nuvo::Button>
-      </Nuvo::FormActions>
-    </form>
-  </Nuvo::Card>
-{{else}}
-  <Nuvo::EmptyState @title="Loading profile..." />
-{{/if}}
+        <Nuvo::FormActions>
+          <Nuvo::Button
+            type="submit"
+            @variant="primary"
+            @disabled={{this.isSaving}}
+            @loading={{this.isSaving}}
+          >
+            {{if this.isSaving "Saving..." "Save Changes"}}
+          </Nuvo::Button>
+        </Nuvo::FormActions>
+      </form>
+    </Nuvo::Card>
+  {{else}}
+    <Nuvo::EmptyState @title="Loading profile..." />
+  {{/if}}
+</div>

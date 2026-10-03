@@ -48,17 +48,49 @@
   }
 
   @include e(column-header) {
+    @include nu-root-el("kanban", "column-header", (
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    ));
+
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: nu-space(2);
-    padding-inline: nu-space(1);
+    inline-size: 100%;
+    padding: 0 nu-space(1);
+    font: inherit;
+    color: inherit;
+    text-align: start;
+    background: none;
+    border: 0;
+    border-radius: nu-radius(md);
+    cursor: pointer;
+
+    &:hover .nu-kanban__column-toggle {
+      color: var(--primary);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var-el("kanban", "column-header", "focus--BoxShadow");
+    }
+  }
+
+  @include e(column-toggle) {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
   }
 
   @include e(column-title) {
     display: flex;
+    flex: 1;
     align-items: center;
     gap: nu-space(2);
+    min-inline-size: 0;
     margin: 0;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
@@ -203,12 +235,61 @@
   }
 }
 
+.nu-kanban__column.is-collapsed {
+  --nu-kanban__column--Width: 3rem;
+  --nu-kanban__column--Padding: #{nu-space(1)};
+
+  > :not(.nu-kanban__column-header) {
+    display: none;
+  }
+
+  &::after {
+    display: none;
+  }
+
+  .nu-kanban__column-header {
+    flex: 1;
+    flex-direction: column;
+    padding-block: nu-space(3);
+    padding-inline: 0;
+  }
+
+  .nu-kanban__column-count {
+    order: -2;
+  }
+
+  .nu-kanban__column-toggle {
+    order: -1;
+  }
+
+  .nu-kanban__column-title {
+    flex: 0 1 auto;
+    min-block-size: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+  }
+}
+
+.nu-kanban__drag-image {
+  position: fixed;
+  inset-block-start: -200vh;
+  inset-inline-start: 0;
+  padding: nu-space(3);
+  pointer-events: none;
+
+  > * {
+    inline-size: var(--kanban-drag-width);
+    transform: rotate(3deg);
+  }
+}
+
 .nu-kanban__card.is-dragging {
   opacity: 0.5;
   transform: scale(1.03);
 }
 
-// Keys off [draggable], not `.nu-kanban__card`, so the column's own attribute isn't matched.
+// Keys off [draggable] because lead cards render as panels, not `.nu-kanban__card`.
 .nu-kanban__column [draggable="true"] {
   cursor: grab;
 

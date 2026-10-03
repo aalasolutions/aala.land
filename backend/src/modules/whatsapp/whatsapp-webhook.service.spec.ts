@@ -955,6 +955,79 @@ describe('WhatsappWebhookService', () => {
       ).resolves.toBeUndefined();
     });
 
+    describe('a failed 131052 status for a message we never stored', () => {
+      const oversize = (extra: Record<string, unknown> = {}) =>
+        statusEnvelope([
+          {
+            id: 'wamid.big.1',
+            status: 'failed',
+            timestamp: '1761234567',
+            recipient_id: '923000000000',
+            errors: [{ code: 131052 }],
+            ...extra,
+          },
+        ]);
+
+      beforeEach(() => {
+        store.applyMessageStatus.mockResolvedValue(false);
+      });
+
+      it('stores a size notice as our own row and pushes it', async () => {
+        await service.processEnvelope(oversize());
+
+        expect(store.addMessage).toHaveBeenCalledWith(
+          'company-1',
+          'user-1',
+          expect.objectContaining({
+            id: 'wamid.big.1',
+            chatId: '923000000000',
+            fromMe: true,
+            body: '',
+            hasMedia: true,
+            mediaType: 'size_notice',
+            mediaStatus: WaMediaStatus.TOO_LARGE,
+            timestamp: 1761234567,
+          }),
+          expect.anything(),
+        );
+        expect(gateway.emitMessage).toHaveBeenCalledWith(
+          'user-1',
+          expect.objectContaining({ id: 'wamid.big.1' }),
+        );
+      });
+
+      it('does not push again when the notice is already stored', async () => {
+        store.addMessage.mockResolvedValue(stored(false));
+
+        await service.processEnvelope(oversize());
+
+        expect(gateway.emitMessage).not.toHaveBeenCalled();
+      });
+
+      it('stores nothing without a recipient or for another error code', async () => {
+        await service.processEnvelope(oversize({ recipient_id: undefined }));
+        await service.processEnvelope(oversize({ errors: [{ code: 131026 }] }));
+
+        expect(store.addMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    it('does not store a size notice when the status matched a stored row', async () => {
+      await service.processEnvelope(
+        statusEnvelope([
+          {
+            id: 'wamid.out.1',
+            status: 'failed',
+            timestamp: '1761234567',
+            recipient_id: '923000000000',
+            errors: [{ code: 131052 }],
+          },
+        ]),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+    });
+
     it('pushes an applied status to the agent in epoch seconds', async () => {
       await service.processEnvelope(
         statusEnvelope([

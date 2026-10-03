@@ -319,6 +319,46 @@ describe('MediaService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it.each([
+      ['report.xls', 'application/vnd.ms-excel'],
+      ['letter.DOC', 'application/msword'],
+      ['deck.ppt', 'application/vnd.ms-powerpoint'],
+    ])(
+      'accepts legacy Office %s, which file-type reports as x-cfb',
+      async (originalname, mimetype) => {
+        (fileTypeFromFile as jest.Mock).mockResolvedValue({
+          mime: 'application/x-cfb',
+          ext: 'cfb',
+        });
+
+        const result = await service.uploadDocumentToStorage(
+          companyId,
+          makeFile({ mimetype, originalname }),
+        );
+
+        expect(result).toHaveProperty('s3Key');
+      },
+    );
+
+    it('rejects an x-cfb file whose extension names another Office type', async () => {
+      (fileTypeFromFile as jest.Mock).mockResolvedValue({
+        mime: 'application/x-cfb',
+        ext: 'cfb',
+      });
+
+      await expect(
+        service.uploadDocumentToStorage(
+          companyId,
+          makeFile({
+            mimetype: 'application/vnd.ms-excel',
+            originalname: 'letter.doc',
+          }),
+        ),
+      ).rejects.toThrow(
+        'File content (application/msword) does not match the declared type (application/vnd.ms-excel).',
+      );
+    });
+
     it('throws 507 when storage quota is exceeded', async () => {
       companyRepo.findOne.mockResolvedValue({
         ...mockCompany,

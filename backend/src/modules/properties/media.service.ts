@@ -26,7 +26,10 @@ import {
   releaseStorage,
   reserveStorage,
 } from '@shared/utils/storage-quota.util';
-import { ALLOWED_DOCUMENT_TYPES } from '@shared/constants/document-types';
+import {
+  ALLOWED_DOCUMENT_TYPES,
+  resolveLegacyOfficeMime,
+} from '@shared/constants/document-types';
 import { verifyTextFile } from '@shared/utils/text-file.util';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
@@ -465,9 +468,10 @@ export class MediaService {
             `Only genuine ${ALLOWED_DOCUMENT_TYPES.join(', ')} files are accepted.`,
         );
       }
-      if (detected.mime !== file.mimetype) {
+      const mime = resolveLegacyOfficeMime(detected.mime, file.originalname);
+      if (mime !== file.mimetype) {
         throw new BadRequestException(
-          `File content (${detected.mime}) does not match the declared type (${file.mimetype}).`,
+          `File content (${mime}) does not match the declared type (${file.mimetype}).`,
         );
       }
     }

@@ -44,9 +44,21 @@ import {
   startOfDayInZone,
 } from '../../shared/utils/region-time.util';
 import { formatMoney } from '@shared/utils/money.util';
+import { getRegionByCode } from '@shared/constants/regions';
 
 // Reminders reach each region at this local hour.
 const REMINDER_LOCAL_HOUR = 9;
+
+export type NotificationView = Notification & { regionName: string | null };
+
+// The bell labels each row with its region, which may not be one the viewer is assigned.
+export function withRegionName(notification: Notification): NotificationView {
+  const code = notification.regionCode;
+  return {
+    ...notification,
+    regionName: code ? (getRegionByCode(code)?.name ?? code) : null,
+  };
+}
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -115,7 +127,10 @@ export class NotificationsService {
     const saved = await this.notificationRepository.save(notification);
 
     try {
-      this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
+      this.notificationsGateway.sendNotificationToUser(
+        dto.userId,
+        withRegionName(saved),
+      );
     } catch (err) {
       const reason = errorMessage(err);
       this.logger.error(`Failed to emit notification via socket: ${reason}`);
@@ -129,25 +144,19 @@ export class NotificationsService {
     userId: string,
     page = 1,
     limit = 20,
-    regionCode?: string,
   ): Promise<{
-    data: Notification[];
+    data: NotificationView[];
     total: number;
     page: number;
     limit: number;
   }> {
-    // Region is relevance not access: NULL-region company-wide notices stay visible everywhere
+    // Every region is listed; the row's region is a label, not a filter.
     const [data, total] = await this.notificationRepository.findAndCount({
-      where: regionCode
-        ? [
-            { companyId, userId, regionCode },
-            { companyId, userId, regionCode: IsNull() },
-          ]
-        : { companyId, userId },
+      where: { companyId, userId },
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
+    return { data: data.map(withRegionName), total, page, limit };
   }
 
   async markAsRead(

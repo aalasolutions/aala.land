@@ -12,8 +12,12 @@ class MockRouterService extends Service {
   transitions = [];
   on() {}
   off() {}
+  refreshes = 0;
   transitionTo(...args) {
     this.transitions.push(args);
+  }
+  refresh() {
+    this.refreshes++;
   }
 }
 
@@ -282,26 +286,131 @@ module('Unit | Controller | application', function (hooks) {
     });
   });
 
-  test('an access request notification opens the approvals page', function (assert) {
-    const controller = makeController(this);
-    controller.handleNotificationNavigation({
-      entityType: 'ContactAccessRequest',
-      type: 'CONTACT_ACCESS_REQUESTED',
+  module('notification click', function (nested) {
+    const DUBAI = { code: 'dxb', name: 'Dubai' };
+    const RIYADH = { code: 'ruh', name: 'Riyadh' };
+
+    nested.beforeEach(function () {
+      const ctx = this;
+      this.reads = [];
+      this.asked = [];
+      this.answer = true;
+      this.owner.register(
+        'service:auth',
+        class extends Service {
+          currentUser = { id: 'user-1', companyId: 'company-1', role: 'admin' };
+          async fetchJson(path) {
+            ctx.reads.push(path);
+            return {};
+          }
+        },
+      );
+      this.owner.register(
+        'service:dialogs',
+        class extends Service {
+          async confirm({ message }) {
+            ctx.asked.push(message);
+            return ctx.answer;
+          }
+        },
+      );
+      this.owner.register(
+        'service:region',
+        class extends Service {
+          regions = [DUBAI, RIYADH];
+          activeRegion = DUBAI;
+          get regionCode() {
+            return this.activeRegion?.code;
+          }
+          switchRegion(region) {
+            this.activeRegion = region;
+          }
+        },
+      );
     });
 
-    assert.deepEqual(controller.router.transitions, [['access-requests']]);
-  });
+    const notification = (fields) => ({ id: 'n-1', isRead: false, ...fields });
 
-  test('an access decision notification opens My requests on the contacts page', function (assert) {
-    const controller = makeController(this);
-    controller.handleNotificationNavigation({
-      entityType: 'ContactAccessRequest',
-      type: 'CONTACT_ACCESS_DECIDED',
+    test('another assigned region asks first, then switches and opens the page', async function (assert) {
+      const controller = makeController(this);
+      await controller.markAsRead(
+        notification({ type: 'CHEQUE_DUE', regionCode: 'ruh' }),
+      );
+
+      assert.deepEqual(this.asked, [
+        'You are leaving Dubai region and going to Riyadh region. Are you sure?',
+      ]);
+      assert.strictEqual(controller.region.regionCode, 'ruh');
+      assert.deepEqual(controller.router.transitions, [['cheques']]);
+      assert.deepEqual(this.reads, ['/notifications/n-1/read']);
     });
 
-    assert.deepEqual(controller.router.transitions, [
-      ['contacts.index', { queryParams: { tab: 'requests' } }],
-    ]);
+    test('cancelling leaves the region, the page and the unread state alone', async function (assert) {
+      this.answer = false;
+      const controller = makeController(this);
+      const notif = notification({ type: 'CHEQUE_DUE', regionCode: 'ruh' });
+      await controller.markAsRead(notif);
+
+      assert.strictEqual(controller.region.regionCode, 'dxb');
+      assert.deepEqual(controller.router.transitions, []);
+      assert.deepEqual(this.reads, []);
+      assert.false(notif.isRead);
+    });
+
+    test('already on the target page, a switch refreshes it', async function (assert) {
+      const controller = makeController(this);
+      controller.router.currentRouteName = 'leads';
+      await controller.markAsRead(
+        notification({ type: 'LEAD_ASSIGNED', regionCode: 'ruh' }),
+      );
+
+      assert.strictEqual(controller.router.refreshes, 1);
+      assert.deepEqual(controller.router.transitions, []);
+    });
+
+    test('same region, no region, or an unassigned region opens without asking', async function (assert) {
+      const controller = makeController(this);
+      for (const regionCode of ['dxb', null, 'mkk']) {
+        await controller.markAsRead(
+          notification({ type: 'CHEQUE_DUE', regionCode }),
+        );
+      }
+
+      assert.deepEqual(this.asked, []);
+      assert.strictEqual(controller.region.regionCode, 'dxb');
+      assert.strictEqual(controller.router.transitions.length, 3);
+    });
+
+    test('an access request notification opens the approvals page without asking', async function (assert) {
+      const controller = makeController(this);
+      await controller.markAsRead(
+        notification({
+          entityType: 'ContactAccessRequest',
+          type: 'CONTACT_ACCESS_REQUESTED',
+          regionCode: 'ruh',
+        }),
+      );
+
+      assert.deepEqual(this.asked, []);
+      assert.strictEqual(controller.region.regionCode, 'dxb');
+      assert.deepEqual(controller.router.transitions, [['access-requests']]);
+    });
+
+    test('an access decision notification opens My requests on the contacts page', async function (assert) {
+      const controller = makeController(this);
+      await controller.markAsRead(
+        notification({
+          entityType: 'ContactAccessRequest',
+          type: 'CONTACT_ACCESS_DECIDED',
+          regionCode: 'ruh',
+        }),
+      );
+
+      assert.deepEqual(this.asked, []);
+      assert.deepEqual(controller.router.transitions, [
+        ['contacts.index', { queryParams: { tab: 'requests' } }],
+      ]);
+    });
   });
 
   test('the Access Requests page lights up the People group', function (assert) {

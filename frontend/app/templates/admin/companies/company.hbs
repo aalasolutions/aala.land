@@ -290,7 +290,8 @@
           {{else if (eq cell.key "amount")}}
             <span class="font-bold">{{format-money
                 cell.value
-                cell.row.currency
+                currency=cell.row.currency
+                minor=true
               }}</span>
           {{else if (eq cell.key "notes")}}
             <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>

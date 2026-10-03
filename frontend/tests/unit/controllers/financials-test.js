@@ -331,60 +331,25 @@ module('Unit | Controller | financials', function (hooks) {
       return controller;
     }
 
-    test('income and expense come through as numbers', function (assert) {
-      const controller = makeController(this);
-
-      assert.deepEqual(controller.incomePoints, [
-        {
-          month: '2026-01',
-          from: '2026-01-01',
-          to: '2026-01-31',
-          value: 1000.5,
-        },
-        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
-      ]);
-      assert.deepEqual(controller.expensePoints, [
-        { month: '2026-01', from: '2026-01-01', to: '2026-01-31', value: 400 },
-        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
-      ]);
-    });
-
-    test('net is income less expense, bucket by bucket', function (assert) {
-      const controller = makeController(this);
-
-      assert.deepEqual(controller.netPoints, [
-        {
-          month: '2026-01',
-          from: '2026-01-01',
-          to: '2026-01-31',
-          value: 600.5,
-        },
-        { month: '2026-02', from: '2026-02-01', to: '2026-02-28', value: 0 },
-      ]);
-    });
-
-    test('a day-block series keeps its bounds and has no month', function (assert) {
-      const controller = makeController(this, BLOCKS);
-
-      assert.deepEqual(controller.incomePoints, [
-        { month: undefined, from: '2026-09-08', to: '2026-09-14', value: 200 },
-        { month: undefined, from: '2026-09-15', to: '2026-09-21', value: 300 },
-      ]);
-    });
-
     test('bucketNoun follows what the API actually bucketed by', function (assert) {
       assert.strictEqual(makeController(this).bucketNoun, 'month');
       assert.strictEqual(makeController(this, BLOCKS).bucketNoun, 'period');
       assert.strictEqual(makeController(this, []).bucketNoun, 'period');
     });
 
-    test('no cashflow yields empty series rather than failing', function (assert) {
+    test('no cashflow yields an empty series rather than failing', function (assert) {
       const controller = this.owner.lookup('controller:financials');
       controller.model = null;
 
       assert.deepEqual(controller.cashflow, []);
-      assert.deepEqual(controller.incomePoints, []);
-      assert.deepEqual(controller.netPoints, []);
+      assert.false(controller.cashflowFailed, 'not loaded is not failed');
+    });
+
+    test('a failed cashflow load is reported, not shown as empty', function (assert) {
+      const controller = makeController(this, null);
+
+      assert.deepEqual(controller.cashflow, []);
+      assert.true(controller.cashflowFailed);
     });
   });
 
@@ -605,5 +570,243 @@ module('Unit | Controller | financials', function (hooks) {
       'EXPENSE',
       'the original choice survives',
     );
+  });
+
+  module('work queue', function () {
+    const TODAY = '2026-10-10';
+
+    function cheque(id, dueDate, amount, regionCode = 'dxb') {
+      return {
+        id,
+        chequeNumber: `00${id}`,
+        bankName: 'Test Bank',
+        accountHolder: 'Test Holder',
+        dueDate,
+        amount: String(amount),
+        regionCode,
+      };
+    }
+
+    function payment(id, dueDate, amount) {
+      return {
+        id,
+        description: `Payment ${id}`,
+        category: 'RENT',
+        dueDate,
+        amount: String(amount),
+      };
+    }
+
+    function makeController(ctx, model = {}) {
+      const controller = ctx.owner.lookup('controller:financials');
+      controller.region.activeRegion = {
+        code: 'dxb',
+        timezone: 'Asia/Dubai',
+      };
+      controller.model = {
+        chequeSchedule: { overdue: [], thisWeek: [] },
+        depositReminders: { overdue: [], dueToday: [], dueThisWeek: [] },
+        ...model,
+      };
+      return controller;
+    }
+
+    test('overdue rows come before this week, each group by due date', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-05', 100)],
+          thisWeek: [cheque('c2', '2026-10-12', 200)],
+        },
+        depositReminders: {
+          overdue: [payment('p1', '2026-09-28', 300)],
+          dueToday: [payment('p2', '2026-10-10', 400)],
+          dueThisWeek: [payment('p3', '2026-10-11', 500)],
+        },
+      });
+
+      const { rows } = controller.queueFor(TODAY);
+
+      assert.deepEqual(
+        rows.map((row) => row.key),
+        ['payment-p1', 'cheque-c1', 'payment-p2', 'payment-p3', 'cheque-c2'],
+      );
+    });
+
+    test('an overdue row stays above a this-week row with an earlier date', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-09', 100)],
+          thisWeek: [],
+        },
+        depositReminders: {
+          overdue: [],
+          dueToday: [],
+          dueThisWeek: [payment('p1', '2026-10-11', 100)],
+        },
+      });
+
+      const { rows } = controller.queueFor(TODAY);
+
+      assert.deepEqual(
+        rows.map((row) => row.key),
+        ['cheque-c1', 'payment-p1'],
+      );
+    });
+
+    test('rows carry the computed due word and relative label', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-09-28', 100)],
+          thisWeek: [cheque('c2', '2026-10-13', 100)],
+        },
+      });
+
+      const [late, soon] = controller.queueFor(TODAY).rows;
+
+      assert.strictEqual(late.dueWord, 'Overdue');
+      assert.strictEqual(late.dueLabel, '12 days overdue');
+      assert.true(late.isOverdue);
+      assert.strictEqual(soon.dueWord, 'Upcoming');
+      assert.strictEqual(soon.dueLabel, 'due in 3 days');
+      assert.false(soon.isOverdue);
+    });
+
+    test('a timestamp due date is read as its calendar day', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-07T00:00:00.000Z', 100)],
+          thisWeek: [],
+        },
+      });
+
+      const [row] = controller.queueFor(TODAY).rows;
+
+      assert.strictEqual(row.dueDate, '2026-10-07');
+      assert.strictEqual(row.dueLabel, '3 days overdue');
+    });
+
+    test('at most eight rows show and the rest are counted', function (assert) {
+      const overdue = Array.from({ length: 11 }, (_, i) =>
+        cheque(`c${i}`, `2026-09-${String(10 + i).padStart(2, '0')}`, 10),
+      );
+      const controller = makeController(this, {
+        chequeSchedule: { overdue, thisWeek: [] },
+      });
+
+      const queue = controller.queueFor(TODAY);
+
+      assert.strictEqual(queue.rows.length, 8);
+      assert.strictEqual(queue.hiddenCount, 3);
+      assert.strictEqual(queue.count, 11);
+      assert.strictEqual(queue.rows[0].key, 'cheque-c0', 'oldest first');
+    });
+
+    test('a short queue hides nothing', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-01', 10)],
+          thisWeek: [],
+        },
+      });
+
+      assert.strictEqual(controller.queueFor(TODAY).hiddenCount, 0);
+    });
+
+    test('the overdue total sums overdue rows only', function (assert) {
+      const controller = makeController(this, {
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-01', 100.5)],
+          thisWeek: [cheque('c2', '2026-10-12', 999)],
+        },
+        depositReminders: {
+          overdue: [payment('p1', '2026-10-02', 200)],
+          dueToday: [],
+          dueThisWeek: [],
+        },
+      });
+
+      const queue = controller.queueFor(TODAY);
+
+      assert.strictEqual(queue.overdueTotal, 300.5);
+      assert.strictEqual(queue.overdueCount, 2);
+    });
+
+    test('a failed source is flagged, an empty one is not', function (assert) {
+      const controller = makeController(this);
+      assert.false(controller.queueFailed, 'both loaded and empty');
+      assert.strictEqual(controller.queueFor(TODAY).count, 0);
+
+      controller.model = { ...controller.model, chequeSchedule: null };
+      assert.true(controller.queueFailed, 'the schedule failed');
+
+      controller.model = {
+        chequeSchedule: { overdue: [], thisWeek: [] },
+        depositReminders: null,
+      };
+      assert.true(controller.queueFailed, 'the reminders failed');
+    });
+
+    test('queue amounts never reach the period totals', function (assert) {
+      const controller = makeController(this, {
+        summary: { totalIncome: 1000, totalExpense: 400, net: 600 },
+        chequeSchedule: {
+          overdue: [cheque('c1', '2026-10-01', 5000)],
+          thisWeek: [cheque('c2', '2026-10-12', 7000)],
+        },
+        depositReminders: {
+          overdue: [payment('p1', '2026-10-02', 3000)],
+          dueToday: [],
+          dueThisWeek: [],
+        },
+      });
+
+      assert.strictEqual(controller.queueFor(TODAY).count, 3);
+      assert.deepEqual(controller.totals, {
+        income: 1000,
+        expense: 400,
+        net: 600,
+      });
+    });
+
+    test('no summary means no totals', function (assert) {
+      const controller = makeController(this, { summary: null });
+
+      assert.strictEqual(controller.totals, null);
+    });
+  });
+
+  module('spending by category', function () {
+    function makeController(ctx, categories) {
+      const controller = ctx.owner.lookup('controller:financials');
+      controller.model = { categories };
+      return controller;
+    }
+
+    test('expenses only, largest first, with their share', function (assert) {
+      const controller = makeController(this, [
+        { category: 'RENT', type: 'INCOME', total: 9000 },
+        { category: 'OTHER', type: 'EXPENSE', total: 250 },
+        { category: 'MAINTENANCE', type: 'EXPENSE', total: 750 },
+      ]);
+
+      assert.deepEqual(
+        controller.expenseCategories.map((row) => [
+          row.category,
+          row.total,
+          row.share,
+        ]),
+        [
+          ['MAINTENANCE', 750, 75],
+          ['OTHER', 250, 25],
+        ],
+      );
+    });
+
+    test('a failed load is reported, not shown as empty', function (assert) {
+      const controller = makeController(this, null);
+
+      assert.true(controller.categoriesFailed);
+      assert.deepEqual(controller.expenseCategories, []);
+    });
   });
 });

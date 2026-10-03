@@ -1,10 +1,13 @@
-// Financials page: the filter bar above the ledger and the sparkline height.
+// Financials page: the period bar and the chart heights.
 @use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // Tall enough for a six-point trend without crowding the stat value.
 $stat-sparkline-height: 78px;
 
-// Filters belong together, away from the header's primary action.
+$cashflow-chart-height: 260px;
+
+// The period title and its range control share one row.
 .finance-filters {
   display: flex;
   flex-wrap: wrap;
@@ -34,4 +37,59 @@ $stat-sparkline-height: 78px;
 // Height only: the card-edge bleed is the kit's `nu-stat__content.m-bleed`.
 .stat-sparkline .chart-canvas__frame {
   block-size: $stat-sparkline-height;
+}
+
+.cashflow-chart .chart-canvas__frame {
+  block-size: $cashflow-chart-height;
+}
+
+.finance-queue {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.finance-queue__row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 2fr) minmax(0, 1.5fr) auto;
+  gap: nu-space(4);
+  align-items: center;
+  padding-block: nu-space(2);
+  border-block-end: 1px solid var(--border-base);
+
+  &:last-child {
+    border-block-end: 0;
+  }
+
+  .nu-tag {
+    justify-self: start;
+  }
+
+  @include media-down(md) {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    .nu-tag,
+    .finance-queue__links {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.finance-queue__what > p {
+  margin: 0;
+}
+
+.finance-queue__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(3);
+  font-size: nu-font-size(xs);
+}
+
+.finance-queue__amount {
+  margin: 0;
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(bold);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }

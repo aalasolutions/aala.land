@@ -21,23 +21,14 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Tabs
-    @tabs={{this.pageTabs}}
-    @activeTab={{this.currentTab}}
-    @onChange={{this.setTab}}
-    data-test-contacts-tabs
-  />
-
-  {{#if (eq this.currentTab "requests")}}
-    <AccessRequests::MyRequests />
-  {{else}}
-    <div class="flex between x-center gap-3 wrap">
-      <Nuvo::Segmented
-        @options={{this.roleTabs}}
-        @value={{this.tag}}
-        @onChange={{this.setTag}}
-        data-test-role-tabs
-      />
+  <div class="flex between x-center gap-3 wrap">
+    <Nuvo::Tabs
+      @tabs={{this.pageTabs}}
+      @activeTab={{this.currentTab}}
+      @onChange={{this.setTab}}
+      data-test-contacts-tabs
+    />
+    {{#unless (eq this.currentTab "requests")}}
       <Nuvo::Toggle
         @checked={{this.allRegionsOn}}
         @onChange={{this.toggleAllRegions}}
@@ -45,7 +36,20 @@
       >
         All regions
       </Nuvo::Toggle>
-    </div>
+    {{/unless}}
+  </div>
+
+  {{#if (eq this.currentTab "requests")}}
+    <AccessRequests::MyRequests />
+  {{else if (eq this.currentTab "companies")}}
+    <Contact::Companies @allRegions={{this.allRegionsOn}} />
+  {{else}}
+    <Nuvo::Segmented
+      @options={{this.roleTabs}}
+      @value={{this.tag}}
+      @onChange={{this.setTag}}
+      data-test-role-tabs
+    />
 
     <Nuvo::Accordion
       @items={{array
@@ -183,7 +187,7 @@
                     @text={{contact-tag-label tag}}
                   />
                 {{else}}
-                  <span class="text-muted text-sm">Contact</span>
+                  <Nuvo::Tag class="tag-contact-other" @text="Contact" />
                 {{/each}}
               </div>
             {{/unless}}

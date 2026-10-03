@@ -96,6 +96,13 @@ export class ContactsController {
     description: 'Filter by derived role tag',
   })
   @ApiQuery({
+    name: 'tagCounts',
+    required: false,
+    type: Boolean,
+    description:
+      'true adds tagCounts (all plus one total per tag) for the same filters, tag excluded',
+  })
+  @ApiQuery({
     name: 'agentId',
     required: false,
     type: String,
@@ -109,6 +116,12 @@ export class ContactsController {
   })
   @ApiQuery({ name: 'isWhatsapp', required: false, type: Boolean })
   @ApiQuery({ name: 'company', required: false, type: String })
+  @ApiQuery({
+    name: 'companyExact',
+    required: false,
+    type: Boolean,
+    description: 'true matches the whole company name instead of part of it',
+  })
   @ApiQuery({ name: 'nationality', required: false, type: String })
   @ApiQuery({
     name: 'dateFrom',
@@ -131,12 +144,14 @@ export class ContactsController {
     @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
     @Query('isWhatsapp') isWhatsapp?: string,
     @Query('company') company?: string,
+    @Query('companyExact') companyExact?: string,
     @Query('nationality') nationality?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('regionCode') regionCode?: string,
     @Query('allRegions') allRegions?: string,
     @Query('sort') sort?: string,
+    @Query('tagCounts') tagCounts?: string,
   ) {
     if (sort && sort !== 'name') {
       throw new BadRequestException('sort must be name');
@@ -163,14 +178,49 @@ export class ContactsController {
         agentId: agentId || undefined,
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
         company: company || undefined,
+        companyExact: companyExact === 'true',
         nationality: nationality || undefined,
         regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         allRegions: allRegions === 'true',
         sort: sort === 'name' ? 'name' : undefined,
+        tagCounts: tagCounts === 'true' ? true : undefined,
       },
       req.user,
+    );
+  }
+
+  // Limited to roles that see every contact in their regions in full, so no hidden company leaks.
+  @Get('companies')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({
+    summary: 'Contact counts per company and region (MANAGER+)',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'allRegions',
+    required: false,
+    type: Boolean,
+    description:
+      'true lists every region the caller may see; regionCode is ignored',
+  })
+  findCompanies(
+    @Request() req: AuthenticatedRequest,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
+    @Query('allRegions') allRegions?: string,
+  ) {
+    return this.contactsService.findCompanies(
+      requireCompanyId(req.user),
+      page,
+      limit,
+      regionCode || undefined,
+      req.user,
+      allRegions === 'true',
     );
   }
 

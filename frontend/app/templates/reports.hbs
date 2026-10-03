@@ -14,7 +14,7 @@
         @route="financials"
         @contentBleed={{true}}
         @label="Monthly Revenue"
-        @value={{format-currency @model.kpis.monthlyRevenue}}
+        @value={{format-money @model.kpis.monthlyRevenue}}
       >
         <:content>
           <StatSparkline
@@ -225,7 +225,7 @@
                 {{cell.value}}%
               </span>
             {{else if (eq cell.key "commissionsEarned")}}
-              <span class="font-bold">{{format-currency cell.value}}</span>
+              <span class="font-bold"><Money @amount={{cell.value}} /></span>
             {{else}}
               {{cell.value}}
             {{/if}}

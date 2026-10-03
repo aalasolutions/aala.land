@@ -1,3 +1,4 @@
+import { resolveLegacyOfficeMime } from '@shared/constants/document-types';
 import { envInt } from '@shared/utils/env.util';
 import {
   WA_MEDIA_DELETED_BY,
@@ -97,7 +98,7 @@ export function revokeMediaDeletedBy(fromMe: boolean): string {
 }
 
 // Meta's error for an inbound file over its size limit; the file never arrives.
-const MEDIA_TOO_LARGE_CODE = '131052';
+export const MEDIA_TOO_LARGE_CODE = '131052';
 
 export interface CloudMedia {
   id?: string;
@@ -314,14 +315,9 @@ export function metaUploadMime(mime: string | null | undefined): string {
   return WA_OUTBOUND_MEDIA[base]?.uploadMime ?? base;
 }
 
-// file-type names these differently from Meta, or cannot tell legacy Office formats apart.
+// file-type names these differently from Meta.
 const DETECTED_MIME_ALIASES: Record<string, string> = {
   'audio/x-m4a': 'audio/mp4',
-};
-const LEGACY_OFFICE_BY_EXT: Record<string, string> = {
-  doc: 'application/msword',
-  xls: 'application/vnd.ms-excel',
-  ppt: 'application/vnd.ms-powerpoint',
 };
 
 // file-type reports Opus as 'audio/ogg; codecs=opus' and Vorbis, FLAC and Speex as plain 'audio/ogg'.
@@ -380,10 +376,7 @@ export function resolveOutboundMedia(
   animated = false,
 ): WaOutboundMedia | WaOutboundRefusal {
   let mime = baseMime(detectedMime);
-  mime = DETECTED_MIME_ALIASES[mime] ?? mime;
-  if (mime === 'application/x-cfb') {
-    mime = LEGACY_OFFICE_BY_EXT[fileExt(fileName)] ?? mime;
-  }
+  mime = resolveLegacyOfficeMime(DETECTED_MIME_ALIASES[mime] ?? mime, fileName);
   const rule = WA_OUTBOUND_MEDIA[mime];
   if (!rule) {
     return {

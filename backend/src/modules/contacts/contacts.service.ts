@@ -7,7 +7,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { contactListLimit, pageSkip } from '@shared/utils/pagination.util';
-import { Brackets, DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
@@ -18,6 +24,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { DeleteContactDto } from './dto/delete-contact.dto';
@@ -61,6 +68,8 @@ export function isContactTag(value: string): value is ContactTag {
   return (CONTACT_TAGS as readonly string[]).includes(value);
 }
 
+export type ContactTagCounts = Record<'all' | ContactTag, number>;
+
 // Roles that may fold new details into an existing contact; everyone else gets CONTACT_EXISTS.
 const MERGE_ROLES: string[] = [
   Role.SUPER_ADMIN,
@@ -80,10 +89,17 @@ const PHONE_SEARCH_MIN_DIGITS = SUBSCRIBER_DIGITS;
 const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
 
 // Additional list filters beyond search and role tag.
+export interface CompanyCount {
+  name: string;
+  regionCode: string;
+  count: number;
+}
+
 export interface ContactFilters {
   agentId?: string;
   isWhatsapp?: boolean;
   company?: string;
+  companyExact?: boolean;
   nationality?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -92,6 +108,7 @@ export interface ContactFilters {
   allRegions?: boolean;
   // Default order is newest first.
   sort?: 'name';
+  tagCounts?: boolean;
 }
 
 export interface ResolvedContact {
@@ -356,6 +373,7 @@ export class ContactsService {
     total: number;
     page: number;
     limit: number;
+    tagCounts?: ContactTagCounts;
   }> {
     const take = contactListLimit(limit);
     // Search and the all-regions view are company-wide; the presenter guards the personal fields.
@@ -364,7 +382,13 @@ export class ContactsService {
       ? null
       : effectiveRegionCodes(filters?.regionCode, caller);
     if (regionCodes?.length === 0) {
-      return { data: [], total: 0, page, limit: take };
+      return {
+        data: [],
+        total: 0,
+        page,
+        limit: take,
+        ...(filters?.tagCounts && { tagCounts: this.toTagCounts() }),
+      };
     }
 
     const qb = this.contactRepository
@@ -377,11 +401,6 @@ export class ContactsService {
 
     if (search?.trim()) {
       qb.andWhere(this.searchSql(search.trim()));
-    }
-
-    if (tag) {
-      // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
-      qb.andWhere(this.tagExistsSql('c.id', tag));
     }
 
     if (filters?.agentId) {
@@ -399,7 +418,12 @@ export class ContactsService {
       });
     }
 
-    if (filters?.company) {
+    if (filters?.company && filters.companyExact) {
+      // Same grouping as findCompanies, so a company link lists exactly its counted contacts.
+      qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
+        company: filters.company,
+      });
+    } else if (filters?.company) {
       qb.andWhere('c.contact_company ILIKE :company', {
         company: `%${filters.company}%`,
       });
@@ -427,6 +451,16 @@ export class ContactsService {
       });
     }
 
+    // Cloned before the tag filter so every total shares the list's scope and filters.
+    const tagCounts = filters?.tagCounts
+      ? await this.countByTag(qb.clone())
+      : undefined;
+
+    if (tag) {
+      // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
+      qb.andWhere(this.tagExistsSql('c.id', tag));
+    }
+
     if (filters?.sort === 'name') {
       qb.orderBy('LOWER(c.first_name)', 'ASC', 'NULLS LAST')
         .addOrderBy('LOWER(c.last_name)', 'ASC', 'NULLS LAST')
@@ -441,10 +475,67 @@ export class ContactsService {
 
     return {
       data: await this.contactPrivacy.presentMany(companyId, caller, withTags),
+      ...(tagCounts && { tagCounts }),
       total,
       page,
       limit: take,
     };
+  }
+
+  // Contacts grouped by company name (case and outer spaces ignored) inside the caller's regions.
+  async findCompanies(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    regionCode?: string,
+    caller?: ContactViewer,
+    allRegions = false,
+  ): Promise<{
+    data: CompanyCount[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const take = contactListLimit(limit);
+    const regionCodes = allRegions
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit: take };
+    }
+
+    const qb = this.contactRepository
+      .createQueryBuilder('c')
+      .where('c.company_id = :companyId', { companyId })
+      .andWhere("TRIM(COALESCE(c.contact_company, '')) <> ''");
+    if (regionCodes) {
+      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
+    }
+
+    // One row per company per region; company names group case-insensitively.
+    const [data, totalRow] = await Promise.all([
+      qb
+        .clone()
+        .select('MIN(TRIM(c.contact_company))', 'name')
+        .addSelect('c.region_code', 'regionCode')
+        .addSelect('COUNT(*)::int', 'count')
+        .groupBy('LOWER(TRIM(c.contact_company))')
+        .addGroupBy('c.region_code')
+        .orderBy('count', 'DESC')
+        .addOrderBy('name', 'ASC')
+        .offset(pageSkip(page, take))
+        .limit(take)
+        .getRawMany<CompanyCount>(),
+      qb
+        .clone()
+        .select(
+          'COUNT(DISTINCT (LOWER(TRIM(c.contact_company)), c.region_code))::int',
+          'total',
+        )
+        .getRawOne<{ total: number }>(),
+    ]);
+
+    return { data, total: totalRow?.total ?? 0, page, limit: take };
   }
 
   // Every FULL view of a contact someone else created is audited, no dedup.
@@ -644,6 +735,11 @@ export class ContactsService {
         { contactId: id, companyId },
         { contactId: target.id },
       );
+      await manager.update(
+        PropertyDocument,
+        { contactId: id, companyId },
+        { contactId: target.id },
+      );
       await manager.delete(Contact, { id, companyId });
     });
   }
@@ -684,6 +780,27 @@ export class ContactsService {
       case 'portfolio_owner':
         return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
+  }
+
+  private async countByTag(
+    qb: SelectQueryBuilder<Contact>,
+  ): Promise<ContactTagCounts> {
+    qb.select('COUNT(*)', 'total');
+    for (const tag of CONTACT_TAGS) {
+      qb.addSelect(
+        `COUNT(*) FILTER (WHERE ${this.tagExistsSql('c.id', tag)})`,
+        tag,
+      );
+    }
+    return this.toTagCounts(await qb.getRawOne<Record<string, string>>());
+  }
+
+  private toTagCounts(raw: Record<string, string> = {}): ContactTagCounts {
+    const counts = { all: Number(raw.total ?? 0) } as ContactTagCounts;
+    for (const tag of CONTACT_TAGS) {
+      counts[tag] = Number(raw[tag] ?? 0);
+    }
+    return counts;
   }
 
   // Batch-computes tags for a page as 3 queries instead of N+1; every subquery is company-scoped.

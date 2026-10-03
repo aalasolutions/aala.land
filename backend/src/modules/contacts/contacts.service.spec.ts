@@ -30,6 +30,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { Company } from '../companies/entities/company.entity';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
@@ -368,6 +369,20 @@ describe('ContactsService', () => {
       );
     });
 
+    it('matches the whole company name when the link asks for it', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        company: 'Acme',
+        companyExact: true,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))',
+        { company: 'Acme' },
+      );
+    });
+
     it('narrows the assigned set to the region asked for', async () => {
       const qb = arrangeList();
 
@@ -575,6 +590,95 @@ describe('ContactsService', () => {
     });
   });
 
+  describe('findCompanies', () => {
+    function arrangeCompanies() {
+      const qb = qbMock({ getRawMany: [{ name: 'Acme', count: 3 }] });
+      ['clone', 'offset', 'limit', 'addGroupBy'].forEach((key) => {
+        qb[key] = jest.fn().mockReturnValue(qb);
+      });
+      qb.getRawOne = jest.fn().mockResolvedValue({ total: 1 });
+      repo.createQueryBuilder.mockReturnValue(qb as any);
+      return qb;
+    }
+
+    it('groups by normalised company name inside the caller regions', async () => {
+      const qb = arrangeCompanies();
+
+      const result = await service.findCompanies(companyId, 1, 20, 'makkah', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
+      expect(qb.groupBy).toHaveBeenCalledWith('LOWER(TRIM(c.contact_company))');
+      expect(result).toEqual({
+        data: [{ name: 'Acme', count: 3 }],
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
+    });
+
+    it('returns nothing for a region the caller does not hold', async () => {
+      arrangeCompanies();
+
+      const result = await service.findCompanies(companyId, 1, 20, 'punjab', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah'],
+      });
+
+      expect(result.total).toBe(0);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('lists one row per company per region across the caller regions when all regions is on', async () => {
+      const qb = arrangeCompanies();
+
+      await service.findCompanies(
+        companyId,
+        1,
+        20,
+        'makkah',
+        {
+          userId: 'manager-uuid-1',
+          role: Role.MANAGER,
+          regionCodes: ['makkah', 'punjab'],
+        },
+        true,
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah', 'punjab'] },
+      );
+      expect(qb.groupBy).toHaveBeenCalledWith('LOWER(TRIM(c.contact_company))');
+      expect(qb.addGroupBy).toHaveBeenCalledWith('c.region_code');
+    });
+
+    it('does not narrow a company admin by region when all regions is on', async () => {
+      const qb = arrangeCompanies();
+
+      await service.findCompanies(
+        companyId,
+        1,
+        20,
+        'makkah',
+        { userId: 'admin-uuid-1', role: Role.COMPANY_ADMIN, regionCodes: [] },
+        true,
+      );
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        expect.anything(),
+      );
+    });
+  });
+
   describe('findAll', () => {
     function stubQueryBuilders() {
       const qb = qbMock({ getManyAndCount: [[mockContact], 1] });
@@ -683,6 +787,88 @@ describe('ContactsService', () => {
         "c.created_at < :dateTo::date + interval '1 day'",
         { dateTo: '2026-08-15' },
       );
+    });
+
+    it('counts every tag on a clone taken after the filters and before the tag filter', async () => {
+      const qb = stubQueryBuilders();
+      const countQb = qbMock({});
+      countQb.getRawOne = jest.fn().mockResolvedValue({
+        total: '9',
+        lead: '4',
+        tenant: '2',
+        owner: '3',
+        portfolio_owner: '1',
+      });
+      let clausesAtClone: string[] = [];
+      qb.clone = jest.fn(() => {
+        clausesAtClone = qb.andWhere.mock.calls.map(([sql]) => String(sql));
+        return countQb;
+      });
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'lead',
+        {
+          isWhatsapp: true,
+          tagCounts: true,
+        },
+      );
+
+      expect(result.tagCounts).toEqual({
+        all: 9,
+        lead: 4,
+        tenant: 2,
+        owner: 3,
+        portfolio_owner: 1,
+      });
+      expect(clausesAtClone).toContain('c.is_whatsapp = :isWhatsapp');
+      expect(clausesAtClone.some((sql) => sql.includes('FROM leads l'))).toBe(
+        false,
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('FROM leads l'),
+      );
+      expect(countQb.select).toHaveBeenCalledWith('COUNT(*)', 'total');
+      expect(countQb.addSelect.mock.calls.map(([, alias]) => alias)).toEqual([
+        'lead',
+        'tenant',
+        'owner',
+        'portfolio_owner',
+      ]);
+    });
+
+    it('leaves tagCounts out unless asked', async () => {
+      const qb = stubQueryBuilders();
+      qb.clone = jest.fn();
+
+      const result = await service.findAll(companyId, 1, 20);
+
+      expect(result).not.toHaveProperty('tagCounts');
+      expect(qb.clone).not.toHaveBeenCalled();
+    });
+
+    it('returns zero tagCounts without a query when the caller holds no region', async () => {
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        { tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: [] },
+      );
+
+      expect(result.tagCounts).toEqual({
+        all: 0,
+        lead: 0,
+        tenant: 0,
+        owner: 0,
+        portfolio_owner: 0,
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 
@@ -798,7 +984,13 @@ describe('ContactsService', () => {
         Lease,
         Unit,
         WhatsappChat,
+        PropertyDocument,
       ]);
+      expect(manager.update).toHaveBeenCalledWith(
+        PropertyDocument,
+        { contactId: 'contact-uuid-1', companyId },
+        { contactId: 'contact-uuid-2' },
+      );
       expect(manager.delete).toHaveBeenCalledWith(Contact, {
         id: 'contact-uuid-1',
         companyId,

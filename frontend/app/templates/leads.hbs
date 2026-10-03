@@ -7,12 +7,6 @@
     @subtitle="Track and manage your leads through the pipeline."
   >
     <:actions>
-      <Nuvo::Segmented
-        @options={{this.viewTabs}}
-        @value={{this.viewMode}}
-        @onChange={{this.setViewMode}}
-        data-test-view-toggle
-      />
       <Nuvo::Button
         @variant="primary"
         @icon="plus"
@@ -24,7 +18,15 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  {{! Agent board columns are already the ownership breakdown }}
+  <div class="flex end" data-test-leads-toolbar>
+    <Nuvo::Segmented
+      @options={{this.viewTabs}}
+      @value={{this.viewMode}}
+      @onChange={{this.setViewMode}}
+      data-test-view-toggle
+    />
+  </div>
+ {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
     <Nuvo::Tabs
       @tabs={{this.filterTabs}}
@@ -33,7 +35,6 @@
       data-test-lead-filters
     />
   {{/unless}}
-
   {{#if (eq this.viewMode "pipeline")}}
     <div
       class="nu-kanban
@@ -46,129 +47,32 @@
           data-test-kanban-column
           data-test-column-status={{column.status}}
           class="nu-kanban__column
-            {{if (eq this.dropTargetStatus column.status) 'is-drag-over'}}
-            {{if
-              (and
-                (eq this.dropGap.status column.status)
-                (eq this.dropGap.anchor 'end')
-              )
-              'is-drop-end'
-            }}"
-          role="button"
-          draggable="true"
-          {{on "dragover" (fn this.handleDragOver column.status)}}
-          {{on "dragleave" (fn this.clearDropTarget "dropTargetStatus")}}
-          {{on "drop" (fn this.handleDrop column.status)}}
+            {{if (this.isDropTarget 'pipeline' column.status) 'is-drag-over'}}
+            {{if (this.isGapAt 'pipeline' column.status 'end') 'is-drop-end'}}
+            {{if column.collapsed 'is-collapsed'}}"
+          {{on "dragover" (fn this.handleDragOver "pipeline" column.status)}}
+          {{on "dragleave" this.clearDropTarget}}
+          {{on "drop" (fn this.handleDrop "pipeline" column.status)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">{{column.label}}</span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          <Leads::KanbanColumnHeader
+            @collapsed={{column.collapsed}}
+            @count={{column.leads.length}}
+            @onToggle={{fn this.toggleColumn "pipeline" column.status}}
+          >
+            {{column.label}}
+          </Leads::KanbanColumnHeader>
 
           {{#each column.leads as |lead|}}
-            <Nuvo::Panel
-              @compact={{true}}
-              @interactive={{true}}
-              class="flex col gap-2
-                {{if
-                  (and
-                    (eq this.dropGap.status column.status)
-                    (eq this.dropGap.anchor lead.id)
-                  )
-                  'is-drop-before'
-                }}
-                {{if (eq this.dragSourceId lead.id) 'is-drag-source'}}
-                {{if
-                  (and (eq this.dragSourceId lead.id) this.dropGap)
-                  'is-collapsed'
-                }}"
-              data-test-lead-card
-              data-test-lead-id={{lead.id}}
-              data-lead-id={{lead.id}}
-              draggable="true"
-              {{on "dragstart" (fn this.handleDragStart lead)}}
-              {{on "dragend" this.handleDragEnd}}
-              {{on "click" (fn this.openDetailModal lead)}}
-            >
-              <div class="flex between x-center">
-                <p class="text-sm font-bold flex gap-2 x-center">
-                  {{contact-name lead.contact}}
-                  {{#if (is-limited-contact lead.contact)}}
-                    <Nuvo::Badge
-                      @size="sm"
-                      @text="Limited"
-                      data-test-limited-badge
-                    />
-                  {{/if}}
-                </p>
-                <Nuvo::Tag
-                  class="tag-temp-{{lowercase lead.temperature}}"
-                  @text={{lead.temperature}}
-                />
-              </div>
-              <div class="flex gap-2 x-center">
-                <p
-                  class="text-muted text-xs"
-                  dir="ltr"
-                  data-test-lead-phone
-                >{{contact-phone lead.contact}}</p>
-                {{#if (can-whatsapp lead.contact)}}
-                  <a
-                    href={{wa-link lead.contact.phone}}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="wa-link"
-                    aria-label="Open WhatsApp chat with {{contact-name
-                      lead.contact
-                    }}"
-                    data-test-wa-link
-                    {{on "click" this.stopPropagation}}
-                  >
-                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                  </a>
-                {{/if}}
-              </div>
-              <p class="text-muted text-xs" data-test-lead-email>{{contact-email
-                  lead.contact
-                }}</p>
-              {{#if lead.locality}}
-                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
-                    @icon="buildings"
-                  />
-                  {{lead.locality.name}}</p>
-              {{/if}}
-              {{#if lead.unit}}
-                <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph
-                    @icon="house"
-                  />
-                  Property
-                  {{lead.unit.unitNumber}}</p>
-              {{/if}}
-              {{#if lead.assignedAgentName}}
-                <p class="lead-assign">{{lead.assignedAgentName}}</p>
-              {{/if}}
-              <div class="flex between x-center mt-1">
-                <span class="text-xs text-muted">{{format-date
-                    lead.createdAt
-                  }}</span>
-                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openEdit lead)}}
-                  >
-                    Edit
-                  </Nuvo::Button>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openAssignModal lead)}}
-                  >
-                    Assign
-                  </Nuvo::Button>
-                </Nuvo::BtnGroup>
-              </div>
-            </Nuvo::Panel>
+            <Leads::KanbanCard
+              @lead={{lead}}
+              @board="pipeline"
+              @dragClass={{this.cardDragClass "pipeline" column.status lead.id}}
+              @onDragStart={{this.handleDragStart}}
+              @onDragEnd={{this.handleDragEnd}}
+              @onOpen={{this.openDetailModal}}
+              @onEdit={{this.openEdit}}
+              @onAssign={{this.openAssignModal}}
+            />
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -191,105 +95,48 @@
         <div
           data-test-kanban-column
           data-test-column-temp={{column.temperature}}
-          class="nu-kanban__column column-temp-{{lowercase column.temperature}} {{if (eq this.dropTargetTemp column.temperature) 'is-drag-over'}}"
-          {{on "dragover" (fn this.handleTempDragOver column.temperature)}}
-          {{on "dragleave" (fn this.clearDropTarget "dropTargetTemp")}}
-          {{on "drop" (fn this.handleTempDrop column.temperature)}}
+          class="nu-kanban__column column-temp-{{lowercase column.temperature}}
+            {{if
+              (this.isDropTarget 'temperature' column.temperature)
+              'is-drag-over'
+            }}
+            {{if
+              (this.isGapAt 'temperature' column.temperature 'end')
+              'is-drop-end'
+            }}
+            {{if column.collapsed 'is-collapsed'}}"
+          {{on
+            "dragover"
+            (fn this.handleDragOver "temperature" column.temperature)
+          }}
+          {{on "dragleave" this.clearDropTarget}}
+          {{on "drop" (fn this.handleDrop "temperature" column.temperature)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">
-              <span class="nu-kanban__column-accent"></span>
-              <Ui::Ph @icon={{column.icon}} />
-              {{column.label}}
-            </span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          <Leads::KanbanColumnHeader
+            @collapsed={{column.collapsed}}
+            @count={{column.leads.length}}
+            @onToggle={{fn this.toggleColumn "temperature" column.temperature}}
+          >
+            <span class="nu-kanban__column-accent"></span>
+            <Ui::Ph @icon={{column.icon}} />
+            {{column.label}}
+          </Leads::KanbanColumnHeader>
 
           {{#each column.leads as |lead|}}
-            <Nuvo::Panel
-              @compact={{true}}
-              @interactive={{true}}
-              class="flex col gap-2
-                {{if (eq this.dragSourceId lead.id) 'is-drag-source'}}"
-              data-test-lead-card
-              data-test-lead-id={{lead.id}}
-              draggable="true"
-              {{on "dragstart" (fn this.handleDragStart lead)}}
-              {{on "dragend" this.handleDragEnd}}
-              {{on "click" (fn this.openDetailModal lead)}}
-            >
-              <div class="flex between x-center">
-                <p class="text-sm font-bold flex gap-2 x-center">
-                  {{contact-name lead.contact}}
-                  {{#if (is-limited-contact lead.contact)}}
-                    <Nuvo::Badge
-                      @size="sm"
-                      @text="Limited"
-                      data-test-limited-badge
-                    />
-                  {{/if}}
-                </p>
-                <Nuvo::Tag
-                  class="tag-lead-{{lowercase lead.status}}"
-                  @text={{lead.status}}
-                />
-              </div>
-              <div class="flex gap-2 x-center">
-                <p
-                  class="text-muted text-xs"
-                  dir="ltr"
-                  data-test-lead-phone
-                >{{contact-phone lead.contact}}</p>
-                {{#if (can-whatsapp lead.contact)}}
-                  <a
-                    href={{wa-link lead.contact.phone}}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="wa-link"
-                    aria-label="Open WhatsApp chat with {{contact-name
-                      lead.contact
-                    }}"
-                    data-test-wa-link
-                    {{on "click" this.stopPropagation}}
-                  >
-                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                  </a>
-                {{/if}}
-              </div>
-              <p class="text-muted text-xs" data-test-lead-email>{{contact-email
-                  lead.contact
-                }}</p>
-              {{#if lead.locality}}
-                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
-                    @icon="buildings"
-                  />
-                  {{lead.locality.name}}</p>
-              {{/if}}
-              {{#if lead.assignedAgentName}}
-                <p class="lead-assign">{{lead.assignedAgentName}}</p>
-              {{/if}}
-              <div class="flex between x-center mt-1">
-                <span class="text-xs text-muted">{{format-date
-                    lead.createdAt
-                  }}</span>
-                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openEdit lead)}}
-                  >
-                    Edit
-                  </Nuvo::Button>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openAssignModal lead)}}
-                  >
-                    Assign
-                  </Nuvo::Button>
-                </Nuvo::BtnGroup>
-              </div>
-            </Nuvo::Panel>
+            <Leads::KanbanCard
+              @lead={{lead}}
+              @board="temperature"
+              @dragClass={{this.cardDragClass
+                "temperature"
+                column.temperature
+                lead.id
+              }}
+              @onDragStart={{this.handleDragStart}}
+              @onDragEnd={{this.handleDragEnd}}
+              @onOpen={{this.openDetailModal}}
+              @onEdit={{this.openEdit}}
+              @onAssign={{this.openAssignModal}}
+            />
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -311,97 +158,38 @@
       {{#each this.agentColumns as |column|}}
         <div
           data-test-kanban-column
-          data-test-column-agent={{or column.agentId "unassigned"}}
-          class="nu-kanban__column {{if (eq this.dropTargetAgent (or column.agentId "unassigned")) 'is-drag-over'}}"
-          {{on "dragover" (fn this.handleAgentDragOver column.agentId)}}
-          {{on "dragleave" (fn this.clearDropTarget "dropTargetAgent")}}
-          {{on "drop" (fn this.handleAgentDrop column.agentId)}}
+          data-test-column-agent={{column.key}}
+          class="nu-kanban__column
+            {{if (this.isDropTarget 'agent' column.agentId) 'is-drag-over'}}
+            {{if (this.isGapAt 'agent' column.agentId 'end') 'is-drop-end'}}
+            {{if column.collapsed 'is-collapsed'}}"
+          {{on "dragover" (fn this.handleDragOver "agent" column.agentId)}}
+          {{on "dragleave" this.clearDropTarget}}
+          {{on "drop" (fn this.handleDrop "agent" column.agentId)}}
         >
-          <div class="nu-kanban__column-header">
-            <span class="nu-kanban__column-title">
-              <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
-              {{column.agentName}}
-            </span>
-            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
-          </div>
+          <Leads::KanbanColumnHeader
+            @collapsed={{column.collapsed}}
+            @count={{column.leads.length}}
+            @onToggle={{fn this.toggleColumn "agent" column.key}}
+          >
+            <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
+            {{column.agentName}}
+          </Leads::KanbanColumnHeader>
 
           <div class="agent-load-bar">
             <div class="agent-load-fill {{column.loadClass}}"></div>
           </div>
 
           {{#each column.leads as |lead|}}
-            <Nuvo::Panel
-              @compact={{true}}
-              @interactive={{true}}
-              class="flex col gap-2
-                {{if (eq this.dragSourceId lead.id) 'is-drag-source'}}"
-              data-test-lead-card
-              data-test-lead-id={{lead.id}}
-              draggable="true"
-              {{on "dragstart" (fn this.handleDragStart lead)}}
-              {{on "dragend" this.handleDragEnd}}
-              {{on "click" (fn this.openDetailModal lead)}}
-            >
-              <div class="flex between x-center">
-                <p class="text-sm font-bold flex gap-2 x-center">
-                  {{contact-name lead.contact}}
-                  {{#if (is-limited-contact lead.contact)}}
-                    <Nuvo::Badge
-                      @size="sm"
-                      @text="Limited"
-                      data-test-limited-badge
-                    />
-                  {{/if}}
-                </p>
-                <Nuvo::Tag
-                  class="tag-temp-{{lowercase lead.temperature}}"
-                  @text={{lead.temperature}}
-                />
-              </div>
-              <div class="flex gap-2 x-center">
-                <p
-                  class="text-muted text-xs"
-                  dir="ltr"
-                  data-test-lead-phone
-                >{{contact-phone lead.contact}}</p>
-                {{#if (can-whatsapp lead.contact)}}
-                  <a
-                    href={{wa-link lead.contact.phone}}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="wa-link"
-                    aria-label="Open WhatsApp chat with {{contact-name
-                      lead.contact
-                    }}"
-                    data-test-wa-link
-                    {{on "click" this.stopPropagation}}
-                  >
-                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                  </a>
-                {{/if}}
-              </div>
-              <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
-              {{#if lead.locality}}
-                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
-                    @icon="buildings"
-                  />
-                  {{lead.locality.name}}</p>
-              {{/if}}
-              <div class="flex between x-center mt-1">
-                <span class="text-xs text-muted">{{format-date
-                    lead.createdAt
-                  }}</span>
-                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openEdit lead)}}
-                  >
-                    Edit
-                  </Nuvo::Button>
-                </Nuvo::BtnGroup>
-              </div>
-            </Nuvo::Panel>
+            <Leads::KanbanCard
+              @lead={{lead}}
+              @board="agent"
+              @dragClass={{this.cardDragClass "agent" column.agentId lead.id}}
+              @onDragStart={{this.handleDragStart}}
+              @onDragEnd={{this.handleDragEnd}}
+              @onOpen={{this.openDetailModal}}
+              @onEdit={{this.openEdit}}
+            />
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -823,10 +611,10 @@
           {{/if}}
           <Nuvo::InfoRow @label="Budget">
             {{#if this.detailLead.budgetMin}}
-              {{format-currency this.detailLead.budgetMin}}
+              <Money @amount={{this.detailLead.budgetMin}} />
               {{#if this.detailLead.budgetMax}}
                 &ndash;
-                {{format-currency this.detailLead.budgetMax}}
+                <Money @amount={{this.detailLead.budgetMax}} />
               {{/if}}
             {{else}}
               <span class="text-muted">Not specified</span>
