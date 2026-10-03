@@ -68,7 +68,11 @@
         {{cell.value}}/{{cell.row.seatCap}}
       {{else if (eq cell.key "mrr.amountMinor")}}
         {{#if cell.row.mrr}}
-          {{format-money cell.row.mrr.amountMinor cell.row.mrr.currency}}
+          {{format-money
+            cell.row.mrr.amountMinor
+            currency=cell.row.mrr.currency
+            minor=true
+          }}
         {{else}}
           <span class="text-muted">—</span>
         {{/if}}

@@ -140,7 +140,7 @@
                       {{#if unit.price}}
                         <p
                           class="text-success font-bold text-md"
-                        >{{format-currency unit.price}}</p>
+                        ><Money @amount={{unit.price}} /></p>
                       {{/if}}
                     </div>
 
@@ -270,7 +270,7 @@
         {{else if (eq cell.key "price")}}
           <span class="text-success">{{if
               cell.value
-              (format-currency cell.value)
+              (format-money cell.value)
               ""
             }}</span>
         {{else if (eq cell.key "id")}}

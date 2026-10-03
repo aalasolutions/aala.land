@@ -314,9 +314,9 @@
                 &middot;
                 {{unit.areaName}}</p>
               {{#if unit.price}}
-                <p class="text-lg font-bold text-success">{{format-currency
-                    unit.price
-                  }}</p>
+                <p class="text-lg font-bold text-success"><Money
+                    @amount={{unit.price}}
+                  /></p>
               {{/if}}
               {{! Missing value shows a dash so the row never collapses and stays sortable. }}
               <div class="flex gap-3 text-xs text-muted">

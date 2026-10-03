@@ -7,6 +7,7 @@ import {
   toEpochMs,
 } from '../utils/local-date';
 import { compactFormatter, moneyFormatter } from '../utils/chart-style';
+import { localeForRegion } from '../utils/locale';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -18,7 +19,7 @@ export default class ChartBaseComponent extends Component {
   @service region;
 
   get locale() {
-    return navigator.language || 'en';
+    return localeForRegion(this.region.activeRegion);
   }
 
   // Builds the Intl.NumberFormat once per locale/currency pair, not per row or tooltip frame.

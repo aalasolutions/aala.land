@@ -8,14 +8,22 @@
       <div class="console-hero__figure">
         <p class="kpi-label">MRR</p>
         <h2 class="console-hero__value" data-test-overview-mrr>
-          {{format-money this.dominant.mrrMinor this.dominant.currency}}
+          {{format-money
+            this.dominant.mrrMinor
+            currency=this.dominant.currency
+            minor=true
+          }}
           <span class="console-hero__unit">/mo</span>
         </h2>
       </div>
       <div class="console-hero__figure">
         <p class="kpi-label">ARR</p>
         <h2 class="console-hero__value" data-test-overview-arr>
-          {{format-money this.dominantArrMinor this.dominant.currency}}
+          {{format-money
+            this.dominantArrMinor
+            currency=this.dominant.currency
+            minor=true
+          }}
           <span class="console-hero__unit">/yr</span>
         </h2>
       </div>
@@ -28,7 +36,7 @@
             data-test-overview-currency-chip={{band.currency}}
           >
             <strong class="console-chip__code">{{band.currency}}</strong>
-            {{format-money band.mrrMinor band.currency}}
+            {{format-money band.mrrMinor currency=band.currency minor=true}}
           </span>
         {{/each}}
       </div>
@@ -95,7 +103,8 @@
         {{else if (eq cell.key "amount")}}
           <span class="font-bold">{{format-money
               cell.value
-              cell.row.currency
+              currency=cell.row.currency
+              minor=true
             }}</span>
         {{else if (eq cell.key "coversEnd")}}
           {{#if cell.row.overdue}}

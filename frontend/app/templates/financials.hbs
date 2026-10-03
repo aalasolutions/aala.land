@@ -23,7 +23,7 @@
         @contentBleed={{true}}
         @variant="success"
         @label="Income"
-        @value={{format-currency @model.summary.totalIncome}}
+        @value={{format-money @model.summary.totalIncome}}
         @delta={{this.rangeLabel}}
       >
         <:content>
@@ -39,7 +39,7 @@
         @contentBleed={{true}}
         @variant="danger"
         @label="Expenses"
-        @value={{format-currency @model.summary.totalExpense}}
+        @value={{format-money @model.summary.totalExpense}}
         @delta={{this.rangeLabel}}
       >
         <:content>
@@ -54,7 +54,7 @@
         data-test-summary="net"
         @contentBleed={{true}}
         @label="Net Balance"
-        @value={{format-currency @model.summary.net}}
+        @value={{format-money @model.summary.net}}
         @delta={{this.rangeLabel}}
       >
         <:content>
@@ -103,9 +103,9 @@
               </div>
             </:main>
             <:actions>
-              <p class="text-sm font-bold">{{format-currency
-                  reminder.amount
-                }}</p>
+              <p class="text-sm font-bold"><Money
+                  @amount={{reminder.amount}}
+                /></p>
             </:actions>
           </Nuvo::ListItem>
         {{/each}}
@@ -208,9 +208,11 @@
             class="font-bold
               {{if (eq cell.row.type 'INCOME') 'text-success' 'text-danger'}}"
           >
-            {{if (eq cell.row.type "INCOME") "+" "-"}}{{format-currency
-              cell.value
-            }}
+            {{if (eq cell.row.type "INCOME") "+" "-"}}<Money
+              @amount={{cell.value}}
+              @currency={{cell.row.currency}}
+              @compact={{false}}
+            />
           </span>
         {{else if (eq cell.key "status")}}
           <Nuvo::Tag

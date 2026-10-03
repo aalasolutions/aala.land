@@ -110,7 +110,7 @@
             <p
               data-test-unit-price
               class="text-2xl font-bold text-success"
-            >{{format-currency @model.unit.price}}</p>
+            ><Money @amount={{@model.unit.price}} /></p>
           {{/if}}
 
           <div class="flex gap-4 text-sm flex wrap" data-test-unit-specs>
@@ -414,7 +414,7 @@
           {{else if (eq cell.key "endDate")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "monthlyRent")}}
-            {{format-currency cell.value}}
+            <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
           {{else if (eq cell.key "status")}}
             <div class="flex gap-1 wrap">
               <Nuvo::Tag class="tag-lease-{{lowercase cell.value}}">

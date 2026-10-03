@@ -823,10 +823,10 @@
           {{/if}}
           <Nuvo::InfoRow @label="Budget">
             {{#if this.detailLead.budgetMin}}
-              {{format-currency this.detailLead.budgetMin}}
+              <Money @amount={{this.detailLead.budgetMin}} />
               {{#if this.detailLead.budgetMax}}
                 &ndash;
-                {{format-currency this.detailLead.budgetMax}}
+                <Money @amount={{this.detailLead.budgetMax}} />
               {{/if}}
             {{else}}
               <span class="text-muted">Not specified</span>

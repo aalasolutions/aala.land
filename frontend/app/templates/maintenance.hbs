@@ -14,17 +14,17 @@
       <Nuvo::Stat
         @variant="primary"
         @label="Total Estimated"
-        @value={{format-currency @model.costSummary.totalEstimated}}
+        @value={{format-money @model.costSummary.totalEstimated}}
       />
       <Nuvo::Stat
         @variant="primary"
         @label="Total Actual"
-        @value={{format-currency @model.costSummary.totalActual}}
+        @value={{format-money @model.costSummary.totalActual}}
       />
       <Nuvo::Stat
         @variant="warning"
         @label="Pending Cost"
-        @value={{format-currency @model.costSummary.pendingCost}}
+        @value={{format-money @model.costSummary.pendingCost}}
       />
       <Nuvo::Stat
         @variant="secondary"
@@ -106,9 +106,15 @@
               @text={{cell.value}}
             />
           {{else if (eq cell.key "estimatedCost")}}
-            {{#if cell.value}}{{format-currency cell.value}}{{else}}-{{/if}}
+            {{#if cell.value}}<Money
+                @amount={{cell.value}}
+                @currency={{cell.row.currency}}
+              />{{else}}-{{/if}}
           {{else if (eq cell.key "actualCost")}}
-            {{#if cell.value}}{{format-currency cell.value}}{{else}}-{{/if}}
+            {{#if cell.value}}<Money
+                @amount={{cell.value}}
+                @currency={{cell.row.currency}}
+              />{{else}}-{{/if}}
           {{else if (eq cell.key "scheduledDate")}}
             <span class="text-xs">{{#if cell.value}}{{format-date
                   cell.value
