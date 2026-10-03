@@ -44,7 +44,7 @@ module('Integration | Template | contacts/index', function (hooks) {
 
   async function renderList(
     ctx,
-    { role = 'agent', contacts = [FULL, LIMITED], respond } = {},
+    { role = 'agent', contacts = [FULL, LIMITED], respond, tagCounts } = {},
   ) {
     ctx.calls = stubAuth(ctx.owner, { role, respond });
     const controller = ctx.owner.lookup('controller:contacts/index');
@@ -57,6 +57,7 @@ module('Integration | Template | contacts/index', function (hooks) {
         total: contacts.length,
         page: 1,
         limit: 50,
+        tagCounts,
         agents: [],
       },
     });
@@ -176,5 +177,25 @@ module('Integration | Template | contacts/index', function (hooks) {
     assert.dom(granted).containsText('sara@example.com');
     assert.dom(`${granted} [data-test-edit-contact]`).doesNotExist();
     assert.dom(`${granted} [data-test-request-access]`).doesNotExist();
+  });
+
+  test('the role bar shows a total per role when the list carries them', async function (assert) {
+    await renderList(this, {
+      tagCounts: { all: 9, lead: 4, owner: 3, tenant: 2, portfolio_owner: 0 },
+    });
+
+    const segment = (id) => `[data-test-nu-segmented-item="${id}"]`;
+    assert.dom(segment('')).hasText('All 9');
+    assert.dom(segment('lead')).hasText('Lead 4');
+    assert.dom(segment('owner')).hasText('Owner 3');
+    assert.dom(segment('tenant')).hasText('Tenant 2');
+    assert.dom(segment('portfolio_owner')).hasText('Portfolio Owner 0');
+  });
+
+  test('the role bar keeps plain labels when the list carries no totals', async function (assert) {
+    await renderList(this);
+
+    assert.dom('[data-test-nu-segmented-item="lead"]').hasText('Lead');
+    assert.dom('[data-test-nu-segmented-item=""]').hasText('All');
   });
 });

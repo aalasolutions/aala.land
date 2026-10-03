@@ -33,7 +33,7 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     dateTo = '',
     allRegions = '',
   }) {
-    const params = new URLSearchParams({ page, limit });
+    const params = new URLSearchParams({ page, limit, tagCounts: 'true' });
     if (resolveAllRegions(allRegions, this.auth.currentUser?.role)) {
       params.set('allRegions', 'true');
     }
@@ -58,6 +58,7 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
       total: contactsResult?.data?.total || 0,
       page: contactsResult?.data?.page || 1,
       limit: contactsResult?.data?.limit || limit,
+      tagCounts: contactsResult?.data?.tagCounts || null,
       agents: agentsResult?.data || [],
     };
   }
