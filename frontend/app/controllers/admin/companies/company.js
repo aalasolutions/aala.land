@@ -3,9 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
-import { formatMoney, minorUnitDigits } from '../../../utils/money';
+import { formatMoney, toMajorUnits, toMinorUnits } from '../../../utils/money';
 import { localeForRegion } from '../../../utils/locale';
-import { toMinorUnits } from 'land/utils/currency-digits';
 import {
   formatCalendarDate,
   localDateString,
@@ -295,7 +294,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     const d = this.deal;
     this.dealEditing = !!d;
     if (d) {
-      this.dealPrice = String(this.toMajor(d.priceAmount, d.currency));
+      this.dealPrice = String(toMajorUnits(d.priceAmount, d.currency));
       this.dealCurrency = d.currency;
       this.dealBasis = d.basis;
       this.dealSeatCap = String(d.seatCap);
@@ -857,18 +856,6 @@ export default class AdminCompaniesCompanyController extends Controller {
       return base;
     }
     return `${row.action} ${row.entityType}`;
-  }
-
-  minorDigits(currency) {
-    return minorUnitDigits(
-      currency || 'USD',
-      localeForRegion(this.region.activeRegion),
-    );
-  }
-
-  toMajor(minor, currency) {
-    const num = Number(minor ?? 0);
-    return num / 10 ** this.minorDigits(currency);
   }
 
   formatMoney(minor, currency) {

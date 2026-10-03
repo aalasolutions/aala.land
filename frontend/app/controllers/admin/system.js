@@ -2,10 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import {
-  currencyFractionDigits,
-  toMinorUnits,
-} from 'land/utils/currency-digits';
+import { minorUnitDigits, toMajorUnits, toMinorUnits } from 'land/utils/money';
 
 const COLUMNS = [
   { name: 'Price', valuePath: 'label', width: 240, isFixed: 'left' },
@@ -156,9 +153,7 @@ export default class AdminSystemController extends Controller {
   @action
   openAmount(row) {
     this.amountRow = row;
-    this.newAmount = String(
-      row.unitAmount / 10 ** currencyFractionDigits(row.currency),
-    );
+    this.newAmount = String(toMajorUnits(row.unitAmount, row.currency));
     this.newTaxInclusive = row.taxInclusive !== false;
     this.priceError = '';
   }
@@ -246,7 +241,7 @@ export default class AdminSystemController extends Controller {
     if (!Number.isFinite(amount)) return 'The amount must be a number.';
     if (amount < 1) return 'Enter an amount of 1 or more.';
     if (toMinorUnits(major, currency) === null) {
-      const digits = currencyFractionDigits(currency);
+      const digits = minorUnitDigits(currency);
       const code = currency.toUpperCase();
       return digits
         ? `${code} amounts take at most ${digits} decimal places.`

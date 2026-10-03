@@ -1,5 +1,11 @@
 import { module, test } from 'qunit';
-import { formatMoney, minorUnitDigits, moneyFormatter } from 'land/utils/money';
+import {
+  formatMoney,
+  minorUnitDigits,
+  moneyFormatter,
+  toMajorUnits,
+  toMinorUnits,
+} from 'land/utils/money';
 
 // Intl separates code and digits with a no-break space; compare on the visible text.
 const plain = (text) => text.replace(/\u00a0/g, ' ');
@@ -40,6 +46,39 @@ module('Unit | Utility | money', function () {
     assert.strictEqual(minorUnitDigits('USD'), 2);
     assert.strictEqual(minorUnitDigits('JPY'), 0);
     assert.strictEqual(minorUnitDigits('NOT_A_CURRENCY'), 2);
+  });
+
+  test('reads the minor-unit digits of a currency', function (assert) {
+    assert.strictEqual(minorUnitDigits('usd'), 2);
+    assert.strictEqual(minorUnitDigits('bhd'), 3);
+  });
+
+  test('falls back to 2 digits when the currency is undefined', function (assert) {
+    assert.strictEqual(minorUnitDigits(undefined), 2);
+  });
+
+  test('converts a major-unit input to minor units', function (assert) {
+    assert.strictEqual(toMinorUnits('19.99', 'usd'), 1999);
+    assert.strictEqual(toMinorUnits('25', 'usd'), 2500);
+    assert.strictEqual(toMinorUnits('3500', 'jpy'), 3500);
+    assert.strictEqual(toMinorUnits('1.234', 'bhd'), 1234);
+  });
+
+  test('refuses an empty, non-numeric or over-precise input', function (assert) {
+    assert.strictEqual(toMinorUnits('', 'usd'), null);
+    assert.strictEqual(toMinorUnits(null, 'usd'), null);
+    assert.strictEqual(toMinorUnits('abc', 'usd'), null);
+    assert.strictEqual(toMinorUnits('Infinity', 'usd'), null);
+    assert.strictEqual(toMinorUnits('19.999', 'usd'), null);
+    assert.strictEqual(toMinorUnits('1500.5', 'jpy'), null);
+  });
+
+  test('converts minor units to a major-unit number', function (assert) {
+    assert.strictEqual(toMajorUnits(1999, 'usd'), 19.99);
+    assert.strictEqual(toMajorUnits(3500, 'jpy'), 3500);
+    assert.strictEqual(toMajorUnits(1234, 'bhd'), 1.234);
+    assert.strictEqual(toMajorUnits(null, 'usd'), 0);
+    assert.strictEqual(toMajorUnits(1000, undefined), 10);
   });
 
   test('empty and non-numeric input render nothing', function (assert) {
