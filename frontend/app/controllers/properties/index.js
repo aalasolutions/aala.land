@@ -84,6 +84,20 @@ export default class PropertiesIndexController extends Controller {
     { value: 'added', label: 'Date added' },
   ];
 
+  browseLayoutOptions = [
+    { value: 'grid', label: 'Grid view', icon: 'squares-four' },
+    { value: 'list', label: 'List view', icon: 'list' },
+  ];
+
+  @tracked _browseLayout = null;
+
+  get browseLayout() {
+    return (
+      this._browseLayout ??
+      this.preferences.get('properties-browse-layout', 'grid')
+    );
+  }
+
   amenityOptions = AMENITY_OPTIONS;
 
   filterTypeOptions = FILTER_TYPE_OPTIONS;
@@ -127,6 +141,11 @@ export default class PropertiesIndexController extends Controller {
     if (view === 'browse' && this.browseUnits.length === 0) {
       this.loadBrowseUnits();
     }
+  }
+
+  @action setBrowseLayout(layout) {
+    this._browseLayout = layout;
+    this.preferences.set('properties-browse-layout', layout);
   }
 
   @action setFilterType(value) {
