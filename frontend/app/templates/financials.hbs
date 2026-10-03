@@ -16,110 +16,110 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  {{#if @model.summary}}
-    <div class="grid cols-3 gap-4">
-      <Nuvo::Stat
-        data-test-summary="total-income"
-        @contentBleed={{true}}
-        @variant="success"
-        @label="Income"
-        @value={{format-money @model.summary.totalIncome}}
-        @delta={{this.rangeLabel}}
-      >
-        <:content>
-          <StatSparkline
-            @points={{this.incomePoints}}
-            @variant="success"
-            @caption="Income by {{this.bucketNoun}}"
+  {{#unless @model.forbidden}}
+    <Nuvo::Card
+      @title="Cheques to chase"
+      @subtitle="Overdue and due this week, as of today. The period below does not filter this list."
+      data-test-financials-queue
+    >
+      <div class="flex col gap-3">
+        {{#if this.queueFailed}}
+          <Financials::LoadError
+            @title="Could not load everything that is due"
+            @description="Cheques or payments may be missing from this list."
+            @onRetry={{this.retryLoad}}
+            data-test-queue-error
           />
-        </:content>
-      </Nuvo::Stat>
-      <Nuvo::Stat
-        data-test-summary="total-expense"
-        @contentBleed={{true}}
-        @variant="danger"
-        @label="Expenses"
-        @value={{format-money @model.summary.totalExpense}}
-        @delta={{this.rangeLabel}}
-      >
-        <:content>
-          <StatSparkline
-            @points={{this.expensePoints}}
-            @variant="danger"
-            @caption="Expenses by {{this.bucketNoun}}"
-          />
-        </:content>
-      </Nuvo::Stat>
-      <Nuvo::Stat
-        data-test-summary="net"
-        @contentBleed={{true}}
-        @label="Net Balance"
-        @value={{format-money @model.summary.net}}
-        @delta={{this.rangeLabel}}
-      >
-        <:content>
-          <StatSparkline
-            @points={{this.netPoints}}
-            @variant="primary"
-            @caption="Net balance by {{this.bucketNoun}}"
-          />
-        </:content>
-      </Nuvo::Stat>
-    </div>
-  {{/if}}
+        {{/if}}
 
-  {{#if @model.depositReminders.length}}
-    <Nuvo::Card @title="Deposit Reminders">
-      <div class="flex col gap-2">
-        {{#each @model.depositReminders as |reminder|}}
-          <Nuvo::ListItem>
-            <:main>
-              <div>
-                <p class="text-sm font-bold">{{reminder.description}}</p>
-                <p class="text-muted text-xs">Due:
-                  {{format-date reminder.dueDate}}
-                  -
-                  {{reminder.category}}</p>
-                {{#if (or reminder.areaId reminder.tenantContactId)}}
-                  <p class="flex x-center gap-2 text-xs">
-                    {{#if reminder.areaId}}
+        {{#if this.queue.count}}
+          {{#if this.queue.overdueCount}}
+            <p class="text-sm font-bold text-danger" data-test-queue-overdue>
+              <Money @amount={{this.queue.overdueTotal}} />
+              overdue across
+              {{format-number this.queue.overdueCount unit="item"}}
+            </p>
+          {{/if}}
+
+          <ul class="finance-queue">
+            {{#each this.queue.rows key="key" as |row|}}
+              <li class="finance-queue__row" data-test-queue-row={{row.kind}}>
+                <Nuvo::Tag
+                  @size="sm"
+                  @variant={{if row.isOverdue "danger"}}
+                  @text={{row.dueLabel}}
+                  data-test-queue-due
+                />
+                <div class="finance-queue__what">
+                  <p class="text-sm font-bold"><DueLabel
+                      @label={{row.title}}
+                      @word={{row.dueWord}}
+                      @dueDate={{row.dueDate}}
+                    /></p>
+                  <p class="text-muted text-xs">
+                    {{#if (eq row.kind "cheque")}}
+                      {{row.holder}},
+                      {{row.detail}}
+                    {{else}}
+                      Payment due
+                    {{/if}}
+                    &middot;
+                    {{format-date row.dueDate}}
+                  </p>
+                </div>
+                <div class="finance-queue__links">
+                  {{#if (eq row.kind "cheque")}}
+                    <LinkTo
+                      @route="cheques"
+                      class="text-primary"
+                      data-test-queue-cheque-link={{row.id}}
+                    >Open in Cheques</LinkTo>
+                  {{else}}
+                    {{#if row.areaId}}
                       <LinkTo
                         @route="properties.unit"
-                        @models={{array reminder.areaId reminder.unitId}}
+                        @models={{array row.areaId row.unitId}}
                         class="text-primary"
-                        data-test-reminder-unit-link={{reminder.unitId}}
-                      >Unit {{reminder.unitNumber}}</LinkTo>
+                        data-test-reminder-unit-link={{row.unitId}}
+                      >Unit {{row.unitNumber}}</LinkTo>
                     {{/if}}
-                    {{#if reminder.tenantContactId}}
+                    {{#if row.tenantContactId}}
                       <LinkTo
                         @route="contacts.detail"
-                        @model={{reminder.tenantContactId}}
+                        @model={{row.tenantContactId}}
                         class="text-primary"
-                        data-test-reminder-tenant-link={{reminder.tenantContactId}}
-                      >{{or reminder.tenantName "Tenant"}}</LinkTo>
+                        data-test-reminder-tenant-link={{row.tenantContactId}}
+                      >{{or row.tenantName "Tenant"}}</LinkTo>
                     {{/if}}
-                  </p>
-                {{/if}}
-              </div>
-            </:main>
-            <:actions>
-              <p class="text-sm font-bold"><Money
-                  @amount={{reminder.amount}}
-                /></p>
-            </:actions>
-          </Nuvo::ListItem>
-        {{/each}}
+                  {{/if}}
+                </div>
+                <p class="finance-queue__amount" data-test-queue-amount>
+                  <Money @amount={{row.amount}} @currency={{row.currency}} />
+                </p>
+              </li>
+            {{/each}}
+          </ul>
+
+          {{#if this.queue.hiddenCount}}
+            <LinkTo
+              @route="cheques"
+              class="text-primary text-sm"
+              data-test-queue-view-all
+            >View all in Cheques ({{format-number this.queue.hiddenCount}}
+              more)</LinkTo>
+          {{/if}}
+        {{else if (not this.queueFailed)}}
+          <Nuvo::EmptyState
+            @description="Nothing to chase. No cheque or payment is overdue or due this week."
+            data-test-queue-empty
+          />
+        {{/if}}
       </div>
     </Nuvo::Card>
-  {{/if}}
+  {{/unless}}
 
-  <div class="finance-filters">
-    <Nuvo::Segmented
-      @options={{this.transactionTabs}}
-      @value={{this.activeTab}}
-      @onChange={{this.setTab}}
-      data-test-financials-tabs
-    />
+  <div class="finance-filters" data-test-financials-period>
+    <h2 class="text-lg font-bold">{{this.rangeLabel}}</h2>
 
     <div class="finance-filters__range">
       <Nuvo::Segmented
@@ -162,6 +162,105 @@
     </div>
   </div>
 
+  {{#if this.totals}}
+    <div class="grid cols-1 cols-3@md gap-4">
+      <Nuvo::Stat
+        data-test-summary="total-income"
+        @variant="success"
+        @label="Collected"
+        @value={{format-money this.totals.income}}
+        @delta={{this.rangeLabel}}
+      />
+      <Nuvo::Stat
+        data-test-summary="total-expense"
+        @variant="danger"
+        @label="Spent"
+        @value={{format-money this.totals.expense}}
+        @delta={{this.rangeLabel}}
+      />
+      <Nuvo::Stat
+        data-test-summary="net"
+        @label="Net"
+        @value={{format-money this.totals.net}}
+        @delta={{this.rangeLabel}}
+      />
+    </div>
+  {{/if}}
+
+  {{#unless @model.forbidden}}
+    <div class="grid cols-1 cols-2@lg gap-4">
+      <Nuvo::Card
+        @title="Cash flow"
+        @subtitle="Completed income and expense by {{this.bucketNoun}}, ending with the selected period."
+        data-test-financials-cashflow
+      >
+        {{#if this.cashflowFailed}}
+          <Financials::LoadError
+            @title="Could not load the cash flow"
+            @onRetry={{this.retryLoad}}
+            data-test-cashflow-error
+          />
+        {{else if this.cashflow.length}}
+          <CashflowChart @points={{this.cashflow}} />
+        {{else}}
+          <Nuvo::EmptyState
+            @description="No cash flow for this period."
+            data-test-cashflow-empty
+          />
+        {{/if}}
+      </Nuvo::Card>
+
+      <Nuvo::Card
+        @title="Where the money went"
+        @subtitle="Completed expenses by category for the selected period."
+        data-test-financials-categories
+      >
+        {{#if this.categoriesFailed}}
+          <Financials::LoadError
+            @title="Could not load spending by category"
+            @onRetry={{this.retryLoad}}
+            data-test-categories-error
+          />
+        {{else if this.expenseCategories.length}}
+          <div class="flex col gap-3">
+            {{#each this.expenseCategories key="category" as |row|}}
+              <div
+                class="flex col gap-1"
+                data-test-category-row={{row.category}}
+              >
+                <div class="flex between x-center gap-2 text-sm">
+                  <span>{{transaction-category-label row.category}}</span>
+                  <span class="font-bold"><Money @amount={{row.total}} /></span>
+                </div>
+                <Nuvo::Progress
+                  @value={{row.share}}
+                  @variant="danger"
+                  @size="sm"
+                  @showText={{true}}
+                  @label="{{row.share}}%"
+                />
+              </div>
+            {{/each}}
+          </div>
+        {{else}}
+          <Nuvo::EmptyState
+            @description="No completed expenses in this period."
+            data-test-categories-empty
+          />
+        {{/if}}
+      </Nuvo::Card>
+    </div>
+  {{/unless}}
+
+  <div>
+    <Nuvo::Segmented
+      @options={{this.transactionTabs}}
+      @value={{this.activeTab}}
+      @onChange={{this.setTab}}
+      data-test-financials-tabs
+    />
+  </div>
+
   <Nuvo::Card @title="Transactions">
     {{#if @model.forbidden}}
       <Nuvo::Alert
@@ -171,23 +270,12 @@
         data-test-financials-forbidden
       />
     {{else if @model.error}}
-      <Nuvo::Alert
-        @variant="danger"
+      <Financials::LoadError
         @title="Could not load financials"
         @description={{@model.error}}
+        @onRetry={{this.retryLoad}}
         data-test-financials-error
-      >
-        <:actions>
-          <Nuvo::Button
-            @variant="secondary"
-            @size="sm"
-            {{on "click" this.retryLoad}}
-            data-test-financials-retry
-          >
-            Try again
-          </Nuvo::Button>
-        </:actions>
-      </Nuvo::Alert>
+      />
     {{else if this.filteredTransactions.length}}
       <Nuvo::DataTable
         @columns={{this.columns}}
