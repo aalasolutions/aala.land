@@ -23,7 +23,7 @@
           {{#each @model.contact.tags as |tag|}}
             <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
           {{else}}
-            <span class="text-muted text-sm">Contact</span>
+            <Nuvo::Tag class="tag-contact-other" @text="Contact" />
           {{/each}}
         </div>
       {{/if}}
