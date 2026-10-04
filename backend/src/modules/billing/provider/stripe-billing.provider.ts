@@ -204,6 +204,7 @@ export class StripeBillingProvider implements BillingProvider {
   ): Promise<ProviderWebhookEvent> {
     // Read lazily: envs without webhooks still boot; missing secret fails the webhook, not startup.
     const secret = this.config.getOrThrow<string>('STRIPE_WEBHOOK_SECRET');
+    if (!secret.trim()) throw new Error('STRIPE_WEBHOOK_SECRET is empty');
     const event = this.stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -477,7 +478,7 @@ export class StripeBillingProvider implements BillingProvider {
   ): Promise<CreateSubscriptionResult> {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     if (input.basePriceId) {
-      // $250 base fee, qty always 1. ENTERPRISE only; base includes the first seat.
+      // Base fee, qty always 1. ENTERPRISE only; base includes the first seat.
       lineItems.push({ price: input.basePriceId, quantity: 1 });
     }
     if (input.quantity > 0) {
@@ -602,7 +603,7 @@ export class StripeBillingProvider implements BillingProvider {
       items.push({ price: input.seatPriceId, quantity: newSeatQty });
     }
 
-    // Base line: ENTERPRISE carries the $250 base, PRO does not.
+    // Base line: ENTERPRISE carries a base price, PRO does not.
     if (input.basePriceId) {
       // Add (PRO->ENTERPRISE) or update the existing base price.
       items.push(

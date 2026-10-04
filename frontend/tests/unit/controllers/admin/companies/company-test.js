@@ -70,4 +70,30 @@ module('Unit | Controller | admin/companies/company', function (hooks) {
     assert.strictEqual(rows[0].creditApplied, 0);
     assert.strictEqual(rows[0].creditIssued, 0);
   });
+
+  test('every row carries the amount its Credit cell displays', async function (assert) {
+    const rows = await loadRows(this, [
+      { ...CARD, id: 'paid', type: 'payment_succeeded', amount: 2500 },
+      {
+        ...CARD,
+        id: 'applied',
+        type: 'settled_without_charge',
+        amount: 0,
+        creditApplied: 2498,
+        creditIssued: 0,
+      },
+      {
+        ...CARD,
+        id: 'issued',
+        type: 'settled_without_charge',
+        amount: 0,
+        creditApplied: 0,
+        creditIssued: 2500,
+      },
+    ]);
+    const amountById = Object.fromEntries(
+      rows.map((r) => [r.id, r.creditAmount]),
+    );
+    assert.deepEqual(amountById, { paid: 0, applied: 2498, issued: 2500 });
+  });
 });

@@ -89,6 +89,9 @@ describe('SystemEmailService', () => {
     it('prefers the company admin', async () => {
       (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
       await service.sendPurchaseConfirmationToCompany('co-1', 'Pro', 3);
+      expect(mail.sendMail.mock.calls[0][0].html).toContain(
+        'https://app.aala.land/company?tab=billing',
+      );
       expect(userRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { companyId: 'co-1', role: Role.COMPANY_ADMIN, isActive: true },
@@ -138,12 +141,21 @@ describe('SystemEmailService', () => {
       expect(arg.html).toContain('https://invoice');
     });
 
+    it('links the receipt to the billing tab when there is no invoice URL', async () => {
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
+      await service.sendPaymentSucceededToCompany('co-1', 2500, 'usd', null);
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.html).toContain('https://app.aala.land/company?tab=billing');
+    });
+
     it('always sends payment-failed regardless of preferences', async () => {
       (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
       (prefs.accepts as jest.Mock).mockResolvedValue(false);
       await service.sendPaymentFailedToCompany('co-1', 2500, 'usd', 2);
       expect(mail.sendMail).toHaveBeenCalled();
       expect(prefs.accepts).not.toHaveBeenCalled();
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.html).toContain('https://app.aala.land/company?tab=billing');
     });
   });
 
@@ -171,7 +183,7 @@ describe('SystemEmailService', () => {
       expect(arg.text).toContain(
         'A change to your subscription added USD 25.00 to your account credit balance. It will be used on your future invoices.',
       );
-      expect(arg.html).toContain('https://app.aala.land/settings/billing');
+      expect(arg.html).toContain('https://app.aala.land/company?tab=billing');
     });
 
     it('skips when billing emails are muted', async () => {
@@ -196,6 +208,7 @@ describe('SystemEmailService', () => {
       const arg = mail.sendMail.mock.calls[0][0];
       expect(arg.subject).toContain('August 1, 2026');
       expect(arg.html).toContain('USD 75.00');
+      expect(arg.html).toContain('https://app.aala.land/company?tab=billing');
     });
 
     it('formats the renewal date on its UTC calendar day', async () => {
@@ -238,6 +251,7 @@ describe('SystemEmailService', () => {
       const arg = mail.sendMail.mock.calls[0][0];
       expect(arg.to).toBe('admin@acme.com');
       expect(arg.html).toContain('storage');
+      expect(arg.html).toContain('https://app.aala.land/company?tab=billing');
     });
   });
 });

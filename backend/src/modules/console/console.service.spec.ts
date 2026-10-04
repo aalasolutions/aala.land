@@ -1602,7 +1602,7 @@ describe('ConsoleService', () => {
           currency: 'usd',
           coversEnd: dayOffset(2),
         },
-        // Churned one-time payer: > 90 days past covers-end, must drop out (F3).
+        // Churned one-time payer: > 90 days past covers-end, must drop out.
         {
           companyId: 'co-stale',
           amount: '5000',

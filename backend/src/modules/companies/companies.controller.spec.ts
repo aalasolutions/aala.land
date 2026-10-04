@@ -156,4 +156,42 @@ describe('CompaniesController', () => {
       }
     });
   });
+
+  describe('getStorageUsage', () => {
+    const usageCompany = {
+      ...mockCompany,
+      storageUsedBytes: 0,
+      subscriptionTier: 'PRO',
+      purchasedSeats: 3,
+    };
+
+    it('reports hasSubscription true when a subscription id is set', async () => {
+      service.findOne.mockResolvedValue({
+        ...usageCompany,
+        billingSubscriptionId: 'sub_1',
+      } as any);
+
+      const result = await controller.getStorageUsage(
+        'company-uuid-1',
+        mockReq as any,
+      );
+
+      expect(result.hasSubscription).toBe(true);
+      expect(result.purchasedSeats).toBe(3);
+    });
+
+    it('reports hasSubscription false when no subscription id is set', async () => {
+      service.findOne.mockResolvedValue({
+        ...usageCompany,
+        billingSubscriptionId: null,
+      } as any);
+
+      const result = await controller.getStorageUsage(
+        'company-uuid-1',
+        mockReq as any,
+      );
+
+      expect(result.hasSubscription).toBe(false);
+    });
+  });
 });

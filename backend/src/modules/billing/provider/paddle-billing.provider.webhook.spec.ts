@@ -259,6 +259,21 @@ const overrideCharge = completedTransaction({
   lineItems: [txnLine('pri_seat', 1, '900', '1062')],
 });
 
+// Payment method change: the provider zeroes every item and total.
+const paymentMethodChange = completedTransaction({
+  origin: 'subscription_payment_method_change',
+  totals: {
+    subtotal: '0',
+    tax: '0',
+    total: '0',
+    credit: '0',
+    credit_to_balance: '0',
+    grand_total: '0',
+  },
+  items: [txnItem('pri_seat', 'SEAT', 2)],
+  lineItems: [txnLine('pri_seat', 2, '0', '0')],
+});
+
 describe('PaddleBillingProvider webhook parsing', () => {
   let provider: PaddleBillingProvider;
 
@@ -337,6 +352,28 @@ describe('PaddleBillingProvider webhook parsing', () => {
       expect(() => verifyPaddleSignature(body, header, SECRET)).toThrow(
         'does not match',
       );
+    });
+
+    it.each(['', '   '])(
+      'parseWebhook refuses an empty webhook secret (%j) before any signature check',
+      async (blank) => {
+        const blankSecret = new PaddleBillingProvider({
+          get: jest.fn().mockReturnValue('sandbox'),
+          getOrThrow: jest.fn((key: string) =>
+            key === 'PADDLE_WEBHOOK_SECRET' ? blank : 'key',
+          ),
+        } as unknown as ConfigService);
+        await expect(
+          blankSecret.parseWebhook(body, sign(body, nowSeconds(), blank)),
+        ).rejects.toThrow('PADDLE_WEBHOOK_SECRET is empty');
+      },
+    );
+
+    it('parseWebhook accepts a body signed with the configured secret', async () => {
+      const signed = Buffer.from(JSON.stringify(subscriptionEvent()));
+      await expect(
+        provider.parseWebhook(signed, sign(signed, nowSeconds())),
+      ).resolves.toMatchObject({ providerEventId: expect.any(String) });
     });
 
     it('parseWebhook rejects a bad signature before reading the body', async () => {
@@ -559,6 +596,20 @@ describe('PaddleBillingProvider webhook parsing', () => {
       });
     });
 
+    it('a payment method change is settled without charge and sets no unit amount', async () => {
+      const parsed = await parse(paymentMethodChange);
+      expect(parsed.events).toHaveLength(1);
+      expect(parsed.events[0]).toMatchObject({
+        name: 'PaymentSucceeded',
+        amount: 0,
+        creditApplied: 0,
+        creditIssued: 0,
+        origin: 'subscription_payment_method_change',
+        settledWithoutCharge: true,
+        chargedUnitAmounts: [],
+      });
+    });
+
     it('a prorated plan switch is a charge that sets no unit amount', async () => {
       const parsed = await parse(planSwitch);
       expect(parsed.events[0]).toMatchObject({
@@ -660,6 +711,15 @@ describe('PaddleBillingProvider webhook parsing', () => {
         chargedUnitAmounts({
           items: [txnItem('pri_seat', 'SEAT', -1)],
           details: { line_items: [txnLine('pri_seat', -1, '2381', '2500')] },
+        }),
+      ).toEqual([]);
+    });
+
+    it('ignores a line whose unit total is zero', () => {
+      expect(
+        chargedUnitAmounts({
+          items: [txnItem('pri_seat', 'SEAT', 2)],
+          details: { line_items: [txnLine('pri_seat', 2, '0', '0')] },
         }),
       ).toEqual([]);
     });

@@ -30,9 +30,9 @@ export interface ProviderWebhookEvent {
 export interface CreateSubscriptionInput {
   /** Provider customer id (must already exist). */
   customerId: string;
-  /** BillingPrice.providerPriceId for the SEAT price ($25) in this currency. */
+  /** BillingPrice.providerPriceId for the SEAT price in this currency. */
   seatPriceId: string;
-  /** ENTERPRISE_BASE price id ($250, includes first seat), null for PRO (no base). */
+  /** ENTERPRISE_BASE price id (includes first seat), null for PRO (no base). */
   basePriceId: string | null;
   /** Target plan, stamped on subscription metadata for the webhook. */
   plan: BillingPlan;

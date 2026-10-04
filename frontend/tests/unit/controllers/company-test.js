@@ -502,4 +502,37 @@ module('Unit | Controller | company', function (hooks) {
       );
     });
   });
+
+  test('billing history rows carry the amount the Credit cell displays', function (assert) {
+    const raw = [
+      {
+        id: 'paid',
+        type: 'payment_succeeded',
+        creditApplied: 0,
+        creditIssued: 0,
+      },
+      {
+        id: 'applied',
+        type: 'settled_without_charge',
+        creditApplied: 2498,
+        creditIssued: 0,
+      },
+      {
+        id: 'issued',
+        type: 'settled_without_charge',
+        creditApplied: 0,
+        creditIssued: 2500,
+      },
+    ];
+    const controller = controllerWith.call(this, { billingHistory: raw });
+    const amountById = Object.fromEntries(
+      controller.billingHistoryRows.map((r) => [r.id, r.creditAmount]),
+    );
+    assert.deepEqual(amountById, { paid: 0, applied: 2498, issued: 2500 });
+    assert.strictEqual(
+      raw[0].creditAmount,
+      undefined,
+      'raw rows are untouched',
+    );
+  });
 });

@@ -332,35 +332,55 @@ export class BillingWebhookService implements OnModuleInit {
     await this.history.recordPayment(event);
     // One-off invoices (future top-ups) carry no subscription: not our status.
     if (!event.subscriptionId) return;
-    // Not recency-guarded: a transaction may precede its activation.
     const patch = {
       ...chargedAmountPatch(event.chargedUnitAmounts),
       // A zero-charge settlement never moves paid status.
       ...(event.settledWithoutCharge ? {} : { billingStatus: 'active' }),
     };
     if (Object.keys(patch).length === 0) return;
-    await this.updateCompany(event.companyId, event.name, patch);
+    await this.applyCurrentSubscriptionUpdate(
+      event.companyId,
+      event.subscriptionId,
+      event.occurredAt,
+      event.name,
+      patch,
+    );
   }
 
   private async onPaymentFailed(event: PaymentFailedEvent): Promise<void> {
     await this.history.recordPayment(event);
     if (!event.subscriptionId) return;
-    await this.updateCompany(event.companyId, event.name, {
-      billingStatus: 'past_due',
-    });
+    await this.applyCurrentSubscriptionUpdate(
+      event.companyId,
+      event.subscriptionId,
+      event.occurredAt,
+      event.name,
+      { billingStatus: 'past_due' },
+    );
   }
 
-  private async updateCompany(
+  /** Not recency-guarded (a transaction may precede its activation), but never from another subscription. */
+  private async applyCurrentSubscriptionUpdate(
     companyId: string,
+    subscriptionId: string,
+    occurredAt: Date,
     eventName: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    patch: Record<string, any>,
+    patch: ChargedAmountColumns & Partial<Pick<Company, 'billingStatus'>>,
   ): Promise<void> {
-    const result = await this.companyRepo.update(companyId, patch);
+    const result = await this.companyRepo
+      .createQueryBuilder()
+      .update(Company)
+      .set(patch)
+      .where('id = :companyId', { companyId })
+      .andWhere(
+        '(billing_subscription_id = :subscriptionId OR (billing_subscription_id IS NULL AND (billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)))',
+        { subscriptionId, occurredAt },
+      )
+      .execute();
     if (!result.affected) {
-      // Retry can't conjure a missing company row; warn and mark the event processed anyway.
-      this.logger.warn(
-        `${eventName}: company ${companyId} not found, nothing updated`,
+      // Zero rows is not an error: retrying cannot make a stale subscription current.
+      this.logger.log(
+        `${eventName}: company ${companyId} not updated, subscription ${subscriptionId} is not current or the company is missing`,
       );
     }
   }

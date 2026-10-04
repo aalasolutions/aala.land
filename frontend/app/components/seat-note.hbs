@@ -4,7 +4,7 @@
       The Free plan is limited to a single user by default. Upgrade to Pro to
       add team members.
     </p>
-  {{else}}
+  {{else if @seatInfo.hasSubscription}}
     <p class="text-muted text-sm" data-test-seat-note>
       Your plan currently bills
       <span

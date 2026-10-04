@@ -5,6 +5,7 @@ import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
 import { formatMoney, toMajorUnits, toMinorUnits } from '../../../utils/money';
 import { localeForRegion } from '../../../utils/locale';
+import { creditDisplayAmount } from '../../../utils/billing-credit';
 import {
   formatCalendarDate,
   localDateString,
@@ -110,7 +111,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Credit', valuePath: 'creditApplied', width: 180, numeric: true },
+    { name: 'Credit', valuePath: 'creditAmount', width: 180, numeric: true },
     { name: 'Status', valuePath: 'type', width: 160 },
     { name: 'Covers', valuePath: 'coversLabel', width: 200 },
     { name: 'Source', valuePath: 'source', width: 120 },
@@ -569,6 +570,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         type: 'payment_succeeded',
         creditApplied: 0,
         creditIssued: 0,
+        creditAmount: 0,
         coversLabel: `${this.formatDate(p.coversStart)} – ${this.formatDate(
           p.coversEnd,
         )}`,
@@ -586,6 +588,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         type: h.type,
         creditApplied: h.creditApplied ?? 0,
         creditIssued: h.creditIssued ?? 0,
+        creditAmount: creditDisplayAmount(h),
         coversLabel:
           h.periodStart && h.periodEnd
             ? `${this.formatDate(h.periodStart)} – ${this.formatDate(

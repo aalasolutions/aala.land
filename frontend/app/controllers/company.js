@@ -6,6 +6,7 @@ import { service } from '@ember/service';
 import { canManageRegions, isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
 import { daysUntil, formatInstant } from '../utils/local-date';
+import { creditDisplayAmount } from '../utils/billing-credit';
 
 export default class CompanyController extends Controller {
   @service auth;
@@ -248,10 +249,17 @@ export default class CompanyController extends Controller {
       numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Credit', valuePath: 'creditApplied', width: 180, numeric: true },
+    { name: 'Credit', valuePath: 'creditAmount', width: 180, numeric: true },
     { name: 'Status', valuePath: 'type', width: 160 },
     { name: 'Invoice', valuePath: 'hostedInvoiceUrl', width: 160 },
   ];
+
+  get billingHistoryRows() {
+    return (this.billingHistory ?? []).map((row) => ({
+      ...row,
+      creditAmount: creditDisplayAmount(row),
+    }));
+  }
 
   get maxRegions() {
     return this.company?.maxRegions ?? 1;

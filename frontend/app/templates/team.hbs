@@ -187,7 +187,7 @@
 >
   <:body>
     {{#unless this.editUser}}
-      <SeatNote @seatInfo={{this.model.seatInfo}} />
+      <SeatNote @seatInfo={{this.seatInfo}} />
     {{/unless}}
     <form
       id="team-member-form"
@@ -322,7 +322,7 @@
   <:body>
     <p class="text-muted text-sm">Send an invitation with a temporary password.
       The new member will receive login credentials.</p>
-    <SeatNote @seatInfo={{this.model.seatInfo}} />
+    <SeatNote @seatInfo={{this.seatInfo}} />
     <form
       id="team-invite-form"
       class="flex col gap-4"

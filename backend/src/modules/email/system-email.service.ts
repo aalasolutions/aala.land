@@ -26,8 +26,15 @@ export interface EmailRecipient {
   name: string;
 }
 
+/** Billing tab of the company page. */
+const BILLING_PAGE_PATH = '/company?tab=billing';
+
 function appUrl(): string {
   return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
+}
+
+function billingPageUrl(): string {
+  return `${appUrl()}${BILLING_PAGE_PATH}`;
 }
 
 // Account emails take explicit {email, name}; company emails resolve contact from companyId.
@@ -126,7 +133,7 @@ export class SystemEmailService {
         name: recipient.name,
         resourceLabel,
         detail,
-        upgradeUrl: `${appUrl()}/settings/billing`,
+        upgradeUrl: billingPageUrl(),
       }),
     );
   }
@@ -145,7 +152,7 @@ export class SystemEmailService {
         name: recipient.name,
         planLabel,
         seats,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
       }),
     );
@@ -173,7 +180,7 @@ export class SystemEmailService {
         amountMinor,
         currency,
         invoiceUrl,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
       }),
     );
@@ -201,7 +208,7 @@ export class SystemEmailService {
         creditAppliedMinor,
         creditIssuedMinor,
         currency,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(
           recipient.id,
           'billing',
@@ -232,7 +239,7 @@ export class SystemEmailService {
         renewalDate,
         amountMinor,
         currency,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
       }),
     );
@@ -255,7 +262,7 @@ export class SystemEmailService {
         amountMinor,
         currency,
         attemptCount,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
       }),
     );
   }

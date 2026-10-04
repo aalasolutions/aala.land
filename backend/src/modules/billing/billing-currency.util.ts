@@ -1,6 +1,6 @@
 import { getRegionByCode } from '@shared/constants/regions';
 
-/** Same value across currencies (~$25 = AED 95 = SAR 95); USD is default, listed first. */
+/** Supported billing currencies; USD is default, listed first. */
 export const BILLING_CURRENCIES = ['usd', 'aed', 'sar'] as const;
 export type BillingCurrency = (typeof BILLING_CURRENCIES)[number];
 

@@ -46,7 +46,7 @@ const REQUEST_TIMEOUT_MS = 8000;
 export const PADDLE_SIGNATURE_TOLERANCE_SECONDS = 300;
 const SEAT_QUANTITY_MAX = 10000;
 const ACTIVE_SUBSCRIPTION_STATUSES = ['active', 'trialing'];
-// Seats bill from the next period; plan switches prorate at once.
+// Seats bill next period; plan switches and settle-now changes prorate at once.
 const SEAT_PRORATION = 'prorated_next_billing_period' as const;
 const PLAN_PRORATION = 'prorated_immediately' as const;
 const SEAT_SETTLE_NOW_PRORATION = 'prorated_immediately' as const;
@@ -227,6 +227,8 @@ export function chargedUnitAmounts(
     const net = minorUnits(line.unit_totals?.subtotal);
     const gross = minorUnits(line.unit_totals?.total);
     if (net == null || gross == null) continue;
+    // A zero unit total is no charged price (payment method change).
+    if (gross <= 0) continue;
     out.push({ kind, net, gross });
   }
   return out;
@@ -411,6 +413,7 @@ export class PaddleBillingProvider implements BillingProvider {
   ): Promise<ProviderWebhookEvent> {
     // Read lazily: envs without webhooks still boot; missing secret fails the webhook, not startup.
     const secret = this.config.getOrThrow<string>('PADDLE_WEBHOOK_SECRET');
+    if (!secret.trim()) throw new Error('PADDLE_WEBHOOK_SECRET is empty');
     verifyPaddleSignature(rawBody, signature, secret);
     const event = JSON.parse(rawBody.toString('utf8')) as PaddleRawEvent;
     if (!event.event_id || !event.event_type) {

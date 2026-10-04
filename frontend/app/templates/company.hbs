@@ -240,7 +240,7 @@
         {{#if this.billingHistory.length}}
           <Nuvo::DataTable
             @columns={{this.billingHistoryColumns}}
-            @rows={{this.billingHistory}}
+            @rows={{this.billingHistoryRows}}
             @pinColumns={{true}}
             @reorderable={{true}}
             @sortable={{true}}
@@ -258,7 +258,7 @@
                   currency=cell.row.currency
                   minor=true
                 }}</span>
-            {{else if (eq cell.key "creditApplied")}}
+            {{else if (eq cell.key "creditAmount")}}
               {{#let (billing-history-status cell.row) as |status|}}
                 {{#if status.creditAmount}}
                   <span

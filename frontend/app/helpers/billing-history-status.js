@@ -1,4 +1,5 @@
 import { helper } from '@ember/component/helper';
+import { creditDisplayAmount } from 'land/utils/billing-credit';
 
 // Amounts are minor units in the row's own currency.
 export default helper(function billingHistoryStatus([row]) {
@@ -17,7 +18,7 @@ export default helper(function billingHistoryStatus([row]) {
     else label = 'No charge';
   }
   const hasApplied = applied > 0;
-  const creditAmount = hasApplied ? applied : issued > 0 ? issued : null;
+  const creditAmount = creditDisplayAmount(row) || null;
   const creditNote = hasApplied ? 'used' : 'added to balance';
   return { label, tagClass, creditAmount, creditNote };
 });
