@@ -826,9 +826,9 @@ describe('PaddleBillingProvider', () => {
       expect(client.adjustments.create).not.toHaveBeenCalled();
     });
 
-    it('does not look up earlier refunds without a reference', async () => {
+    it('does not look up earlier refunds for a full refund without a reference', async () => {
       client.adjustments.create.mockResolvedValue({ id: 'adj_4' });
-      await provider.refundInvoicePayment('txn_1', 100);
+      await provider.refundInvoicePayment('txn_1', null);
       expect(client.adjustments.list).not.toHaveBeenCalled();
     });
 
@@ -865,6 +865,7 @@ describe('PaddleBillingProvider', () => {
     });
 
     it('spreads a partial refund over the line items', async () => {
+      client.adjustments.list.mockReturnValue(collection([]));
       client.transactions.get.mockResolvedValue({
         details: {
           lineItems: [
@@ -887,6 +888,45 @@ describe('PaddleBillingProvider', () => {
       });
     });
 
+    it('caps each line at what live earlier refunds left on it', async () => {
+      client.adjustments.list.mockReturnValue(
+        collection([
+          {
+            id: 'adj_earlier',
+            reason: 'Make-it-right refund',
+            status: 'approved',
+            items: [{ itemId: 'txnitm_base', amount: '24900' }],
+          },
+          {
+            id: 'adj_rejected',
+            reason: 'Make-it-right refund',
+            status: 'rejected',
+            items: [{ itemId: 'txnitm_seat', amount: '2500' }],
+          },
+        ]),
+      );
+      client.transactions.get.mockResolvedValue({
+        details: {
+          lineItems: [
+            { id: 'txnitm_base', totals: { total: '25000' } },
+            { id: 'txnitm_seat', totals: { total: '2500' } },
+          ],
+        },
+      });
+      client.adjustments.create.mockResolvedValue({ id: 'adj_5' });
+      await provider.refundInvoicePayment('txn_1', 2600, 'rem-2');
+      expect(client.adjustments.create).toHaveBeenCalledWith({
+        action: 'refund',
+        transactionId: 'txn_1',
+        reason: 'Refund of unused days, ref rem-2',
+        type: 'partial',
+        items: [
+          { itemId: 'txnitm_base', type: 'partial', amount: '100' },
+          { itemId: 'txnitm_seat', type: 'partial', amount: '2500' },
+        ],
+      });
+    });
+
     it('rejects a non-positive partial amount', async () => {
       await expect(provider.refundInvoicePayment('txn_1', 0)).rejects.toThrow(
         'positive integer',
@@ -898,6 +938,16 @@ describe('PaddleBillingProvider', () => {
     it('throws when the amount exceeds the line totals', () => {
       expect(() =>
         allocateRefund([{ id: 'a', totals: { total: '100' } }], 101),
+      ).toThrow('exceeds');
+    });
+
+    it('throws when earlier refunds leave too little on the lines', () => {
+      expect(() =>
+        allocateRefund(
+          [{ id: 'a', totals: { total: '100' } }],
+          50,
+          new Map([['a', 60]]),
+        ),
       ).toThrow('exceeds');
     });
   });

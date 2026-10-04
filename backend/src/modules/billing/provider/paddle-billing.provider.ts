@@ -11,6 +11,7 @@ import {
   ApiError,
   Environment,
   Paddle,
+  type Adjustment,
   type CountryCode,
   type CurrencyCode,
   type Subscription,
@@ -198,16 +199,20 @@ export function deriveSubscriptionShape(
   return { plan, quantity, currentPeriodEnd: isoToDate(periodEnd) };
 }
 
-/** Spreads a partial refund over the transaction's line items, capped at each line's total. */
+/** Spreads a partial refund over the transaction's line items, capped at what each line has left. */
 export function allocateRefund(
   lineItems: { id: string; totals?: { total?: string | null } | null }[],
   amountMinor: number,
+  refundedByItem: Map<string, number> = new Map(),
 ): { itemId: string; type: 'partial'; amount: string }[] {
   let remaining = amountMinor;
   const out: { itemId: string; type: 'partial'; amount: string }[] = [];
   for (const line of lineItems) {
     if (remaining <= 0) break;
-    const take = Math.min(remaining, minorUnits(line.totals?.total) ?? 0);
+    const left =
+      (minorUnits(line.totals?.total) ?? 0) -
+      (refundedByItem.get(line.id) ?? 0);
+    const take = Math.min(remaining, left);
     if (take <= 0) continue;
     out.push({ itemId: line.id, type: 'partial', amount: String(take) });
     remaining -= take;
@@ -218,6 +223,35 @@ export function allocateRefund(
     );
   }
   return out;
+}
+
+/** Amount already refunded per line item by refunds that hold or returned money. */
+export function refundedByLineItem(
+  refunds: {
+    status?: string | null;
+    items?:
+      | {
+          itemId: string;
+          amount?: string | null;
+          totals?: { total?: string | null } | null;
+        }[]
+      | null;
+  }[],
+): Map<string, number> {
+  const refunded = new Map<string, number>();
+  for (const refund of refunds) {
+    if (refund.status !== 'pending_approval' && refund.status !== 'approved') {
+      continue;
+    }
+    for (const item of refund.items ?? []) {
+      refunded.set(
+        item.itemId,
+        (refunded.get(item.itemId) ?? 0) +
+          (minorUnits(item.amount ?? item.totals?.total) ?? 0),
+      );
+    }
+  }
+  return refunded;
 }
 
 export function refundStateOf(
@@ -972,9 +1006,22 @@ export class PaddleBillingProvider implements BillingProvider {
     const reason = reference
       ? `${REFUND_REFERENCE_PREFIX}${reference}`
       : 'Make-it-right refund';
-    if (reference) {
-      const existing = await this.findRefundByReason(invoiceId, reason);
-      if (existing) return existing;
+    if (
+      amountMinor != null &&
+      (!Number.isInteger(amountMinor) || amountMinor <= 0)
+    ) {
+      throw new Error(`Refund amount must be a positive integer`);
+    }
+    const refunds =
+      reference || amountMinor != null ? await this.listRefunds(invoiceId) : [];
+    const existing = reference
+      ? refunds.find((a) => a.reason === reason)
+      : undefined;
+    if (existing) {
+      return {
+        refundId: existing.id,
+        state: refundStateOf(existing.status) ?? undefined,
+      };
     }
     if (amountMinor == null) {
       const adjustment = await this.call('adjustments.create', () =>
@@ -990,15 +1037,13 @@ export class PaddleBillingProvider implements BillingProvider {
         state: refundStateOf(adjustment.status) ?? undefined,
       };
     }
-    if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
-      throw new Error(`Refund amount must be a positive integer`);
-    }
     const transaction = await this.call('transactions.get', () =>
       this.paddle.transactions.get(invoiceId),
     );
     const items = allocateRefund(
       transaction.details?.lineItems ?? [],
       amountMinor,
+      refundedByLineItem(refunds),
     );
     // Large live refunds come back pending approval; the adjustment webhook settles them.
     const adjustment = await this.call('adjustments.create', () =>
@@ -1016,20 +1061,13 @@ export class PaddleBillingProvider implements BillingProvider {
     };
   }
 
-  /** Paddle takes no idempotency key, so a retried refund is found by its reason. */
-  private async findRefundByReason(
-    invoiceId: string,
-    reason: string,
-  ): Promise<{ refundId: string; state?: RefundState } | null> {
-    const adjustments = await this.call('adjustments.list', () =>
+  /** Refunds on a transaction: a retry is found by its reason (no idempotency key), earlier items cap each line. */
+  private listRefunds(invoiceId: string): Promise<Adjustment[]> {
+    return this.call('adjustments.list', () =>
       this.paddle.adjustments
         .list({ transactionId: [invoiceId], action: 'refund', perPage: 50 })
         .next(),
     );
-    const found = adjustments.find((a) => a.reason === reason);
-    return found
-      ? { refundId: found.id, state: refundStateOf(found.status) ?? undefined }
-      : null;
   }
 
   creditCustomerBalance(): Promise<{ creditId: string }> {
