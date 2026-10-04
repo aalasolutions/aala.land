@@ -615,11 +615,6 @@ export class PaddleBillingProvider implements BillingProvider {
     }
 
     const amount = minorUnits(txn.details?.totals?.grand_total);
-    if (amount == null) {
-      this.logger.warn(
-        `Webhook ${event.event_id} (${event.event_type}): transaction ${txn.id ?? '?'} has no amount; defaulting to 0`,
-      );
-    }
     if (txn.currency_code == null) {
       this.logger.warn(
         `Webhook ${event.event_id} (${event.event_type}): transaction ${txn.id ?? '?'} has no currency; defaulting to usd`,
@@ -641,12 +636,23 @@ export class PaddleBillingProvider implements BillingProvider {
     };
 
     if (event.event_type === 'transaction.payment_failed') {
+      if (amount == null) {
+        this.logger.warn(
+          `Webhook ${event.event_id} (${event.event_type}): transaction ${txn.id ?? '?'} has no amount; defaulting to 0`,
+        );
+      }
       const failed: PaymentFailedEvent = {
         name: 'PaymentFailed',
         ...common,
         attemptCount: Array.isArray(txn.payments) ? txn.payments.length : null,
       };
       return [failed];
+    }
+    if (amount == null) {
+      this.logger.error(
+        `Webhook ${event.event_id} (${event.event_type}): transaction ${txn.id ?? '?'} has no amount; not recorded as paid`,
+      );
+      return [];
     }
     // Zero-total completions are recorded, never a paid-status signal.
     const succeeded: PaymentSucceededEvent = {

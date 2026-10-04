@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -7,7 +8,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, LessThan, Or, Repository } from 'typeorm';
 import {
   Company,
   SubscriptionTier,
@@ -68,6 +69,9 @@ function chargedAmountPatch(
   }
   return patch;
 }
+
+/** A claim older than this is taken as a crashed delivery; handlers finish well within it. */
+const PROCESSING_CLAIM_TTL_MS = 5 * 60 * 1000;
 
 function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; driverError?: { code?: string } };
@@ -135,13 +139,15 @@ export class BillingWebhookService implements OnModuleInit {
       throw new BadRequestException('Webhook signature verification failed');
     }
 
-    // Duplicate hits UNIQUE; re-dispatch instead of dropping if the prior row never finished.
+    // Duplicate hits UNIQUE; re-dispatch only if the prior delivery failed or went stale.
+    const claimedAt = new Date();
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await this.eventRepo.insert({
         providerEventId: parsed.providerEventId,
         type: parsed.providerEventType,
         payload: parsed.payload,
+        processingStartedAt: claimedAt,
       } as any);
     } catch (err) {
       if (!isUniqueViolation(err)) {
@@ -156,6 +162,21 @@ export class BillingWebhookService implements OnModuleInit {
         );
         return { received: true };
       }
+      const claim = await this.eventRepo.update(
+        {
+          providerEventId: parsed.providerEventId,
+          processedAt: IsNull(),
+          processingStartedAt: Or(
+            IsNull(),
+            LessThan(new Date(Date.now() - PROCESSING_CLAIM_TTL_MS)),
+          ),
+        },
+        { processingStartedAt: claimedAt },
+      );
+      if (!claim.affected) {
+        // 409 makes the provider retry after the delivery in flight has finished.
+        throw new ConflictException('Webhook is already being processed');
+      }
       this.logger.warn(
         `Webhook ${parsed.providerEventId} (${parsed.providerEventType}) was received but never finished processing; re-dispatching`,
       );
@@ -169,7 +190,16 @@ export class BillingWebhookService implements OnModuleInit {
         await this.dispatcher.dispatch(event);
       }
     } catch (err) {
-      // processed_at stays NULL so a failed handler can be inspected and retried.
+      // processed_at stays NULL and the claim is released so the next retry re-dispatches.
+      await this.eventRepo
+        .update(
+          {
+            providerEventId: parsed.providerEventId,
+            processingStartedAt: claimedAt,
+          },
+          { processingStartedAt: null },
+        )
+        .catch(() => undefined);
       this.logger.error(
         `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${errorMessage(err)}`,
       );

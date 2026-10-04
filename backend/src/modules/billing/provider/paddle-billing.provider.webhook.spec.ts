@@ -669,6 +669,15 @@ describe('PaddleBillingProvider webhook parsing', () => {
       ]);
     });
 
+    it('a completed transaction with no amount is not recorded as paid', async () => {
+      const raw = transactionEvent('transaction.completed');
+      const parsed = await parse({
+        ...raw,
+        data: { ...(raw.data as object), details: { totals: {} } },
+      });
+      expect(parsed.events).toEqual([]);
+    });
+
     it('a full-period charge carries its credits, origin and unit amounts', async () => {
       const parsed = await parse(firstCharge);
       expect(parsed.events).toEqual([

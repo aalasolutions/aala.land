@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, UpdateResult } from 'typeorm';
 import {
   BadRequestException,
+  ConflictException,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
@@ -233,17 +234,42 @@ describe('BillingWebhookService', () => {
       eventRepo.findOne.mockResolvedValue({
         processedAt: null,
       } as unknown as BillingEvent);
+      eventRepo.update.mockResolvedValue({ affected: 1 } as UpdateResult);
       const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
       await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
         received: true,
       });
+      expect(eventRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ providerEventId: 'evt_1' }),
+        { processingStartedAt: expect.any(Date) },
+      );
       expect(dispatchSpy).toHaveBeenCalled();
       expect(seatSyncPatch()).toEqual({ purchasedSeats: 3 });
       expect(eventRepo.update).toHaveBeenCalledWith(
         { providerEventId: 'evt_1' },
         { processedAt: expect.any(Date) },
       );
+    });
+
+    it('refuses with 409 a duplicate whose first delivery is still in flight', async () => {
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          { name: 'SeatQuantityChanged', ...baseEvent, quantity: 3 },
+        ]),
+      );
+      eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
+      eventRepo.findOne.mockResolvedValue({
+        processedAt: null,
+      } as unknown as BillingEvent);
+      eventRepo.update.mockResolvedValue({ affected: 0 } as UpdateResult);
+      const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+
+      await expect(
+        service.handleWebhook(rawBody, signature),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(dispatchSpy).not.toHaveBeenCalled();
+      expect(companyRepo.update).not.toHaveBeenCalled();
     });
 
     it('rethrows a non-duplicate insert failure so the provider retries', async () => {
@@ -268,6 +294,7 @@ describe('BillingWebhookService', () => {
         providerEventId: 'evt_1',
         type: 'customer.subscription.updated',
         payload: { id: 'evt_1' },
+        processingStartedAt: expect.any(Date),
       });
       expect(dispatchSpy).not.toHaveBeenCalled();
       expect(eventRepo.update).toHaveBeenCalledWith(
@@ -1055,7 +1082,10 @@ describe('BillingWebhookService', () => {
         service.handleWebhook(rawBody, signature),
       ).rejects.toBeInstanceOf(InternalServerErrorException);
       expect(later).not.toHaveBeenCalled();
-      expect(eventRepo.update).not.toHaveBeenCalled();
+      expect(eventRepo.update).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ processedAt: expect.anything() }),
+      );
     });
 
     it('the update events the reconcile itself causes never call the provider again', async () => {
@@ -1136,7 +1166,11 @@ describe('BillingWebhookService', () => {
       await expect(
         service.handleWebhook(rawBody, signature),
       ).rejects.toBeInstanceOf(InternalServerErrorException);
-      expect(eventRepo.update).not.toHaveBeenCalled();
+      expect(eventRepo.update).toHaveBeenCalledTimes(1);
+      expect(eventRepo.update).toHaveBeenCalledWith(
+        { providerEventId: 'evt_1', processingStartedAt: expect.any(Date) },
+        { processingStartedAt: null },
+      );
     });
   });
 

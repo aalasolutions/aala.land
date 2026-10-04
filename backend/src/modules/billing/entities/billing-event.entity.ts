@@ -27,6 +27,14 @@ export class BillingEvent {
   @CreateDateColumn({ name: 'received_at', type: 'timestamptz' })
   receivedAt: Date;
 
+  /** Set by the delivery that claims the event; a duplicate waits until it is stale. */
+  @Column({
+    name: 'processing_started_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  processingStartedAt: Date | null;
+
   /** Set when all handlers completed. NULL means received but not (fully) processed. */
   @Column({ name: 'processed_at', type: 'timestamptz', nullable: true })
   processedAt: Date | null;
