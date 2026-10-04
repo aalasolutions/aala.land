@@ -62,6 +62,27 @@ module('Integration | Template | admin company payments', function (hooks) {
                     creditApplied: 0,
                     creditIssued: 0,
                   },
+                  {
+                    ...CARD,
+                    id: 'h-refund-pending',
+                    type: 'refund',
+                    refundStatus: 'pending',
+                    amount: 1200,
+                  },
+                  {
+                    ...CARD,
+                    id: 'h-refund-approved',
+                    type: 'refund',
+                    refundStatus: 'approved',
+                    amount: 1200,
+                  },
+                  {
+                    ...CARD,
+                    id: 'h-refund-rejected',
+                    type: 'refund',
+                    refundStatus: 'rejected',
+                    amount: 1200,
+                  },
                 ],
               },
             }
@@ -118,5 +139,33 @@ module('Integration | Template | admin company payments', function (hooks) {
     assert.dom('[data-test-company-make-right="h-credit"]').doesNotExist();
     assert.dom('[data-test-company-make-right="h-issued"]').doesNotExist();
     assert.dom('[data-test-company-make-right="h-none"]').doesNotExist();
+  });
+
+  test('refund rows show their three labels and the refunded amount', function (assert) {
+    assert
+      .dom(`${row('h-refund-pending')} [data-test-payment-status]`)
+      .hasText('Refund requested');
+    assert
+      .dom(`${row('h-refund-approved')} [data-test-payment-status]`)
+      .hasText('Refunded');
+    assert
+      .dom(`${row('h-refund-rejected')} [data-test-payment-status]`)
+      .hasText('Refund rejected');
+    assert.dom(row('h-refund-approved')).containsText('$12.00');
+    assert
+      .dom(`${row('h-refund-approved')} [data-test-payment-credit]`)
+      .doesNotExist();
+  });
+
+  test('a refund row never offers Make it right', function (assert) {
+    assert
+      .dom('[data-test-company-make-right="h-refund-pending"]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-company-make-right="h-refund-approved"]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-company-make-right="h-refund-rejected"]')
+      .doesNotExist();
   });
 });

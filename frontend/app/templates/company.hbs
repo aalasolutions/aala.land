@@ -117,7 +117,21 @@
       <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
-        {{#if this.isScheduledToCancel}}
+        {{#if this.isDowngradePending}}
+          <Nuvo::Alert
+            @variant="warning"
+            class="mb-4"
+            data-test-downgrade-pending
+          >
+            <div class="font-bold">Your plan ends on
+              {{this.downgradeDateLabel}}</div>
+            <p class="text-sm mt-1">
+              You keep Pro until then. Export anything you need. After that the
+              unused part of your billing period is refunded to your payment
+              method.
+            </p>
+          </Nuvo::Alert>
+        {{else if this.isScheduledToCancel}}
           <Nuvo::Alert
             @variant="warning"
             class="mb-4"
@@ -174,9 +188,18 @@
         </div>
 
         {{#if this.isFreeTier}}
+          <div class="mb-3" data-test-refund-terms-field>
+            <Nuvo::Checkbox
+              @checked={{this.refundTermsAccepted}}
+              @label={{this.refundTermsLabel}}
+              @onChange={{this.setRefundTermsAccepted}}
+              data-test-refund-terms
+            />
+          </div>
           <Nuvo::Button
             @variant="primary"
             @loading={{this.isBillingBusy}}
+            @disabled={{not this.refundTermsAccepted}}
             data-test-upgrade-pro
             {{on "click" this.upgradeToPro}}
           >
@@ -194,14 +217,18 @@
             >Contact us about Enterprise</a>.
           </p>
         {{else if this.billing.hasSubscription}}
-          {{#if this.isScheduledToCancel}}
+          {{#if (or this.isDowngradePending this.isScheduledToCancel)}}
             <Nuvo::Button
               @variant="primary"
               @loading={{this.isBillingBusy}}
               data-test-reactivate-pro
               {{on "click" this.reactivatePro}}
             >
-              {{if this.isBillingBusy "Working..." "Reactivate plan"}}
+              {{if
+                this.isBillingBusy
+                "Working..."
+                (if this.isDowngradePending "Keep my plan" "Reactivate plan")
+              }}
             </Nuvo::Button>
           {{else}}
             <Nuvo::Button
@@ -323,7 +350,7 @@
     <ConfirmModal
       @open={{this.showDowngradeConfirm}}
       @title="Downgrade to Free"
-      @message="Your subscription will be canceled at the end of the current billing period. Paid features, extra seats, and per-seat storage go away when it ends. Nothing is deleted, but uploads beyond the Free 2 GB quota will be blocked."
+      @message={{this.downgradeConfirmMessage}}
       @confirmText="Downgrade to Free"
       @confirmingText="Canceling..."
       @confirmVariant="danger"

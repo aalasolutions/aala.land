@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import {
   BillingHistory,
   BillingHistoryType,
+  BillingRefundStatus,
 } from './entities/billing-history.entity';
 import {
   PaymentSucceededEvent,
@@ -12,6 +13,15 @@ import {
 import { clampLimit, paginationOptions } from '@shared/utils/pagination.util';
 
 type PaymentEvent = PaymentSucceededEvent | PaymentFailedEvent;
+
+export interface RefundHistoryRow {
+  companyId: string;
+  refundId: string;
+  amount: number;
+  currency: string;
+  refundStatus: BillingRefundStatus;
+  occurredAt: Date;
+}
 
 @Injectable()
 export class BillingHistoryService {
@@ -78,6 +88,41 @@ export class BillingHistoryService {
         succeeded ? (event.creditIssued ?? 0) : 0,
         succeeded ? (event.origin ?? null) : null,
       ],
+    );
+  }
+
+  /** One row per provider refund id; a repeat insert keeps the first row. */
+  async recordRefund(
+    row: RefundHistoryRow,
+    manager: EntityManager = this.historyRepo.manager,
+  ): Promise<void> {
+    await manager.query(
+      `
+            INSERT INTO billing_history
+                (company_id, provider_invoice_id, type, amount, currency,
+                 refund_status, occurred_at)
+            VALUES ($1, $2, 'refund', $3, $4, $5, $6)
+            ON CONFLICT (provider_invoice_id, type) DO NOTHING
+            `,
+      [
+        row.companyId,
+        row.refundId,
+        row.amount,
+        row.currency,
+        row.refundStatus,
+        row.occurredAt,
+      ],
+    );
+  }
+
+  async setRefundStatus(
+    companyId: string,
+    refundId: string,
+    refundStatus: BillingRefundStatus,
+  ): Promise<void> {
+    await this.historyRepo.update(
+      { companyId, providerInvoiceId: refundId, type: 'refund' },
+      { refundStatus },
     );
   }
 

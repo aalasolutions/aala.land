@@ -548,6 +548,25 @@ describe('StripeBillingProvider', () => {
     });
   });
 
+  describe('immediate cancel', () => {
+    it('declares no immediate cancel, so downgrades keep the period-end path', () => {
+      expect(provider.supportsImmediateCancel).toBe(false);
+    });
+
+    it('rejects the immediate-cancel calls without touching Stripe', async () => {
+      await expect(provider.getRefundBasis()).rejects.toThrow(
+        'period end only',
+      );
+      await expect(provider.cancelImmediately()).rejects.toThrow(
+        'period end only',
+      );
+      await expect(provider.getPeriodPayments()).rejects.toThrow(
+        'period end only',
+      );
+      expect(mockSubRetrieve).not.toHaveBeenCalled();
+    });
+  });
+
   describe('refundInvoicePayment (make it right)', () => {
     it('refunds via the classic invoice.payment_intent field, partial amount passed through', async () => {
       mockInvoiceRetrieve.mockResolvedValue({ payment_intent: 'pi_123' });

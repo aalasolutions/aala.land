@@ -18,7 +18,7 @@ import {
   ApiBody,
   ApiQuery,
 } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { Equals, IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -34,7 +34,7 @@ import {
 } from './dto/admin-plan.dto';
 
 /** Inline DTO used only for self-serve checkout (COMPANY_ADMIN). */
-class StartCheckoutDto {
+export class StartCheckoutDto {
   @ApiProperty({ description: 'URL the provider redirects to on success' })
   @IsString()
   successUrl: string;
@@ -53,6 +53,17 @@ class StartCheckoutDto {
   @IsOptional()
   @IsIn(['usd', 'aed', 'sar'])
   currency?: string;
+
+  @ApiProperty({
+    description:
+      'Must be true: the buyer agrees that days already used are not refunded.',
+    enum: [true],
+  })
+  @Equals(true, {
+    message:
+      'refundTermsAccepted must be true: accept the refund terms to subscribe',
+  })
+  refundTermsAccepted: boolean;
 }
 
 @ApiTags('Billing')
@@ -144,6 +155,7 @@ export class BillingController {
     }
     return this.billingService.startCheckout(
       req.user.companyId,
+      req.user.userId,
       dto.successUrl,
       dto.cancelUrl,
       dto.currency,
@@ -155,7 +167,8 @@ export class BillingController {
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({
     summary:
-      'Cancel the subscription at period end. ' +
+      'Request the downgrade to FREE; it executes 48 hours later with a refund of unused days ' +
+      '(period-end cancel on adapters without immediate cancel). ' +
       'Blocked (409) when the company has more than 1 active user.',
   })
   cancelSubscription(@Request() req: AuthenticatedRequest) {
@@ -164,14 +177,18 @@ export class BillingController {
         'No company context on the authenticated user',
       );
     }
-    return this.billingService.cancelSubscription(req.user.companyId);
+    return this.billingService.cancelSubscription(
+      req.user.companyId,
+      req.user.userId,
+    );
   }
 
   @Post('resume')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({
-    summary: 'Undo a queued downgrade so the subscription keeps renewing.',
+    summary:
+      'Withdraw a pending downgrade request, or undo a period-end cancel.',
   })
   resumeSubscription(@Request() req: AuthenticatedRequest) {
     if (!req.user.companyId) {
@@ -215,9 +232,16 @@ export class BillingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({
-    summary: 'Cancel a subscription on behalf of a company (SUPER_ADMIN)',
+    summary:
+      'Request the downgrade on behalf of a company, same path as /billing/cancel (SUPER_ADMIN)',
   })
-  adminCancel(@Body() dto: AdminCancelDto) {
-    return this.billingService.cancelSubscription(dto.companyId);
+  adminCancel(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: AdminCancelDto,
+  ) {
+    return this.billingService.cancelSubscription(
+      dto.companyId,
+      req.user.userId,
+    );
   }
 }

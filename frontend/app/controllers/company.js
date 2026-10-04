@@ -5,8 +5,20 @@ import { validPage } from 'land/utils/page-number';
 import { service } from '@ember/service';
 import { canManageRegions, isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
-import { daysUntil, formatInstant } from '../utils/local-date';
+import {
+  daysUntil,
+  formatInstant,
+  formatLongInstant,
+} from '../utils/local-date';
 import { creditDisplayAmount } from '../utils/billing-credit';
+
+const REFUND_TERMS_PERIOD_END =
+  'I agree that the days I have already used are not refunded.';
+const REFUND_TERMS_DELAYED = `${REFUND_TERMS_PERIOD_END} If I leave, only the unused part of my billing period is returned.`;
+const DELAYED_REFUND_MESSAGE =
+  'Your plan ends 48 hours after you confirm. Until then you keep Pro, you can undo this, and you can export your data. After that, the unused part of your billing period is refunded to your payment method. Uploads beyond the Free 2 GB quota will be blocked.';
+const PERIOD_END_MESSAGE =
+  'Your subscription will be canceled at the end of the current billing period. Paid features, extra seats, and per-seat storage go away when it ends. Nothing is deleted, but uploads beyond the Free 2 GB quota will be blocked.';
 
 export default class CompanyController extends Controller {
   @service auth;
@@ -27,6 +39,7 @@ export default class CompanyController extends Controller {
   @tracked isBillingBusy = false;
   @tracked showDowngradeConfirm = false;
   @tracked showRegionRemovalConfirm = false;
+  @tracked refundTermsAccepted = false;
 
   // Bound to its own property because route setup resets activeTab on every entry.
   queryParams = ['tab'];
@@ -86,6 +99,7 @@ export default class CompanyController extends Controller {
     this.expandedCountries = [];
     this.showDowngradeConfirm = false;
     this.showRegionRemovalConfirm = false;
+    this.refundTermsAccepted = false;
   }
 
   @action toggleCountry(countryCode) {
@@ -190,9 +204,33 @@ export default class CompanyController extends Controller {
     return this.isBillingBusy || !this.billing?.canDowngradeToFree;
   }
 
-  // Queued downgrade: ends at period close, reverts to FREE; drives the banner/button swap.
+  // Provider cancel scheduled at period end; drives the banner/button swap.
   get isScheduledToCancel() {
     return !!this.billing?.cancelAtPeriodEnd;
+  }
+
+  // A downgrade request inside its undo window; the plan is still active.
+  get isDowngradePending() {
+    return this.isDelayedRefund && !!this.billing?.downgradeEffectiveAt;
+  }
+
+  // A missing cancelMode means the provider cancels at period end.
+  get isDelayedRefund() {
+    return this.billing?.cancelMode === 'delayed_refund';
+  }
+
+  get refundTermsLabel() {
+    return this.isDelayedRefund
+      ? REFUND_TERMS_DELAYED
+      : REFUND_TERMS_PERIOD_END;
+  }
+
+  get downgradeConfirmMessage() {
+    return this.isDelayedRefund ? DELAYED_REFUND_MESSAGE : PERIOD_END_MESSAGE;
+  }
+
+  get downgradeDateLabel() {
+    return formatLongInstant(this.billing?.downgradeEffectiveAt);
   }
 
   get cancelDateLabel() {
@@ -364,15 +402,24 @@ export default class CompanyController extends Controller {
     }
   }
 
+  @action setRefundTermsAccepted(checked) {
+    this.refundTermsAccepted = checked;
+  }
+
   @action async upgradeToPro() {
     if (!this.isCompanyAdmin || this.isBillingBusy) return;
+    if (!this.refundTermsAccepted) return;
     this.isBillingBusy = true;
     try {
       const successUrl = `${window.location.origin}${this.router.urlFor('billing.success')}`;
       const cancelUrl = `${window.location.origin}${this.router.urlFor('billing.cancel')}`;
       const res = await this.auth.fetchJson('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ successUrl, cancelUrl }),
+        body: JSON.stringify({
+          successUrl,
+          cancelUrl,
+          refundTermsAccepted: true,
+        }),
       });
       const url = res?.data?.checkoutUrl;
       if (url) {
@@ -400,11 +447,11 @@ export default class CompanyController extends Controller {
     if (this.isBillingBusy) return;
     this.isBillingBusy = true;
     try {
-      await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
+      const res = await this.auth.fetchJson('/billing/cancel', {
+        method: 'POST',
+      });
       this.showDowngradeConfirm = false;
-      this.notifications.success(
-        'Subscription will end at the close of the current billing period.',
-      );
+      this.notifications.success(this.downgradeSuccessMessage(res));
       this.router.refresh('company');
     } catch (e) {
       // 409 carries the active-user-count message from the backend gate.
@@ -414,13 +461,26 @@ export default class CompanyController extends Controller {
     }
   }
 
+  downgradeSuccessMessage(res) {
+    if (!this.isDelayedRefund) {
+      return 'Subscription will end at the close of the current billing period.';
+    }
+    const endsOn = formatLongInstant(res?.data?.downgradeEffectiveAt);
+    return endsOn
+      ? `Your plan will end on ${endsOn}. You can undo this until then.`
+      : 'Your plan will end in 48 hours. You can undo this until then.';
+  }
+
   @action async reactivatePro() {
     if (this.isBillingBusy) return;
     this.isBillingBusy = true;
     try {
+      const wasPending = this.isDowngradePending;
       await this.auth.fetchJson('/billing/resume', { method: 'POST' });
       this.notifications.success(
-        'Your subscription will keep renewing. The scheduled downgrade is canceled.',
+        wasPending
+          ? 'Your plan stays active.'
+          : 'Your subscription will keep renewing. The scheduled downgrade is canceled.',
       );
       this.router.refresh('company');
     } catch (e) {

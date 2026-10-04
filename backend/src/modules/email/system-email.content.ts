@@ -1,6 +1,7 @@
 // Routes through renderLayout so footer changes propagate; returns a text fallback for MailService.
 import { renderLayout, esc, p } from './system-email.templates';
 import { formatDateLong } from '../../shared/utils/region-time.util';
+import { currencyMinorDigits } from '../billing/billing-currency.util';
 
 export interface RenderedEmail {
   subject: string;
@@ -9,7 +10,8 @@ export interface RenderedEmail {
 }
 
 function money(amountMinor: number, currency: string): string {
-  const major = (amountMinor / 100).toFixed(2);
+  const digits = currencyMinorDigits(currency);
+  const major = (amountMinor / 10 ** digits).toFixed(digits);
   return `${currency.toUpperCase()} ${major}`;
 }
 
@@ -343,6 +345,194 @@ export function paymentFailedEmail(vars: {
       ``,
       `We could not process your payment of ${amount}. Your account is now past due.`,
       `Update your payment method: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+function dateTimeUtc(at: Date): string {
+  return `${formatDateLong(at)} at ${at.toISOString().slice(11, 16)} UTC`;
+}
+
+export function downgradeRequestedEmail(vars: {
+  name: string;
+  effectiveAt: Date;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const when = dateTimeUtc(vars.effectiveAt);
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(
+      `We received your request to move to the Free plan. Your paid plan ends on <strong>${when}</strong>. Until then nothing changes.`,
+    ) +
+    p(
+      `To keep your plan, open your billing page and choose Keep my plan before that time.`,
+    ) +
+    p(
+      `Now is the time to export any data you need. After the plan ends, the unused days of your current period are refunded to your payment method.`,
+    );
+  return {
+    subject: `Your AALA.LAND plan ends on ${when}`,
+    html: renderLayout({
+      title: 'Your plan is ending',
+      previewText: `Your paid plan ends on ${when}.`,
+      bodyHtml: body,
+      cta: { label: 'Manage billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `We received your request to move to the Free plan. Your paid plan ends on ${when}. Until then nothing changes.`,
+      `To keep your plan, open your billing page and choose Keep my plan before that time.`,
+      `Now is the time to export any data you need. After the plan ends, the unused days of your current period are refunded to your payment method.`,
+      ``,
+      `Manage billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function refundRequestedEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(`Your paid plan has ended and your account is now on the Free plan.`) +
+    p(
+      `We have requested a refund of <strong>${amount}</strong> for the unused days. It reaches your payment method once the payment provider confirms it.`,
+    );
+  return {
+    subject: `Refund requested: ${amount}`,
+    html: renderLayout({
+      title: 'Your plan has ended',
+      previewText: `We have requested a refund of ${amount}.`,
+      bodyHtml: body,
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `Your paid plan has ended and your account is now on the Free plan.`,
+      `We have requested a refund of ${amount} for the unused days. It reaches your payment method once the payment provider confirms it.`,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+const REFUND_OUTCOME = {
+  approved: {
+    title: 'Refund approved',
+    line: (amount: string) =>
+      `Your refund of ${amount} was approved. Card refunds usually take 3 to 5 working days to appear.`,
+  },
+  rejected: {
+    title: 'Refund not approved',
+    line: (amount: string) =>
+      `Your refund of ${amount} was not approved by the payment provider. Reply to this email and we will make it right.`,
+  },
+  reversed: {
+    title: 'Refund reversed',
+    line: (amount: string) =>
+      `Your refund of ${amount} was reversed by the payment provider and did not reach your payment method. Reply to this email and we will make it right.`,
+  },
+} as const;
+
+export function refundSettledEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  outcome: keyof typeof REFUND_OUTCOME;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const outcome = REFUND_OUTCOME[vars.outcome];
+  const line = outcome.line(amount);
+  return {
+    subject: `${outcome.title}: ${amount}`,
+    html: renderLayout({
+      title: outcome.title,
+      previewText: line,
+      bodyHtml: p(`Hi ${esc(vars.name)},`) + p(esc(line)),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      line,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function downgradeCancelledEmail(vars: {
+  name: string;
+  reason: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const lines = [
+    `Your request to move to the Free plan has been cancelled.`,
+    vars.reason,
+    `Your paid plan continues and keeps renewing as before. You can request the move to Free again from your billing page.`,
+  ];
+  return {
+    subject: 'Your request to move to the Free plan was cancelled',
+    html: renderLayout({
+      title: 'Downgrade request cancelled',
+      previewText: lines[0],
+      bodyHtml:
+        p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(esc(line))).join(''),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function refundFailedEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const lines = [
+    `Your refund of ${amount} for the unused days could not be sent automatically.`,
+    `Reply to this email and we will complete it.`,
+  ];
+  return {
+    subject: `Your refund of ${amount} could not be sent automatically`,
+    html: renderLayout({
+      title: 'Your refund needs a reply',
+      previewText: lines[0],
+      bodyHtml:
+        p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(esc(line))).join(''),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
     ].join('\n'),
   };
 }

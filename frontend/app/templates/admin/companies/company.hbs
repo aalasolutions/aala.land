@@ -148,7 +148,12 @@
               purchased</dd>
             <dt>Currency</dt>
             <dd>{{this.billing.currency}}</dd>
-            {{#if this.billing.cancelAtPeriodEnd}}
+            {{#if this.billing.downgradeEffectiveAt}}
+              <dt>Scheduled</dt>
+              <dd class="text-warning" data-test-company-downgrade-pending>Downgrade
+                requested, plan ends
+                {{this.downgradeDateLabel}}</dd>
+            {{else if this.billing.cancelAtPeriodEnd}}
               <dt>Scheduled</dt>
               <dd class="text-warning">Cancels
                 {{format-date this.billing.cancelAt}}</dd>

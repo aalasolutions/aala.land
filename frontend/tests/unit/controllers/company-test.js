@@ -66,6 +66,60 @@ module('Unit | Controller | company', function (hooks) {
     );
   });
 
+  test('a downgrade is pending only while an effective time is set', function (assert) {
+    const controller = controllerWith.call(this, {
+      billing: {
+        cancelMode: 'delayed_refund',
+        downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+      },
+    });
+    assert.true(controller.isDowngradePending);
+    controller.billing = {
+      cancelMode: 'delayed_refund',
+      downgradeEffectiveAt: null,
+      cancelAtPeriodEnd: true,
+    };
+    assert.false(controller.isDowngradePending);
+    assert.true(controller.isScheduledToCancel);
+  });
+
+  test('only delayed_refund uses the 48 hour wording; a missing mode is period_end', function (assert) {
+    const controller = controllerWith.call(this, {
+      billing: {
+        cancelMode: 'delayed_refund',
+        downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+      },
+    });
+    assert.true(controller.isDelayedRefund);
+    assert.true(controller.refundTermsLabel.endsWith('is returned.'));
+    assert.true(
+      controller.downgradeConfirmMessage.startsWith('Your plan ends 48 hours'),
+    );
+    controller.billing = {
+      cancelMode: 'period_end',
+      downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+    };
+    assert.false(controller.isDelayedRefund);
+    assert.false(controller.isDowngradePending);
+    assert.true(
+      controller.downgradeConfirmMessage.startsWith(
+        'Your subscription will be canceled at the end of the current billing period.',
+      ),
+    );
+    controller.billing = {};
+    assert.false(controller.isDelayedRefund);
+    assert.strictEqual(
+      controller.refundTermsLabel,
+      'I agree that the days I have already used are not refunded.',
+    );
+  });
+
+  test('the refund terms tick is not remembered after leaving the page', function (assert) {
+    const controller = controllerWith.call(this, { refundTermsAccepted: true });
+    controller.resetTransientState();
+    assert.false(controller.refundTermsAccepted);
+  });
+
   test('hasCreditAgents reflects the breakdown list', function (assert) {
     const controller = controllerWith.call(this, { creditAgents: [] });
     assert.false(controller.hasCreditAgents);

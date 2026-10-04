@@ -44,6 +44,7 @@ import { CustomDeal } from './entities/custom-deal.entity';
 import { LockLift } from './entities/lock-lift.entity';
 import { ManualPayment } from './entities/manual-payment.entity';
 import { PaymentRemedy } from './entities/payment-remedy.entity';
+import { liveRefundTotals } from '@modules/billing/live-refunds.util';
 import { GrantDealDto } from './dto/deal.dto';
 import { LiftLockDto } from './dto/lift-lock.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
@@ -679,6 +680,15 @@ export class ConsoleService {
         'The remedy amount cannot exceed the anchored payment.',
       );
     }
+    if (dto.source === 'card' && dto.remedy === 'refund') {
+      await this.assertRefundable(
+        companyId,
+        dto,
+        anchor.invoiceId,
+        paymentAmount,
+        amount,
+      );
+    }
 
     // Card rail moves real money via provider; manual rail's record IS the remedy, settled outside.
     let providerRef: string | null = null;
@@ -724,9 +734,11 @@ export class ConsoleService {
         currency,
         paymentSource: dto.source,
         billingHistoryId: dto.source === 'card' ? dto.paymentId : null,
+        providerInvoiceId: dto.source === 'card' ? anchor.invoiceId : null,
         manualPaymentId: dto.source === 'manual' ? dto.paymentId : null,
         providerRef,
         status: 'initiated',
+        cause: 'make_it_right',
         whyNote: dto.whyNote.trim(),
         createdBy: actor.userId,
         createdByEmail: actor.email,
@@ -1295,6 +1307,40 @@ export class ConsoleService {
       where: { active: true },
       order: { kind: 'ASC', currency: 'ASC' },
     });
+  }
+
+  /** Earlier live refunds on the payment count against what is left to refund. */
+  private async assertRefundable(
+    companyId: string,
+    dto: ApplyRemedyDto,
+    invoiceId: string | null,
+    paymentAmount: number,
+    amount: number,
+  ): Promise<void> {
+    // The provider id also counts refunds made before this history row arrived.
+    const key = invoiceId ?? dto.paymentId;
+    const refunded =
+      (
+        await liveRefundTotals(this.remedyRepo.manager, companyId, [
+          { billingHistoryId: dto.paymentId, providerInvoiceId: key },
+        ])
+      ).get(key) ?? 0;
+    const left = Math.max(paymentAmount - refunded, 0);
+    if (left === 0) {
+      throw new BadRequestException(
+        'Nothing is left to refund on this payment: earlier refunds already cover it.',
+      );
+    }
+    if (dto.scope === 'full' && refunded > 0) {
+      throw new BadRequestException(
+        `This payment already has refunds; use a partial refund of at most ${left} minor units.`,
+      );
+    }
+    if (amount > left) {
+      throw new BadRequestException(
+        `The refund cannot exceed the ${left} minor units left on this payment after earlier refunds.`,
+      );
+    }
   }
 
   private async resolveRemedyAnchor(dto: ApplyRemedyDto): Promise<{

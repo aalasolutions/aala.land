@@ -7,6 +7,8 @@ import { BillingEvent } from '../billing/entities/billing-event.entity';
 import { BILLING_PROVIDER } from '../billing/provider/billing-provider.interface';
 import { Company } from '../companies/entities/company.entity';
 import { BillingEventDispatcher } from '../billing/events/billing-event-dispatcher';
+import { BillingNotices } from '../billing/events/billing-notices';
+import { BillingDowngradeService } from '../billing/billing-downgrade.service';
 import { SystemEmailService } from './system-email.service';
 import { BillingEmailListener } from './billing-email.listener';
 import {
@@ -18,6 +20,7 @@ import {
 describe('BillingEmailListener', () => {
   let listener: BillingEmailListener;
   let dispatcher: BillingEventDispatcher;
+  let notices: BillingNotices;
   let email: jest.Mocked<
     Pick<
       SystemEmailService,
@@ -25,6 +28,11 @@ describe('BillingEmailListener', () => {
       | 'sendPaymentSucceededToCompany'
       | 'sendSettledWithoutChargeToCompany'
       | 'sendPaymentFailedToCompany'
+      | 'sendDowngradeRequestedToCompany'
+      | 'sendRefundRequestedToCompany'
+      | 'sendRefundSettledToCompany'
+      | 'sendDowngradeCancelledToCompany'
+      | 'sendRefundFailedToCompany'
     >
   >;
 
@@ -33,6 +41,7 @@ describe('BillingEmailListener', () => {
       providers: [
         BillingEmailListener,
         BillingEventDispatcher,
+        BillingNotices,
         {
           provide: SystemEmailService,
           useValue: {
@@ -40,6 +49,11 @@ describe('BillingEmailListener', () => {
             sendPaymentSucceededToCompany: jest.fn(),
             sendSettledWithoutChargeToCompany: jest.fn(),
             sendPaymentFailedToCompany: jest.fn(),
+            sendDowngradeRequestedToCompany: jest.fn(),
+            sendRefundRequestedToCompany: jest.fn(),
+            sendRefundSettledToCompany: jest.fn(),
+            sendDowngradeCancelledToCompany: jest.fn(),
+            sendRefundFailedToCompany: jest.fn(),
           },
         },
       ],
@@ -47,8 +61,111 @@ describe('BillingEmailListener', () => {
 
     listener = module.get(BillingEmailListener);
     dispatcher = module.get(BillingEventDispatcher);
+    notices = module.get(BillingNotices);
     email = module.get(SystemEmailService);
     listener.onApplicationBootstrap();
+  });
+
+  it('confirms a downgrade request with its effective time', async () => {
+    const effectiveAt = new Date('2026-10-06T10:00:00Z');
+    await notices.emit('DowngradeRequested', {
+      companyId: 'co-1',
+      effectiveAt,
+    });
+    expect(email.sendDowngradeRequestedToCompany).toHaveBeenCalledWith(
+      'co-1',
+      effectiveAt,
+    );
+  });
+
+  it('announces a requested refund with its amount', async () => {
+    await notices.emit('RefundRequested', {
+      companyId: 'co-1',
+      amount: 1650,
+      currency: 'usd',
+    });
+    expect(email.sendRefundRequestedToCompany).toHaveBeenCalledWith(
+      'co-1',
+      1650,
+      'usd',
+    );
+  });
+
+  it('tells the customer a refund was left to the team', async () => {
+    await notices.emit('RefundFailed', {
+      companyId: 'co-1',
+      amount: 700,
+      currency: 'usd',
+    });
+    expect(email.sendRefundFailedToCompany).toHaveBeenCalledWith(
+      'co-1',
+      700,
+      'usd',
+    );
+  });
+
+  it('tells the customer a dropped request and why', async () => {
+    await notices.emit('DowngradeCancelled', {
+      companyId: 'co-1',
+      reason: 'Your team grew.',
+    });
+    expect(email.sendDowngradeCancelledToCompany).toHaveBeenCalledWith(
+      'co-1',
+      'Your team grew.',
+    );
+  });
+
+  it('reports approved, rejected and reversed refunds', async () => {
+    await notices.emit('RefundSettled', {
+      companyId: 'co-1',
+      amount: 1650,
+      currency: 'usd',
+      state: 'approved',
+    });
+    await notices.emit('RefundSettled', {
+      companyId: 'co-1',
+      amount: 1650,
+      currency: 'usd',
+      state: 'rejected',
+    });
+    await notices.emit('RefundSettled', {
+      companyId: 'co-1',
+      amount: 1650,
+      currency: 'usd',
+      state: 'reversed',
+    });
+    expect(email.sendRefundSettledToCompany).toHaveBeenNthCalledWith(
+      1,
+      'co-1',
+      1650,
+      'usd',
+      'approved',
+    );
+    expect(email.sendRefundSettledToCompany).toHaveBeenNthCalledWith(
+      2,
+      'co-1',
+      1650,
+      'usd',
+      'rejected',
+    );
+    expect(email.sendRefundSettledToCompany).toHaveBeenNthCalledWith(
+      3,
+      'co-1',
+      1650,
+      'usd',
+      'reversed',
+    );
+  });
+
+  it('swallows a failing notice email', async () => {
+    email.sendRefundRequestedToCompany.mockRejectedValue(new Error('smtp'));
+    await expect(
+      notices.emit('RefundRequested', {
+        companyId: 'co-1',
+        amount: 1,
+        currency: 'usd',
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('sends a purchase confirmation on SubscriptionActivated', async () => {
@@ -221,6 +338,8 @@ describe('BillingEmailListener', () => {
           BillingEmailListener,
           BillingWebhookService,
           BillingEventDispatcher,
+          BillingNotices,
+          { provide: BillingDowngradeService, useValue: {} },
           {
             provide: SystemEmailService,
             useValue: { sendPurchaseConfirmationToCompany: sendPurchase },

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import {
@@ -11,6 +11,8 @@ import {
   EnsureCustomerInput,
   PriceOverride,
   ProviderWebhookEvent,
+  PeriodPayments,
+  RefundBasis,
   SubscriptionRef,
 } from './billing-provider.interface';
 import {
@@ -140,6 +142,7 @@ export class StripeBillingProvider implements BillingProvider {
   readonly supportsCountryOverrides = false;
   readonly supportsTaxMode = false;
   readonly checkoutQuantityEditable = false;
+  readonly supportsImmediateCancel = false;
   readonly supportedCurrencies = null;
   readonly supportedCountries = null;
   private readonly logger = new Logger(StripeBillingProvider.name);
@@ -651,6 +654,24 @@ export class StripeBillingProvider implements BillingProvider {
     await this.stripe.subscriptions.update(ref.subscriptionId, {
       cancel_at_period_end: false,
     });
+  }
+
+  getRefundBasis(): Promise<RefundBasis | null> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
+  }
+
+  getPeriodPayments(): Promise<PeriodPayments> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
+  }
+
+  cancelImmediately(): Promise<void> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
   }
 
   async refundInvoicePayment(

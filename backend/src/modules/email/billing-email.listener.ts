@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { errorMessage } from '@shared/utils/error.util';
 import { BillingEventDispatcher } from '../billing/events/billing-event-dispatcher';
+import { BillingNotices } from '../billing/events/billing-notices';
 import {
   PaymentFailedEvent,
   PaymentSucceededEvent,
@@ -21,6 +22,7 @@ export class BillingEmailListener implements OnApplicationBootstrap {
   constructor(
     private readonly dispatcher: BillingEventDispatcher,
     private readonly email: SystemEmailService,
+    private readonly notices: BillingNotices,
   ) {}
 
   // Runs after all onModuleInit hooks so the email follows the seat reconcile.
@@ -45,6 +47,40 @@ export class BillingEmailListener implements OnApplicationBootstrap {
           (e as PaymentFailedEvent).currency,
           (e as PaymentFailedEvent).attemptCount,
         ),
+      ),
+    );
+    this.notices.on('DowngradeRequested', (n) =>
+      this.safe(() =>
+        this.email.sendDowngradeRequestedToCompany(n.companyId, n.effectiveAt),
+      ),
+    );
+    this.notices.on('RefundRequested', (n) =>
+      this.safe(() =>
+        this.email.sendRefundRequestedToCompany(
+          n.companyId,
+          n.amount,
+          n.currency,
+        ),
+      ),
+    );
+    this.notices.on('RefundSettled', (n) =>
+      this.safe(() =>
+        this.email.sendRefundSettledToCompany(
+          n.companyId,
+          n.amount,
+          n.currency,
+          n.state,
+        ),
+      ),
+    );
+    this.notices.on('RefundFailed', (n) =>
+      this.safe(() =>
+        this.email.sendRefundFailedToCompany(n.companyId, n.amount, n.currency),
+      ),
+    );
+    this.notices.on('DowngradeCancelled', (n) =>
+      this.safe(() =>
+        this.email.sendDowngradeCancelledToCompany(n.companyId, n.reason),
       ),
     );
   }

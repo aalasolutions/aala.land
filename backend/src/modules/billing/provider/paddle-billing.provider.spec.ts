@@ -8,15 +8,22 @@ import { ApiError, Environment, Paddle } from '@paddle/paddle-node-sdk';
 import {
   PaddleBillingProvider,
   allocateRefund,
+  refundReferenceOf,
+  refundStateOf,
 } from './paddle-billing.provider';
 
 const client = {
-  customers: { create: jest.fn(), get: jest.fn(), list: jest.fn() },
+  customers: {
+    create: jest.fn(),
+    get: jest.fn(),
+    list: jest.fn(),
+    getCreditBalance: jest.fn(),
+  },
   products: { list: jest.fn(), create: jest.fn() },
   prices: { create: jest.fn(), archive: jest.fn() },
-  transactions: { create: jest.fn(), get: jest.fn() },
+  transactions: { create: jest.fn(), get: jest.fn(), list: jest.fn() },
   subscriptions: { get: jest.fn(), update: jest.fn(), cancel: jest.fn() },
-  adjustments: { create: jest.fn() },
+  adjustments: { create: jest.fn(), list: jest.fn() },
 };
 
 jest.mock('@paddle/paddle-node-sdk', () => {
@@ -583,6 +590,263 @@ describe('PaddleBillingProvider', () => {
       expect(client.subscriptions.update).toHaveBeenCalledWith('sub_1', {
         scheduledChange: null,
       });
+    });
+  });
+
+  describe('immediate cancel and refund basis', () => {
+    it('declares the immediate-cancel capability', () => {
+      expect(provider.supportsImmediateCancel).toBe(true);
+    });
+
+    // Shape of the sandbox read: 2 seats held, 1 added and 2 removed this period.
+    const withPreview = (extra: Record<string, unknown> = {}) =>
+      subscription([seatLine(2)], {
+        status: 'active',
+        currencyCode: 'USD',
+        startedAt: '2026-10-03T19:47:56.499213Z',
+        currentBillingPeriod: {
+          startsAt: '2026-10-03T19:47:56.499213Z',
+          endsAt: '2026-11-03T19:47:56.499213Z',
+        },
+        nextTransaction: {
+          details: {
+            totals: { total: '2500' },
+            lineItems: [],
+          },
+        },
+        recurringTransactionDetails: {
+          totals: { total: '5000' },
+          lineItems: [
+            {
+              priceId: 'pri_seat',
+              quantity: 2,
+              unitTotals: { subtotal: '2381', total: '2500' },
+            },
+          ],
+        },
+        ...extra,
+      });
+
+    // Shape of the sandbox credit balance read for a customer with 50.00 held.
+    const creditBalance = (available: string) => [
+      {
+        customerId: 'ctm_1',
+        currencyCode: 'USD',
+        balance: { available, reserved: '0', used: '0' },
+      },
+    ];
+
+    it('reads the period, held lines, the pending next-bill difference and the credit balance', async () => {
+      client.subscriptions.get.mockResolvedValue(withPreview());
+      client.customers.getCreditBalance.mockResolvedValue(
+        creditBalance('5000'),
+      );
+      await expect(provider.getRefundBasis(ref)).resolves.toEqual({
+        startedAt: new Date('2026-10-03T19:47:56.499213Z'),
+        periodStart: new Date('2026-10-03T19:47:56.499213Z'),
+        periodEnd: new Date('2026-11-03T19:47:56.499213Z'),
+        heldLines: [{ quantity: 2, unitGross: 2500 }],
+        pendingNextBill: -2500,
+        pendingNextBillKnown: true,
+        creditBalance: 5000,
+      });
+      expect(client.subscriptions.get).toHaveBeenCalledWith('sub_1', {
+        include: ['next_transaction', 'recurring_transaction_details'],
+      });
+      expect(client.customers.getCreditBalance).toHaveBeenCalledWith('ctm_1', {
+        currencyCode: ['USD'],
+      });
+    });
+
+    it('reads no credit when the customer holds none in the currency', async () => {
+      client.subscriptions.get.mockResolvedValue(withPreview());
+      client.customers.getCreditBalance.mockResolvedValue([]);
+      const basis = await provider.getRefundBasis(ref);
+      expect(basis?.creditBalance).toBe(0);
+    });
+
+    it('returns null once the subscription has ended', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        withPreview({ status: 'canceled' }),
+      );
+      await expect(provider.getRefundBasis(ref)).resolves.toBeNull();
+    });
+
+    it('treats a missing next bill as nothing pending and says so', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        withPreview({ nextTransaction: null }),
+      );
+      client.customers.getCreditBalance.mockResolvedValue(creditBalance('0'));
+      const basis = await provider.getRefundBasis(ref);
+      expect(basis?.pendingNextBill).toBe(0);
+      expect(basis?.pendingNextBillKnown).toBe(false);
+    });
+
+    it('throws rather than guess when the recurring bill preview is missing', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        withPreview({ recurringTransactionDetails: null }),
+      );
+      await expect(provider.getRefundBasis(ref)).rejects.toThrow(
+        'recurring bill preview',
+      );
+    });
+
+    describe('getPeriodPayments', () => {
+      const periodStart = new Date('2026-11-03T20:11:40.283525Z');
+      const txn = (
+        id: string,
+        status: string,
+        grandTotal: string,
+        startsAt = '2026-11-03T20:11:40.283525Z',
+      ) => ({
+        id,
+        status,
+        currencyCode: 'USD',
+        billedAt: '2026-11-03T20:11:44.244005Z',
+        createdAt: '2026-11-03T20:11:41.000000Z',
+        billingPeriod: { startsAt, endsAt: '2026-12-03T20:11:40.283525Z' },
+        details: { totals: { grandTotal } },
+      });
+
+      it('reports a completed card renewal of the period as paid and refundable', async () => {
+        client.transactions.list.mockReturnValue(
+          collection([
+            txn('txn_renewal', 'completed', '2500'),
+            txn('txn_old', 'completed', '7500', '2026-10-03T20:11:40.283525Z'),
+          ]),
+        );
+        await expect(
+          provider.getPeriodPayments(ref, periodStart),
+        ).resolves.toEqual({
+          paid: true,
+          failed: false,
+          cardPayments: [
+            {
+              invoiceId: 'txn_renewal',
+              amount: 2500,
+              currency: 'usd',
+              occurredAt: new Date('2026-11-03T20:11:44.244005Z'),
+            },
+          ],
+        });
+        expect(client.transactions.list).toHaveBeenCalledWith({
+          subscriptionId: ['sub_1'],
+          perPage: 100,
+        });
+      });
+
+      it('reports a period paid from credit as paid with nothing refundable', async () => {
+        client.transactions.list.mockReturnValue(
+          collection([txn('txn_credit', 'completed', '0')]),
+        );
+        await expect(
+          provider.getPeriodPayments(ref, periodStart),
+        ).resolves.toMatchObject({ paid: true, cardPayments: [] });
+      });
+
+      it('reports a past-due renewal as failed', async () => {
+        client.transactions.list.mockReturnValue(
+          collection([txn('txn_due', 'past_due', '2500')]),
+        );
+        await expect(
+          provider.getPeriodPayments(ref, periodStart),
+        ).resolves.toEqual({ paid: false, failed: true, cardPayments: [] });
+      });
+    });
+
+    it('cancels with immediate effect', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        subscription([seatLine(1)], { status: 'active' }),
+      );
+      await provider.cancelImmediately(ref);
+      expect(client.subscriptions.cancel).toHaveBeenCalledWith('sub_1', {
+        effectiveFrom: 'immediately',
+      });
+    });
+
+    it('does nothing when the subscription has already ended', async () => {
+      client.subscriptions.get.mockResolvedValue(
+        subscription([seatLine(1)], { status: 'canceled' }),
+      );
+      await provider.cancelImmediately(ref);
+      expect(client.subscriptions.cancel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refundInvoicePayment with a reference', () => {
+    beforeEach(() => {
+      client.transactions.get.mockResolvedValue({
+        details: {
+          lineItems: [{ id: 'txnitm_seat', totals: { total: '7500' } }],
+        },
+      });
+    });
+
+    it('creates the refund with the reference in its reason and reports its state', async () => {
+      client.adjustments.list.mockReturnValue(collection([]));
+      client.adjustments.create.mockResolvedValue({
+        id: 'adj_3',
+        status: 'pending_approval',
+      });
+      await expect(
+        provider.refundInvoicePayment('txn_1', 1650, 'rem-1'),
+      ).resolves.toEqual({ refundId: 'adj_3', state: 'pending' });
+      expect(client.adjustments.list).toHaveBeenCalledWith({
+        transactionId: ['txn_1'],
+        action: 'refund',
+        perPage: 50,
+      });
+      expect(client.adjustments.create).toHaveBeenCalledWith({
+        action: 'refund',
+        transactionId: 'txn_1',
+        reason: 'Refund of unused days, ref rem-1',
+        type: 'partial',
+        items: [{ itemId: 'txnitm_seat', type: 'partial', amount: '1650' }],
+      });
+    });
+
+    it('returns the existing refund on a retry and never refunds twice', async () => {
+      client.adjustments.list.mockReturnValue(
+        collection([
+          {
+            id: 'adj_other',
+            reason: 'Make-it-right refund',
+            status: 'approved',
+          },
+          {
+            id: 'adj_3',
+            reason: 'Refund of unused days, ref rem-1',
+            status: 'approved',
+          },
+        ]),
+      );
+      await expect(
+        provider.refundInvoicePayment('txn_1', 1650, 'rem-1'),
+      ).resolves.toEqual({ refundId: 'adj_3', state: 'approved' });
+      expect(client.adjustments.create).not.toHaveBeenCalled();
+    });
+
+    it('does not look up earlier refunds without a reference', async () => {
+      client.adjustments.create.mockResolvedValue({ id: 'adj_4' });
+      await provider.refundInvoicePayment('txn_1', 100);
+      expect(client.adjustments.list).not.toHaveBeenCalled();
+    });
+
+    it('maps provider refund statuses', () => {
+      expect(refundStateOf('pending_approval')).toBe('pending');
+      expect(refundStateOf('approved')).toBe('approved');
+      expect(refundStateOf('rejected')).toBe('rejected');
+      expect(refundStateOf('reversed')).toBe('reversed');
+      expect(refundStateOf('other')).toBeNull();
+      expect(refundStateOf(null)).toBeNull();
+    });
+
+    it('reads the reference back from a refund reason', () => {
+      expect(refundReferenceOf('Refund of unused days, ref rem-1')).toBe(
+        'rem-1',
+      );
+      expect(refundReferenceOf('Make-it-right refund')).toBeNull();
+      expect(refundReferenceOf(null)).toBeNull();
     });
   });
 

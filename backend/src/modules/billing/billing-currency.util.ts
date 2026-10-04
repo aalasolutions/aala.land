@@ -27,3 +27,17 @@ export function resolveBillingCurrency(
       return 'usd';
   }
 }
+
+/** Digits after the decimal point of a currency's minor unit: USD 2, JPY 0, BHD 3. */
+export function currencyMinorDigits(currency: string): number {
+  try {
+    return (
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).resolvedOptions().maximumFractionDigits ?? 2
+    );
+  } catch {
+    return 2;
+  }
+}

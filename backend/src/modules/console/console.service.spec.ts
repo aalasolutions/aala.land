@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { In } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -72,6 +73,7 @@ interface RepoMock {
   exists: jest.Mock;
   countBy: jest.Mock;
   createQueryBuilder: jest.Mock;
+  manager: { find: jest.Mock };
 }
 
 function repoMock(): RepoMock {
@@ -100,6 +102,7 @@ function repoMock(): RepoMock {
     exists: jest.fn().mockResolvedValue(false),
     countBy: jest.fn().mockResolvedValue(0),
     createQueryBuilder: jest.fn().mockReturnValue(qb),
+    manager: { find: jest.fn().mockResolvedValue([]) },
   };
 }
 
@@ -549,6 +552,7 @@ describe('ConsoleService', () => {
       );
       expect(remedy.providerRef).toBe('cbtxn_1');
       expect(remedy.kind).toBe('discount_next_bill');
+      expect(remedy.cause).toBe('make_it_right');
     });
 
     it('card full refund passes null amount to the provider and records the payment amount', async () => {
@@ -590,6 +594,94 @@ describe('ConsoleService', () => {
         'in_1',
         100000,
       );
+    });
+
+    describe('earlier refunds on the same payment', () => {
+      const card = (amount: number | undefined, scope: 'partial' | 'full') => ({
+        source: 'card' as const,
+        paymentId: 'bh-1',
+        remedy: 'refund' as const,
+        scope,
+        amount,
+        whyNote: 'second refund',
+      });
+
+      beforeEach(() => {
+        billingHistoryRepo.findOne.mockResolvedValue({
+          ...paidRow,
+          amount: 7500,
+        });
+        companyRepo.findOne.mockResolvedValue(company());
+        // 7387 already refunded on cancel.
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: 'bh-1', amount: 7387 },
+        ]);
+      });
+
+      it('counts only live refunds of this company payment', async () => {
+        await service.applyRemedy(card(100, 'partial'), ACTOR);
+        const [, options] = remedyRepo.manager.find.mock.calls[0];
+        expect(options.where).toEqual([
+          expect.objectContaining({
+            companyId: 'co-1',
+            kind: 'refund',
+            status: In(['queued', 'initiated', 'approved']),
+            billingHistoryId: In(['bh-1']),
+          }),
+          expect.objectContaining({
+            companyId: 'co-1',
+            providerInvoiceId: In(['in_1']),
+          }),
+        ]);
+        expect(billingService.refundCardPayment).toHaveBeenCalledWith(
+          'in_1',
+          100,
+        );
+      });
+
+      it('refuses more than what is left after earlier refunds', async () => {
+        await expect(
+          service.applyRemedy(card(7500, 'partial'), ACTOR),
+        ).rejects.toThrow('113 minor units left');
+        expect(billingService.refundCardPayment).not.toHaveBeenCalled();
+      });
+
+      it('refuses a full refund once part of the payment was refunded', async () => {
+        await expect(
+          service.applyRemedy(card(undefined, 'full'), ACTOR),
+        ).rejects.toThrow('use a partial refund of at most 113');
+      });
+
+      it('sees a refund made on the provider payment before its history row arrived', async () => {
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: null, providerInvoiceId: 'in_1', amount: 7500 },
+        ]);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow('Nothing is left to refund');
+      });
+
+      it('records the provider payment id on the new refund row', async () => {
+        await service.applyRemedy(card(100, 'partial'), ACTOR);
+        expect(remedyRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billingHistoryId: 'bh-1',
+            providerInvoiceId: 'in_1',
+          }),
+        );
+      });
+
+      it('refuses with a clear 400 when nothing is left', async () => {
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: 'bh-1', amount: 7500 },
+        ]);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow(BadRequestException);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow('Nothing is left to refund');
+      });
     });
 
     it('rejects: amount over payment, full with amount, partial without amount, missing scope, discount without amount', async () => {

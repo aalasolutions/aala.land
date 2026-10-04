@@ -23,6 +23,7 @@ import {
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
 import { BillingService } from './billing.service';
+import { BillingDowngradeService } from './billing-downgrade.service';
 import {
   ChargedUnitAmount,
   NormalizedBillingEvent,
@@ -87,6 +88,7 @@ export class BillingWebhookService implements OnModuleInit {
     private readonly dispatcher: BillingEventDispatcher,
     private readonly history: BillingHistoryService,
     private readonly billing: BillingService,
+    private readonly downgrades: BillingDowngradeService,
   ) {}
 
   onModuleInit(): void {
@@ -111,6 +113,9 @@ export class BillingWebhookService implements OnModuleInit {
       this.onPaymentSucceeded(e),
     );
     this.dispatcher.register('PaymentFailed', (e) => this.onPaymentFailed(e));
+    this.dispatcher.register('RefundUpdated', (e) =>
+      this.downgrades.applyRefundUpdate(e),
+    );
   }
 
   async handleWebhook(

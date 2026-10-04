@@ -96,4 +96,52 @@ module('Unit | Controller | admin/companies/company', function (hooks) {
     );
     assert.deepEqual(amountById, { paid: 0, applied: 2498, issued: 2500 });
   });
+
+  test('the three downgrade audit events read as labels, with the amount when present', async function (assert) {
+    stubNotifications(this.owner);
+    stubAuth(this.owner, {
+      role: 'super_admin',
+      respond: () => ({
+        data: {
+          data: [
+            {
+              id: 'e-1',
+              createdAt: '2026-10-06T12:00:00.000Z',
+              newValue: {
+                event: 'downgrade_executed',
+                amount: 1200,
+                currency: 'usd',
+              },
+            },
+            {
+              id: 'e-2',
+              createdAt: '2026-10-06T12:05:00.000Z',
+              newValue: {
+                event: 'refund_failed',
+                amount: 1200,
+                currency: 'usd',
+                error: 'provider error',
+              },
+            },
+            {
+              id: 'e-3',
+              createdAt: '2026-10-06T12:10:00.000Z',
+              newValue: { event: 'downgrade_released' },
+            },
+          ],
+        },
+      }),
+    });
+    const controller = this.owner.lookup('controller:admin/companies/company');
+    controller.detail = { id: 'c-1' };
+    await controller.loadHistory();
+    const what = Object.fromEntries(
+      controller.historyRows.map((r) => [r.id, r.what]),
+    );
+    assert.true(what['e-1'].startsWith('Plan ended, refund requested'));
+    assert.true(what['e-1'].includes('12.00'));
+    assert.true(what['e-2'].startsWith('Refund failed'));
+    assert.true(what['e-2'].includes('12.00'));
+    assert.strictEqual(what['e-3'], 'Downgrade request dropped');
+  });
 });

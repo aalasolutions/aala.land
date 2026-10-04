@@ -66,6 +66,40 @@ export interface ChangePlanInput extends SubscriptionRef {
   // No quantity input: reads the LIVE seat line, shifts by 1. Never derive from purchasedSeats.
 }
 
+/** Payments of one billing period at the provider; minor units. */
+export interface PeriodPayments {
+  /** A transaction of the period completed, by card or from credit. */
+  paid: boolean;
+  /** A transaction of the period is past due. */
+  failed: boolean;
+  /** Completed transactions that charged the card, refundable by invoiceId. */
+  cardPayments: {
+    invoiceId: string;
+    amount: number;
+    currency: string;
+    occurredAt: Date;
+  }[];
+}
+
+/** A refund's state at the provider; reversed follows approved when the money is taken back. */
+export type RefundState = 'pending' | 'approved' | 'rejected' | 'reversed';
+
+/** Live period and next bill at the provider; minor units incl. tax. */
+export interface RefundBasis {
+  /** When the subscription started; payments before it belong to an earlier one. */
+  startedAt: Date;
+  periodStart: Date;
+  periodEnd: Date;
+  /** Recurring lines at their full-period gross unit price. */
+  heldLines: { quantity: number; unitGross: number }[];
+  /** Prorated charges minus credits waiting for the next bill; negative is credit held. */
+  pendingNextBill: number;
+  /** False when the provider showed no next bill, so pendingNextBill is 0 by assumption. */
+  pendingNextBillKnown: boolean;
+  /** Customer credit balance available in the subscription currency. */
+  creditBalance: number;
+}
+
 export interface BillingProvider {
   /** Stored on companies.billing_provider and billing_prices.provider. */
   readonly name: string;
@@ -84,6 +118,9 @@ export interface BillingProvider {
 
   /** True when the buyer can change the seat quantity at checkout. */
   readonly checkoutQuantityEditable: boolean;
+
+  /** True when a downgrade cancels at once with a refund; false cancels at period end. */
+  readonly supportsImmediateCancel: boolean;
 
   /** Lowercase ISO-4217 currencies the provider can charge in; null = any. */
   readonly supportedCurrencies: readonly string[] | null;
@@ -141,11 +178,24 @@ export interface BillingProvider {
   /** Undo a scheduled cancellation (cancel_at_period_end = false); the plan keeps renewing. */
   resume(ref: SubscriptionRef): Promise<void>;
 
-  /** Fallback remedy: partial refund via amountMinor, full refund when null. */
+  /** Immediate-cancel adapters only. Null once the subscription has ended. */
+  getRefundBasis(ref: SubscriptionRef): Promise<RefundBasis | null>;
+
+  /** Immediate-cancel adapters only. Transactions of the billing period starting at periodStart. */
+  getPeriodPayments(
+    ref: SubscriptionRef,
+    periodStart: Date,
+  ): Promise<PeriodPayments>;
+
+  /** Immediate-cancel adapters only. Ends the subscription now; no-op if already ended. */
+  cancelImmediately(ref: SubscriptionRef): Promise<void>;
+
+  /** Partial via amountMinor, full when null; a reference makes a retry idempotent. */
   refundInvoicePayment(
     invoiceId: string,
     amountMinor: number | null,
-  ): Promise<{ refundId: string }>;
+    reference?: string,
+  ): Promise<{ refundId: string; state?: RefundState }>;
 
   /** Default remedy: credits customer balance so the NEXT invoice is reduced by amountMinor. */
   creditCustomerBalance(

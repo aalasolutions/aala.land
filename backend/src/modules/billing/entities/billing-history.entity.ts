@@ -9,9 +9,12 @@ import {
 export type BillingHistoryType =
   | 'payment_succeeded'
   | 'payment_failed'
-  | 'settled_without_charge';
+  | 'settled_without_charge'
+  | 'refund';
 
-/** Keys on (provider_invoice_id, type), not event id: one payment fires two events. */
+export type BillingRefundStatus = 'pending' | 'approved' | 'rejected';
+
+/** Keys on (provider_invoice_id, type), not event id; a refund row keys on the refund id. */
 @Entity('billing_history')
 @Index('UQ_billing_history_invoice_type', ['providerInvoiceId', 'type'], {
   unique: true,
@@ -25,14 +28,14 @@ export class BillingHistory {
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  /** Provider invoice id. Part of the idempotency key. */
+  /** Provider invoice id, or the refund id on a refund row. Part of the idempotency key. */
   @Column({ name: 'provider_invoice_id', type: 'varchar', length: 255 })
   providerInvoiceId: string;
 
   @Column({ type: 'varchar', length: 32 })
   type: BillingHistoryType;
 
-  /** Minor units (cents / fils / halalas): amount_paid on success, amount_due on failure. */
+  /** Minor units: amount_paid on success, amount_due on failure, amount returned on refund. */
   @Column({ type: 'integer' })
   amount: number;
 
@@ -65,6 +68,15 @@ export class BillingHistory {
 
   @Column({ name: 'period_end', type: 'timestamptz', nullable: true })
   periodEnd: Date | null;
+
+  /** Refund rows only; null for every other type. */
+  @Column({
+    name: 'refund_status',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  refundStatus: BillingRefundStatus | null;
 
   /** Provider dunning attempt count; only meaningful for failures. */
   @Column({ name: 'attempt_count', type: 'integer', nullable: true })

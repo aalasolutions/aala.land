@@ -53,6 +53,8 @@ describe('BillingHistoryService', () => {
           useValue: {
             query: jest.fn().mockResolvedValue([]),
             findAndCount: jest.fn().mockResolvedValue([[], 0]),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            manager: { query: jest.fn().mockResolvedValue([]) },
           },
         },
       ],
@@ -188,6 +190,60 @@ describe('BillingHistoryService', () => {
       );
       expect(result.page).toBe(1);
       expect(result.limit).toBe(MAX_PAGE_LIMIT);
+    });
+  });
+
+  describe('refund rows', () => {
+    const row = {
+      companyId: 'company-uuid-1',
+      refundId: 'adj_1',
+      amount: 1650,
+      currency: 'usd',
+      refundStatus: 'pending' as const,
+      occurredAt,
+    };
+
+    it('inserts one refund row keyed on the refund id and never overwrites it', async () => {
+      const manager = { query: jest.fn().mockResolvedValue([]) };
+      await service.recordRefund(row, manager as never);
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("VALUES ($1, $2, 'refund', $3, $4, $5, $6)");
+      expect(sql).toContain(
+        'ON CONFLICT (provider_invoice_id, type) DO NOTHING',
+      );
+      expect(params).toEqual([
+        'company-uuid-1',
+        'adj_1',
+        1650,
+        'usd',
+        'pending',
+        occurredAt,
+      ]);
+    });
+
+    it('uses the repository connection when no transaction is given', async () => {
+      const repoManager = (
+        service as unknown as {
+          historyRepo: { manager: { query: jest.Mock } };
+        }
+      ).historyRepo.manager;
+      await service.recordRefund(row);
+      expect(repoManager.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('updates the status of the company refund row only', async () => {
+      const update = (
+        service as unknown as { historyRepo: { update: jest.Mock } }
+      ).historyRepo.update;
+      await service.setRefundStatus('company-uuid-1', 'adj_1', 'approved');
+      expect(update).toHaveBeenCalledWith(
+        {
+          companyId: 'company-uuid-1',
+          providerInvoiceId: 'adj_1',
+          type: 'refund',
+        },
+        { refundStatus: 'approved' },
+      );
     });
   });
 });

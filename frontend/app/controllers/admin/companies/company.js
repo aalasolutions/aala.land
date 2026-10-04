@@ -9,6 +9,7 @@ import { creditDisplayAmount } from '../../../utils/billing-credit';
 import {
   formatCalendarDate,
   localDateString,
+  formatLongInstant,
   localEndOfDayIso,
   toEpochMs,
 } from 'land/utils/local-date';
@@ -34,6 +35,9 @@ const HISTORY_EVENTS = {
   lift_ended: 'Lift ended',
   manual_payment_recorded: 'Manual payment recorded',
   refund_initiated: 'Refund initiated',
+  downgrade_executed: 'Plan ended, refund requested',
+  refund_failed: 'Refund failed',
+  downgrade_released: 'Downgrade request dropped',
   next_bill_discount: 'Next-bill discount',
 };
 
@@ -179,6 +183,10 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   get billing() {
     return this.detail?.billing ?? null;
+  }
+
+  get downgradeDateLabel() {
+    return formatLongInstant(this.billing?.downgradeEffectiveAt);
   }
 
   get lock() {
@@ -586,6 +594,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         amount: h.amount,
         currency: h.currency,
         type: h.type,
+        refundStatus: h.refundStatus ?? null,
         creditApplied: h.creditApplied ?? 0,
         creditIssued: h.creditIssued ?? 0,
         creditAmount: creditDisplayAmount(h),

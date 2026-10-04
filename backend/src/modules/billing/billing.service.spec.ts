@@ -10,7 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
-import { BillingService } from './billing.service';
+import { BillingService, REFUND_TERMS_VERSION } from './billing.service';
+import { BillingDowngradeService } from './billing-downgrade.service';
 import { Role } from '@shared/enums/roles.enum';
 import { BillingPrice } from './entities/billing-price.entity';
 import {
@@ -43,6 +44,7 @@ const mockProviderMethods = {
   name: 'stripe',
   supportsCountryOverrides: true,
   supportsTaxMode: true,
+  supportsImmediateCancel: false,
   supportedCountries: null,
   ensureCustomer: jest.fn(),
   ensurePrice: jest.fn(),
@@ -73,6 +75,12 @@ describe('BillingService', () => {
   let priceRepo: jest.Mocked<Repository<BillingPrice>>;
   let userRepo: jest.Mocked<Repository<User>>;
   let provider: jest.Mocked<BillingProvider>;
+  let downgrades: jest.Mocked<
+    Pick<
+      BillingDowngradeService,
+      'request' | 'withdraw' | 'releaseScheduledCancel'
+    >
+  >;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -130,10 +138,19 @@ describe('BillingService', () => {
           provide: DataSource,
           useValue: dataSourceMock,
         },
+        {
+          provide: BillingDowngradeService,
+          useValue: {
+            request: jest.fn(),
+            withdraw: jest.fn().mockResolvedValue(false),
+            releaseScheduledCancel: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BillingService>(BillingService);
+    downgrades = module.get(BillingDowngradeService);
     companyRepo = module.get(getRepositoryToken(Company));
     priceRepo = module.get(getRepositoryToken(BillingPrice));
     userRepo = module.get(getRepositoryToken(User));
@@ -1349,6 +1366,10 @@ describe('BillingService', () => {
         canDowngradeToFree: true,
         cancelAtPeriodEnd: false,
         cancelAt: null,
+        downgradeRequestedAt: null,
+        downgradeEffectiveAt: null,
+        refundTermsAcceptedAt: null,
+        cancelMode: 'period_end',
       });
       expect(provider.getCancellationState).not.toHaveBeenCalled();
       expect(state).not.toHaveProperty('billingSubscriptionId');
@@ -1376,6 +1397,73 @@ describe('BillingService', () => {
       });
       expect(state.cancelAtPeriodEnd).toBe(true);
       expect(state.cancelAt).toBe('2026-08-01T00:00:00.000Z');
+    });
+
+    it('returns the pending request, its effective time and the consent time', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.PRO,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          downgradeRequestedAt: new Date('2026-10-04T10:00:00.000Z'),
+          refundTermsAcceptedAt: new Date('2026-09-01T08:00:00.000Z'),
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.downgradeRequestedAt).toBe('2026-10-04T10:00:00.000Z');
+      expect(state.downgradeEffectiveAt).toBe('2026-10-06T10:00:00.000Z');
+      expect(state.refundTermsAcceptedAt).toBe('2026-09-01T08:00:00.000Z');
+    });
+
+    it('reports the delayed cancel mode and no period-end date when nothing is scheduled', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+      (provider.getCancellationState as jest.Mock).mockResolvedValue({
+        cancelAtPeriodEnd: false,
+        cancelAt: new Date('2026-11-01T00:00:00.000Z'),
+      });
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.cancelMode).toBe('delayed_refund');
+      expect(state.cancelAtPeriodEnd).toBe(false);
+      expect(state.cancelAt).toBeNull();
+    });
+
+    it('still shows a cancel the provider has scheduled on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+      (provider.getCancellationState as jest.Mock).mockResolvedValue({
+        cancelAtPeriodEnd: true,
+        cancelAt: new Date('2026-11-01T00:00:00.000Z'),
+      });
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.cancelAtPeriodEnd).toBe(true);
+      expect(state.cancelAt).toBe('2026-11-01T00:00:00.000Z');
     });
 
     it('reports hasSubscription and blocks downgrade with more than 1 active user', async () => {
@@ -1535,6 +1623,7 @@ describe('BillingService', () => {
     it('calls createSubscription with the seat price, PRO plan, no base, and all-seats quantity', async () => {
       const result = await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
@@ -1553,11 +1642,41 @@ describe('BillingService', () => {
       expect(result.subscriptionId).toBeNull();
     });
 
+    it('stores who accepted the refund terms, when, and the wording version', async () => {
+      await service.startCheckout(
+        companyId,
+        'user-1',
+        'http://localhost:4200/billing/success',
+        'http://localhost:4200/billing/cancel',
+      );
+      expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+        refundTermsAcceptedAt: expect.any(Date),
+        refundTermsAcceptedBy: 'user-1',
+        refundTermsVersion: REFUND_TERMS_VERSION,
+      });
+    });
+
+    it('stores no acceptance when the provider refuses the checkout', async () => {
+      (provider.createSubscription as jest.Mock).mockRejectedValue(
+        new Error('declined'),
+      );
+      await expect(
+        service.startCheckout(
+          companyId,
+          'user-1',
+          'http://localhost:4200/billing/success',
+          'http://localhost:4200/billing/cancel',
+        ),
+      ).rejects.toBeInstanceOf(BadGatewayException);
+      expect(companyRepo.update).not.toHaveBeenCalled();
+    });
+
     it('uses quantity 1 (the solo owner seat) when company has no active users', async () => {
       userRepo.count.mockResolvedValue(0);
       (provider.createSubscription as jest.Mock).mockClear();
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
@@ -1570,6 +1689,7 @@ describe('BillingService', () => {
     it('uses the user-selected payment currency for the seat price lookup', async () => {
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
         'sar',
@@ -1587,6 +1707,7 @@ describe('BillingService', () => {
     it('defaults to USD when no currency is selected', async () => {
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
@@ -1604,6 +1725,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
           'eur',
@@ -1618,6 +1740,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1630,6 +1753,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1644,6 +1768,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1660,6 +1785,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1671,6 +1797,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'https://evil.example.com/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1682,6 +1809,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           '/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1696,6 +1824,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1712,6 +1841,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -1825,17 +1955,75 @@ describe('BillingService', () => {
     });
 
     it('calls provider.cancel when company has exactly 1 active user', async () => {
-      await service.cancelSubscription(companyId);
+      const result = await service.cancelSubscription(companyId, 'user-1');
       expect(provider.cancel).toHaveBeenCalledWith({
+        subscriptionId: 'sub_pro',
+        customerId: 'cus_1',
+      });
+      expect(result).toEqual({
+        downgradeRequestedAt: null,
+        downgradeEffectiveAt: null,
+      });
+      expect(downgrades.request).not.toHaveBeenCalled();
+    });
+
+    it('records a delayed request instead of cancelling on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      const pending = {
+        downgradeRequestedAt: '2026-10-04T10:00:00.000Z',
+        downgradeEffectiveAt: '2026-10-06T10:00:00.000Z',
+      };
+      downgrades.request.mockResolvedValue(pending);
+      await expect(
+        service.cancelSubscription(companyId, 'user-1'),
+      ).resolves.toEqual(pending);
+      expect(downgrades.request).toHaveBeenCalledWith(
+        companyId,
+        'sub_pro',
+        'user-1',
+      );
+      expect(provider.cancel).not.toHaveBeenCalled();
+      expect(downgrades.releaseScheduledCancel).toHaveBeenCalledWith({
         subscriptionId: 'sub_pro',
         customerId: 'cus_1',
       });
     });
 
+    it('still records the request when clearing a scheduled cancel fails', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      downgrades.releaseScheduledCancel.mockRejectedValue(new Error('down'));
+      downgrades.request.mockResolvedValue({
+        downgradeRequestedAt: 'a',
+        downgradeEffectiveAt: 'b',
+      });
+      await service.cancelSubscription(companyId, 'user-1');
+      expect(downgrades.request).toHaveBeenCalled();
+    });
+
+    it('never clears a scheduled cancel on a period-end adapter', async () => {
+      await service.cancelSubscription(companyId, 'user-1');
+      expect(downgrades.releaseScheduledCancel).not.toHaveBeenCalled();
+    });
+
+    it('keeps the one-active-user rule on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      userRepo.count.mockResolvedValue(2);
+      await expect(
+        service.cancelSubscription(companyId, 'user-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(downgrades.request).not.toHaveBeenCalled();
+    });
+
     it('throws ConflictException (409) when company has more than 1 active user', async () => {
       userRepo.count.mockResolvedValue(3);
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(provider.cancel).not.toHaveBeenCalled();
     });
@@ -1843,14 +2031,14 @@ describe('BillingService', () => {
     it('throws BadRequestException when company has no active subscription', async () => {
       companyRepo.findOne.mockResolvedValue(makeCompany());
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws NotFoundException when company does not exist', async () => {
       companyRepo.findOne.mockResolvedValue(null);
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -1869,10 +2057,25 @@ describe('BillingService', () => {
 
     it('calls provider.resume with the subscription ref to clear a queued downgrade', async () => {
       await service.resumeSubscription(companyId);
+      expect(downgrades.withdraw).toHaveBeenCalledWith(companyId);
       expect(provider.resume).toHaveBeenCalledWith({
         subscriptionId: 'sub_pro',
         customerId: 'cus_1',
       });
+    });
+
+    it('withdraws a pending downgrade request without calling the provider', async () => {
+      downgrades.withdraw.mockResolvedValue(true);
+      await service.resumeSubscription(companyId);
+      expect(provider.resume).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the conflict when execution has already started', async () => {
+      downgrades.withdraw.mockRejectedValue(new ConflictException('started'));
+      await expect(
+        service.resumeSubscription(companyId),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(provider.resume).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException when company has no active subscription', async () => {

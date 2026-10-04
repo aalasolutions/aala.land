@@ -7,12 +7,17 @@ import { User } from '../users/entities/user.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { EmailPreferencesService } from './email-preferences.service';
 import {
+  downgradeCancelledEmail,
+  downgradeRequestedEmail,
   inviteEmail,
   passwordResetEmail,
   paymentFailedEmail,
   paymentSucceededEmail,
   purchaseConfirmationEmail,
   quotaExceededEmail,
+  refundFailedEmail,
+  refundRequestedEmail,
+  refundSettledEmail,
   RenderedEmail,
   settledWithoutChargeEmail,
   upcomingInvoiceEmail,
@@ -244,6 +249,119 @@ export class SystemEmailService {
       }),
     );
     return true;
+  }
+
+  /** Always sent. */
+  async sendDowngradeRequestedToCompany(
+    companyId: string,
+    effectiveAt: Date,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      downgradeRequestedEmail({
+        name: recipient.name,
+        effectiveAt,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundRequestedToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundRequestedEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundSettledToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+    outcome: 'approved' | 'rejected' | 'reversed',
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundSettledEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        outcome,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundFailedToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundFailedEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendDowngradeCancelledToCompany(
+    companyId: string,
+    reason: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      downgradeCancelledEmail({
+        name: recipient.name,
+        reason,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
   }
 
   async sendPaymentFailedToCompany(

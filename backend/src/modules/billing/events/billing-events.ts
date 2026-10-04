@@ -1,6 +1,7 @@
 import type {
   BillingPlan,
   BillingPriceKind,
+  RefundState,
 } from '../provider/billing-provider.interface';
 
 /** Frozen: adding, trimming, or merging names is a breaking change to every registered handler. */
@@ -11,7 +12,8 @@ export type BillingEventName =
   | 'PlanChanged'
   | 'SubscriptionCanceled'
   | 'PaymentSucceeded'
-  | 'PaymentFailed';
+  | 'PaymentFailed'
+  | 'RefundUpdated';
 
 export interface BillingEventBase {
   name: BillingEventName;
@@ -104,6 +106,19 @@ export interface PaymentFailedEvent extends BillingEventBase, InvoiceDetail {
   attemptCount: number | null;
 }
 
+export interface RefundUpdatedEvent extends BillingEventBase {
+  name: 'RefundUpdated';
+  refundId: string;
+  /** The refunded payment (billing_history.provider_invoice_id). */
+  invoiceId: string | null;
+  /** Positive minor units returned to the payment method. */
+  amount: number;
+  currency: string;
+  state: RefundState;
+  /** The reference this app gave the refund, when the provider echoes it back. */
+  reference: string | null;
+}
+
 export type NormalizedBillingEvent =
   | SubscriptionActivatedEvent
   | SubscriptionUpdatedEvent
@@ -111,4 +126,5 @@ export type NormalizedBillingEvent =
   | PlanChangedEvent
   | SubscriptionCanceledEvent
   | PaymentSucceededEvent
-  | PaymentFailedEvent;
+  | PaymentFailedEvent
+  | RefundUpdatedEvent;

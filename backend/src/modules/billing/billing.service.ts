@@ -41,6 +41,13 @@ import {
   isBillingCurrency,
   resolveBillingCurrency,
 } from './billing-currency.util';
+import {
+  BillingDowngradeService,
+  DowngradeRequest,
+  downgradeEffectiveAt,
+} from './billing-downgrade.service';
+
+export const REFUND_TERMS_VERSION = 'v1';
 
 /** Call release() only if the caller's local write, made after reserveSeat, fails. */
 export interface SeatReservation {
@@ -69,6 +76,14 @@ export interface SubscriptionState {
   cancelAtPeriodEnd: boolean;
   /** ISO date the plan reverts to FREE (the paid-through / period-end date), or null. */
   cancelAt: string | null;
+  /** Pending downgrade request, ISO; null when none. */
+  downgradeRequestedAt: string | null;
+  /** When the pending request executes, ISO; null when none. */
+  downgradeEffectiveAt: string | null;
+  /** Last acceptance of the refund terms at checkout, ISO; null when never. */
+  refundTermsAcceptedAt: string | null;
+  /** delayed_refund: 48-hour request with refund; period_end: cancel at period end. */
+  cancelMode: 'delayed_refund' | 'period_end';
 }
 
 export interface CheckoutResult {
@@ -92,6 +107,7 @@ export class BillingService {
     @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider,
     private readonly config: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly downgrades: BillingDowngradeService,
   ) {}
 
   /** Race-safe via company lock, re-read, provider idempotency key, and UNIQUE index as backstops. */
@@ -486,7 +502,8 @@ export class BillingService {
       const amount = seatByCurrency.get(c);
       return amount != null ? [{ currency: c, seatAmount: amount }] : [];
     });
-    // Not mirrored on Company; ask the provider live.
+    // Read live from the provider; immediate-cancel adapters show only a real schedule.
+    const immediate = this.provider.supportsImmediateCancel;
     let cancelAtPeriodEnd = false;
     let cancelAt: string | null = null;
     if (company.billingSubscriptionId && company.billingCustomerId) {
@@ -496,7 +513,10 @@ export class BillingService {
           customerId: company.billingCustomerId,
         });
         cancelAtPeriodEnd = schedule.cancelAtPeriodEnd;
-        cancelAt = schedule.cancelAt ? schedule.cancelAt.toISOString() : null;
+        cancelAt =
+          schedule.cancelAt && (!immediate || schedule.cancelAtPeriodEnd)
+            ? schedule.cancelAt.toISOString()
+            : null;
       } catch (err) {
         this.logger.warn(
           `Could not read cancellation state for company ${companyId}: ` +
@@ -523,6 +543,13 @@ export class BillingService {
       canDowngradeToFree: activeUsers <= 1,
       cancelAtPeriodEnd,
       cancelAt,
+      downgradeRequestedAt: company.downgradeRequestedAt?.toISOString() ?? null,
+      downgradeEffectiveAt: company.downgradeRequestedAt
+        ? downgradeEffectiveAt(company.downgradeRequestedAt).toISOString()
+        : null,
+      refundTermsAcceptedAt:
+        company.refundTermsAcceptedAt?.toISOString() ?? null,
+      cancelMode: immediate ? 'delayed_refund' : 'period_end',
     };
   }
 
@@ -541,6 +568,7 @@ export class BillingService {
   /** ENTERPRISE is gated in the controller; subscriptionId is null here, it arrives via webhook. */
   async startCheckout(
     companyId: string,
+    acceptedBy: string,
     successUrl: string,
     cancelUrl: string,
     currencyChoice?: string,
@@ -567,7 +595,7 @@ export class BillingService {
 
     const seatPriceId = await this.getProviderPriceId('SEAT', currency);
 
-    return this.createProviderCheckout({
+    const checkout = await this.createProviderCheckout({
       customerId,
       seatPriceId,
       basePriceId: null,
@@ -577,6 +605,13 @@ export class BillingService {
       cancelUrl,
       companyId,
     });
+    // The buyer's own consent, not a provider fact, so it is written here.
+    await this.companyRepo.update(companyId, {
+      refundTermsAcceptedAt: new Date(),
+      refundTermsAcceptedBy: acceptedBy,
+      refundTermsVersion: REFUND_TERMS_VERSION,
+    });
+    return checkout;
   }
 
   /** ENTERPRISE requires basePriceId; PRO does not. */
@@ -666,8 +701,11 @@ export class BillingService {
     });
   }
 
-  /** Blocked 409 if more than 1 active user; trim to 1 first. */
-  async cancelSubscription(companyId: string): Promise<void> {
+  /** Blocked 409 if more than 1 active user; immediate-cancel adapters record a delayed request. */
+  async cancelSubscription(
+    companyId: string,
+    requestedBy: string,
+  ): Promise<DowngradeRequest> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
       throw new BadRequestException(
@@ -683,13 +721,40 @@ export class BillingService {
       );
     }
 
+    if (this.provider.supportsImmediateCancel) {
+      const ref = {
+        subscriptionId: company.billingSubscriptionId,
+        customerId: company.billingCustomerId,
+      };
+      await this.releaseScheduledCancel(ref, companyId);
+      return this.downgrades.request(
+        companyId,
+        company.billingSubscriptionId,
+        requestedBy,
+      );
+    }
     await this.provider.cancel({
       subscriptionId: company.billingSubscriptionId,
       customerId: company.billingCustomerId,
     });
+    return { downgradeRequestedAt: null, downgradeEffectiveAt: null };
   }
 
-  /** Clears cancel_at_period_end so the subscription keeps renewing and the plan stays. */
+  /** Best effort here; the job clears it again before it plans the refund. */
+  private async releaseScheduledCancel(
+    ref: SubscriptionRef,
+    companyId: string,
+  ): Promise<void> {
+    try {
+      await this.downgrades.releaseScheduledCancel(ref);
+    } catch (err) {
+      this.logger.warn(
+        `Could not clear a scheduled cancel for company ${companyId}: ${errorMessage(err)}`,
+      );
+    }
+  }
+
+  /** Withdraws a pending downgrade request, else clears a scheduled period-end cancel. */
   async resumeSubscription(companyId: string): Promise<void> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
@@ -697,6 +762,7 @@ export class BillingService {
         'Company does not have an active subscription to resume',
       );
     }
+    if (await this.downgrades.withdraw(companyId)) return;
     await this.provider.resume({
       subscriptionId: company.billingSubscriptionId,
       customerId: company.billingCustomerId,

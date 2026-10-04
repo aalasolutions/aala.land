@@ -24,7 +24,10 @@ import {
   CreateSubscriptionResult,
   EnsureCustomerInput,
   PriceOverride,
+  PeriodPayments,
   ProviderWebhookEvent,
+  RefundBasis,
+  RefundState,
   SubscriptionRef,
 } from './billing-provider.interface';
 import {
@@ -33,6 +36,7 @@ import {
   PaymentFailedEvent,
   PaymentSucceededEvent,
   PlanChangedEvent,
+  RefundUpdatedEvent,
   SeatQuantityChangedEvent,
   SubscriptionActivatedEvent,
   SubscriptionCanceledEvent,
@@ -97,6 +101,18 @@ interface PaddleRawLineItem {
   quantity?: number | null;
   proration?: unknown;
   unit_totals?: { subtotal?: string | null; total?: string | null } | null;
+}
+
+interface PaddleRawAdjustment {
+  id?: string | null;
+  action?: string | null;
+  status?: string | null;
+  transaction_id?: string | null;
+  subscription_id?: string | null;
+  customer_id?: string | null;
+  currency_code?: string | null;
+  reason?: string | null;
+  totals?: { total?: string | null } | null;
 }
 
 interface PaddleRawEvent {
@@ -202,6 +218,27 @@ export function allocateRefund(
     );
   }
   return out;
+}
+
+export function refundStateOf(
+  status: string | null | undefined,
+): RefundState | null {
+  if (status === 'pending_approval') return 'pending';
+  if (status === 'approved') return 'approved';
+  if (status === 'rejected') return 'rejected';
+  if (status === 'reversed') return 'reversed';
+  return null;
+}
+
+const REFUND_REFERENCE_PREFIX = 'Refund of unused days, ref ';
+
+/** The reference a referenced refund carries in its reason, else null. */
+export function refundReferenceOf(
+  reason: string | null | undefined,
+): string | null {
+  if (typeof reason !== 'string' || !reason.startsWith(REFUND_REFERENCE_PREFIX))
+    return null;
+  return reason.slice(REFUND_REFERENCE_PREFIX.length).trim() || null;
 }
 
 function isPriceKind(value: unknown): value is BillingPriceKind {
@@ -319,6 +356,7 @@ export class PaddleBillingProvider implements BillingProvider {
   readonly supportsCountryOverrides = true;
   readonly supportsTaxMode = true;
   readonly checkoutQuantityEditable = true;
+  readonly supportsImmediateCancel = true;
   readonly supportedCurrencies = PADDLE_CURRENCIES;
   readonly supportedCountries = PADDLE_COUNTRIES;
   private readonly logger = new Logger(PaddleBillingProvider.name);
@@ -442,6 +480,9 @@ export class PaddleBillingProvider implements BillingProvider {
       case 'transaction.completed':
       case 'transaction.payment_failed':
         return this.normalizeTransactionEvent(event, occurredAt);
+      case 'adjustment.created':
+      case 'adjustment.updated':
+        return this.normalizeAdjustmentEvent(event, occurredAt);
       default:
         return [];
     }
@@ -584,6 +625,39 @@ export class PaddleBillingProvider implements BillingProvider {
       chargedUnitAmounts: chargedUnitAmounts(txn),
     };
     return [succeeded];
+  }
+
+  private async normalizeAdjustmentEvent(
+    event: PaddleRawEvent,
+    occurredAt: Date,
+  ): Promise<NormalizedBillingEvent[]> {
+    const adj = (event.data ?? {}) as PaddleRawAdjustment;
+    const refundId = stringOrNull(adj.id);
+    const state = refundStateOf(adj.status);
+    // Credits and chargebacks are not refunds this app requested.
+    if (adj.action !== 'refund' || !refundId || !state) return [];
+    const customerId = stringOrNull(adj.customer_id);
+    const companyId = await this.resolveCompanyId(null, customerId);
+    if (!companyId || !customerId) {
+      this.logger.warn(
+        `Webhook ${event.event_id} (${event.event_type}): companyId unresolved, emitting no events`,
+      );
+      return [];
+    }
+    const refund: RefundUpdatedEvent = {
+      name: 'RefundUpdated',
+      companyId,
+      customerId,
+      subscriptionId: stringOrNull(adj.subscription_id),
+      occurredAt,
+      refundId,
+      invoiceId: stringOrNull(adj.transaction_id),
+      amount: minorUnits(adj.totals?.total) ?? 0,
+      currency: (adj.currency_code ?? 'usd').toLowerCase(),
+      state,
+      reference: refundReferenceOf(adj.reason),
+    };
+    return [refund];
   }
 
   /** Resolution order: event custom_data, then customer custom_data; null if neither. */
@@ -806,11 +880,102 @@ export class PaddleBillingProvider implements BillingProvider {
     );
   }
 
+  async getRefundBasis(ref: SubscriptionRef): Promise<RefundBasis | null> {
+    const sub = await this.call('subscriptions.get', () =>
+      this.paddle.subscriptions.get(ref.subscriptionId, {
+        include: ['next_transaction', 'recurring_transaction_details'],
+      }),
+    );
+    if (sub.status === 'canceled') return null;
+    const startedAt = isoToDate(sub.startedAt ?? sub.createdAt);
+    const periodStart = isoToDate(sub.currentBillingPeriod?.startsAt);
+    const periodEnd = isoToDate(sub.currentBillingPeriod?.endsAt);
+    const nextTotal = minorUnits(sub.nextTransaction?.details?.totals?.total);
+    const recurring = sub.recurringTransactionDetails;
+    const recurringTotal = minorUnits(recurring?.totals?.total);
+    if (!startedAt || !periodStart || !periodEnd || recurringTotal == null) {
+      throw new Error(
+        `Subscription ${ref.subscriptionId} has no billing period or recurring bill preview`,
+      );
+    }
+    const balances = await this.call('customers.getCreditBalance', () =>
+      this.paddle.customers.getCreditBalance(ref.customerId, {
+        currencyCode: [sub.currencyCode],
+      }),
+    );
+    const credit = balances.find((b) => b.currencyCode === sub.currencyCode);
+    // Next bill is renewal plus pending prorations; the difference is what is pending.
+    return {
+      startedAt,
+      periodStart,
+      periodEnd,
+      heldLines: (recurring?.lineItems ?? []).map((line) => ({
+        quantity: line.quantity,
+        unitGross: minorUnits(line.unitTotals?.total) ?? 0,
+      })),
+      pendingNextBill: nextTotal == null ? 0 : nextTotal - recurringTotal,
+      pendingNextBillKnown: nextTotal != null,
+      creditBalance: Math.max(minorUnits(credit?.balance?.available) ?? 0, 0),
+    };
+  }
+
+  async getPeriodPayments(
+    ref: SubscriptionRef,
+    periodStart: Date,
+  ): Promise<PeriodPayments> {
+    const transactions = await this.call('transactions.list', () =>
+      this.paddle.transactions
+        .list({ subscriptionId: [ref.subscriptionId], perPage: 100 })
+        .next(),
+    );
+    const inPeriod = transactions.filter(
+      (t) =>
+        isoToDate(t.billingPeriod?.startsAt)?.getTime() ===
+        periodStart.getTime(),
+    );
+    const completed = inPeriod.filter(
+      (t) => t.status === 'completed' || t.status === 'paid',
+    );
+    return {
+      paid: completed.length > 0,
+      failed: inPeriod.some((t) => t.status === 'past_due'),
+      cardPayments: completed.flatMap((t) => {
+        const amount = minorUnits(t.details?.totals?.grandTotal);
+        if (amount == null || amount <= 0) return [];
+        return [
+          {
+            invoiceId: t.id,
+            amount,
+            currency: t.currencyCode.toLowerCase(),
+            occurredAt: isoToDate(t.billedAt ?? t.createdAt) ?? new Date(),
+          },
+        ];
+      }),
+    };
+  }
+
+  async cancelImmediately(ref: SubscriptionRef): Promise<void> {
+    const sub = await this.getSubscription(ref.subscriptionId);
+    if (sub.status === 'canceled') return;
+    await this.call('subscriptions.cancel', () =>
+      this.paddle.subscriptions.cancel(ref.subscriptionId, {
+        effectiveFrom: 'immediately',
+      }),
+    );
+  }
+
   async refundInvoicePayment(
     invoiceId: string,
     amountMinor: number | null,
-  ): Promise<{ refundId: string }> {
-    const reason = 'Make-it-right refund';
+    reference?: string,
+  ): Promise<{ refundId: string; state?: RefundState }> {
+    const reason = reference
+      ? `${REFUND_REFERENCE_PREFIX}${reference}`
+      : 'Make-it-right refund';
+    if (reference) {
+      const existing = await this.findRefundByReason(invoiceId, reason);
+      if (existing) return existing;
+    }
     if (amountMinor == null) {
       const adjustment = await this.call('adjustments.create', () =>
         this.paddle.adjustments.create({
@@ -820,7 +985,10 @@ export class PaddleBillingProvider implements BillingProvider {
           type: 'full',
         }),
       );
-      return { refundId: adjustment.id };
+      return {
+        refundId: adjustment.id,
+        state: refundStateOf(adjustment.status) ?? undefined,
+      };
     }
     if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
       throw new Error(`Refund amount must be a positive integer`);
@@ -842,7 +1010,26 @@ export class PaddleBillingProvider implements BillingProvider {
         items,
       }),
     );
-    return { refundId: adjustment.id };
+    return {
+      refundId: adjustment.id,
+      state: refundStateOf(adjustment.status) ?? undefined,
+    };
+  }
+
+  /** Paddle takes no idempotency key, so a retried refund is found by its reason. */
+  private async findRefundByReason(
+    invoiceId: string,
+    reason: string,
+  ): Promise<{ refundId: string; state?: RefundState } | null> {
+    const adjustments = await this.call('adjustments.list', () =>
+      this.paddle.adjustments
+        .list({ transactionId: [invoiceId], action: 'refund', perPage: 50 })
+        .next(),
+    );
+    const found = adjustments.find((a) => a.reason === reason);
+    return found
+      ? { refundId: found.id, state: refundStateOf(found.status) ?? undefined }
+      : null;
   }
 
   creditCustomerBalance(): Promise<{ creditId: string }> {

@@ -10,6 +10,7 @@ import { BillingWebhookService, planToTier } from './billing-webhook.service';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
 import { BillingService } from './billing.service';
+import { BillingDowngradeService } from './billing-downgrade.service';
 import { BillingEvent } from './entities/billing-event.entity';
 import {
   Company,
@@ -25,6 +26,7 @@ import {
   NormalizedBillingEvent,
   PaymentFailedEvent,
   PaymentSucceededEvent,
+  RefundUpdatedEvent,
   SubscriptionActivatedEvent,
 } from './events/billing-events';
 
@@ -39,6 +41,9 @@ describe('BillingWebhookService', () => {
   let historyService: jest.Mocked<Pick<BillingHistoryService, 'recordPayment'>>;
   let billingService: jest.Mocked<
     Pick<BillingService, 'reconcileSeatsToActiveUsers'>
+  >;
+  let downgrades: jest.Mocked<
+    Pick<BillingDowngradeService, 'applyRefundUpdate'>
   >;
   // Captures the last conditional-update QueryBuilder so seat-sync assertions
   // can read the .set() patch and .execute() affected count.
@@ -123,6 +128,12 @@ describe('BillingWebhookService', () => {
             reconcileSeatsToActiveUsers: jest.fn().mockResolvedValue(null),
           },
         },
+        {
+          provide: BillingDowngradeService,
+          useValue: {
+            applyRefundUpdate: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -133,6 +144,7 @@ describe('BillingWebhookService', () => {
     provider = module.get(BILLING_PROVIDER);
     historyService = module.get(BillingHistoryService);
     billingService = module.get(BillingService);
+    downgrades = module.get(BillingDowngradeService);
 
     // The bare testing module does not run lifecycle hooks; register handlers.
     service.onModuleInit();
@@ -1165,6 +1177,49 @@ describe('BillingWebhookService', () => {
         maxRegions: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxRegions,
         maxProperties: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxProperties,
       });
+    });
+  });
+
+  describe('RefundUpdated', () => {
+    it('hands the refund to the downgrade service and marks the event processed', async () => {
+      const refund: RefundUpdatedEvent = {
+        name: 'RefundUpdated',
+        ...baseEvent,
+        refundId: 'adj_1',
+        invoiceId: 'txn_1',
+        amount: 500,
+        currency: 'usd',
+        state: 'approved',
+        reference: null,
+      };
+      provider.parseWebhook.mockResolvedValue(parsedWith([refund]));
+      await service.handleWebhook(rawBody, signature);
+      expect(downgrades.applyRefundUpdate).toHaveBeenCalledWith(refund);
+      expect(eventRepo.update).toHaveBeenCalledWith(
+        { providerEventId: 'evt_1' },
+        { processedAt: expect.any(Date) },
+      );
+    });
+
+    it('answers 500 when the refund update fails, so the provider retries', async () => {
+      downgrades.applyRefundUpdate.mockRejectedValue(new Error('db down'));
+      provider.parseWebhook.mockResolvedValue(
+        parsedWith([
+          {
+            name: 'RefundUpdated',
+            ...baseEvent,
+            refundId: 'adj_1',
+            invoiceId: 'txn_1',
+            amount: 500,
+            currency: 'usd',
+            state: 'rejected',
+            reference: null,
+          },
+        ]),
+      );
+      await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

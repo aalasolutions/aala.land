@@ -57,6 +57,13 @@ describe('UpcomingInvoiceCron', () => {
     expect(sql).toContain("AND type = 'payment_succeeded'");
   });
 
+  it('skips a company whose downgrade request is pending', async () => {
+    (companyRepo.query as jest.Mock).mockResolvedValue([]);
+    await cron.run();
+    const sql = (companyRepo.query as jest.Mock).mock.calls[0][0] as string;
+    expect(sql).toContain('AND c.downgrade_requested_at IS NULL');
+  });
+
   it('does nothing when no subscriptions are renewing', async () => {
     (companyRepo.query as jest.Mock).mockResolvedValue([]);
     await cron.run();

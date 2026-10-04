@@ -517,6 +517,132 @@ describe('PaddleBillingProvider webhook parsing', () => {
     });
   });
 
+  describe('adjustment events', () => {
+    // Shape of the sandbox adjustment.created and adjustment.updated payloads, ids neutralised.
+    function adjustmentEvent(
+      type: string,
+      status: string,
+      action = 'refund',
+    ): Record<string, unknown> {
+      return {
+        event_id: 'evt_adj_1',
+        event_type: type,
+        occurred_at: '2026-10-01T19:00:03.568895Z',
+        notification_id: 'ntf_1',
+        data: {
+          id: 'adj_1',
+          type: 'partial',
+          items: [
+            {
+              id: 'adjitm_1',
+              type: 'partial',
+              amount: '500',
+              totals: { tax: '24', total: '500', subtotal: '476' },
+              item_id: 'txnitm_1',
+              proration: null,
+            },
+          ],
+          action,
+          reason: 'Make-it-right refund',
+          status,
+          totals: {
+            fee: '35',
+            tax: '24',
+            total: '500',
+            earnings: '441',
+            subtotal: '476',
+            retained_fee: '0',
+            currency_code: 'USD',
+          },
+          created_at: '2026-10-01T18:52:07.786737Z',
+          updated_at: '2026-10-01T19:00:03.556892Z',
+          customer_id: 'ctm_1',
+          currency_code: 'USD',
+          transaction_id: 'txn_1',
+          subscription_id: 'sub_1',
+          credit_applied_to_balance: null,
+        },
+      };
+    }
+
+    beforeEach(() => {
+      client.customers.get.mockResolvedValue({
+        customData: { companyId: 'company-1' },
+      });
+    });
+
+    it('adjustment.created pending approval emits a pending RefundUpdated', async () => {
+      const parsed = await parse(
+        adjustmentEvent('adjustment.created', 'pending_approval'),
+      );
+      expect(client.customers.get).toHaveBeenCalledWith('ctm_1');
+      expect(parsed.events).toEqual([
+        {
+          name: 'RefundUpdated',
+          companyId: 'company-1',
+          customerId: 'ctm_1',
+          subscriptionId: 'sub_1',
+          occurredAt: new Date('2026-10-01T19:00:03.568895Z'),
+          refundId: 'adj_1',
+          invoiceId: 'txn_1',
+          amount: 500,
+          currency: 'usd',
+          state: 'pending',
+          reference: null,
+        },
+      ]);
+    });
+
+    it('adjustment.updated maps approved, rejected and reversed', async () => {
+      for (const [status, state] of [
+        ['approved', 'approved'],
+        ['rejected', 'rejected'],
+        ['reversed', 'reversed'],
+      ]) {
+        const parsed = await parse(
+          adjustmentEvent('adjustment.updated', status),
+        );
+        expect(parsed.events).toHaveLength(1);
+        expect(parsed.events[0]).toMatchObject({
+          name: 'RefundUpdated',
+          state,
+        });
+      }
+    });
+
+    it('carries the reference of a refund this app created', async () => {
+      const event = adjustmentEvent('adjustment.updated', 'approved');
+      (event.data as Record<string, unknown>).reason =
+        'Refund of unused days, ref 3f1c2a4e-0000-4000-8000-000000000001';
+      const parsed = await parse(event);
+      expect(parsed.events[0]).toMatchObject({
+        reference: '3f1c2a4e-0000-4000-8000-000000000001',
+      });
+    });
+
+    it('a credit adjustment emits nothing', async () => {
+      const parsed = await parse(
+        adjustmentEvent('adjustment.created', 'approved', 'credit'),
+      );
+      expect(parsed.events).toEqual([]);
+    });
+
+    it('an unknown status emits nothing', async () => {
+      const parsed = await parse(
+        adjustmentEvent('adjustment.updated', 'something_new'),
+      );
+      expect(parsed.events).toEqual([]);
+    });
+
+    it('emits nothing when the customer has no company', async () => {
+      client.customers.get.mockRejectedValue(new Error('not found'));
+      const parsed = await parse(
+        adjustmentEvent('adjustment.updated', 'approved'),
+      );
+      expect(parsed.events).toEqual([]);
+    });
+  });
+
   describe('transaction events', () => {
     it('transaction.completed emits PaymentSucceeded', async () => {
       const parsed = await parse(transactionEvent('transaction.completed'));
@@ -657,7 +783,7 @@ describe('PaddleBillingProvider webhook parsing', () => {
   it('unknown events are returned for recording with no normalised events', async () => {
     const parsed = await parse({
       event_id: 'evt_other',
-      event_type: 'adjustment.created',
+      event_type: 'customer.updated',
       occurred_at: '2026-10-01T10:00:00.000Z',
       data: { id: 'adj_1' },
     });
