@@ -644,20 +644,25 @@ export class BillingService {
     const seatUnits =
       plan === 'ENTERPRISE' ? Math.max(quantity - 1, 0) : quantity;
 
-    return this.createProviderCheckout({
-      customerId,
-      seatPriceId,
-      basePriceId,
-      plan,
-      quantity: seatUnits,
-      successUrl,
-      cancelUrl,
-      companyId,
-    });
+    return this.createProviderCheckout(
+      {
+        customerId,
+        seatPriceId,
+        basePriceId,
+        plan,
+        quantity: seatUnits,
+        successUrl,
+        cancelUrl,
+        companyId,
+      },
+      true,
+    );
   }
 
+  /** Only the operator sees the provider's reason; it can carry internal provider ids. */
   private async createProviderCheckout(
     input: CreateSubscriptionInput,
+    showProviderReason = false,
   ): Promise<CheckoutResult> {
     try {
       return await this.provider.createSubscription(input);
@@ -668,7 +673,9 @@ export class BillingService {
         `Checkout provider call failed for company ${input.companyId}: ${msg}`,
       );
       throw new BadGatewayException(
-        `The payment provider rejected the checkout: ${msg}`,
+        showProviderReason
+          ? `The payment provider rejected the checkout: ${msg}`
+          : 'Checkout could not start. Please try again or contact support.',
       );
     }
   }

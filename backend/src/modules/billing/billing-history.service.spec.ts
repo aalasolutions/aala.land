@@ -231,12 +231,16 @@ describe('BillingHistoryService', () => {
       expect(repoManager.query).toHaveBeenCalledTimes(1);
     });
 
-    it('updates the status of the company refund row only', async () => {
-      const update = (
-        service as unknown as { historyRepo: { update: jest.Mock } }
-      ).historyRepo.update;
-      await service.setRefundStatus('company-uuid-1', 'adj_1', 'approved');
-      expect(update).toHaveBeenCalledWith(
+    it('updates the status of the company refund row only, inside the caller transaction', async () => {
+      const manager = { update: jest.fn().mockResolvedValue({}) };
+      await service.setRefundStatus(
+        'company-uuid-1',
+        'adj_1',
+        'approved',
+        manager as never,
+      );
+      expect(manager.update).toHaveBeenCalledWith(
+        BillingHistory,
         {
           companyId: 'company-uuid-1',
           providerInvoiceId: 'adj_1',

@@ -317,15 +317,44 @@ export class BillingDowngradeService {
       );
       return;
     }
-    const result = await this.remedyRepo.update(
-      {
-        id: remedy.id,
-        companyId: event.companyId,
-        status: In(SETTLE_FROM[event.state]),
+    const settled = remedy;
+    const settleFrom = SETTLE_FROM[event.state];
+    // All writes commit together, so a retry after a failure redoes the history row.
+    const applied = await withCompanyLock(
+      this.dataSource,
+      event.companyId,
+      async (manager) => {
+        const result = await manager.getRepository(PaymentRemedy).update(
+          {
+            id: settled.id,
+            companyId: event.companyId,
+            status: In(settleFrom),
+          },
+          { status: remedyStatusOf(event.state), providerRef: event.refundId },
+        );
+        if (!result.affected) return false;
+        if (settled.cause !== 'cancel') return true;
+        await this.history.recordRefund(
+          {
+            companyId: event.companyId,
+            refundId: event.refundId,
+            amount: settled.amount,
+            currency: settled.currency,
+            refundStatus: historyStatusOf(event.state),
+            occurredAt: event.occurredAt,
+          },
+          manager,
+        );
+        await this.history.setRefundStatus(
+          event.companyId,
+          event.refundId,
+          historyStatusOf(event.state),
+          manager,
+        );
+        return true;
       },
-      { status: remedyStatusOf(event.state), providerRef: event.refundId },
     );
-    if (!result.affected) return;
+    if (!applied) return;
     if (event.state !== 'approved') {
       await this.writeAudit(event.companyId, 'refund_failed', {
         outcome: event.state,
@@ -337,19 +366,6 @@ export class BillingDowngradeService {
       });
     }
     if (remedy.cause !== 'cancel') return;
-    await this.history.recordRefund({
-      companyId: event.companyId,
-      refundId: event.refundId,
-      amount: remedy.amount,
-      currency: remedy.currency,
-      refundStatus: historyStatusOf(event.state),
-      occurredAt: event.occurredAt,
-    });
-    await this.history.setRefundStatus(
-      event.companyId,
-      event.refundId,
-      historyStatusOf(event.state),
-    );
     await this.notices.emit('RefundSettled', {
       companyId: event.companyId,
       amount: remedy.amount,

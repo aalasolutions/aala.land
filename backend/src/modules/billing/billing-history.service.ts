@@ -119,8 +119,10 @@ export class BillingHistoryService {
     companyId: string,
     refundId: string,
     refundStatus: BillingRefundStatus,
+    manager: EntityManager = this.historyRepo.manager,
   ): Promise<void> {
-    await this.historyRepo.update(
+    await manager.update(
+      BillingHistory,
       { companyId, providerInvoiceId: refundId, type: 'refund' },
       { refundStatus },
     );

@@ -1817,7 +1817,7 @@ describe('BillingService', () => {
       expect(provider.createSubscription).not.toHaveBeenCalled();
     });
 
-    it('maps a provider failure to 502 with the provider reason', async () => {
+    it('maps a provider failure to 502 without the provider reason', async () => {
       (provider.createSubscription as jest.Mock).mockRejectedValue(
         new Error('price is archived'),
       );
@@ -1830,7 +1830,7 @@ describe('BillingService', () => {
         ),
       ).rejects.toThrow(
         new BadGatewayException(
-          'The payment provider rejected the checkout: price is archived',
+          'Checkout could not start. Please try again or contact support.',
         ),
       );
     });

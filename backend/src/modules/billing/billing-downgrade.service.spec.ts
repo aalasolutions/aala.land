@@ -90,6 +90,7 @@ describe('BillingDowngradeService', () => {
     count: jest.Mock;
     update: jest.Mock;
     query: jest.Mock;
+    getRepository: jest.Mock;
   };
   let companyRepo: { query: jest.Mock; update: jest.Mock };
   let remedyRepo: {
@@ -159,6 +160,7 @@ describe('BillingDowngradeService', () => {
       count: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       query: jest.fn().mockResolvedValue(undefined),
+      getRepository: jest.fn(() => ({ update: manager.update })),
     };
     plainManager = {
       findOne: jest.fn((_entity: unknown, opts: { where: { id: string } }) =>
@@ -1141,7 +1143,7 @@ describe('BillingDowngradeService', () => {
     it('ignores a refund this app did not record', async () => {
       remedyRepo.findOne.mockResolvedValue(null);
       await service.applyRefundUpdate(event);
-      expect(remedyRepo.update).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
     });
 
     it('finds the row by the reference when the event beats the recorded refund id', async () => {
@@ -1159,7 +1161,7 @@ describe('BillingDowngradeService', () => {
       expect(remedyRepo.findOne).toHaveBeenLastCalledWith({
         where: { id: reference, companyId },
       });
-      expect(remedyRepo.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
         {
           id: reference,
           companyId,
@@ -1186,7 +1188,7 @@ describe('BillingDowngradeService', () => {
         ...event,
         reference: '3f1c2a4e-0000-4000-8000-000000000001',
       });
-      expect(remedyRepo.update).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
     });
 
     it('lets a later approval move a refund given up as failed', async () => {
@@ -1203,7 +1205,7 @@ describe('BillingDowngradeService', () => {
         ...event,
         reference: '3f1c2a4e-0000-4000-8000-000000000002',
       });
-      expect(remedyRepo.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
         {
           id: '3f1c2a4e-0000-4000-8000-000000000002',
           companyId,
@@ -1250,7 +1252,7 @@ describe('BillingDowngradeService', () => {
         status: 'approved',
       });
       await service.applyRefundUpdate({ ...event, state: 'reversed' });
-      expect(remedyRepo.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
         {
           id: 'rem-1',
           companyId,
@@ -1262,6 +1264,7 @@ describe('BillingDowngradeService', () => {
         companyId,
         'adj_1',
         'rejected',
+        manager,
       );
       expect(emit).toHaveBeenCalledWith(
         'RefundSettled',
@@ -1282,7 +1285,7 @@ describe('BillingDowngradeService', () => {
       expect(remedyRepo.findOne).toHaveBeenCalledWith({
         where: { companyId, providerRef: 'adj_1' },
       });
-      expect(remedyRepo.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
         {
           id: 'rem-1',
           companyId,
@@ -1290,18 +1293,22 @@ describe('BillingDowngradeService', () => {
         },
         { status: 'approved', providerRef: 'adj_1' },
       );
-      expect(history.recordRefund).toHaveBeenCalledWith({
-        companyId,
-        refundId: 'adj_1',
-        amount: 700,
-        currency: 'usd',
-        refundStatus: 'approved',
-        occurredAt: now,
-      });
+      expect(history.recordRefund).toHaveBeenCalledWith(
+        {
+          companyId,
+          refundId: 'adj_1',
+          amount: 700,
+          currency: 'usd',
+          refundStatus: 'approved',
+          occurredAt: now,
+        },
+        manager,
+      );
       expect(history.setRefundStatus).toHaveBeenCalledWith(
         companyId,
         'adj_1',
         'approved',
+        manager,
       );
       expect(emit).toHaveBeenCalledWith('RefundSettled', {
         companyId,
@@ -1321,7 +1328,7 @@ describe('BillingDowngradeService', () => {
         status: 'initiated',
       });
       await service.applyRefundUpdate({ ...event, state: 'rejected' });
-      expect(remedyRepo.update).toHaveBeenCalledWith(
+      expect(manager.update).toHaveBeenCalledWith(
         { id: 'rem-2', companyId, status: In(['queued', 'initiated']) },
         { status: 'rejected', providerRef: 'adj_1' },
       );
@@ -1336,9 +1343,28 @@ describe('BillingDowngradeService', () => {
         cause: 'cancel',
         status: 'approved',
       });
-      remedyRepo.update.mockResolvedValue({ affected: 0 });
+      manager.update.mockResolvedValue({ affected: 0 });
       await service.applyRefundUpdate(event);
       expect(history.setRefundStatus).not.toHaveBeenCalled();
+      expect(emit).not.toHaveBeenCalled();
+    });
+
+    it('rolls back and sends nothing when the history write fails, so a retry redoes it', async () => {
+      remedyRepo.findOne.mockResolvedValue({
+        id: 'rem-1',
+        companyId,
+        cause: 'cancel',
+        amount: 700,
+        currency: 'usd',
+        status: 'initiated',
+      });
+      history.recordRefund.mockRejectedValue(new Error('db down'));
+      await expect(service.applyRefundUpdate(event)).rejects.toThrow('db down');
+      expect(manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(manager.update).toHaveBeenCalled();
       expect(emit).not.toHaveBeenCalled();
     });
   });
