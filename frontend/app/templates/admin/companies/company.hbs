@@ -345,7 +345,7 @@
                 class="btn btn-secondary btn-xs"
                 data-test-company-make-right={{cell.row.id}}
                 {{on "click" (fn this.openRemedy cell.row)}}
-              >Make it right</button>
+              >Refund or discount</button>
             {{/if}}
           {{else}}
             {{cell.value}}
@@ -651,7 +651,7 @@
 
   <Nuvo::Drawer
     @open={{this.remedyModalOpen}}
-    @title="Make it right for {{this.company.name}}"
+    @title="Refund or discount for {{this.company.name}}"
     @placement="end"
     @size="lg"
     @onClose={{this.closeRemedy}}

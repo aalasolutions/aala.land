@@ -84,7 +84,9 @@ describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
   let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne' | 'update'>>;
-  let systemEmail: jest.Mocked<Pick<SystemEmailService, 'sendInvite'>>;
+  let systemEmail: jest.Mocked<
+    Pick<SystemEmailService, 'sendInvite' | 'sendMemberAdded'>
+  >;
   let billingService: jest.Mocked<
     Pick<BillingService, 'reserveSeat' | 'setSeatQuantity'>
   >;
@@ -282,7 +284,10 @@ describe('UsersService', () => {
         },
         {
           provide: SystemEmailService,
-          useValue: { sendInvite: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            sendInvite: jest.fn().mockResolvedValue(undefined),
+            sendMemberAdded: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -328,6 +333,90 @@ describe('UsersService', () => {
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
       expect(result).toEqual(mockUser);
+    });
+
+    it('emails the added member, without the password', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        name: 'Acme Realty',
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+      repo.count.mockResolvedValue(2);
+
+      await service.create(
+        {
+          name: 'Test Agent',
+          email: 'agent@test.com',
+          password: 'pass123',
+          companyId,
+          role: Role.AGENT,
+        } as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(systemEmail.sendMemberAdded).toHaveBeenCalledWith(
+        { email: mockUser.email, name: mockUser.name },
+        mockUser.role,
+        'Acme Realty',
+      );
+    });
+
+    it('still returns the user when the member added email fails', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+      repo.count.mockResolvedValue(2);
+      systemEmail.sendMemberAdded.mockRejectedValue(new Error('smtp down'));
+
+      const result = await service.create(
+        {
+          name: 'Test Agent',
+          email: 'agent@test.com',
+          password: 'pass123',
+          companyId,
+          role: Role.AGENT,
+        } as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('sends no member added email when the add fails', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+
+      await expect(
+        service.create(
+          {
+            name: 'Test',
+            email: 'agent@test.com',
+            password: 'pass123',
+            companyId,
+            role: Role.AGENT,
+          } as any,
+          companyId,
+          Role.COMPANY_ADMIN,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(systemEmail.sendMemberAdded).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when email already exists', async () => {

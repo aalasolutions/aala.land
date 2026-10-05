@@ -10,6 +10,7 @@ import {
   downgradeCancelledEmail,
   downgradeRequestedEmail,
   inviteEmail,
+  memberAddedEmail,
   passwordResetEmail,
   paymentFailedEmail,
   paymentSucceededEmail,
@@ -120,6 +121,22 @@ export class SystemEmailService {
         role,
         companyName,
         inviteUrl,
+      }),
+    );
+  }
+
+  async sendMemberAdded(
+    recipient: { email: string; name: string },
+    role: string,
+    companyName: string,
+  ): Promise<void> {
+    await this.send(
+      recipient.email,
+      memberAddedEmail({
+        name: recipient.name,
+        role,
+        companyName,
+        loginUrl: `${appUrl()}/login`,
       }),
     );
   }

@@ -133,7 +133,7 @@ module('Integration | Template | admin company payments', function (hooks) {
     assert.dom(`${row('h-none')} [data-test-payment-credit]`).doesNotExist();
   });
 
-  test('only the paid row offers Make it right', function (assert) {
+  test('only the paid row offers Refund or discount', function (assert) {
     assert.dom('[data-test-company-make-right="h-paid"]').exists();
     assert.dom('[data-test-company-make-right="h-failed"]').doesNotExist();
     assert.dom('[data-test-company-make-right="h-credit"]').doesNotExist();
@@ -157,7 +157,7 @@ module('Integration | Template | admin company payments', function (hooks) {
       .doesNotExist();
   });
 
-  test('a refund row never offers Make it right', function (assert) {
+  test('a refund row never offers Refund or discount', function (assert) {
     assert
       .dom('[data-test-company-make-right="h-refund-pending"]')
       .doesNotExist();

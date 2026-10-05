@@ -110,6 +110,39 @@ export function inviteEmail(vars: {
   };
 }
 
+export function memberAddedEmail(vars: {
+  name: string;
+  role: string;
+  companyName: string;
+  loginUrl: string;
+}): RenderedEmail {
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(
+      `You have been added to <strong>${esc(vars.companyName)}</strong> on AALA.LAND as ${esc(vars.role)}.`,
+    ) +
+    p(
+      `Your company admin has set your password. Contact them for it, then sign in.`,
+    );
+  return {
+    subject: `You have been added to ${vars.companyName} on AALA.LAND`,
+    html: renderLayout({
+      title: 'You have been added',
+      previewText: `Your account at ${vars.companyName} is ready.`,
+      bodyHtml: body,
+      cta: { label: 'Sign in', url: vars.loginUrl },
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `You have been added to ${vars.companyName} on AALA.LAND as ${vars.role}.`,
+      `Your company admin has set your password. Contact them for it, then sign in.`,
+      ``,
+      `Sign in: ${vars.loginUrl}`,
+    ].join('\n'),
+  };
+}
+
 export function quotaExceededEmail(vars: {
   name: string;
   resourceLabel: string;

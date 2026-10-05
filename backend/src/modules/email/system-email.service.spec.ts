@@ -74,6 +74,19 @@ describe('SystemEmailService', () => {
       expect(arg.text).toContain('60 minutes');
     });
 
+    it('tells an added member to get the password from the company admin', async () => {
+      await service.sendMemberAdded(
+        { email: 'a@b.com', name: 'Jane' },
+        'AGENT',
+        'Acme',
+      );
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.to).toBe('a@b.com');
+      expect(arg.subject).toBe('You have been added to Acme on AALA.LAND');
+      expect(arg.text).toContain('Contact them for it, then sign in.');
+      expect(arg.html).toContain('https://app.aala.land/login');
+    });
+
     it('escapes HTML in interpolated values', async () => {
       await service.sendWelcome(
         { email: 'a@b.com', name: '<script>x</script>' },
