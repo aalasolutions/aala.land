@@ -588,6 +588,21 @@ describe('UsersService', () => {
     });
   });
 
+  describe('login lookups', () => {
+    it('select the assigned regions, which the login response is built from', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+
+      await service.findByEmail('user@example.com');
+      await service.findByGoogleId('google-1');
+
+      for (const [options] of repo.findOne.mock.calls) {
+        expect((options as { select: string[] }).select).toContain(
+          'regionCodes',
+        );
+      }
+    });
+  });
+
   describe('update', () => {
     const mockCompanyAdmin: User = {
       ...mockUser,

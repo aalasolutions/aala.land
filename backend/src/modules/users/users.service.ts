@@ -244,6 +244,7 @@ export class UsersService {
         'googleId',
         'authProvider',
         'isActive',
+        'regionCodes',
       ],
     });
   }
@@ -278,6 +279,7 @@ export class UsersService {
         'googleId',
         'authProvider',
         'isActive',
+        'regionCodes',
       ],
     });
   }
