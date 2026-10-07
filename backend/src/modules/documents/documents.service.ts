@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -91,6 +92,9 @@ export interface DocumentListFilters {
   includeDerived?: boolean;
 }
 
+// Below admin, these roles may edit only the documents they uploaded.
+const OWN_EDIT_ROLES: string[] = [Role.MANAGER, Role.AGENT];
+
 const LINK_ID_KEYS = [
   'unitId',
   'assetId',
@@ -147,8 +151,6 @@ export class DocumentsService {
     dto: UploadDocumentDto,
     caller: RegionScope,
   ): Promise<SanitizedDocument> {
-    // Checked before the storage write so a refusal leaves no object behind.
-    this.assertAccessLevelAllowed(caller.role, dto.accessLevel);
     const attachedRegion = await this.validateLink(
       companyId,
       caller,
@@ -213,7 +215,7 @@ export class DocumentsService {
     page: number;
     limit: number;
   }> {
-    const allowedLevels = this.getAllowedAccessLevels(userRole);
+    const levelSql = this.accessLevelSql(userRole, userId);
     const scopedCodes = effectiveRegionCodes(filters?.regionCode, {
       role: userRole,
       regionCodes: regionCodes ?? [],
@@ -260,7 +262,7 @@ export class DocumentsService {
       )
       .addSelect(['workOrder.id', 'workOrder.title'])
       .where('doc.company_id = :companyId', { companyId })
-      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+      .andWhere(levelSql.sql, levelSql.params);
 
     if (scopedCodes) {
       qb.andWhere(
@@ -420,7 +422,7 @@ export class DocumentsService {
     regionCodes: string[],
     userId: string,
   ): Promise<PropertyDocument> {
-    const allowedLevels = this.getAllowedAccessLevels(userRole);
+    const levelSql = this.accessLevelSql(userRole, userId);
     const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
 
     // No assignment means no access, and an empty IN () is invalid SQL.
@@ -432,7 +434,7 @@ export class DocumentsService {
       .createQueryBuilder('doc')
       .where('doc.id = :id', { id })
       .andWhere('doc.company_id = :companyId', { companyId })
-      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+      .andWhere(levelSql.sql, levelSql.params);
 
     if (scopedCodes) {
       qb.andWhere(
@@ -470,7 +472,9 @@ export class DocumentsService {
       userId,
     );
     const caller: RegionScope = { role: userRole, regionCodes };
-    this.assertAccessLevelAllowed(userRole, dto.accessLevel);
+    if (OWN_EDIT_ROLES.includes(userRole) && existing.uploadedBy !== userId) {
+      throw new ForbiddenException('You can only edit documents you uploaded');
+    }
 
     const { unitId, assetId, contactId, leaseId, workOrderId, ...metadata } =
       dto;
@@ -719,19 +723,26 @@ export class DocumentsService {
     return parent.regionCode;
   }
 
-  // Refuses a level the caller could not read back, which would strand the document.
-  private assertAccessLevelAllowed(
+  // Admin-level files are readable by admin roles and by their uploader.
+  private accessLevelSql(
     userRole: string,
-    accessLevel?: DocumentAccessLevel,
-  ): void {
-    if (
-      accessLevel &&
-      !this.getAllowedAccessLevels(userRole).includes(accessLevel)
-    ) {
-      throw new BadRequestException(
-        'You cannot share a document at that level',
-      );
+    userId?: string,
+  ): { sql: string; params: Record<string, unknown> } {
+    const allowedLevels = this.getAllowedAccessLevels(userRole);
+    if (allowedLevels.includes(DocumentAccessLevel.ADMIN) || !userId) {
+      return {
+        sql: 'doc.access_level IN (:...allowedLevels)',
+        params: { allowedLevels },
+      };
     }
+    return {
+      sql: '(doc.access_level IN (:...allowedLevels) OR (doc.access_level = :ownLevel AND doc.uploaded_by = :ownUploaderId))',
+      params: {
+        allowedLevels,
+        ownLevel: DocumentAccessLevel.ADMIN,
+        ownUploaderId: userId,
+      },
+    };
   }
 
   private derivedFrom(

@@ -151,7 +151,7 @@
               {{on "click" (fn this.downloadDocument cell.row)}}
             />
             {{#unless cell.row.isDerived}}
-              {{#if this.canEdit}}
+              {{#if (this.canEditRow cell.row)}}
                 <Nuvo::Button
                   @subtle={{true}}
                   @variant="secondary"

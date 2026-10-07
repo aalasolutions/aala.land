@@ -29,12 +29,13 @@ const LINK_FIELDS = {
 
 const DERIVED_LABELS = { lease: 'via lease', work_order: 'via work order' };
 
-// Mirrors the server's write routes: upload MANAGER+ and AGENT, edit MANAGER+, delete ADMIN+.
+// Mirrors the server's write routes: upload and edit MANAGER+ and AGENT (below admin, own uploads only), delete ADMIN+.
 const EDIT_ROLES = [
   ROLES.SUPER_ADMIN,
   ROLES.COMPANY_ADMIN,
   ROLES.ADMIN,
   ROLES.MANAGER,
+  ROLES.AGENT,
 ];
 
 const COLUMNS = [
@@ -198,6 +199,10 @@ export default class DocumentsPanelComponent extends Component {
     return (this.args.canEdit ?? true) && EDIT_ROLES.includes(this.role);
   }
 
+  canEditRow = (doc) =>
+    this.canEdit &&
+    (isAdminRole(this.role) || doc?.uploadedBy === this.currentUserId);
+
   get canDelete() {
     return isAdminRole(this.role);
   }
@@ -273,11 +278,9 @@ export default class DocumentsPanelComponent extends Component {
     return this.isLoading && !this.documents.length && !this.errorMessage;
   }
 
-  // The server refuses a level the caller could not read back.
+  // An uploader keeps sight of their own admin-level files.
   get accessLevelOptions() {
-    return isAdminRole(this.auth.currentUser?.role)
-      ? ACCESS_LEVELS
-      : ACCESS_LEVELS.filter((level) => level.value === 'TEAM');
+    return ACCESS_LEVELS;
   }
 
   get presetTypeLabel() {

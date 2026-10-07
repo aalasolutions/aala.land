@@ -359,10 +359,16 @@ export class DocumentsController {
   }
 
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
   @ApiOperation({
     summary:
-      "Update a document's metadata (ADMIN+). Replacing the file itself requires a new upload.",
+      "Update a document's metadata. Managers and agents may edit only their own uploads. Replacing the file itself requires a new upload.",
   })
   update(
     @Param('id', ParseUUIDPipe) id: string,

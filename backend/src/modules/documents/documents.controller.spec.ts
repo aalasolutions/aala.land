@@ -332,8 +332,8 @@ describe('DocumentsController', () => {
       );
     });
 
-    it('keeps AGENT off update and delete', () => {
-      expect(rolesOf(DocumentsController.prototype.update)).not.toContain(
+    it('lets AGENT update their own uploads but keeps them off delete', () => {
+      expect(rolesOf(DocumentsController.prototype.update)).toContain(
         Role.AGENT,
       );
       expect(rolesOf(DocumentsController.prototype.remove)).not.toContain(

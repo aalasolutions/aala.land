@@ -409,7 +409,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.strictEqual(upload.options.body.get('name'), 'contract.pdf');
   });
 
-  test('a non-admin is offered the Team access level only', async function (assert) {
+  test('a non-admin is offered both access levels', async function (assert) {
     this.owner.lookup('service:auth').currentUser = {
       id: 'user-1',
       role: 'manager',
@@ -426,10 +426,10 @@ module('Integration | Component | documents/panel', function (hooks) {
         '.nu-menu.is-open [data-test-nu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
-    assert.deepEqual(labels, ['Share with Team']);
+    assert.deepEqual(labels, ['Share with Team', 'Share with Admin']);
   });
 
-  test('row actions follow the role: agent downloads, manager edits, admin deletes', async function (assert) {
+  test('row actions follow the role: agent and manager edit own uploads, admin deletes', async function (assert) {
     const auth = this.owner.lookup('service:auth');
     this.responses.list = [DOCS[0]];
 
@@ -437,13 +437,30 @@ module('Integration | Component | documents/panel', function (hooks) {
     await render(hbs`<Documents::Panel />`);
     await waitFor('[data-test-download-btn]');
     assert.dom('[data-test-documents-upload]').exists('an agent may upload');
-    assert.dom('[data-test-edit-btn]').doesNotExist();
+    assert
+      .dom('[data-test-edit-btn]')
+      .doesNotExist('not on a file someone else uploaded');
+    assert.dom('[data-test-delete-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-2', role: 'agent' };
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
     assert.dom('[data-test-delete-btn]').doesNotExist();
 
     auth.currentUser = { id: 'user-1', role: 'manager' };
     await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-download-btn]');
+    assert.dom('[data-test-edit-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-2', role: 'manager' };
+    await render(hbs`<Documents::Panel />`);
     await waitFor('[data-test-edit-btn]');
     assert.dom('[data-test-delete-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-1', role: 'admin' };
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
+    assert.dom('[data-test-delete-btn]').exists();
 
     auth.currentUser = { id: 'user-1', role: 'accountant' };
     await render(hbs`<Documents::Panel />`);
