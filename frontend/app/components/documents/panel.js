@@ -65,12 +65,20 @@ function recordPicker(type, { label, ...transport }) {
   };
 }
 
+// "Property: X · Unit: Y", skipping empty parts.
+const labelled = (...parts) =>
+  parts
+    .filter(([, value]) => value)
+    .map(([name, value]) => `${name}: ${value}`)
+    .join(' · ');
+
 // Units, assets and work orders have no server search, so their pickers preload one page.
 const RECORD_PICKERS = {
   unit: recordPicker('unit', {
     listUrl: '/properties/units?page=1&limit=500',
     placeholder: 'Search unit...',
-    label: (unit) => `${unit.assetName ?? ''} ${unit.unitNumber ?? ''}`.trim(),
+    label: (unit) =>
+      labelled(['Property', unit.assetName], ['Unit', unit.unitNumber]),
   }),
   asset: recordPicker('asset', {
     listUrl: '/properties/assets?page=1&limit=500',
@@ -88,12 +96,22 @@ const RECORD_PICKERS = {
     searchParam: 'search',
     placeholder: 'Search tenant, unit or registration ref...',
     label: (lease) =>
-      `${lease.contact ? contactName(lease.contact) : 'No tenant'} ${lease.startDate ?? ''}`.trim(),
+      labelled(
+        ['Tenant', lease.contact ? contactName(lease.contact) : 'No tenant'],
+        ['Property', lease.unit?.asset?.name],
+        ['Unit', lease.unit?.unitNumber],
+      ),
   }),
   work_order: recordPicker('work_order', {
     listUrl: '/maintenance?page=1&limit=500',
     placeholder: 'Search work order...',
-    label: (order) => order.title ?? '',
+    label: (order) =>
+      [
+        order.title,
+        labelled(['Property', order.assetName], ['Unit', order.unitNumber]),
+      ]
+        .filter(Boolean)
+        .join(' · '),
   }),
 };
 
@@ -405,7 +423,7 @@ export default class DocumentsPanelComponent extends Component {
   }
 
   @action selectRecord(item) {
-    this.formRecord = item ? { id: item.id, label: item.label } : null;
+    this.formRecord = item ?? null;
   }
 
   @action clearRecord() {

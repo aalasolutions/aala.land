@@ -634,6 +634,17 @@ describe('ContactsService', () => {
       expect(orWhere).toHaveBeenCalledWith('c.last_name ILIKE :s');
     });
 
+    it('matches a full name across first and last name', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(companyId, 1, 20, 'Ahmed Khan');
+
+      const { orWhere } = searchWhere(qb);
+      expect(orWhere).toHaveBeenCalledWith(
+        "CONCAT_WS(' ', c.first_name, c.last_name) ILIKE :s",
+      );
+    });
+
     it('keeps the region clause for a blank search', async () => {
       const qb = arrangeList();
 

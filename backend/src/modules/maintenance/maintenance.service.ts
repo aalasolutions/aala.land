@@ -144,15 +144,21 @@ export class MaintenanceService {
     const orderIds = orders.map((o) => o.id);
     let unitMap: Record<
       string,
-      { unitNumber: string; assetName: string; areaName: string }
+      {
+        unitNumber: string;
+        assetName: string;
+        areaName: string;
+        vendorName: string | null;
+      }
     > = {};
     if (orderIds.length) {
       const unitInfo = await this.workOrderRepository.query(
-        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", ast.name AS "assetName", loc.name AS "areaName"
+        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", ast.name AS "assetName", loc.name AS "areaName", v.name AS "vendorName"
          FROM work_orders wo
          LEFT JOIN units u ON wo.unit_id = u.id
          LEFT JOIN assets ast ON u.asset_id = ast.id
          LEFT JOIN localities loc ON ast.locality_id = loc.id
+         LEFT JOIN vendors v ON v.id = wo.vendor_id AND v.company_id = wo.company_id
          WHERE wo.id = ANY($1)`,
         [orderIds],
       );
@@ -163,12 +169,14 @@ export class MaintenanceService {
             unitNumber: string;
             assetName: string;
             areaName: string;
+            vendorName: string | null;
           }) => [
             r.woId,
             {
               unitNumber: r.unitNumber,
               assetName: r.assetName,
               areaName: r.areaName,
+              vendorName: r.vendorName,
             },
           ],
         ),
@@ -180,6 +188,7 @@ export class MaintenanceService {
       unitNumber: unitMap[o.id]?.unitNumber ?? null,
       assetName: unitMap[o.id]?.assetName ?? null,
       areaName: unitMap[o.id]?.areaName ?? null,
+      vendorName: unitMap[o.id]?.vendorName ?? null,
     }));
 
     return { data, total, page, limit };

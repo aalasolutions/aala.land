@@ -772,7 +772,8 @@ export class ContactsService {
       }
       where
         .where('c.first_name ILIKE :s', { s: `%${term}%` })
-        .orWhere('c.last_name ILIKE :s');
+        .orWhere('c.last_name ILIKE :s')
+        .orWhere("CONCAT_WS(' ', c.first_name, c.last_name) ILIKE :s");
     });
   }
 
