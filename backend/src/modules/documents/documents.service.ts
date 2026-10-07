@@ -634,6 +634,11 @@ export class DocumentsService {
     attachedRegion: string | undefined,
     caller: RegionScope,
   ): Promise<string | null> {
+    // A linked record's region always wins; the requested region places library-only files.
+    if (attachedRegion) {
+      return attachedRegion;
+    }
+
     if (requestedRegion) {
       return resolveRegionCode(
         this.companyRepository,
@@ -641,10 +646,6 @@ export class DocumentsService {
         requestedRegion,
         caller,
       );
-    }
-
-    if (attachedRegion) {
-      return attachedRegion;
     }
 
     if (isAdminRole(caller.role)) {

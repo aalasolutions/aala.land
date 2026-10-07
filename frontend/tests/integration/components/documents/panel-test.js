@@ -261,7 +261,27 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.dom('[data-test-documents-upload]').doesNotExist();
   });
 
+  test('a library-only upload carries the selected region', async function (assert) {
+    this.owner.lookup('service:region').activeRegion = { code: 'dubai' };
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    const file = new File(['pdf'], 'policy.pdf', { type: 'application/pdf' });
+    await triggerEvent('[data-test-file-input]', 'change', { files: [file] });
+    await fillIn('[data-test-field-name]', 'Policy');
+    await click('[data-test-save-btn]');
+
+    const upload = this.calls.find((c) =>
+      c.path.startsWith('/documents/upload'),
+    );
+    assert.strictEqual(upload.options.body.get('regionCode'), 'dubai');
+  });
+
   test('the upload drawer sends the chosen link field', async function (assert) {
+    this.owner.lookup('service:region').activeRegion = { code: 'dubai' };
     this.responses.list = [];
     this.responses.lists['/maintenance'] = [
       { id: 'wo-1', title: 'Fix AC' },
@@ -292,6 +312,11 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.strictEqual(body.get('name'), 'Lobby invoice');
     assert.strictEqual(body.get('unitId'), null, 'only one link field is sent');
     assert.strictEqual(body.get('leaseId'), null);
+    assert.strictEqual(
+      body.get('regionCode'),
+      null,
+      'a linked file takes its record region',
+    );
     assert.deepEqual(this.toasts, [['success', 'Document uploaded']]);
     const listCalls = this.calls.filter((c) =>
       c.path.startsWith('/documents?'),

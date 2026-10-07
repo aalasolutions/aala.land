@@ -138,6 +138,7 @@ function relatedRoute(doc) {
 export default class DocumentsPanelComponent extends Component {
   @service auth;
   @service notifications;
+  @service region;
 
   @tracked documents = [];
   @tracked total = 0;
@@ -477,7 +478,11 @@ export default class DocumentsPanelComponent extends Component {
         formData.append('category', this.formCategory);
         formData.append('accessLevel', this.formAccessLevel);
         const link = this.chosenLink;
-        if (link) formData.append(LINK_FIELDS[link.type], link.id);
+        if (link) {
+          formData.append(LINK_FIELDS[link.type], link.id);
+        } else if (this.region.regionCode) {
+          formData.append('regionCode', this.region.regionCode);
+        }
 
         await this.auth.uploadWithProgress(
           '/documents/upload',

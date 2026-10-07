@@ -1208,6 +1208,26 @@ describe('DocumentsService', () => {
         );
       });
 
+      it('keeps the linked record region over a requested region', async () => {
+        unitRepo.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        unitQb.row = { regionCode: 'dubai' };
+        manager.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        repo.create.mockReturnValue(mockDoc);
+        repo.save.mockResolvedValue(mockDoc);
+
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Contract', unitId: 'unit-1', regionCode: 'makkah' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: makkah },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCode: 'dubai' }),
+        );
+      });
+
       it('files an unattached document as company-wide for an admin', async () => {
         repo.create.mockReturnValue(mockDoc);
         repo.save.mockResolvedValue(mockDoc);
