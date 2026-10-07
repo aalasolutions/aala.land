@@ -555,6 +555,73 @@ describe('ContactsService', () => {
       );
     });
 
+    it('matches part of a phone number on every contact for a company admin', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        '55271',
+        undefined,
+        undefined,
+        { userId: 'admin-uuid-1', role: Role.COMPANY_ADMIN, regionCodes: [] },
+      );
+
+      const { where } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith(
+        "regexp_replace(c.phone, '\\D', '', 'g') LIKE :phonePart",
+        { phonePart: '%55271%' },
+      );
+    });
+
+    it('matches part of a phone number only on contacts an agent sees in full', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        '+971 55271',
+        undefined,
+        undefined,
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+      );
+
+      const { where } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith(
+        expect.stringContaining('c.created_by = :fullAccessUserId'),
+        expect.objectContaining({
+          phonePart: '%97155271%',
+          fullAccessUserId: 'agent-uuid-1',
+        }),
+      );
+    });
+
+    it('adds the partial phone match beside the whole-number match', async () => {
+      const qb = arrangeList();
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        '+971 50 123 4567',
+        undefined,
+        undefined,
+        { userId: 'admin-uuid-1', role: Role.COMPANY_ADMIN, regionCodes: [] },
+      );
+
+      const { where, orWhere } = searchWhere(qb);
+      expect(where).toHaveBeenCalledWith(
+        expect.stringContaining('RIGHT(regexp_replace(c.phone'),
+        { phoneDigits: '501234567' },
+      );
+      expect(orWhere).toHaveBeenCalledWith(
+        expect.stringContaining('LIKE :phonePart'),
+        { phonePart: '%971501234567%' },
+      );
+    });
+
     it('matches a name term on first and last name by substring only', async () => {
       const qb = arrangeList();
 
