@@ -43,6 +43,12 @@
         </:header>
       </Documents::Panel>
     </section>
+
+    {{#if this.canViewHistory}}
+      <Nuvo::Card @title="History" data-test-lease-history-card>
+        <RecordHistoryList @entityType="Lease" @entityId={{@model.lease.id}} />
+      </Nuvo::Card>
+    {{/if}}
   {{else}}
     <Nuvo::Card>
       <Nuvo::EmptyState
