@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
+import { UnitSubType } from '../properties/entities/unit-sub-type.enum';
 import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactPrivacyService } from '../contacts/contact-privacy.service';
@@ -262,6 +263,60 @@ describe('LeasesService', () => {
       );
       expect(repo.create).toHaveBeenCalledWith(
         expect.not.objectContaining({ tenant: expect.anything() }),
+      );
+    });
+
+    function unitOfKind(subType: UnitSubType) {
+      unitRepo.findOne.mockResolvedValue({
+        ...unitWithRegion('unit-uuid-1'),
+        subType,
+      } as Unit);
+      repo.create.mockReturnValue(mockLease as Lease);
+      manager.findOne.mockResolvedValue({ id: 'unit-uuid-1', deletedAt: null });
+      manager.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+    }
+
+    const leaseInput = {
+      unitId: 'unit-uuid-1',
+      contactId: 'contact-uuid-1',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      monthlyRent: 5000,
+    };
+
+    it('takes the lease type from the unit kind', async () => {
+      unitOfKind(UnitSubType.OFFICE_SPACE);
+
+      await service.create(companyId, leaseInput as any);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: LeaseType.COMMERCIAL }),
+      );
+    });
+
+    it('refuses a lease type the unit kind does not take', async () => {
+      unitOfKind(UnitSubType.VILLA);
+
+      await expect(
+        service.create(companyId, {
+          ...leaseInput,
+          type: LeaseType.COMMERCIAL,
+        } as any),
+      ).rejects.toThrow('This unit takes a residential lease');
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('lets a plot of land take either lease type', async () => {
+      unitOfKind(UnitSubType.LAND_PLOT);
+
+      await service.create(companyId, {
+        ...leaseInput,
+        type: LeaseType.COMMERCIAL,
+      } as any);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: LeaseType.COMMERCIAL }),
       );
     });
 

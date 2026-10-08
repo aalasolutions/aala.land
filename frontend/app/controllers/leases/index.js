@@ -8,6 +8,7 @@ import {
   LEASE_TYPE_OPTIONS,
   LEASE_STATUS_OPTIONS,
   LEASE_ARCHIVED_OPTIONS,
+  PROPERTY_SUB_TYPES,
 } from 'land/constants';
 import {
   closeDeleteModal,
@@ -192,6 +193,21 @@ export default class LeasesController extends PaginatedController {
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+  }
+
+  @action selectUnit(unitId) {
+    this.formUnitId = unitId;
+    if (this.unitLeaseType) this.formType = this.unitLeaseType;
+  }
+
+  get unitLeaseType() {
+    const unit = (this.model?.units ?? []).find(
+      (u) => u.id === this.formUnitId,
+    );
+    return (
+      PROPERTY_SUB_TYPES.find((k) => k.value === unit?.subType)?.leaseType ??
+      null
+    );
   }
 
   // Native <input type="date"> still emits a raw DOM event.

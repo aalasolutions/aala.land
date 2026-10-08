@@ -619,6 +619,7 @@ export class PropertiesService {
       bedrooms: u.bedrooms,
       bathrooms: u.bathrooms,
       propertyType: u.propertyType ?? null,
+      subType: u.subType,
       amenities: u.amenities,
       photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
       floor: u.floor,

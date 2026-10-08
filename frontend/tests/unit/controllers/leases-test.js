@@ -51,4 +51,22 @@ module('Unit | Controller | leases/index', function (hooks) {
     );
     assert.strictEqual(calls.length, 0, 'nothing is sent');
   });
+
+  test('a unit kind sets the lease type and locks it, a plot leaves it open', function (assert) {
+    const controller = this.owner.lookup('controller:leases/index');
+    controller.model = {
+      units: [
+        { id: 'u-office', subType: 'OFFICE_SPACE' },
+        { id: 'u-plot', subType: 'LAND_PLOT' },
+      ],
+    };
+    controller.openCreate();
+
+    controller.selectUnit('u-office');
+    assert.strictEqual(controller.formType, 'COMMERCIAL');
+    assert.strictEqual(controller.unitLeaseType, 'COMMERCIAL');
+
+    controller.selectUnit('u-plot');
+    assert.strictEqual(controller.unitLeaseType, null, 'either type allowed');
+  });
 });

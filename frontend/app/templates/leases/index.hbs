@@ -330,7 +330,7 @@
           id="lease-unit-id"
           @align="start"
           @value={{this.formUnitId}}
-          @onSelect={{fn this.setFieldValue "formUnitId"}}
+          @onSelect={{this.selectUnit}}
           @options={{this.unitOptions}}
           @placeholder="Select a property..."
         />
@@ -366,6 +366,7 @@
             @align="start"
             @value={{this.formType}}
             @onSelect={{fn this.setFieldValue "formType"}}
+            @disabled={{if this.unitLeaseType true false}}
             @options={{this.leaseTypeOptions}}
             @placeholder="Select property type..."
           />

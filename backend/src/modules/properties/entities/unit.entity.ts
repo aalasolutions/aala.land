@@ -13,6 +13,7 @@ import { Asset } from './asset.entity';
 import { Contact } from '../../contacts/entities/contact.entity';
 import { User } from '../../users/entities/user.entity';
 import { PropertyType } from './property-type.enum';
+import { UnitSubType } from './unit-sub-type.enum';
 
 export enum UnitStatus {
   AVAILABLE = 'available',
@@ -120,6 +121,9 @@ export class Unit {
     nullable: true,
   })
   propertyType: PropertyType | null;
+
+  @Column({ name: 'sub_type', type: 'enum', enum: UnitSubType })
+  subType: UnitSubType;
 
   @Column({ type: 'jsonb', default: '[]' })
   amenities: string[];

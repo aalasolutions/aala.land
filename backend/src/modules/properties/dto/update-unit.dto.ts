@@ -10,6 +10,7 @@ import {
   MaxLength,
   IsUUID,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { IsHalfStep } from '@shared/decorators/is-half-step.decorator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -17,6 +18,7 @@ import { Type } from 'class-transformer';
 import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
 import { UnitStatus, MAX_BATHROOMS } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
+import { UnitSubType } from '../entities/unit-sub-type.enum';
 
 export class UpdateUnitDto {
   @ApiPropertyOptional({ example: '1B' })
@@ -61,6 +63,11 @@ export class UpdateUnitDto {
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;
+
+  @ApiPropertyOptional({ enum: UnitSubType })
+  @ValidateIf((o: { subType?: unknown }) => o.subType !== undefined)
+  @IsEnum(UnitSubType)
+  subType?: UnitSubType;
 
   @ApiPropertyOptional()
   @IsNumber()

@@ -11,6 +11,8 @@ import {
   FILTER_TYPE_OPTIONS,
   FILTER_BEDS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
+  PROPERTY_SUB_TYPES,
+  UNIT_KIND_REQUIRED_ERROR,
   PROPERTY_STATUS_OPTIONS,
   ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
@@ -107,6 +109,7 @@ export default class PropertiesIndexController extends Controller {
   filterBedsOptions = FILTER_BEDS_OPTIONS;
 
   unitTypeOptions = PROPERTY_TYPE_OPTIONS;
+  subTypeOptions = PROPERTY_SUB_TYPES;
 
   unitStatusOptions = PROPERTY_STATUS_OPTIONS;
 
@@ -261,6 +264,7 @@ export default class PropertiesIndexController extends Controller {
   @tracked selectedAsset = null;
   @tracked newUnitNumber = '';
   @tracked newUnitType = '';
+  @tracked newUnitSubType = '';
   @tracked newUnitStatus = 'available';
   @tracked newUnitPrice = '';
   @tracked newUnitBedrooms = '';
@@ -355,6 +359,7 @@ export default class PropertiesIndexController extends Controller {
     this.selectedAsset = null;
     this.newUnitNumber = '';
     this.newUnitType = '';
+    this.newUnitSubType = '';
     this.newUnitStatus = 'available';
     this.newUnitPrice = '';
     this.newUnitBedrooms = '';
@@ -380,6 +385,10 @@ export default class PropertiesIndexController extends Controller {
       this.newUnitError = 'Property number is required.';
       return;
     }
+    if (!this.newUnitSubType) {
+      this.newUnitError = UNIT_KIND_REQUIRED_ERROR;
+      return;
+    }
     if (!this.ownerSelection.isPresent) {
       this.newUnitError = OWNER_REQUIRED_ERROR;
       return;
@@ -392,6 +401,7 @@ export default class PropertiesIndexController extends Controller {
       assetId: this.selectedAsset.id,
       unitNumber: this.newUnitNumber.trim(),
       status: this.newUnitStatus,
+      subType: this.newUnitSubType,
       ...(this.newUnitType ? { propertyType: this.newUnitType } : {}),
       ...(this.newUnitPrice ? { price: parseFloat(this.newUnitPrice) } : {}),
       ...(this.newUnitBedrooms

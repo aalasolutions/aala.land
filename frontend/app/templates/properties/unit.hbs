@@ -471,6 +471,21 @@
       </div>
 
       <Nuvo::Field
+        @label="Property Kind"
+        @required={{true}}
+        @tooltip="Sets the lease type: homes take residential leases; offices, shops and warehouses take commercial ones."
+      >
+        <Nuvo::Dropdown
+          id="unit-sub-type"
+          @align="start"
+          @value={{this.formSubType}}
+          @onSelect={{fn this.setFieldValue "formSubType"}}
+          @options={{this.subTypeOptions}}
+          @placeholder="Select kind..."
+          data-test-unit-kind
+        />
+      </Nuvo::Field>
+      <Nuvo::Field
         @label="Property Listing Type"
         @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
       >

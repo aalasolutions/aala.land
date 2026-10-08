@@ -27,17 +27,31 @@ module('Unit | Controller | properties owner verify phone', function (hooks) {
     const { controller, sent } = prepare(this, 'properties/index');
     controller.selectedAsset = { id: 'asset-1' };
     controller.newUnitNumber = '101';
+    controller.newUnitSubType = 'APARTMENT';
 
     await controller.saveNewUnit({ preventDefault() {} });
 
     assert.strictEqual(sent[0].body.ownerId, 'owner-9');
     assert.strictEqual(sent[0].body.ownerVerifyPhone, '0501234567');
+    assert.strictEqual(sent[0].body.subType, 'APARTMENT');
+  });
+
+  test('a unit needs a kind before it is saved', async function (assert) {
+    const { controller, sent } = prepare(this, 'properties/index');
+    controller.selectedAsset = { id: 'asset-1' };
+    controller.newUnitNumber = '101';
+
+    await controller.saveNewUnit({ preventDefault() {} });
+
+    assert.strictEqual(controller.newUnitError, 'Choose the property kind.');
+    assert.strictEqual(sent.length, 0);
   });
 
   test('unit drawer on the asset page', async function (assert) {
     const { controller, sent } = prepare(this, 'properties/detail');
     controller.activeAssetId = 'asset-1';
     controller.formUnitNumber = '102';
+    controller.formUnitSubType = 'APARTMENT';
 
     await controller.saveUnit({ preventDefault() {} });
 
@@ -48,6 +62,7 @@ module('Unit | Controller | properties owner verify phone', function (hooks) {
   test('edit on the unit page, and a full owner sends no number', async function (assert) {
     const { controller, sent } = prepare(this, 'properties/unit');
     controller.model = { unit: { id: 'unit-1' } };
+    controller.formSubType = 'APARTMENT';
 
     await controller.save({ preventDefault() {} });
     assert.strictEqual(sent[0].body.ownerVerifyPhone, '0501234567');

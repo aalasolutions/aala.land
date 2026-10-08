@@ -65,16 +65,23 @@ export const PROPERTY_TYPE_OPTIONS = [
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
 
+// `leaseType` mirrors the backend LEASE_TYPE_BY_UNIT_SUB_TYPE; null takes either.
 export const PROPERTY_SUB_TYPES = [
-  { value: 'APARTMENT', label: 'Apartment / Flat' },
-  { value: 'VILLA', label: 'Villa / House' },
-  { value: 'TOWNHOUSE', label: 'Townhouse' },
-  { value: 'PENTHOUSE', label: 'Penthouse' },
-  { value: 'OFFICE_SPACE', label: 'Office' },
-  { value: 'RETAIL_STORE', label: 'Retail / Shop' },
-  { value: 'WAREHOUSE', label: 'Warehouse / Industrial' },
-  { value: 'LAND_PLOT', label: 'Plot of Land' },
+  { value: 'APARTMENT', label: 'Apartment / Flat', leaseType: 'RESIDENTIAL' },
+  { value: 'OFFICE_SPACE', label: 'Office', leaseType: 'COMMERCIAL' },
+  { value: 'PENTHOUSE', label: 'Penthouse', leaseType: 'RESIDENTIAL' },
+  { value: 'LAND_PLOT', label: 'Plot of Land', leaseType: null },
+  { value: 'RETAIL_STORE', label: 'Retail / Shop', leaseType: 'COMMERCIAL' },
+  { value: 'TOWNHOUSE', label: 'Townhouse', leaseType: 'RESIDENTIAL' },
+  { value: 'VILLA', label: 'Villa / House', leaseType: 'RESIDENTIAL' },
+  {
+    value: 'WAREHOUSE',
+    label: 'Warehouse / Industrial',
+    leaseType: 'COMMERCIAL',
+  },
 ];
+
+export const UNIT_KIND_REQUIRED_ERROR = 'Choose the property kind.';
 
 export const FILTER_TYPE_OPTIONS = [
   { value: '', label: 'All' },

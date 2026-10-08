@@ -10,6 +10,7 @@ import {
   contactDisplayName,
   hasContactIdentity,
 } from '../../shared/utils/contact.util';
+import { LEASE_TYPE_BY_UNIT_SUB_TYPE } from './lease-type-for-unit';
 import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
 import { ContactsService } from '../contacts/contacts.service';
 import {
@@ -125,6 +126,26 @@ export class LeasesService {
   }
 
   // Company scope only: a tenant from any region may be attached, the presenter guards the PII.
+  // A kind that takes either type keeps the requested one.
+  private async leaseTypeForUnit(
+    companyId: string,
+    unitId: string,
+    requested: LeaseType | undefined,
+  ): Promise<LeaseType | undefined> {
+    const unit = await this.unitRepository.findOne({
+      where: { id: unitId, companyId },
+      select: { id: true, subType: true },
+    });
+    const expected = unit ? LEASE_TYPE_BY_UNIT_SUB_TYPE[unit.subType] : null;
+    if (!expected) return requested;
+    if (requested && requested !== expected) {
+      throw new BadRequestException(
+        `This unit takes a ${expected.toLowerCase()} lease`,
+      );
+    }
+    return expected;
+  }
+
   private async resolveTenantId(
     companyId: string,
     contactId: string | undefined,
@@ -284,6 +305,7 @@ export class LeasesService {
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
     const { tenant, ...fields } = dto;
+    const type = await this.leaseTypeForUnit(companyId, dto.unitId, dto.type);
     const contactId = await this.resolveTenantId(
       companyId,
       dto.contactId,
@@ -293,6 +315,7 @@ export class LeasesService {
     );
     const lease = this.leaseRepository.create({
       ...fields,
+      type,
       contactId,
       companyId,
       regionCode,
@@ -472,6 +495,23 @@ export class LeasesService {
     } else {
       await this.assertContactInCompany(dto.contactId, companyId);
     }
+    if (changes.type !== undefined || changes.unitId !== undefined) {
+      const unitId =
+        changes.unitId ??
+        (
+          await this.leaseRepository.findOne({
+            where: { id, companyId },
+            select: { id: true, unitId: true },
+          })
+        )?.unitId;
+      if (unitId) {
+        changes.type = await this.leaseTypeForUnit(
+          companyId,
+          unitId,
+          changes.type,
+        );
+      }
+    }
     dto = changes;
     const regionWhere = this.regionScopedWhere(caller);
     const saved = await this.dataSource.transaction(async (manager) => {
@@ -578,6 +618,7 @@ export class LeasesService {
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
     const { tenant, ...fields } = dto;
+    const type = await this.leaseTypeForUnit(companyId, dto.unitId, dto.type);
     const contactId = await this.resolveTenantId(
       companyId,
       dto.contactId,
@@ -619,6 +660,7 @@ export class LeasesService {
 
       const newLease = manager.create(Lease, {
         ...fields,
+        type,
         contactId,
         companyId,
         regionCode,
