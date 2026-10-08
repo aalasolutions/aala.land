@@ -39,6 +39,7 @@ export default class ApplicationController extends Controller {
   @service auth;
   @service router;
   @service region;
+  @service accessRequests;
   @service socket;
   @service whatsapp;
   @service uiSettings;
@@ -84,6 +85,18 @@ export default class ApplicationController extends Controller {
 
   get whatsappUnreadCount() {
     return this.whatsapp.totalUnread;
+  }
+
+  get pendingAccessCount() {
+    return this.sidebarGroups.accessRequests
+      ? this.accessRequests.pendingCount
+      : 0;
+  }
+
+  loadPendingAccessCount() {
+    if (this.sidebarGroups.accessRequests) {
+      this.accessRequests.loadPendingCount();
+    }
   }
 
   // True when the sidebar is visually a rail (drives the toggle button caret).
@@ -328,6 +341,7 @@ export default class ApplicationController extends Controller {
 
     this.notificationHandler = (notification) => {
       this.unreadCount++;
+      this.loadPendingAccessCount();
       if (this.showNotifications) {
         this.notifications = [notification, ...this.notifications].slice(0, 10);
       }
@@ -338,10 +352,12 @@ export default class ApplicationController extends Controller {
 
     this.socketConnectHandler = () => {
       this.loadUnreadCount();
+      this.loadPendingAccessCount();
     };
     this.socket.on('connect', this.socketConnectHandler);
     if (this.socket.socket?.connected) {
       this.loadUnreadCount();
+      this.loadPendingAccessCount();
     }
   }
 

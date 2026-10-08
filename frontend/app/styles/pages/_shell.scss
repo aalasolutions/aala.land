@@ -157,6 +157,24 @@ $shell-background-image: radial-gradient(
     font-size: nu-font-size(xs);
   }
 
+  // Count badges sit on the icon's corner so the narrow rail does not clip them.
+  .nu-sidebar__link,
+  .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
+    position: relative;
+  }
+
+  .nu-sidebar__link .nu-badge-count,
+  .nu-sidebar__group.is-active-group .nu-sidebar__sublink .nu-badge-count {
+    position: absolute;
+    inset-block-start: 0.25rem;
+    inset-inline-start: 0.875rem;
+    min-inline-size: 0.875rem;
+    block-size: 0.875rem;
+    padding-inline: 0.1875rem;
+    font-size: 0.5625rem;
+    line-height: 0.875rem;
+  }
+
   // Collapsed, the active group shows its items inline; the capsule ties them to their parent icon.
   .nu-sidebar__group.is-active-group {
     outline: 1px solid #ffffff40;
