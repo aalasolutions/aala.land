@@ -17,7 +17,7 @@ export default class LeasesDetailController extends Controller {
     return contactName(this.lease?.contact, 'Unknown tenant');
   }
 
-  // The server refuses uploads to an archived lease.
+  // An archived lease is read-only: no uploads, no document edits.
   get canUpload() {
     return !this.lease?.deletedAt;
   }

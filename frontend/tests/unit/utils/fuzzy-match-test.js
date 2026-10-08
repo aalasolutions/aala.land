@@ -25,6 +25,17 @@ module('Unit | Utility | fuzzy-match', function () {
     assert.ok(fuzzyScore('Al-Háfiz Mall', 'al hafiz') >= 1);
   });
 
+  test('a label containing the term hides near misses', function (assert) {
+    const units = [
+      { label: 'Property: Bay Tower · Unit: U-101' },
+      { label: 'Property: Bay Tower · Unit: U-102' },
+    ];
+    assert.deepEqual(
+      fuzzyFilter(units, 'U-101').map((o) => o.label),
+      ['Property: Bay Tower · Unit: U-101'],
+    );
+  });
+
   test('an unrelated term matches nothing', function (assert) {
     assert.deepEqual(fuzzyFilter(options, 'xyz'), []);
   });

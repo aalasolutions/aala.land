@@ -212,7 +212,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-archived' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -243,7 +246,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-late' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -261,7 +267,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-missing' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -282,7 +291,10 @@ describe('DocumentsService', () => {
       await service.uploadAndCreate(
         companyId,
         userId,
-        { mimetype: 'application/pdf' } as Express.Multer.File,
+        {
+          mimetype: 'application/pdf',
+          originalname: 'contract.pdf',
+        } as Express.Multer.File,
         { name: 'Contract', assetId: 'asset-1' } as any,
         { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
       );
@@ -356,7 +368,13 @@ describe('DocumentsService', () => {
       );
 
       expect(result.data).toEqual([
-        { ...sanitizedMockDoc, uploadedByName: null, unit: null, link: null },
+        {
+          ...sanitizedMockDoc,
+          uploadedByName: null,
+          unit: null,
+          buildingName: null,
+          link: null,
+        },
       ]);
       expect(result.data[0]).not.toHaveProperty('s3Key');
       expect(result.total).toBe(1);
@@ -1521,6 +1539,25 @@ describe('DocumentsService', () => {
         expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
       });
 
+      it('keeps the uploaded file name as the browser sent it', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          {
+            ...mockFile,
+            originalname: Buffer.from('عقد الإيجار.pdf', 'utf8').toString(
+              'latin1',
+            ),
+          } as Express.Multer.File,
+          { name: 'Contract' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ originalFileName: 'عقد الإيجار.pdf' }),
+        );
+      });
+
       it('accepts any category on a library-only upload', async () => {
         await service.uploadAndCreate(
           companyId,
@@ -1587,7 +1624,31 @@ describe('DocumentsService', () => {
 
         expect(result.leaseId).toBeNull();
         expect(result.regionCode).toBe('punjab');
-        expect(leaseRepo.findOne).not.toHaveBeenCalled();
+        expect(leaseRepo.findOne).toHaveBeenCalledTimes(1);
+        expect(leaseRepo.findOne).toHaveBeenCalledWith({
+          where: { id: 'lease-1', companyId },
+          select: { id: true, deletedAt: true },
+        });
+      });
+
+      it('refuses any edit to a document on an archived lease', async () => {
+        qb().getOne.mockResolvedValue({ ...linkedDoc });
+        leaseRepo.findOne.mockResolvedValue({
+          id: 'lease-1',
+          deletedAt: new Date(),
+        });
+
+        await expect(
+          service.update(
+            'doc-uuid-1',
+            companyId,
+            Role.COMPANY_ADMIN,
+            { name: 'Renamed' },
+            callerRegions,
+            'user-uuid-1',
+          ),
+        ).rejects.toThrow(ConflictException);
+        expect(repo.save).not.toHaveBeenCalled();
       });
 
       it('recomputes the region when relinked to another parent', async () => {
@@ -1733,6 +1794,46 @@ describe('DocumentsService', () => {
     });
 
     describe('findAll', () => {
+      it("lists a record's documents whatever region the top bar selected", async () => {
+        qb().getManyAndCount.mockResolvedValue([[], 0]);
+
+        await service.findAll(
+          companyId,
+          Role.COMPANY_ADMIN,
+          1,
+          20,
+          undefined,
+          undefined,
+          { leaseId: 'lease-1', regionCode: 'abu-dhabi' },
+          [],
+        );
+
+        expect(qb().andWhere).not.toHaveBeenCalledWith(
+          '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+          expect.anything(),
+        );
+      });
+
+      it('keeps a manager to their own regions on a record page', async () => {
+        qb().getManyAndCount.mockResolvedValue([[], 0]);
+
+        await service.findAll(
+          companyId,
+          Role.MANAGER,
+          1,
+          20,
+          undefined,
+          undefined,
+          { leaseId: 'lease-1', regionCode: 'abu-dhabi' },
+          ['dubai'],
+        );
+
+        expect(qb().andWhere).toHaveBeenCalledWith(
+          '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+          { scopedCodes: ['dubai'] },
+        );
+      });
+
       it('ORs in lease and work order documents of the unit when includeDerived is set', async () => {
         const direct = { ...mockDoc, id: 'd1', unitId: 'unit-1' };
         const viaLease = { ...mockDoc, id: 'd2', leaseId: 'lease-1' };

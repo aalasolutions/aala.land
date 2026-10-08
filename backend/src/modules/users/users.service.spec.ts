@@ -80,6 +80,13 @@ const emptyReport = {
   entities: [],
 };
 
+const withoutCredentials = (user: object) => ({
+  ...user,
+  password: undefined,
+  resetPasswordToken: undefined,
+  resetPasswordExpires: undefined,
+});
+
 describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
@@ -332,7 +339,8 @@ describe('UsersService', () => {
       );
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
+      expect(result).not.toHaveProperty('password', 'hashed-password');
     });
 
     it('emails the added member, without the password', async () => {
@@ -392,7 +400,7 @@ describe('UsersService', () => {
       );
       await new Promise((resolve) => setImmediate(resolve));
 
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
 
     it('sends no member added email when the add fails', async () => {
@@ -755,7 +763,9 @@ describe('UsersService', () => {
 
     it('does not fail the removal when the disconnect fails', async () => {
       primeRemovalLookups(proCompany);
-      whatsappServiceMock.disconnect.mockRejectedValue(new Error('socket gone'));
+      whatsappServiceMock.disconnect.mockRejectedValue(
+        new Error('socket gone'),
+      );
 
       await expect(
         service.deactivateUser(
@@ -1584,7 +1594,7 @@ describe('UsersService', () => {
         companyId,
         Role.COMPANY_ADMIN,
       );
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
 
     it('should throw NotFoundException when company is not found', async () => {
@@ -1953,7 +1963,7 @@ describe('UsersService', () => {
         billingService.reserveSeat.mock.invocationCallOrder[0],
       ).toBeLessThan(repo.save.mock.invocationCallOrder[0]);
       expect(release).not.toHaveBeenCalled();
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
 
     it('creates no user when the provider rejects the seat change', async () => {
@@ -2024,7 +2034,7 @@ describe('UsersService', () => {
       );
 
       expect(billingService.reserveSeat).toHaveBeenCalledWith(freeCompany);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
   });
   // Region assignment is a permission boundary, so every branch is pinned here.

@@ -21,6 +21,7 @@ import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company } from '../companies/entities/company.entity';
 import { UploadMediaDto } from './dto/upload-media.dto';
+import { storageSafeName } from '@shared/utils/file-name.util';
 import {
   getStorageQuotaBytes,
   releaseStorage,
@@ -28,6 +29,7 @@ import {
 } from '@shared/utils/storage-quota.util';
 import {
   ALLOWED_DOCUMENT_TYPES,
+  DOCUMENT_TYPE_NOT_ALLOWED,
   resolveLegacyOfficeMime,
 } from '@shared/constants/document-types';
 import { verifyTextFile } from '@shared/utils/text-file.util';
@@ -312,9 +314,7 @@ export class MediaService {
 
     // safeName truncated to 200 chars to stay under the s3Key varchar(500) column.
     const timestamp = Date.now();
-    const safeName = file.originalname
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .slice(0, 200);
+    const safeName = storageSafeName(file.originalname);
     const folder = dto.unitId ?? dto.assetId!;
     const originalKey = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
     const thumbKey = getThumbnailKey(originalKey);
@@ -450,10 +450,7 @@ export class MediaService {
     if (
       !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)
     ) {
-      throw new BadRequestException(
-        `File type "${file.mimetype}" is not allowed. ` +
-          `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
-      );
+      throw new BadRequestException(DOCUMENT_TYPE_NOT_ALLOWED);
     }
 
     // Content validation confirms file bytes match the declared MIME type.
@@ -464,8 +461,7 @@ export class MediaService {
       const detected = await fileTypeFromFile(file.path);
       if (!detected) {
         throw new BadRequestException(
-          `File content could not be verified as "${file.mimetype}". ` +
-            `Only genuine ${ALLOWED_DOCUMENT_TYPES.join(', ')} files are accepted.`,
+          'This file could not be read as the type it claims to be.',
         );
       }
       const mime = resolveLegacyOfficeMime(detected.mime, file.originalname);
@@ -481,9 +477,7 @@ export class MediaService {
 
     const { client, bucket } = this.documentsTarget();
     const timestamp = Date.now();
-    const safeName = file.originalname
-      .replace(/[^a-zA-Z0-9._-]/g, '_')
-      .slice(0, 200);
+    const safeName = storageSafeName(file.originalname);
     const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/documents/${timestamp}-${safeName}`;
 
     // An unlistened 'error' event on a Readable crashes the process
@@ -548,9 +542,7 @@ export class MediaService {
       }
 
       const { client, bucket } = this.documentsTarget();
-      const safeName = file.originalname
-        .replace(/[^a-zA-Z0-9._-]/g, '_')
-        .slice(0, 200);
+      const safeName = storageSafeName(file.originalname);
       const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/console-receipts/${Date.now()}-${safeName}`;
 
       const bodyStream = createReadStream(file.path);
@@ -666,9 +658,7 @@ export class MediaService {
           throw new NotFoundException('Document not found in storage');
         }
         const msg = errorMessage(err);
-        this.logger.error(
-          `Failed to fetch document object ${s3Key}: ${msg}`,
-        );
+        this.logger.error(`Failed to fetch document object ${s3Key}: ${msg}`);
         throw new InternalServerErrorException(
           `Could not fetch document from storage: ${msg}`,
         );

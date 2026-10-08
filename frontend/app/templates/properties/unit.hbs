@@ -30,6 +30,7 @@
   </div>
 
   {{#if @model.unit}}
+    <RegionNotice @regionCode={{@model.unit.regionCode}} @noun="property" />
     {{#if this.isArchived}}
       <Nuvo::Alert
         @variant="warning"

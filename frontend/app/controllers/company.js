@@ -11,6 +11,7 @@ import {
   formatLongInstant,
 } from '../utils/local-date';
 import { creditDisplayAmount } from '../utils/billing-credit';
+import { regionNameFor } from '../utils/region-name';
 
 const REFUND_TERMS_PERIOD_END =
   'I agree that the days I have already used are not refunded.';
@@ -588,7 +589,7 @@ export default class CompanyController extends Controller {
     const regions = this.model?.regions || [];
     return saved
       .filter((code) => !this.formActiveRegions.includes(code))
-      .map((code) => regions.find((r) => r.code === code)?.name || code);
+      .map((code) => regionNameFor(regions, code));
   }
 
   get regionRemovalMessage() {

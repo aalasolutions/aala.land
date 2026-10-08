@@ -69,4 +69,16 @@ module('Unit | Controller | leases/index', function (hooks) {
     controller.selectUnit('u-plot');
     assert.strictEqual(controller.unitLeaseType, null, 'either type allowed');
   });
+
+  test('a renewal starts the day after the old lease ends', function (assert) {
+    const controller = this.owner.lookup('controller:leases/index');
+    controller.renewLease({
+      id: 'l-1',
+      unitId: 'u-1',
+      endDate: '2026-12-31',
+      monthlyRent: 100,
+    });
+
+    assert.strictEqual(controller.formStartDate, '2027-01-01');
+  });
 });

@@ -204,6 +204,8 @@ export default class DocumentsPanelComponent extends Component {
     this.canEdit &&
     (isAdminRole(this.role) || doc?.uploadedBy === this.currentUserId);
 
+  categoryLabel = (value) => optionLabelFor(CATEGORIES, value);
+
   get canDelete() {
     return isAdminRole(this.role);
   }
@@ -563,7 +565,7 @@ export default class DocumentsPanelComponent extends Component {
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = doc.name || 'document';
+      link.download = doc.originalFileName || doc.name || 'document';
       link.rel = 'noopener';
       document.body.appendChild(link);
       link.click();

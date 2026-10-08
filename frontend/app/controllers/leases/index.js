@@ -16,7 +16,7 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { ROLES } from '../../utils/roles';
-import { toDateOnly } from '../../utils/local-date';
+import { addCalendarDays, toDateOnly } from '../../utils/local-date';
 import ContactSelection, {
   CONTACT_REQUIRED_ERROR,
 } from '../../utils/contact-selection';
@@ -413,7 +413,7 @@ export default class LeasesController extends PaginatedController {
     this.tenantSelection.attach(lease.contact ?? null);
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = toDateOnly(lease.endDate);
+    this.formStartDate = addCalendarDays(toDateOnly(lease.endDate), 1) ?? '';
     this.formEndDate = '';
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit

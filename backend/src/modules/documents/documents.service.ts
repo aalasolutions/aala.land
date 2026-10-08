@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { originalFileName } from '@shared/utils/file-name.util';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import {
   DataSource,
@@ -124,6 +125,12 @@ const LINK_TYPE_NOUNS: Record<DocumentLinkType, string> = {
 };
 type DocumentLinkIds = Partial<Record<LinkIdKey, string | null>>;
 
+function archivedLeaseError(verb: 'uploading' | 'editing') {
+  return new ConflictException(
+    `This lease is archived. Unarchive it before ${verb} documents.`,
+  );
+}
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -191,6 +198,7 @@ export class DocumentsService {
       s3Key,
       fileSize,
       fileType: dto.fileType ?? file.mimetype,
+      originalFileName: originalFileName(file.originalname),
       unitId: dto.unitId ?? null,
       assetId: dto.assetId ?? null,
       contactId: dto.contactId ?? null,
@@ -235,10 +243,14 @@ export class DocumentsService {
     limit: number;
   }> {
     const levelSql = this.accessLevelSql(userRole, userId);
-    const scopedCodes = effectiveRegionCodes(filters?.regionCode, {
-      role: userRole,
-      regionCodes: regionCodes ?? [],
-    });
+    const caller = { role: userRole, regionCodes: regionCodes ?? [] };
+    // Record pages ignore the top-bar region.
+    const forRecord = Boolean(
+      unitId || filters?.contactId || filters?.leaseId || filters?.workOrderId,
+    );
+    const scopedCodes = forRecord
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(filters?.regionCode, caller);
 
     // No assignment means no access, and an empty IN () is invalid SQL.
     if (scopedCodes?.length === 0) {
@@ -280,6 +292,25 @@ export class DocumentsService {
         'workOrder.company_id = doc.company_id',
       )
       .addSelect(['workOrder.id', 'workOrder.title'])
+      // Units behind lease and work order links, for the Property column.
+      .leftJoin('lease.unit', 'leaseUnit')
+      .leftJoin('leaseUnit.asset', 'leaseAsset')
+      .leftJoin('leaseAsset.locality', 'leaseLocality')
+      .leftJoin('workOrder.unit', 'woUnit')
+      .leftJoin('woUnit.asset', 'woAsset')
+      .leftJoin('woAsset.locality', 'woLocality')
+      .addSelect([
+        'leaseUnit.id',
+        'leaseUnit.unitNumber',
+        'leaseAsset.id',
+        'leaseAsset.name',
+        'leaseLocality.id',
+        'woUnit.id',
+        'woUnit.unitNumber',
+        'woAsset.id',
+        'woAsset.name',
+        'woLocality.id',
+      ])
       .where('doc.company_id = :companyId', { companyId })
       .andWhere(levelSql.sql, levelSql.params);
 
@@ -406,14 +437,8 @@ export class DocumentsService {
         uploadedByName: d.uploadedBy
           ? (uploaderNames.get(d.uploadedBy) ?? null)
           : null,
-        unit: d.unit
-          ? {
-              id: d.unit.id,
-              unitNumber: d.unit.unitNumber,
-              areaId: d.unit.asset?.locality?.id ?? null,
-              assetName: d.unit.asset?.name ?? null,
-            }
-          : null,
+        unit: this.propertyUnit(d),
+        buildingName: d.asset?.name ?? null,
       })),
       total,
       page,
@@ -493,6 +518,9 @@ export class DocumentsService {
     const caller: RegionScope = { role: userRole, regionCodes };
     if (OWN_EDIT_ROLES.includes(userRole) && existing.uploadedBy !== userId) {
       throw new ForbiddenException('You can only edit documents you uploaded');
+    }
+    if (existing.leaseId) {
+      await this.assertLeaseNotArchived(companyId, existing.leaseId, 'editing');
     }
 
     const { unitId, assetId, contactId, leaseId, workOrderId, ...metadata } =
@@ -717,11 +745,7 @@ export class DocumentsService {
         select: { id: true, regionCode: true, deletedAt: true },
       });
       const region = this.visibleParentRegion(lease, 'leaseId', caller);
-      if (lease?.deletedAt) {
-        throw new ConflictException(
-          `This lease is archived. Unarchive it before ${verb} documents.`,
-        );
-      }
+      if (lease?.deletedAt) throw archivedLeaseError(verb);
       return region;
     }
     if (workOrderId) {
@@ -786,6 +810,18 @@ export class DocumentsService {
     };
   }
 
+  private propertyUnit(d: PropertyDocument) {
+    const unit = d.unit ?? d.lease?.unit ?? d.workOrder?.unit;
+    return unit
+      ? {
+          id: unit.id,
+          unitNumber: unit.unitNumber,
+          areaId: unit.asset?.locality?.id ?? null,
+          assetName: unit.asset?.name ?? null,
+        }
+      : null;
+  }
+
   private derivedFrom(
     doc: PropertyDocument,
     unitId?: string,
@@ -794,6 +830,18 @@ export class DocumentsService {
     if (doc.leaseId) return { derivedFrom: 'lease' };
     if (doc.workOrderId) return { derivedFrom: 'work_order' };
     return {};
+  }
+
+  private async assertLeaseNotArchived(
+    companyId: string,
+    leaseId: string,
+    verb: 'uploading' | 'editing',
+  ): Promise<void> {
+    const lease = await this.leaseRepository.findOne({
+      where: { id: leaseId, companyId },
+      select: { id: true, deletedAt: true },
+    });
+    if (lease?.deletedAt) throw archivedLeaseError(verb);
   }
 
   private async assertUnitNotArchived(

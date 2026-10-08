@@ -16,6 +16,7 @@
   </Nuvo::PageHeader>
 
   {{#if @model.lease}}
+    <RegionNotice @regionCode={{@model.lease.regionCode}} @noun="lease" />
     <Leases::Summary @lease={{@model.lease}} @unit={{@model.unit}} />
 
     <section data-test-lease-documents>
@@ -25,6 +26,7 @@
         @compact={{true}}
         @tableId="lease-documents"
         @canUpload={{this.canUpload}}
+        @canEdit={{this.canUpload}}
       >
         <:header as |panel|>
           <div class="flex between x-center">

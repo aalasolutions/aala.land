@@ -76,7 +76,7 @@
         {{else if (eq cell.key "category")}}
           <Nuvo::Tag
             class="tag-doc-{{lowercase cell.value}}"
-            @text={{cell.value}}
+            @text={{this.categoryLabel cell.value}}
           />
         {{else if (eq cell.key "accessLevel")}}
           <Nuvo::Tag
@@ -94,6 +94,8 @@
               >{{cell.row.unit.assetName}}
                 -
                 {{cell.row.unit.unitNumber}}</LinkTo>
+            {{else if cell.row.buildingName}}
+              {{cell.row.buildingName}}
             {{else}}
               <span class="text-muted">-</span>
             {{/if}}
@@ -189,7 +191,11 @@
     {{else}}
       <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
         <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
-        <p class="text-muted">No documents yet.</p>
+        <p class="text-muted">{{if
+            @filtered
+            "No documents match these filters."
+            "No documents yet."
+          }}</p>
       </div>
     {{/if}}
   </Nuvo::Card>
@@ -222,25 +228,51 @@
       class="flex col gap-4"
       {{on "submit" this.saveDocument}}
     >
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="{{this.fieldPrefix}}-file">File
-          {{unless this.editDocument "*"}}</label>
-        <input
-          id="{{this.fieldPrefix}}-file"
-          type="file"
-          class="nu-input"
-          data-test-file-input
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
-          {{on "change" this.onFileSelect}}
-        />
-        {{#if this.selectedFile}}
-          <p class="text-xs text-muted" data-test-selected-file>
-            Selected:
-            {{this.selectedFile.name}}
-            ({{format-bytes this.selectedFile.size}})
-          </p>
-        {{/if}}
-      </div>
+      {{#if this.editDocument}}
+        <Nuvo::Field @label="File">
+          <div class="flex x-center gap-2" data-test-edit-file>
+            <span
+              class="text-sm grow"
+              data-test-edit-file-name
+            >{{this.editDocument.originalFileName}}
+              <span class="text-muted">({{format-bytes
+                  this.editDocument.fileSize
+                }})</span></span>
+            <Nuvo::Button
+              @subtle={{true}}
+              @variant="secondary"
+              @size="xs"
+              @icon="download-simple"
+              aria-label="Download {{this.editDocument.originalFileName}}"
+              data-tooltip="Download"
+              data-test-edit-file-download
+              {{on "click" (fn this.downloadDocument this.editDocument)}}
+            />
+          </div>
+        </Nuvo::Field>
+      {{else}}
+        <div class="flex col gap-2">
+          <label
+            class="text-sm text-muted"
+            for="{{this.fieldPrefix}}-file"
+          >File *</label>
+          <input
+            id="{{this.fieldPrefix}}-file"
+            type="file"
+            class="nu-input"
+            data-test-file-input
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
+            {{on "change" this.onFileSelect}}
+          />
+          {{#if this.selectedFile}}
+            <p class="text-xs text-muted" data-test-selected-file>
+              Selected:
+              {{this.selectedFile.name}}
+              ({{format-bytes this.selectedFile.size}})
+            </p>
+          {{/if}}
+        </div>
+      {{/if}}
 
       <Nuvo::Field @label="Document Name" @required={{true}}>
         <Nuvo::Input

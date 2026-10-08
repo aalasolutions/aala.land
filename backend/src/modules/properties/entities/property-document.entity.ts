@@ -53,6 +53,9 @@ export class PropertyDocument {
   @Column({ name: 'file_type', type: 'varchar', length: 255, nullable: true })
   fileType: string | null;
 
+  @Column({ name: 'original_file_name', type: 'varchar', length: 255 })
+  originalFileName: string;
+
   @Index('IDX_PROPERTY_DOCUMENTS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;

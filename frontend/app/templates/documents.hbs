@@ -4,6 +4,7 @@
   <Documents::Panel
     @tableId="documents"
     @filters={{this.panelFilters}}
+    @filtered={{this.hasActiveFilters}}
     @page={{this.page}}
     @pageSize={{this.limit}}
     @onPageChange={{this.setPage}}

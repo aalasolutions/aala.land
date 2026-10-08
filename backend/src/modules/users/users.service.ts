@@ -52,6 +52,16 @@ import { RecordHistoryAction } from '../record-history/entities/record-history.e
 /** Safety bound on the reassignment/trim picker list. Realistic teams are far smaller. */
 const ACTIVE_MEMBERS_LIMIT = 500;
 
+// Responses never carry the password hash or reset token.
+function withoutCredentials(user: User): User {
+  return {
+    ...user,
+    password: undefined,
+    resetPasswordToken: undefined,
+    resetPasswordExpires: undefined,
+  } as unknown as User;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -135,7 +145,7 @@ export class UsersService {
           `Failed to send member added email to ${saved.email}: ${errorMessage(err)}`,
         );
       });
-      return saved;
+      return withoutCredentials(saved);
     });
   }
 
@@ -373,7 +383,7 @@ export class UsersService {
 
     Object.assign(user, updates);
 
-    return this.userRepository.save(user);
+    return withoutCredentials(await this.userRepository.save(user));
   }
 
   // Runs inside one locked transaction with FOR-UPDATE reloads so no stale pre-check slips through
@@ -1036,7 +1046,7 @@ export class UsersService {
       );
     });
 
-    return saved;
+    return withoutCredentials(saved);
   }
 
   /** Caps FREE/no-sub companies; subscribed ones bill per seat. Pass the locked manager. */

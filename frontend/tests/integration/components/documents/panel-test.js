@@ -16,6 +16,7 @@ const DOCS = [
   {
     id: 'doc-unit',
     name: 'Title Deed',
+    originalFileName: 'deed scan.pdf',
     category: 'TITLE_DEED',
     accessLevel: 'TEAM',
     fileSize: 1024,
@@ -304,6 +305,19 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert
       .dom('[data-test-field-category] [data-test-nu-dropdown-trigger]')
       .includesText('Other Documents');
+  });
+
+  test('editing shows the uploaded file name with a download, and no file picker', async function (assert) {
+    this.responses.list = [DOCS[0]];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
+
+    await click('[data-test-edit-btn]');
+    await drawerSettled();
+
+    assert.dom('[data-test-file-input]').doesNotExist();
+    assert.dom('[data-test-edit-file-name]').includesText('deed scan.pdf');
+    assert.dom('[data-test-edit-file-download]').exists();
   });
 
   test('a library-only upload carries the selected region', async function (assert) {

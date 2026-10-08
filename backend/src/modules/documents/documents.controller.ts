@@ -32,6 +32,7 @@ import {
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { storageSafeName } from '@shared/utils/file-name.util';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
@@ -42,6 +43,7 @@ import {
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
 import { ALLOWED_DOCUMENT_TYPES } from '../properties/media.service';
+import { DOCUMENT_TYPE_NOT_ALLOWED } from '@shared/constants/document-types';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { tmpdir } from 'os';
@@ -107,9 +109,7 @@ export class DocumentsController {
       storage: diskStorage({
         destination: tmpdir(),
         filename: (_req, file, cb) => {
-          const safeName = file.originalname
-            .replace(/[^a-zA-Z0-9._-]/g, '_')
-            .slice(0, 200);
+          const safeName = storageSafeName(file.originalname);
           cb(null, `doc-upload-${randomUUID()}-${safeName}`);
         },
       }),
@@ -118,13 +118,7 @@ export class DocumentsController {
         if (
           !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)
         ) {
-          return cb(
-            new BadRequestException(
-              `File type "${file.mimetype}" is not allowed. ` +
-                `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
-            ),
-            false,
-          );
+          return cb(new BadRequestException(DOCUMENT_TYPE_NOT_ALLOWED), false);
         }
         cb(null, true);
       },

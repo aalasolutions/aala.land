@@ -14,6 +14,7 @@ import {
   isLimited,
 } from 'land/utils/contact-display';
 import { formatDate } from 'land/helpers/format-date';
+import { regionNameFor } from 'land/utils/region-name';
 
 const join = (...parts) => parts.filter(Boolean).join(', ');
 
@@ -105,7 +106,6 @@ export default class RecordSummaryComponent extends Component {
   }
 
   regionName(code) {
-    if (!code) return '';
-    return this.region.regions.find((x) => x.code === code)?.name ?? code;
+    return regionNameFor(this.region.regions, code);
   }
 }

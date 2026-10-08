@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import sharp from 'sharp';
+import { originalFileName } from '@shared/utils/file-name.util';
 import { Role } from '@shared/enums/roles.enum';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -71,7 +72,6 @@ const CAPTIONED_TYPES = new Set<WaOutboundMediaType>([
 ]);
 const RECONNECT_MESSAGE =
   'This WhatsApp connection needs reconnecting; the file was not sent';
-const MAX_FILE_NAME_LENGTH = 200;
 const MAX_WEBP_CHUNKS = 32;
 
 export interface WaMediaSendOptions {
@@ -87,22 +87,6 @@ interface DeliveryFile {
   fileName: string;
   caption: string;
   voice: boolean;
-}
-
-// Browsers send UTF-8 names that busboy decodes as latin1; bytes that are not valid UTF-8 stay as they are.
-function originalFileName(name: string): string {
-  let decoded = name;
-  try {
-    decoded = new TextDecoder('utf-8', { fatal: true }).decode(
-      Buffer.from(name, 'latin1'),
-    );
-  } catch {
-    decoded = name;
-  }
-  return decoded
-    .replace(/[\p{Cc}/\\]/gu, '_')
-    .trim()
-    .slice(0, MAX_FILE_NAME_LENGTH);
 }
 
 // An animated WebP carries an ANIM chunk after VP8X and before the first frame.
