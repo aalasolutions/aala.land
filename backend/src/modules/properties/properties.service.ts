@@ -36,7 +36,10 @@ import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { Contact } from '../contacts/entities/contact.entity';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
-import { contactDisplayName } from '../../shared/utils/contact.util';
+import {
+  contactDisplayName,
+  hasContactIdentity,
+} from '../../shared/utils/contact.util';
 import { limitedDisplayName } from '../../shared/utils/contact-privacy.util';
 import {
   ContactPrivacyService,
@@ -68,15 +71,6 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 import { errorMessage } from '@shared/utils/error.util';
-
-// An empty object must not reach resolveOrCreate, which would insert an all-null contact
-function hasContactIdentity(
-  owner: ContactIdentityDto | undefined,
-): owner is ContactIdentityDto {
-  return Boolean(
-    owner && (owner.firstName || owner.lastName || owner.phone || owner.email),
-  );
-}
 
 function joinList(items: string[]): string {
   return items.length <= 1

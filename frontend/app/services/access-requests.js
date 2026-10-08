@@ -1,7 +1,7 @@
 import Service, { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 
-// Pending contact access requests the caller can decide; the server scopes them to the caller's regions.
+// The server scopes the pending count to the caller's regions.
 export default class AccessRequestsService extends Service {
   @service auth;
 

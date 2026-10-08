@@ -348,17 +348,16 @@
         </Nuvo::Field>
       {{/if}}
 
-      <Nuvo::Field @label="Tenant" @required={{true}}>
-        <Nuvo::Dropdown
-          id="lease-tenant"
-          @align="start"
-          @value={{this.formTenantContactId}}
-          @onSelect={{fn this.setFieldValue "formTenantContactId"}}
-          @options={{this.tenantOptions}}
-          @placeholder="Select a tenant..."
-          data-test-lease-tenant
-        />
-      </Nuvo::Field>
+      <Contact::Picker
+        @label="Tenant"
+        @required={{true}}
+        @contact={{this.tenantSelection.contact}}
+        @identity={{this.tenantSelection.identity}}
+        @onSelectContact={{this.tenantSelection.attach}}
+        @onClear={{this.tenantSelection.clear}}
+        @onIdentityChange={{this.tenantSelection.setField}}
+        @conflict={{this.tenantSelection.conflict}}
+      />
 
       <div class="flex gap-4">
         <Nuvo::Field class="grow" @label="Property Type">
@@ -373,6 +372,7 @@
         </Nuvo::Field>
         <Nuvo::Field
           class="grow"
+          @required={{true}}
           @label="Number of Cheques"
           @tooltip="How many post-dated rent cheques the tenant gives, such as 4 for quarterly or 12 for monthly. Add each cheque under Cheques."
         >

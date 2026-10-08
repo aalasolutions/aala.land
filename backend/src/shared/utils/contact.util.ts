@@ -71,3 +71,21 @@ export function emailEqualsWhere(inputEmail: string | null | undefined) {
   const email = (inputEmail ?? '').trim().toLowerCase();
   return Raw((alias) => `LOWER(${alias}) = :email`, { email });
 }
+
+// An empty identity must not reach resolveOrCreate, which would insert an all-null contact.
+export function hasContactIdentity<
+  T extends {
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  },
+>(identity: T | undefined): identity is T {
+  return Boolean(
+    identity &&
+    (identity.firstName ||
+      identity.lastName ||
+      identity.phone ||
+      identity.email),
+  );
+}

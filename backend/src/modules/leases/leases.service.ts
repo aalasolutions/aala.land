@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
-import { contactDisplayName } from '../../shared/utils/contact.util';
+import {
+  contactDisplayName,
+  hasContactIdentity,
+} from '../../shared/utils/contact.util';
+import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
 import { ContactsService } from '../contacts/contacts.service';
 import {
   ContactPrivacyService,
@@ -121,6 +125,28 @@ export class LeasesService {
   }
 
   // Company scope only: a tenant from any region may be attached, the presenter guards the PII.
+  private async resolveTenantId(
+    companyId: string,
+    contactId: string | undefined,
+    tenant: ContactIdentityDto | undefined,
+    regionCode: string,
+    caller?: ContactViewer,
+  ): Promise<string | undefined> {
+    if (contactId) {
+      await this.assertContactInCompany(contactId, companyId);
+      return contactId;
+    }
+    if (!hasContactIdentity(tenant)) return undefined;
+    const { contact } = await this.contactsService.resolveOrCreate(
+      companyId,
+      tenant,
+      caller?.userId,
+      regionCode,
+      caller?.role,
+    );
+    return contact.id;
+  }
+
   private async assertContactInCompany(
     contactId: string | null | undefined,
     companyId: string,
@@ -254,12 +280,20 @@ export class LeasesService {
     dto: CreateLeaseDto,
     caller?: ContactViewer,
   ): Promise<LeaseResponse> {
-    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
+    const { tenant, ...fields } = dto;
+    const contactId = await this.resolveTenantId(
+      companyId,
+      dto.contactId,
+      tenant,
+      regionCode,
+      caller,
+    );
     const lease = this.leaseRepository.create({
-      ...dto,
+      ...fields,
+      contactId,
       companyId,
       regionCode,
       currency: regionCurrency(regionCode),
@@ -421,7 +455,24 @@ export class LeasesService {
     actorId: string,
     caller?: ContactViewer,
   ): Promise<LeaseResponse> {
-    await this.assertContactInCompany(dto.contactId, companyId);
+    const { tenant, ...changes } = dto;
+    if (!dto.contactId && tenant) {
+      const current = await this.leaseRepository.findOne({
+        where: { id, companyId, ...this.regionScopedWhere(caller) },
+        select: { id: true, regionCode: true },
+      });
+      if (!current) throw new NotFoundException('Lease not found');
+      changes.contactId = await this.resolveTenantId(
+        companyId,
+        undefined,
+        tenant,
+        current.regionCode,
+        caller,
+      );
+    } else {
+      await this.assertContactInCompany(dto.contactId, companyId);
+    }
+    dto = changes;
     const regionWhere = this.regionScopedWhere(caller);
     const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
@@ -523,9 +574,16 @@ export class LeasesService {
     dto: CreateLeaseDto,
     caller?: ContactViewer,
   ): Promise<{ oldLease: LeaseResponse; newLease: LeaseResponse }> {
-    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
+    const { tenant, ...fields } = dto;
+    const contactId = await this.resolveTenantId(
+      companyId,
+      dto.contactId,
+      tenant,
+      regionCode,
+      caller,
     );
     const regionWhere = this.regionScopedWhere(caller);
     const renewed = await this.dataSource.transaction(async (manager) => {
@@ -560,7 +618,8 @@ export class LeasesService {
       const savedOldLease = await manager.save(Lease, oldLease);
 
       const newLease = manager.create(Lease, {
-        ...dto,
+        ...fields,
+        contactId,
         companyId,
         regionCode,
         currency: regionCurrency(regionCode),

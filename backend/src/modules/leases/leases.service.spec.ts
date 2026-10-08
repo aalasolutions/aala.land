@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
+import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 import { contactDisplayName } from '../../shared/utils/contact.util';
@@ -27,7 +28,10 @@ describe('LeasesService', () => {
   let service: LeasesService;
   let repo: jest.Mocked<Repository<Lease>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
-  let contactsService: { findOneEntity: jest.Mock };
+  let contactsService: {
+    findOneEntity: jest.Mock;
+    resolveOrCreate: jest.Mock;
+  };
   let privacy: { presentMany: jest.Mock };
   let dataSource: { transaction: jest.Mock };
   let manager: {
@@ -164,6 +168,9 @@ describe('LeasesService', () => {
             findOneEntity: jest
               .fn()
               .mockResolvedValue({ id: 'contact-uuid-1' }),
+            resolveOrCreate: jest
+              .fn()
+              .mockResolvedValue({ contact: { id: 'new-tenant-1' } }),
           },
         },
         { provide: RecordHistoryService, useValue: recordHistory },
@@ -219,6 +226,43 @@ describe('LeasesService', () => {
         relations: ['contact'],
       });
       expect(result).toEqual(mockLease);
+    });
+
+    it('resolves a typed tenant to a contact in the unit region', async () => {
+      repo.create.mockReturnValue(mockLease as Lease);
+      manager.findOne.mockResolvedValue({ id: 'unit-uuid-1', deletedAt: null });
+      manager.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+
+      await service.create(
+        companyId,
+        {
+          unitId: 'unit-uuid-1',
+          tenant: {
+            firstName: 'Test',
+            lastName: 'User',
+            phone: '+15551234567',
+          },
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          monthlyRent: 5000,
+        } as any,
+        { userId: 'user-1', role: Role.MANAGER, regionCodes: ['dubai'] },
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { firstName: 'Test', lastName: 'User', phone: '+15551234567' },
+        'user-1',
+        'dubai',
+        Role.MANAGER,
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: 'new-tenant-1' }),
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ tenant: expect.anything() }),
+      );
     });
 
     it('derives the lease region and currency from its unit', async () => {

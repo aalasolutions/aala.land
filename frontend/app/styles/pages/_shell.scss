@@ -157,7 +157,7 @@ $shell-background-image: radial-gradient(
     font-size: nu-font-size(xs);
   }
 
-  // Count badges sit on the icon's corner so the narrow rail does not clip them.
+  // On the rail, count badges sit on the icon's corner so they are not clipped.
   .nu-sidebar__link,
   .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
     position: relative;

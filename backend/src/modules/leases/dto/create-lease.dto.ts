@@ -7,9 +7,13 @@ import {
   Min,
   IsInt,
   MaxLength,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
 import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LeaseType } from '../entities/lease.entity';
 
 export class CreateLeaseDto {
@@ -22,6 +26,13 @@ export class CreateLeaseDto {
   @IsOptional()
   @IsUUID()
   contactId?: string;
+
+  // Used only when contactId is absent: resolves or creates the tenant by phone or email.
+  @ApiPropertyOptional({ type: ContactIdentityDto })
+  @ValidateNested()
+  @Type(() => ContactIdentityDto)
+  @IsOptional()
+  tenant?: ContactIdentityDto;
 
   @ApiProperty({ enum: LeaseType, default: LeaseType.RESIDENTIAL })
   @IsOptional()
@@ -66,7 +77,9 @@ export class CreateLeaseDto {
   securityDeposit?: number;
 
   @ApiProperty({ required: false, default: 1 })
-  @IsOptional()
+  @ValidateIf(
+    (o: { numberOfCheques?: unknown }) => o.numberOfCheques !== undefined,
+  )
   @IsInt()
   @Min(1)
   numberOfCheques?: number;
