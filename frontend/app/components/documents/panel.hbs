@@ -254,35 +254,6 @@
         />
       </Nuvo::Field>
 
-      <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Category">
-          <Nuvo::Dropdown
-            id="{{this.fieldPrefix}}-category"
-            @align="start"
-            @value={{this.formCategory}}
-            @onSelect={{fn this.setFieldValue "formCategory"}}
-            @options={{this.categoryOptions}}
-            @placeholder="Select category..."
-            data-test-field-category
-          />
-        </Nuvo::Field>
-        <Nuvo::Field
-          class="grow"
-          @label="Access Level"
-          @tooltip="Team means every staff member can open this file. Admin means only admins can."
-        >
-          <Nuvo::Dropdown
-            id="{{this.fieldPrefix}}-access"
-            @align="start"
-            @value={{this.formAccessLevel}}
-            @onSelect={{fn this.setFieldValue "formAccessLevel"}}
-            @options={{this.accessLevelOptions}}
-            @placeholder="Select access level..."
-            data-test-field-access
-          />
-        </Nuvo::Field>
-      </div>
-
       {{#if @presetLink}}
         <div class="flex gap-4">
           <Nuvo::Field class="grow" @label="Related To">
@@ -335,6 +306,35 @@
           <RecordSummary @type={{picker.type}} @record={{this.formRecord}} />
         {{/each}}
       {{/if}}
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Category">
+          <Nuvo::Dropdown
+            id="{{this.fieldPrefix}}-category"
+            @align="start"
+            @value={{this.formCategory}}
+            @onSelect={{fn this.setFieldValue "formCategory"}}
+            @options={{this.categoryOptions}}
+            @placeholder="Select category..."
+            data-test-field-category
+          />
+        </Nuvo::Field>
+        <Nuvo::Field
+          class="grow"
+          @label="Access Level"
+          @tooltip="Team means every staff member can open this file. Admin means only admins can."
+        >
+          <Nuvo::Dropdown
+            id="{{this.fieldPrefix}}-access"
+            @align="start"
+            @value={{this.formAccessLevel}}
+            @onSelect={{fn this.setFieldValue "formAccessLevel"}}
+            @options={{this.accessLevelOptions}}
+            @placeholder="Select access level..."
+            data-test-field-access
+          />
+        </Nuvo::Field>
+      </div>
 
       {{#if this.isSaving}}
         {{#unless this.editDocument}}
