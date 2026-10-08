@@ -57,17 +57,6 @@
           </div>
 
           <div class="flex gap-3 wrap x-end">
-            <Nuvo::Field class="grow" @label="Category">
-              <Nuvo::Dropdown
-                id="document-category-filter"
-                @align="start"
-                @value={{this.category}}
-                @onSelect={{this.setCategory}}
-                @options={{this.categories}}
-                @placeholder="All Categories"
-                data-test-category-filter
-              />
-            </Nuvo::Field>
             <Nuvo::Field
               class="grow"
               @label="Related To"
@@ -80,6 +69,17 @@
                 @onSelect={{this.setRelated}}
                 @options={{this.relatedTypes}}
                 data-test-related-filter
+              />
+            </Nuvo::Field>
+            <Nuvo::Field class="grow" @label="Category">
+              <Nuvo::Dropdown
+                id="document-category-filter"
+                @align="start"
+                @value={{this.category}}
+                @onSelect={{this.setCategory}}
+                @options={{this.categories}}
+                @placeholder="All Categories"
+                data-test-category-filter
               />
             </Nuvo::Field>
             <Nuvo::Field

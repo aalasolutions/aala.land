@@ -12,6 +12,7 @@ import { closeDeleteModal, openDeleteModal } from 'land/utils/delete-modal';
 import {
   ACCESS_LEVELS,
   CATEGORIES,
+  categoryFits,
   RELATED_TYPES,
   optionLabelFor,
 } from 'land/constants';
@@ -72,13 +73,6 @@ const labelled = (...parts) =>
     .filter(([, value]) => value)
     .map(([name, value]) => `${name}: ${value}`)
     .join(' · ');
-
-function categoryFits(value, type) {
-  if (!type) return true;
-  return (
-    CATEGORIES.find((c) => c.value === value)?.allow?.includes(type) ?? false
-  );
-}
 
 // Units, assets and work orders have no server search, so their pickers preload one page.
 const RECORD_PICKERS = {

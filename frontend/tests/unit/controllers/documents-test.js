@@ -24,6 +24,31 @@ module('Unit | Controller | documents', function (hooks) {
     });
   });
 
+  test('the category filter lists only categories the related type allows', function (assert) {
+    const controller = this.owner.lookup('controller:documents');
+    assert.strictEqual(controller.categories.length, 11, 'All plus ten');
+
+    controller.related = 'work_order';
+    assert.deepEqual(
+      controller.categories.map((c) => c.value),
+      ['', 'INVOICE', 'MAINTENANCE', 'RECEIPT', 'OTHER'],
+    );
+
+    controller.related = 'none';
+    assert.strictEqual(controller.categories.length, 11, 'library: all');
+  });
+
+  test('choosing a related type clears a category it does not allow', function (assert) {
+    const controller = this.owner.lookup('controller:documents');
+    controller.category = 'TITLE_DEED';
+    controller.setRelated('work_order');
+    assert.strictEqual(controller.category, '');
+
+    controller.category = 'INVOICE';
+    controller.setRelated('lease');
+    assert.strictEqual(controller.category, 'INVOICE', 'a fitting pick stays');
+  });
+
   test('empty dates stay out of the filters', function (assert) {
     const controller = this.owner.lookup('controller:documents');
 

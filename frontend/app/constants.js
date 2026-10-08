@@ -160,6 +160,14 @@ export const CATEGORIES = [
   },
 ];
 
+// No type, or library only, fits any category.
+export function categoryFits(value, type) {
+  if (!type || type === 'none') return true;
+  return (
+    CATEGORIES.find((c) => c.value === value)?.allow?.includes(type) ?? false
+  );
+}
+
 export const ACCESS_LEVELS = [
   { value: 'TEAM', label: 'Share with Team' },
   { value: 'ADMIN', label: 'Share with Admin' },
