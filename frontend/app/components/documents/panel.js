@@ -73,6 +73,13 @@ const labelled = (...parts) =>
     .map(([name, value]) => `${name}: ${value}`)
     .join(' · ');
 
+function categoryFits(value, type) {
+  if (!type) return true;
+  return (
+    CATEGORIES.find((c) => c.value === value)?.allow?.includes(type) ?? false
+  );
+}
+
 // Units, assets and work orders have no server search, so their pickers preload one page.
 const RECORD_PICKERS = {
   unit: recordPicker('unit', {
@@ -162,7 +169,6 @@ export default class DocumentsPanelComponent extends Component {
   @tracked documentToDelete = null;
   @tracked isDeleting = false;
 
-  categoryOptions = CATEGORIES.filter((c) => c.value !== '');
   relatedTypeOptions = RELATED_TYPES.filter((t) => t.value !== '');
 
   // Two panels can share a page, so form and field ids must not collide.
@@ -282,6 +288,21 @@ export default class DocumentsPanelComponent extends Component {
   // An uploader keeps sight of their own admin-level files.
   get accessLevelOptions() {
     return ACCESS_LEVELS;
+  }
+
+  get categoryLinkType() {
+    const type = this.args.presetLink?.type ?? this.formRelatedType;
+    return type === 'none' ? null : type;
+  }
+
+  // An edited file keeps its saved category in the list even when its record type no longer allows it.
+  get categoryOptions() {
+    const type = this.categoryLinkType;
+    const saved = this.editDocument?.category;
+    return CATEGORIES.filter(
+      (c) =>
+        c.value !== '' && (categoryFits(c.value, type) || c.value === saved),
+    );
   }
 
   get presetTypeLabel() {
@@ -424,6 +445,9 @@ export default class DocumentsPanelComponent extends Component {
     if (value === this.formRelatedType) return;
     this.formRelatedType = value;
     this.formRecord = null;
+    if (!categoryFits(this.formCategory, this.categoryLinkType)) {
+      this.formCategory = 'OTHER';
+    }
   }
 
   @action selectRecord(item) {

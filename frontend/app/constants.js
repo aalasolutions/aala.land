@@ -121,19 +121,43 @@ export const CONTACT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-// "All" first and "Other" last; the rest alphabetical.
+// "All" first, "Other" last; `allow` mirrors the backend DOCUMENT_CATEGORY_LINKS.
 export const CATEGORIES = [
   { value: '', label: 'All Categories' },
-  { value: 'INSURANCE', label: 'Insurance Policy' },
-  { value: 'INVOICE', label: 'Invoice' },
-  { value: 'LEASE', label: 'Lease / Tenancy Contract' },
-  { value: 'MAINTENANCE', label: 'Maintenance & Snagging' },
-  { value: 'NOC', label: 'No Objection Certificate (NOC)' },
-  { value: 'ID_COPY', label: 'Passport Copy' },
-  { value: 'RECEIPT', label: 'Receipt' },
-  { value: 'TENANCY_REGISTRATION', label: 'Tenancy Registration' },
-  { value: 'TITLE_DEED', label: 'Title Deed' },
-  { value: 'OTHER', label: 'Other Documents' },
+  { value: 'INSURANCE', label: 'Insurance Policy', allow: ['unit', 'asset'] },
+  { value: 'INVOICE', label: 'Invoice', allow: ['lease', 'work_order'] },
+  {
+    value: 'LEASE',
+    label: 'Lease / Tenancy Contract',
+    allow: ['unit', 'lease'],
+  },
+  {
+    value: 'MAINTENANCE',
+    label: 'Maintenance & Snagging',
+    allow: ['unit', 'asset', 'work_order'],
+  },
+  {
+    value: 'NOC',
+    label: 'No Objection Certificate (NOC)',
+    allow: ['unit', 'asset', 'lease'],
+  },
+  { value: 'ID_COPY', label: 'Passport Copy', allow: ['contact', 'lease'] },
+  {
+    value: 'RECEIPT',
+    label: 'Receipt',
+    allow: ['contact', 'lease', 'work_order'],
+  },
+  {
+    value: 'TENANCY_REGISTRATION',
+    label: 'Tenancy Registration',
+    allow: ['lease'],
+  },
+  { value: 'TITLE_DEED', label: 'Title Deed', allow: ['unit', 'asset'] },
+  {
+    value: 'OTHER',
+    label: 'Other Documents',
+    allow: ['unit', 'asset', 'contact', 'lease', 'work_order'],
+  },
 ];
 
 export const ACCESS_LEVELS = [

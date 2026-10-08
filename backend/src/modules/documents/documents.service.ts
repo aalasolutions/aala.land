@@ -47,8 +47,10 @@ import {
 } from '@shared/utils/region-visibility.util';
 import { isDateOnly } from '../../shared/utils/region-time.util';
 import {
+  DOCUMENT_CATEGORY_LINKS,
   DOCUMENT_LINK_COLUMNS,
   DocumentLink,
+  DocumentLinkType,
   DocumentRelatedFilter,
   documentLink,
 } from './document-link';
@@ -104,6 +106,22 @@ const LINK_ID_KEYS = [
 ] as const;
 
 type LinkIdKey = (typeof LINK_ID_KEYS)[number];
+
+const LINK_TYPE_BY_KEY: Record<LinkIdKey, DocumentLinkType> = {
+  unitId: 'unit',
+  assetId: 'asset',
+  contactId: 'contact',
+  leaseId: 'lease',
+  workOrderId: 'work_order',
+};
+
+const LINK_TYPE_NOUNS: Record<DocumentLinkType, string> = {
+  unit: 'unit',
+  asset: 'property',
+  contact: 'contact',
+  lease: 'lease',
+  work_order: 'work order',
+};
 type DocumentLinkIds = Partial<Record<LinkIdKey, string | null>>;
 
 @Injectable()
@@ -157,6 +175,7 @@ export class DocumentsService {
       dto,
       'uploading',
     );
+    this.assertCategoryFitsLink(dto.category ?? DocumentCategory.OTHER, dto);
     const regionCode = await this.resolveDocumentRegion(
       companyId,
       dto.regionCode,
@@ -513,6 +532,13 @@ export class DocumentsService {
       }
     }
 
+    // Only a changed pair is checked, so an older mismatched file can still be renamed.
+    const categoryChanged =
+      dto.category !== undefined && dto.category !== existing.category;
+    if (categoryChanged || linkChanged) {
+      this.assertCategoryFitsLink(dto.category ?? existing.category, nextLink);
+    }
+
     return this.sanitize(
       await this.dataSource.transaction(async (manager) => {
         if (existing.unitId) {
@@ -722,6 +748,20 @@ export class DocumentsService {
       throw new BadRequestException(`Invalid ${field}: record not found`);
     }
     return parent.regionCode;
+  }
+
+  private assertCategoryFitsLink(
+    category: DocumentCategory,
+    link: Partial<Record<LinkIdKey, string | null>>,
+  ): void {
+    const key = LINK_ID_KEYS.find((k) => link[k]);
+    if (!key) return;
+    const type = LINK_TYPE_BY_KEY[key];
+    if (!DOCUMENT_CATEGORY_LINKS[category]?.includes(type)) {
+      throw new BadRequestException(
+        `That category is not allowed on a ${LINK_TYPE_NOUNS[type]} document`,
+      );
+    }
   }
 
   // Admin-level files are readable by admin roles and by their uploader.

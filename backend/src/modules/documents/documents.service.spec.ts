@@ -1497,6 +1497,44 @@ describe('DocumentsService', () => {
         ).rejects.toThrow('Invalid contactId: record not found');
       });
 
+      it('rejects a category the linked record type does not allow, before the storage write', async () => {
+        workOrderRepo.findOne.mockResolvedValue({
+          id: 'wo-1',
+          regionCode: 'dubai',
+        });
+
+        await expect(
+          service.uploadAndCreate(
+            companyId,
+            userId,
+            mockFile,
+            {
+              name: 'Deed',
+              workOrderId: 'wo-1',
+              category: DocumentCategory.TITLE_DEED,
+            } as any,
+            { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+          ),
+        ).rejects.toThrow(
+          'That category is not allowed on a work order document',
+        );
+        expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
+      });
+
+      it('accepts any category on a library-only upload', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Deed', category: DocumentCategory.TITLE_DEED } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ category: DocumentCategory.TITLE_DEED }),
+        );
+      });
+
       it('lets a MANAGER share a document at ADMIN level', async () => {
         await service.uploadAndCreate(
           companyId,
@@ -1563,7 +1601,11 @@ describe('DocumentsService', () => {
           'doc-uuid-1',
           companyId,
           Role.COMPANY_ADMIN,
-          { leaseId: null, workOrderId: 'wo-1' },
+          {
+            leaseId: null,
+            workOrderId: 'wo-1',
+            category: DocumentCategory.INVOICE,
+          },
           callerRegions,
           'user-uuid-1',
         );
@@ -1571,6 +1613,49 @@ describe('DocumentsService', () => {
         expect(result.leaseId).toBeNull();
         expect(result.workOrderId).toBe('wo-1');
         expect(result.regionCode).toBe('makkah');
+      });
+
+      it('rejects a relink that keeps a category the new record type does not allow', async () => {
+        qb().getOne.mockResolvedValue({ ...linkedDoc });
+        workOrderRepo.findOne.mockResolvedValue({
+          id: 'wo-1',
+          regionCode: 'makkah',
+        });
+
+        await expect(
+          service.update(
+            'doc-uuid-1',
+            companyId,
+            Role.COMPANY_ADMIN,
+            { leaseId: null, workOrderId: 'wo-1' },
+            callerRegions,
+            'user-uuid-1',
+          ),
+        ).rejects.toThrow(
+          'That category is not allowed on a work order document',
+        );
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('lets an older mismatched file be renamed without a category check', async () => {
+        qb().getOne.mockResolvedValue({
+          ...linkedDoc,
+          leaseId: null,
+          workOrderId: 'wo-1',
+          category: DocumentCategory.TITLE_DEED,
+        });
+        repo.save.mockImplementation((d: unknown) => Promise.resolve(d));
+
+        const result = await service.update(
+          'doc-uuid-1',
+          companyId,
+          Role.COMPANY_ADMIN,
+          { name: 'Renamed', category: DocumentCategory.TITLE_DEED },
+          callerRegions,
+          'user-uuid-1',
+        );
+
+        expect(result.name).toBe('Renamed');
       });
 
       it('rejects a relink that would leave two links set', async () => {

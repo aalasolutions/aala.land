@@ -261,6 +261,51 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.dom('[data-test-documents-upload]').doesNotExist();
   });
 
+  function openMenuLabels() {
+    return [
+      ...document.querySelectorAll(
+        '.nu-menu.is-open [data-test-nu-dropdown-item]',
+      ),
+    ].map((el) => el.textContent.trim());
+  }
+
+  test('the category list follows the chosen record type', async function (assert) {
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    assert.strictEqual(openMenuLabels().length, 10, 'library only offers all');
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+
+    await chooseOption('[data-test-field-related-type]', 'Work Order');
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    assert.deepEqual(openMenuLabels(), [
+      'Invoice',
+      'Maintenance & Snagging',
+      'Receipt',
+      'Other Documents',
+    ]);
+  });
+
+  test('a category the new record type does not allow resets to Other', async function (assert) {
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    await chooseOption('[data-test-field-related-type]', 'Lease');
+    await chooseOption('[data-test-field-category]', 'Tenancy Registration');
+    await chooseOption('[data-test-field-related-type]', 'Work Order');
+
+    assert
+      .dom('[data-test-field-category] [data-test-nu-dropdown-trigger]')
+      .includesText('Other Documents');
+  });
+
   test('a library-only upload carries the selected region', async function (assert) {
     this.owner.lookup('service:region').activeRegion = { code: 'dubai' };
     this.responses.list = [];
@@ -362,13 +407,17 @@ module('Integration | Component | documents/panel', function (hooks) {
 
     const patch = this.calls.find((c) => c.options.method === 'PATCH');
     assert.strictEqual(patch.path, '/documents/doc-unit');
-    assert.deepEqual(JSON.parse(patch.options.body), {
-      name: 'Title Deed',
-      category: 'TITLE_DEED',
-      accessLevel: 'TEAM',
-      unitId: null,
-      workOrderId: 'wo-9',
-    });
+    assert.deepEqual(
+      JSON.parse(patch.options.body),
+      {
+        name: 'Title Deed',
+        category: 'OTHER',
+        accessLevel: 'TEAM',
+        unitId: null,
+        workOrderId: 'wo-9',
+      },
+      'a work order does not allow Title Deed, so the category resets',
+    );
     assert.deepEqual(this.toasts, [['success', 'Document updated']]);
   });
 
