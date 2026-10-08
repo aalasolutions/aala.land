@@ -291,14 +291,15 @@ export const PRIORITY_OPTIONS = [
   { value: 'URGENT', label: 'Urgent' },
 ];
 
+// Alphabetical, "Other" last.
 export const MAINTENANCE_CATEGORY_OPTIONS = [
-  { value: 'PLUMBING', label: 'Plumbing / Water Systems' },
-  { value: 'ELECTRICAL', label: 'Electrical / Power' },
-  { value: 'HVAC', label: 'HVAC / Air Conditioning' },
-  { value: 'STRUCTURAL', label: 'Structural / Masonry / Civil' },
   { value: 'CLEANING', label: 'Cleaning & Deep Wash' },
-  { value: 'PEST_CONTROL', label: 'Pest Control / Sanitisation' },
+  { value: 'ELECTRICAL', label: 'Electrical / Power' },
   { value: 'APPLIANCE', label: 'Home Appliances / White Goods' },
+  { value: 'HVAC', label: 'HVAC / Air Conditioning' },
+  { value: 'PEST_CONTROL', label: 'Pest Control / Sanitisation' },
+  { value: 'PLUMBING', label: 'Plumbing / Water Systems' },
+  { value: 'STRUCTURAL', label: 'Structural / Masonry / Civil' },
   { value: 'OTHER', label: 'Other Miscellaneous' },
 ];
 
