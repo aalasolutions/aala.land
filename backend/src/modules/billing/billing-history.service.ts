@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BillingHistory } from './entities/billing-history.entity';
+import { EntityManager, Repository } from 'typeorm';
+import {
+  BillingHistory,
+  BillingHistoryType,
+  BillingRefundStatus,
+} from './entities/billing-history.entity';
 import {
   PaymentSucceededEvent,
   PaymentFailedEvent,
@@ -9,6 +13,15 @@ import {
 import { clampLimit, paginationOptions } from '@shared/utils/pagination.util';
 
 type PaymentEvent = PaymentSucceededEvent | PaymentFailedEvent;
+
+export interface RefundHistoryRow {
+  companyId: string;
+  refundId: string;
+  amount: number;
+  currency: string;
+  refundStatus: BillingRefundStatus;
+  occurredAt: Date;
+}
 
 @Injectable()
 export class BillingHistoryService {
@@ -28,24 +41,29 @@ export class BillingHistoryService {
       return;
     }
 
-    const type =
-      event.name === 'PaymentSucceeded'
-        ? 'payment_succeeded'
-        : 'payment_failed';
+    const succeeded = event.name === 'PaymentSucceeded';
+    const type: BillingHistoryType = !succeeded
+      ? 'payment_failed'
+      : event.settledWithoutCharge
+        ? 'settled_without_charge'
+        : 'payment_succeeded';
     const attemptCount =
       event.name === 'PaymentFailed' ? event.attemptCount : null;
 
     await this.historyRepo.query(
       `
             INSERT INTO billing_history
-                (company_id, stripe_invoice_id, type, amount, currency,
+                (company_id, provider_invoice_id, type, amount, currency,
                  hosted_invoice_url, invoice_pdf_url, period_start, period_end,
-                 attempt_count, occurred_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            ON CONFLICT (stripe_invoice_id, type) DO UPDATE SET
+                 attempt_count, occurred_at, credit_applied, credit_issued, origin)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            ON CONFLICT (provider_invoice_id, type) DO UPDATE SET
                 company_id = EXCLUDED.company_id,
                 amount = EXCLUDED.amount,
                 currency = EXCLUDED.currency,
+                credit_applied = EXCLUDED.credit_applied,
+                credit_issued = EXCLUDED.credit_issued,
+                origin = EXCLUDED.origin,
                 hosted_invoice_url = EXCLUDED.hosted_invoice_url,
                 invoice_pdf_url = EXCLUDED.invoice_pdf_url,
                 period_start = EXCLUDED.period_start,
@@ -66,7 +84,47 @@ export class BillingHistoryService {
         event.periodEnd,
         attemptCount,
         event.occurredAt,
+        succeeded ? (event.creditApplied ?? 0) : 0,
+        succeeded ? (event.creditIssued ?? 0) : 0,
+        succeeded ? (event.origin ?? null) : null,
       ],
+    );
+  }
+
+  /** One row per provider refund id; a repeat insert keeps the first row. */
+  async recordRefund(
+    row: RefundHistoryRow,
+    manager: EntityManager = this.historyRepo.manager,
+  ): Promise<void> {
+    await manager.query(
+      `
+            INSERT INTO billing_history
+                (company_id, provider_invoice_id, type, amount, currency,
+                 refund_status, occurred_at)
+            VALUES ($1, $2, 'refund', $3, $4, $5, $6)
+            ON CONFLICT (provider_invoice_id, type) DO NOTHING
+            `,
+      [
+        row.companyId,
+        row.refundId,
+        row.amount,
+        row.currency,
+        row.refundStatus,
+        row.occurredAt,
+      ],
+    );
+  }
+
+  async setRefundStatus(
+    companyId: string,
+    refundId: string,
+    refundStatus: BillingRefundStatus,
+    manager: EntityManager = this.historyRepo.manager,
+  ): Promise<void> {
+    await manager.update(
+      BillingHistory,
+      { companyId, providerInvoiceId: refundId, type: 'refund' },
+      { refundStatus },
     );
   }
 

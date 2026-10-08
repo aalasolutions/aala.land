@@ -1,4 +1,8 @@
-import type { BillingPlan } from '../provider/billing-provider.interface';
+import type {
+  BillingPlan,
+  BillingPriceKind,
+  RefundState,
+} from '../provider/billing-provider.interface';
 
 /** Frozen: adding, trimming, or merging names is a breaking change to every registered handler. */
 export type BillingEventName =
@@ -8,7 +12,8 @@ export type BillingEventName =
   | 'PlanChanged'
   | 'SubscriptionCanceled'
   | 'PaymentSucceeded'
-  | 'PaymentFailed';
+  | 'PaymentFailed'
+  | 'RefundUpdated';
 
 export interface BillingEventBase {
   name: BillingEventName;
@@ -55,14 +60,23 @@ export interface SubscriptionCanceledEvent extends BillingEventBase {
   endedAt: Date | null;
 }
 
-/** All fields default null when Stripe omits them. */
+/** All fields default null when the provider omits them. */
 export interface InvoiceDetail {
-  /** Stripe hosted invoice page (view / download link). */
+  /** Provider hosted invoice page (view / download link). */
   hostedInvoiceUrl: string | null;
-  /** Stripe-generated invoice PDF link. */
+  /** Provider-generated invoice PDF link. */
   invoicePdfUrl: string | null;
   periodStart: Date | null;
   periodEnd: Date | null;
+}
+
+/** Full-period unit amount for one price kind, minor units. */
+export interface ChargedUnitAmount {
+  kind: BillingPriceKind;
+  /** Before tax. */
+  net: number;
+  /** Including tax. */
+  gross: number;
 }
 
 export interface PaymentSucceededEvent extends BillingEventBase, InvoiceDetail {
@@ -72,6 +86,16 @@ export interface PaymentSucceededEvent extends BillingEventBase, InvoiceDetail {
   /** Lowercase ISO 4217. */
   currency: string;
   invoiceId: string | null;
+  /** Credit balance used to pay this invoice. */
+  creditApplied?: number;
+  /** Credit added to the balance. */
+  creditIssued?: number;
+  /** Provider's raw reason for the transaction. */
+  origin?: string | null;
+  /** Nothing charged; never a paid-status signal. */
+  settledWithoutCharge?: boolean;
+  /** Absent kinds keep their stored amount. */
+  chargedUnitAmounts?: ChargedUnitAmount[];
 }
 
 export interface PaymentFailedEvent extends BillingEventBase, InvoiceDetail {
@@ -82,6 +106,19 @@ export interface PaymentFailedEvent extends BillingEventBase, InvoiceDetail {
   attemptCount: number | null;
 }
 
+export interface RefundUpdatedEvent extends BillingEventBase {
+  name: 'RefundUpdated';
+  refundId: string;
+  /** The refunded payment (billing_history.provider_invoice_id). */
+  invoiceId: string | null;
+  /** Positive minor units returned to the payment method. */
+  amount: number;
+  currency: string;
+  state: RefundState;
+  /** The reference this app gave the refund, when the provider echoes it back. */
+  reference: string | null;
+}
+
 export type NormalizedBillingEvent =
   | SubscriptionActivatedEvent
   | SubscriptionUpdatedEvent
@@ -89,4 +126,5 @@ export type NormalizedBillingEvent =
   | PlanChangedEvent
   | SubscriptionCanceledEvent
   | PaymentSucceededEvent
-  | PaymentFailedEvent;
+  | PaymentFailedEvent
+  | RefundUpdatedEvent;

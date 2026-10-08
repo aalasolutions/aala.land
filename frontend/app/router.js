@@ -94,6 +94,7 @@ Router.map(function () {
     this.route('success');
     this.route('cancel');
   });
+  this.route('checkout');
   this.route('admin', function () {
     this.route('overview');
     this.route('companies', function () {

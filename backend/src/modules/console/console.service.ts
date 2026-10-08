@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, In, IsNull, Repository } from 'typeorm';
+import { EntityManager, ILike, In, IsNull, Repository } from 'typeorm';
 import {
   Company,
   SubscriptionTier,
@@ -44,10 +44,12 @@ import { CustomDeal } from './entities/custom-deal.entity';
 import { LockLift } from './entities/lock-lift.entity';
 import { ManualPayment } from './entities/manual-payment.entity';
 import { PaymentRemedy } from './entities/payment-remedy.entity';
+import { liveRefundTotals } from '@modules/billing/live-refunds.util';
 import { GrantDealDto } from './dto/deal.dto';
 import { LiftLockDto } from './dto/lift-lock.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { ApplyRemedyDto } from './dto/apply-remedy.dto';
+import { ChangePriceAmountDto, CreatePriceDto } from './dto/price.dto';
 
 // Operator identity stamped on every intent; assistants act with full power under this identity.
 export interface OperatorActor {
@@ -678,6 +680,15 @@ export class ConsoleService {
         'The remedy amount cannot exceed the anchored payment.',
       );
     }
+    if (dto.source === 'card' && dto.remedy === 'refund') {
+      await this.assertRefundable(
+        companyId,
+        dto,
+        anchor.invoiceId,
+        paymentAmount,
+        amount,
+      );
+    }
 
     // Card rail moves real money via provider; manual rail's record IS the remedy, settled outside.
     let providerRef: string | null = null;
@@ -723,9 +734,11 @@ export class ConsoleService {
         currency,
         paymentSource: dto.source,
         billingHistoryId: dto.source === 'card' ? dto.paymentId : null,
+        providerInvoiceId: dto.source === 'card' ? anchor.invoiceId : null,
         manualPaymentId: dto.source === 'manual' ? dto.paymentId : null,
         providerRef,
         status: 'initiated',
+        cause: 'make_it_right',
         whyNote: dto.whyNote.trim(),
         createdBy: actor.userId,
         createdByEmail: actor.email,
@@ -750,43 +763,170 @@ export class ConsoleService {
 
   // Auto-syncs missing rows on read; per-row failures persist, not throw, so Fix is rarely needed.
   async getPriceHealth(): Promise<Record<string, unknown>> {
-    let rows = await this.activePricesSorted();
-    if (rows.some((r) => !r.providerPriceId)) {
+    if (await this.billingService.needsPriceSync()) {
       try {
         await this.billingService.syncPrices();
       } catch (err) {
         // Sync-level failure: each row keeps its persisted error via syncPrices; log and continue.
         this.logger.error(`Auto price sync failed: ${errorMessage(err)}`);
       }
-      rows = await this.activePricesSorted();
     }
+    return this.priceHealthPayload();
+  }
 
-    const items = rows.map((row) => ({
-      id: row.id,
-      kind: row.kind,
-      currency: row.currency,
-      unitAmount: row.unitAmount,
-      status: row.providerPriceId
-        ? 'registered'
-        : row.lastSyncError
-          ? 'failed'
-          : 'missing',
-      lastError: row.providerPriceId ? null : row.lastSyncError,
-      lastErrorAt: row.providerPriceId
-        ? null
-        : (row.lastSyncErrorAt?.toISOString() ?? null),
-    }));
+  async createPrice(
+    dto: CreatePriceDto,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const countryCodes = dto.countryCodes
+      ? [...new Set(dto.countryCodes.map((c) => c.toUpperCase()))].sort()
+      : null;
+    const draft = {
+      kind: dto.kind,
+      currency: dto.currency.toLowerCase(),
+      unitAmount: dto.unitAmount,
+      countryCodes,
+      // Tax inside the amount is the default; a custom price follows the base it rides on.
+      taxInclusive: countryCodes ? true : (dto.taxInclusive ?? true),
+    };
+    const price = await this.writePrices(async (manager) => {
+      await this.assertPriceAllowed(manager, draft);
+      return manager.save(manager.create(BillingPrice, draft));
+    });
+    this.auditPrice(actor, 'price_created', price);
+    return this.syncAfterPriceWrite();
+  }
+
+  // Create-and-supersede: subscribers stay on the old provider price until migrated.
+  async changePriceAmount(
+    id: string,
+    dto: ChangePriceAmountDto,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const { previous, price } = await this.writePrices(async (manager) => {
+      const previous = await this.findActivePrice(manager, id);
+      const isBase = !previous.countryCodes;
+      const taxInclusive = isBase
+        ? (dto.taxInclusive ?? previous.taxInclusive)
+        : previous.taxInclusive;
+      if (
+        dto.unitAmount === previous.unitAmount &&
+        (!isBase || taxInclusive === previous.taxInclusive)
+      ) {
+        throw new ConflictException(
+          'This price already has that amount and tax setting.',
+        );
+      }
+      // A base keeps selling on the superseded provider price until the sync registers its own.
+      const carried =
+        isBase && this.billingService.isPriceSynced(previous)
+          ? {
+              provider: previous.provider,
+              providerPriceId: previous.providerPriceId,
+            }
+          : {};
+      const draft = {
+        kind: previous.kind,
+        currency: previous.currency,
+        unitAmount: dto.unitAmount,
+        countryCodes: previous.countryCodes,
+        taxInclusive,
+        ...carried,
+      };
+      await this.assertPriceAllowed(manager, draft, previous.id);
+      await manager.update(BillingPrice, previous.id, { active: false });
+      const price = await manager.save(manager.create(BillingPrice, draft));
+      return { previous, price };
+    });
+    this.auditPrice(actor, 'price_amount_changed', price, previous);
+    return this.syncAfterPriceWrite();
+  }
+
+  async deactivatePrice(
+    id: string,
+    actor: OperatorActor,
+  ): Promise<Record<string, unknown>> {
+    const price = await this.writePrices(async (manager) => {
+      const price = await this.findActivePrice(manager, id);
+      if (!price.countryCodes) {
+        const others = (
+          await manager.find(BillingPrice, {
+            where: { kind: price.kind, active: true },
+          })
+        ).filter((r) => r.id !== price.id);
+        const otherBases = others.filter((r) => !r.countryCodes);
+        // Checkout needs a base in a required currency.
+        const { requiredBaseCurrencies } = this.billingService;
+        if (
+          requiredBaseCurrencies.includes(price.currency) &&
+          !otherBases.some((r) => requiredBaseCurrencies.includes(r.currency))
+        ) {
+          throw new ConflictException(
+            `This is the last active ${price.kind} base price. Checkouts need one; change its amount instead.`,
+          );
+        }
+        // Custom prices ride every base the provider accepts; the last such base cannot go first.
+        const carries = (r: BillingPrice) =>
+          !this.billingService.priceRowError(r);
+        if (
+          carries(price) &&
+          others.some((r) => r.countryCodes) &&
+          !otherBases.some(carries)
+        ) {
+          throw new ConflictException(
+            `Active custom ${price.kind} prices ride on this base price. Remove the custom prices first.`,
+          );
+        }
+      }
+      await manager.update(BillingPrice, price.id, { active: false });
+      return price;
+    });
+    this.auditPrice(actor, 'price_deactivated', price);
+    return this.syncAfterPriceWrite();
+  }
+
+  private async priceHealthPayload(): Promise<Record<string, unknown>> {
+    const rows = await this.activePricesSorted();
+
+    const pendingIds = await this.billingService.pendingPriceChangeIds();
+
+    const items = rows.map((row) => {
+      const synced = this.billingService.isPriceSynced(row);
+      // Pending: still selling on the superseded price until the new one registers.
+      const settled = synced && !pendingIds.has(row.id);
+      return {
+        id: row.id,
+        kind: row.kind,
+        currency: row.currency,
+        countryCodes: row.countryCodes,
+        unitAmount: row.unitAmount,
+        taxInclusive: row.taxInclusive,
+        status: settled
+          ? 'registered'
+          : synced
+            ? 'pending'
+            : row.lastSyncError
+              ? 'failed'
+              : 'missing',
+        lastError: settled ? null : row.lastSyncError,
+        lastErrorAt: settled
+          ? null
+          : (row.lastSyncErrorAt?.toISOString() ?? null),
+      };
+    });
     return {
       rows: items,
       total: items.length,
       registered: items.filter((i) => i.status === 'registered').length,
+      pending: items.filter((i) => i.status === 'pending').length,
       missing: items.filter((i) => i.status === 'missing').length,
       failed: items.filter((i) => i.status === 'failed').length,
+      supportsTaxMode: this.billingService.supportsTaxMode,
       checkedAt: new Date().toISOString(),
     };
   }
 
-  // List price only, no coupons; excludes expired/locked deals; null group is unattributed.
+  // Stored net charged, else price row; skips expired/locked deals; null group unattributed.
   async getMarketersReport(): Promise<{ rows: Record<string, unknown>[] }> {
     const companies = await this.companyRepo.find();
     const mrrMap = await this.computeMrrMap(companies);
@@ -860,7 +1000,7 @@ export class ConsoleService {
 
     const [{ states, activeDeals }, prices, coverage] = await Promise.all([
       this.lockStateService.getLockStates(companies),
-      this.priceRepo.find({ where: { active: true } }),
+      this.priceRepo.find({ where: { active: true, countryCodes: IsNull() } }),
       this.latestCoveringPayments(companies.map((c) => c.id)),
     ]);
     const priceByKey = new Map(
@@ -901,8 +1041,13 @@ export class ConsoleService {
         const currency =
           company.billingCurrency ??
           resolveBillingCurrency(company.defaultRegionCode);
-        const seat = priceByKey.get(`SEAT|${currency}`) ?? 0;
-        const base = priceByKey.get(`ENTERPRISE_BASE|${currency}`) ?? 0;
+        // Stored net charged amounts first: they hold override and grandfathered prices.
+        const seat =
+          company.chargedSeatNet ?? priceByKey.get(`SEAT|${currency}`) ?? 0;
+        const base =
+          company.chargedBaseNet ??
+          priceByKey.get(`ENTERPRISE_BASE|${currency}`) ??
+          0;
         const seats = Math.max(company.purchasedSeats, 1);
         const amountMinor =
           company.subscriptionTier === SubscriptionTier.ENTERPRISE
@@ -1050,11 +1195,152 @@ export class ConsoleService {
     return this.paymentRepo.exists({ where: { companyId } });
   }
 
+  // One writer at a time: the country-overlap rule spans rows no unique index covers.
+  private async writePrices<T>(
+    fn: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await this.priceRepo.manager.transaction(async (manager) => {
+        await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+          'billing_prices',
+        ]);
+        return fn(manager);
+      });
+    } catch (err) {
+      if (this.isUniqueViolation(err)) {
+        throw new ConflictException(
+          'An active price with the same kind, currency or countries already exists.',
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async findActivePrice(
+    manager: EntityManager,
+    id: string,
+  ): Promise<BillingPrice> {
+    const price = await manager.findOne(BillingPrice, { where: { id } });
+    if (!price) throw new NotFoundException('Price not found');
+    if (!price.active) {
+      throw new ConflictException('This price is no longer active.');
+    }
+    return price;
+  }
+
+  private async assertPriceAllowed(
+    manager: EntityManager,
+    draft: Pick<BillingPrice, 'kind' | 'currency' | 'countryCodes'>,
+    replacingId?: string,
+  ): Promise<void> {
+    const providerError = this.billingService.priceRowError(draft);
+    if (providerError) throw new BadRequestException(`${providerError}.`);
+    const { kind, currency, countryCodes } = draft;
+    const active = (
+      await manager.find(BillingPrice, { where: { kind, active: true } })
+    ).filter((r) => r.id !== replacingId);
+    if (!countryCodes) {
+      if (active.some((r) => !r.countryCodes && r.currency === currency)) {
+        throw new ConflictException(
+          `An active ${kind} base price in ${currency} already exists. Change its amount instead.`,
+        );
+      }
+      return;
+    }
+    if (!active.some((r) => !r.countryCodes)) {
+      throw new BadRequestException(
+        `Add an active ${kind} base price before a custom price.`,
+      );
+    }
+    const taken = new Set(
+      active.flatMap((r) => (r.countryCodes ?? []).map((c) => c.toUpperCase())),
+    );
+    const overlap = countryCodes.filter((c) => taken.has(c));
+    if (overlap.length) {
+      throw new ConflictException(
+        `Countries ${overlap.join(', ')} already have an active ${kind} custom price.`,
+      );
+    }
+  }
+
+  // Sync is best-effort: the write stands and the row shows its provider error.
+  private async syncAfterPriceWrite(): Promise<Record<string, unknown>> {
+    try {
+      await this.billingService.syncPrices();
+    } catch (err) {
+      this.logger.error(
+        `Price sync after console write failed: ${errorMessage(err)}`,
+      );
+    }
+    return this.priceHealthPayload();
+  }
+
+  // Prices are global: audit_logs requires a company, so price writes go to the operator log.
+  private auditPrice(
+    actor: OperatorActor,
+    event: string,
+    price: BillingPrice,
+    previous?: BillingPrice,
+  ): void {
+    this.logger.log(
+      JSON.stringify({
+        event,
+        operator: actor.email,
+        operatorId: actor.userId,
+        priceId: price.id,
+        providerPriceId: price.providerPriceId ?? null,
+        kind: price.kind,
+        currency: price.currency,
+        countryCodes: price.countryCodes,
+        unitAmount: price.unitAmount,
+        taxInclusive: price.taxInclusive,
+        previousPriceId: previous?.id ?? null,
+        previousProviderPriceId: previous?.providerPriceId ?? null,
+        previousUnitAmount: previous?.unitAmount ?? null,
+        previousTaxInclusive: previous?.taxInclusive ?? null,
+      }),
+    );
+  }
+
   private async activePricesSorted(): Promise<BillingPrice[]> {
     return this.priceRepo.find({
       where: { active: true },
       order: { kind: 'ASC', currency: 'ASC' },
     });
+  }
+
+  /** Earlier live refunds on the payment count against what is left to refund. */
+  private async assertRefundable(
+    companyId: string,
+    dto: ApplyRemedyDto,
+    invoiceId: string | null,
+    paymentAmount: number,
+    amount: number,
+  ): Promise<void> {
+    // The provider id also counts refunds made before this history row arrived.
+    const key = invoiceId ?? dto.paymentId;
+    const refunded =
+      (
+        await liveRefundTotals(this.remedyRepo.manager, companyId, [
+          { billingHistoryId: dto.paymentId, providerInvoiceId: key },
+        ])
+      ).get(key) ?? 0;
+    const left = Math.max(paymentAmount - refunded, 0);
+    if (left === 0) {
+      throw new BadRequestException(
+        'Nothing is left to refund on this payment: earlier refunds already cover it.',
+      );
+    }
+    if (dto.scope === 'full' && refunded > 0) {
+      throw new BadRequestException(
+        `This payment already has refunds; use a partial refund of at most ${left} minor units.`,
+      );
+    }
+    if (amount > left) {
+      throw new BadRequestException(
+        `The refund cannot exceed the ${left} minor units left on this payment after earlier refunds.`,
+      );
+    }
   }
 
   private async resolveRemedyAnchor(dto: ApplyRemedyDto): Promise<{
@@ -1070,14 +1356,14 @@ export class ConsoleService {
       if (!row) throw new NotFoundException('Card payment not found');
       if (row.type !== 'payment_succeeded') {
         throw new BadRequestException(
-          'A remedy anchors to a PAID payment; this record is a failed attempt.',
+          'A remedy anchors to a PAID payment; this record has no card charge.',
         );
       }
       return {
         companyId: row.companyId,
         paymentAmount: row.amount,
         currency: row.currency,
-        invoiceId: row.stripeInvoiceId,
+        invoiceId: row.providerInvoiceId,
       };
     }
     const payment = await this.paymentRepo.findOne({

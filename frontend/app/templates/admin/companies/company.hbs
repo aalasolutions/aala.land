@@ -148,7 +148,12 @@
               purchased</dd>
             <dt>Currency</dt>
             <dd>{{this.billing.currency}}</dd>
-            {{#if this.billing.cancelAtPeriodEnd}}
+            {{#if this.billing.downgradeEffectiveAt}}
+              <dt>Scheduled</dt>
+              <dd class="text-warning" data-test-company-downgrade-pending>Downgrade
+                requested, plan ends
+                {{this.downgradeDateLabel}}</dd>
+            {{else if this.billing.cancelAtPeriodEnd}}
               <dt>Scheduled</dt>
               <dd class="text-warning">Cancels
                 {{format-date this.billing.cancelAt}}</dd>
@@ -293,6 +298,27 @@
                 currency=cell.row.currency
                 minor=true
               }}</span>
+          {{else if (eq cell.key "creditAmount")}}
+            {{#let (billing-history-status cell.row) as |status|}}
+              {{#if status.creditAmount}}
+                <span class="font-bold" data-test-payment-credit>{{format-money
+                    status.creditAmount
+                    currency=cell.row.currency
+                    minor=true
+                  }}</span>
+                <span class="text-muted text-sm">{{status.creditNote}}</span>
+              {{else}}
+                <span class="text-muted">-</span>
+              {{/if}}
+            {{/let}}
+          {{else if (eq cell.key "type")}}
+            {{#let (billing-history-status cell.row) as |status|}}
+              <Nuvo::Tag
+                class={{status.tagClass}}
+                @text={{status.label}}
+                data-test-payment-status
+              />
+            {{/let}}
           {{else if (eq cell.key "notes")}}
             <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
           {{else if (eq cell.key "hasReceipt")}}
@@ -319,7 +345,7 @@
                 class="btn btn-secondary btn-xs"
                 data-test-company-make-right={{cell.row.id}}
                 {{on "click" (fn this.openRemedy cell.row)}}
-              >Make it right</button>
+              >Refund or discount</button>
             {{/if}}
           {{else}}
             {{cell.value}}
@@ -625,7 +651,7 @@
 
   <Nuvo::Drawer
     @open={{this.remedyModalOpen}}
-    @title="Make it right for {{this.company.name}}"
+    @title="Refund or discount for {{this.company.name}}"
     @placement="end"
     @size="lg"
     @onClose={{this.closeRemedy}}

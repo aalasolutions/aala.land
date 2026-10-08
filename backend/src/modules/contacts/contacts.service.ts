@@ -82,8 +82,10 @@ export function canMergeContacts(role?: string): boolean {
   return !!role && MERGE_ROLES.includes(role);
 }
 
-// Only a whole subscriber number is a phone lookup, so a masked number cannot be rebuilt.
+// A whole subscriber number matches any contact; part of a number matches only contacts the caller sees in full.
 const PHONE_SEARCH_MIN_DIGITS = SUBSCRIBER_DIGITS;
+const PARTIAL_PHONE_MIN_DIGITS = 3;
+const PHONE_TERM = /^[+\d\s().-]+$/;
 
 // Region-bound editors: they may edit only contacts in their own regions.
 const REGION_EDIT_ROLES: string[] = [Role.ADMIN, Role.MANAGER];
@@ -400,7 +402,7 @@ export class ContactsService {
     }
 
     if (search?.trim()) {
-      qb.andWhere(this.searchSql(search.trim()));
+      qb.andWhere(this.searchSql(search.trim(), caller));
     }
 
     if (filters?.agentId) {
@@ -744,16 +746,22 @@ export class ContactsService {
     });
   }
 
-  // Names match by substring; phone and email only whole, so a masked value cannot be rebuilt.
-  private searchSql(term: string): Brackets {
+  // Names match by substring; email only whole; phone by substring only where the number is not masked.
+  private searchSql(term: string, caller?: ContactViewer): Brackets {
     const isEmail = term.includes('@');
     const digits = isEmail ? null : normalizePhone(term);
     const isPhone = !!digits && digits.length >= PHONE_SEARCH_MIN_DIGITS;
+    const partialSql = this.partialPhoneSql(term, isEmail, caller);
     return new Brackets((where) => {
       if (isPhone) {
         where.where(`${phoneDigitsSql('c.phone')} = :phoneDigits`, {
           phoneDigits: digits,
         });
+        if (partialSql) where.orWhere(partialSql.sql, partialSql.params);
+        return;
+      }
+      if (partialSql) {
+        where.where(partialSql.sql, partialSql.params);
         return;
       }
       if (isEmail) {
@@ -764,8 +772,26 @@ export class ContactsService {
       }
       where
         .where('c.first_name ILIKE :s', { s: `%${term}%` })
-        .orWhere('c.last_name ILIKE :s');
+        .orWhere('c.last_name ILIKE :s')
+        .orWhere("CONCAT_WS(' ', c.first_name, c.last_name) ILIKE :s");
     });
+  }
+
+  private partialPhoneSql(
+    term: string,
+    isEmail: boolean,
+    caller?: ContactViewer,
+  ): { sql: string; params: Record<string, unknown> } | null {
+    if (isEmail || !PHONE_TERM.test(term)) return null;
+    const part = term.replace(/\D/g, '');
+    if (part.length < PARTIAL_PHONE_MIN_DIGITS) return null;
+    const full = this.contactPrivacy.fullAccessSql('c', caller);
+    if (full?.sql === 'FALSE') return null;
+    const match = `regexp_replace(c.phone, '\\D', '', 'g') LIKE :phonePart`;
+    return {
+      sql: full ? `(${match} AND ${full.sql})` : match,
+      params: { phonePart: `%${part}%`, ...full?.params },
+    };
   }
 
   // companyId is bound on the owning qb; EXISTS/COUNT subqueries reuse it, staying company-scoped.

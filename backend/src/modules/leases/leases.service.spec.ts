@@ -354,7 +354,7 @@ describe('LeasesService', () => {
       });
 
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
+        "(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR CONCAT_WS(' ', tenant.firstName, tenant.lastName) ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)",
         { s: '%zainab%' },
       );
     });
@@ -443,7 +443,7 @@ describe('LeasesService', () => {
         type: LeaseType.RESIDENTIAL,
       });
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
+        "(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR CONCAT_WS(' ', tenant.firstName, tenant.lastName) ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)",
         { s: '%zainab%' },
       );
       expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {

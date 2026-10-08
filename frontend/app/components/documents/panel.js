@@ -29,12 +29,13 @@ const LINK_FIELDS = {
 
 const DERIVED_LABELS = { lease: 'via lease', work_order: 'via work order' };
 
-// Mirrors the server's write routes: upload MANAGER+ and AGENT, edit MANAGER+, delete ADMIN+.
+// Mirrors the server's write routes: upload and edit MANAGER+ and AGENT (below admin, own uploads only), delete ADMIN+.
 const EDIT_ROLES = [
   ROLES.SUPER_ADMIN,
   ROLES.COMPANY_ADMIN,
   ROLES.ADMIN,
   ROLES.MANAGER,
+  ROLES.AGENT,
 ];
 
 const COLUMNS = [
@@ -65,12 +66,20 @@ function recordPicker(type, { label, ...transport }) {
   };
 }
 
+// "Property: X · Unit: Y", skipping empty parts.
+const labelled = (...parts) =>
+  parts
+    .filter(([, value]) => value)
+    .map(([name, value]) => `${name}: ${value}`)
+    .join(' · ');
+
 // Units, assets and work orders have no server search, so their pickers preload one page.
 const RECORD_PICKERS = {
   unit: recordPicker('unit', {
     listUrl: '/properties/units?page=1&limit=500',
     placeholder: 'Search unit...',
-    label: (unit) => `${unit.assetName ?? ''} ${unit.unitNumber ?? ''}`.trim(),
+    label: (unit) =>
+      labelled(['Property', unit.assetName], ['Unit', unit.unitNumber]),
   }),
   asset: recordPicker('asset', {
     listUrl: '/properties/assets?page=1&limit=500',
@@ -88,12 +97,22 @@ const RECORD_PICKERS = {
     searchParam: 'search',
     placeholder: 'Search tenant, unit or registration ref...',
     label: (lease) =>
-      `${lease.contact ? contactName(lease.contact) : 'No tenant'} ${lease.startDate ?? ''}`.trim(),
+      labelled(
+        ['Tenant', lease.contact ? contactName(lease.contact) : 'No tenant'],
+        ['Property', lease.unit?.asset?.name],
+        ['Unit', lease.unit?.unitNumber],
+      ),
   }),
   work_order: recordPicker('work_order', {
     listUrl: '/maintenance?page=1&limit=500',
     placeholder: 'Search work order...',
-    label: (order) => order.title ?? '',
+    label: (order) =>
+      [
+        order.title,
+        labelled(['Property', order.assetName], ['Unit', order.unitNumber]),
+      ]
+        .filter(Boolean)
+        .join(' · '),
   }),
 };
 
@@ -119,6 +138,7 @@ function relatedRoute(doc) {
 export default class DocumentsPanelComponent extends Component {
   @service auth;
   @service notifications;
+  @service region;
 
   @tracked documents = [];
   @tracked total = 0;
@@ -179,6 +199,10 @@ export default class DocumentsPanelComponent extends Component {
   get canEdit() {
     return (this.args.canEdit ?? true) && EDIT_ROLES.includes(this.role);
   }
+
+  canEditRow = (doc) =>
+    this.canEdit &&
+    (isAdminRole(this.role) || doc?.uploadedBy === this.currentUserId);
 
   get canDelete() {
     return isAdminRole(this.role);
@@ -255,11 +279,9 @@ export default class DocumentsPanelComponent extends Component {
     return this.isLoading && !this.documents.length && !this.errorMessage;
   }
 
-  // The server refuses a level the caller could not read back.
+  // An uploader keeps sight of their own admin-level files.
   get accessLevelOptions() {
-    return isAdminRole(this.auth.currentUser?.role)
-      ? ACCESS_LEVELS
-      : ACCESS_LEVELS.filter((level) => level.value === 'TEAM');
+    return ACCESS_LEVELS;
   }
 
   get presetTypeLabel() {
@@ -405,7 +427,7 @@ export default class DocumentsPanelComponent extends Component {
   }
 
   @action selectRecord(item) {
-    this.formRecord = item ? { id: item.id, label: item.label } : null;
+    this.formRecord = item ?? null;
   }
 
   @action clearRecord() {
@@ -456,7 +478,11 @@ export default class DocumentsPanelComponent extends Component {
         formData.append('category', this.formCategory);
         formData.append('accessLevel', this.formAccessLevel);
         const link = this.chosenLink;
-        if (link) formData.append(LINK_FIELDS[link.type], link.id);
+        if (link) {
+          formData.append(LINK_FIELDS[link.type], link.id);
+        } else if (this.region.regionCode) {
+          formData.append('regionCode', this.region.regionCode);
+        }
 
         await this.auth.uploadWithProgress(
           '/documents/upload',

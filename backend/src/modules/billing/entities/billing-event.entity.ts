@@ -6,13 +6,13 @@ import {
   Unique,
 } from 'typeorm';
 
-@Entity('stripe_events')
-@Unique('UQ_stripe_events_provider_event_id', ['providerEventId'])
-export class StripeEvent {
+@Entity('billing_events')
+@Unique('UQ_billing_events_provider_event_id', ['providerEventId'])
+export class BillingEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  /** Provider-side event id (Stripe evt_...). The idempotency key. */
+  /** Provider-side event id. The idempotency key. */
   @Column({ name: 'provider_event_id', type: 'varchar', length: 255 })
   providerEventId: string;
 
@@ -26,6 +26,14 @@ export class StripeEvent {
 
   @CreateDateColumn({ name: 'received_at', type: 'timestamptz' })
   receivedAt: Date;
+
+  /** Set by the delivery that claims the event; a duplicate waits until it is stale. */
+  @Column({
+    name: 'processing_started_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  processingStartedAt: Date | null;
 
   /** Set when all handlers completed. NULL means received but not (fully) processed. */
   @Column({ name: 'processed_at', type: 'timestamptz', nullable: true })

@@ -4,6 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { ROLE_HIERARCHY, seesAllRegions } from '../utils/roles';
 import { ALL_ROLES } from 'land/constants';
+import { toSeatInfo } from '../utils/seat-info';
 
 export default class TeamController extends PaginatedController {
   @service auth;
@@ -52,6 +53,9 @@ export default class TeamController extends PaginatedController {
   @tracked trimReasonError = '';
   @tracked isTrimming = false;
   @tracked trimCandidates = [];
+
+  @tracked refreshedSeatInfo = null;
+  seatInfoToken = 0;
 
   @tracked reactivatingUserId = null;
   @tracked showReactivateModal = false;
@@ -104,12 +108,24 @@ export default class TeamController extends PaginatedController {
     return ALL_ROLES.filter((r) => ROLE_HIERARCHY.indexOf(r.value) > myLevel);
   }
 
+  // Latest value fetched on open; falls back to the route's initial load.
+  get seatInfo() {
+    return this.refreshedSeatInfo ?? this.model?.seatInfo;
+  }
+
   get canTrim() {
     // Hide only when tier is confirmed FREE; server still enforces the gate if seatInfo failed.
     return (
       this.auth.currentUser?.role === 'company_admin' &&
       (this.model?.total ?? 0) > 1 &&
-      this.model?.seatInfo?.tier !== 'FREE'
+      this.seatInfo?.tier !== 'FREE'
+    );
+  }
+
+  get hasPaidSeats() {
+    const seatInfo = this.seatInfo;
+    return (
+      !!seatInfo?.tier && seatInfo.tier !== 'FREE' && !!seatInfo.hasSubscription
     );
   }
 
@@ -157,6 +173,26 @@ export default class TeamController extends PaginatedController {
     return excludeId ? users.filter((u) => u.id !== excludeId) : users;
   }
 
+  resetSeatInfo() {
+    this.seatInfoToken++;
+    this.refreshedSeatInfo = null;
+  }
+
+  // Seats change on the provider webhook, so the count is re-read whenever a seat dialog opens.
+  async refreshSeatInfo() {
+    const companyId = this.auth.currentUser?.companyId;
+    if (!companyId) return;
+    const token = this.seatInfoToken;
+    try {
+      const next = toSeatInfo(
+        await this.auth.fetchJson(`/companies/${companyId}/storage-usage`),
+      );
+      if (next && token === this.seatInfoToken) this.refreshedSeatInfo = next;
+    } catch {
+      // Keep the previous value; the server still enforces seat rules.
+    }
+  }
+
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
@@ -178,6 +214,7 @@ export default class TeamController extends PaginatedController {
     this.editUser = null;
     this.errorMsg = '';
     this.showModal = true;
+    this.refreshSeatInfo();
   }
 
   // Only admins reach this page, and an admin bootstrap carries every company region.
@@ -238,6 +275,7 @@ export default class TeamController extends PaginatedController {
     this.inviteErrorMsg = '';
     this.inviteExistingUser = null;
     this.showInviteModal = true;
+    this.refreshSeatInfo();
   }
 
   @action closeInvite() {
@@ -339,6 +377,7 @@ export default class TeamController extends PaginatedController {
     this.removeReasonError = '';
     this.reassignCandidates = [];
     this.showRemoveModal = true;
+    this.refreshSeatInfo();
     try {
       this.reassignCandidates = await this.loadActiveUsers({
         excludeId: user.id,

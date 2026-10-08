@@ -10,19 +10,71 @@
         {{if this.sidebarMobileOpen 'is-open'}}"
       data-test-sidebar
     >
-      <div class="nu-sidebar__brand">
-        <img
-          src="/logo.png"
-          alt="AALA.LAND"
-          class="app-shell__brand-mark"
-          width="36"
-          height="36"
-        />
-        <div class="app-shell__brand-text">
-          <p class="nu-sidebar__brand-title">AALA<span
-              class="app-shell__brand-dot"
-            >.</span>LAND</p>
-          <p class="nu-sidebar__brand-subtitle">Property Management</p>
+      <div class="nu-sidebar__brand app-shell__user">
+        <LinkTo
+          @route="profile"
+          class="app-shell__user-full"
+          aria-label="My profile: {{this.session.data.authenticated.user.name}}, {{format-role
+            this.session.data.authenticated.user.role
+          }}"
+          data-test-sidebar-user
+        >
+          <Nuvo::Avatar
+            @initials={{initials this.session.data.authenticated.user.name}}
+          />
+          <span class="app-shell__user-details" aria-hidden="true">
+            <span
+              class="app-shell__user-name"
+              data-test-sidebar-user-name
+            >{{this.session.data.authenticated.user.name}}</span>
+            <span
+              class="app-shell__user-role"
+              data-test-sidebar-user-role
+            >{{format-role this.session.data.authenticated.user.role}}</span>
+          </span>
+        </LinkTo>
+
+        <div class="app-shell__user-compact">
+          <Nuvo::Popover
+            @placement="end"
+            @open={{this.userMenuOpen}}
+            @onToggle={{this.setUserMenuOpen}}
+            @onClose={{this.closeUserMenu}}
+          >
+            <:trigger as |toggle|>
+              <button
+                type="button"
+                class="app-shell__user-trigger"
+                aria-label="Account: {{this.session.data.authenticated.user.name}}"
+                aria-expanded={{if this.userMenuOpen "true" "false"}}
+                data-test-sidebar-user-trigger
+                {{on "click" toggle}}
+              >
+                <Nuvo::Avatar
+                  @initials={{initials this.session.data.authenticated.user.name}}
+                />
+              </button>
+            </:trigger>
+            <:body>
+              <div class="app-shell__user-menu" data-test-sidebar-user-menu>
+                <p
+                  class="app-shell__user-menu-name"
+                >{{this.session.data.authenticated.user.name}}</p>
+                <p class="app-shell__user-menu-meta">{{format-role
+                    this.session.data.authenticated.user.role
+                  }}</p>
+                <p
+                  class="app-shell__user-menu-meta"
+                >{{this.session.data.authenticated.user.email}}</p>
+                <LinkTo
+                  @route="profile"
+                  class="app-shell__user-menu-link"
+                  data-test-sidebar-user-profile
+                  {{on "click" this.closeUserMenu}}
+                >My profile</LinkTo>
+              </div>
+            </:body>
+          </Nuvo::Popover>
         </div>
       </div>
 
@@ -726,7 +778,7 @@
               </div>
             {{/if}}
           </div>
-          {{#unless this.isSuperAdmin}}
+          {{#if this.isCompanyAdmin}}
             <LinkTo
               data-test-nav-company
               @route="company"
@@ -735,15 +787,7 @@
             >
               <Ui::Ph @icon="building-office" @size="20px" />
             </LinkTo>
-          {{/unless}}
-          <LinkTo
-            data-test-nav-profile
-            @route="profile"
-            class="nu-topbar__icon-btn"
-            aria-label="My profile"
-          >
-            <Ui::Ph @icon="user" @size="20px" />
-          </LinkTo>
+          {{/if}}
           <button
             data-test-logout-button
             type="button"

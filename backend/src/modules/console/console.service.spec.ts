@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { In } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -72,6 +73,7 @@ interface RepoMock {
   exists: jest.Mock;
   countBy: jest.Mock;
   createQueryBuilder: jest.Mock;
+  manager: { find: jest.Mock };
 }
 
 function repoMock(): RepoMock {
@@ -100,6 +102,7 @@ function repoMock(): RepoMock {
     exists: jest.fn().mockResolvedValue(false),
     countBy: jest.fn().mockResolvedValue(0),
     createQueryBuilder: jest.fn().mockReturnValue(qb),
+    manager: { find: jest.fn().mockResolvedValue([]) },
   };
 }
 
@@ -119,6 +122,10 @@ describe('ConsoleService', () => {
   let billingService: {
     getSubscriptionState: jest.Mock;
     syncPrices: jest.Mock;
+    needsPriceSync: jest.Mock;
+    isPriceSynced: jest.Mock;
+    pendingPriceChangeIds: jest.Mock;
+    supportsTaxMode: boolean;
     refundCardPayment: jest.Mock;
     creditNextBill: jest.Mock;
   };
@@ -150,6 +157,12 @@ describe('ConsoleService', () => {
       syncPrices: jest
         .fn()
         .mockResolvedValue({ synced: 0, failed: 0, total: 0 }),
+      needsPriceSync: jest.fn().mockResolvedValue(false),
+      isPriceSynced: jest.fn(
+        (row: { providerPriceId: string | null }) => !!row.providerPriceId,
+      ),
+      pendingPriceChangeIds: jest.fn().mockResolvedValue(new Set()),
+      supportsTaxMode: true,
       refundCardPayment: jest.fn().mockResolvedValue({ refundId: 're_1' }),
       creditNextBill: jest.fn().mockResolvedValue({ creditId: 'cbtxn_1' }),
     };
@@ -511,7 +524,7 @@ describe('ConsoleService', () => {
     const paidRow = {
       id: 'bh-1',
       companyId: 'co-1',
-      stripeInvoiceId: 'in_1',
+      providerInvoiceId: 'in_1',
       type: 'payment_succeeded',
       amount: 250000,
       currency: 'usd',
@@ -539,6 +552,7 @@ describe('ConsoleService', () => {
       );
       expect(remedy.providerRef).toBe('cbtxn_1');
       expect(remedy.kind).toBe('discount_next_bill');
+      expect(remedy.cause).toBe('make_it_right');
     });
 
     it('card full refund passes null amount to the provider and records the payment amount', async () => {
@@ -582,6 +596,94 @@ describe('ConsoleService', () => {
       );
     });
 
+    describe('earlier refunds on the same payment', () => {
+      const card = (amount: number | undefined, scope: 'partial' | 'full') => ({
+        source: 'card' as const,
+        paymentId: 'bh-1',
+        remedy: 'refund' as const,
+        scope,
+        amount,
+        whyNote: 'second refund',
+      });
+
+      beforeEach(() => {
+        billingHistoryRepo.findOne.mockResolvedValue({
+          ...paidRow,
+          amount: 7500,
+        });
+        companyRepo.findOne.mockResolvedValue(company());
+        // 7387 already refunded on cancel.
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: 'bh-1', amount: 7387 },
+        ]);
+      });
+
+      it('counts only live refunds of this company payment', async () => {
+        await service.applyRemedy(card(100, 'partial'), ACTOR);
+        const [, options] = remedyRepo.manager.find.mock.calls[0];
+        expect(options.where).toEqual([
+          expect.objectContaining({
+            companyId: 'co-1',
+            kind: 'refund',
+            status: In(['queued', 'initiated', 'approved']),
+            billingHistoryId: In(['bh-1']),
+          }),
+          expect.objectContaining({
+            companyId: 'co-1',
+            providerInvoiceId: In(['in_1']),
+          }),
+        ]);
+        expect(billingService.refundCardPayment).toHaveBeenCalledWith(
+          'in_1',
+          100,
+        );
+      });
+
+      it('refuses more than what is left after earlier refunds', async () => {
+        await expect(
+          service.applyRemedy(card(7500, 'partial'), ACTOR),
+        ).rejects.toThrow('113 minor units left');
+        expect(billingService.refundCardPayment).not.toHaveBeenCalled();
+      });
+
+      it('refuses a full refund once part of the payment was refunded', async () => {
+        await expect(
+          service.applyRemedy(card(undefined, 'full'), ACTOR),
+        ).rejects.toThrow('use a partial refund of at most 113');
+      });
+
+      it('sees a refund made on the provider payment before its history row arrived', async () => {
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: null, providerInvoiceId: 'in_1', amount: 7500 },
+        ]);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow('Nothing is left to refund');
+      });
+
+      it('records the provider payment id on the new refund row', async () => {
+        await service.applyRemedy(card(100, 'partial'), ACTOR);
+        expect(remedyRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            billingHistoryId: 'bh-1',
+            providerInvoiceId: 'in_1',
+          }),
+        );
+      });
+
+      it('refuses with a clear 400 when nothing is left', async () => {
+        remedyRepo.manager.find.mockResolvedValue([
+          { billingHistoryId: 'bh-1', amount: 7500 },
+        ]);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow(BadRequestException);
+        await expect(
+          service.applyRemedy(card(1, 'partial'), ACTOR),
+        ).rejects.toThrow('Nothing is left to refund');
+      });
+    });
+
     it('rejects: amount over payment, full with amount, partial without amount, missing scope, discount without amount', async () => {
       billingHistoryRepo.findOne.mockResolvedValue(paidRow);
       companyRepo.findOne.mockResolvedValue(company());
@@ -616,6 +718,28 @@ describe('ConsoleService', () => {
       ).rejects.toThrow('discount needs an amount');
       expect(billingService.refundCardPayment).not.toHaveBeenCalled();
       expect(billingService.creditNextBill).not.toHaveBeenCalled();
+    });
+
+    it('rejects anchoring to a zero-charge settlement', async () => {
+      billingHistoryRepo.findOne.mockResolvedValue({
+        ...paidRow,
+        type: 'settled_without_charge',
+        amount: 0,
+        creditApplied: 2498,
+      });
+      await expect(
+        service.applyRemedy(
+          {
+            source: 'card',
+            paymentId: 'bh-1',
+            remedy: 'refund',
+            scope: 'full',
+            whyNote: 'x',
+          },
+          ACTOR,
+        ),
+      ).rejects.toThrow('PAID payment');
+      expect(billingService.refundCardPayment).not.toHaveBeenCalled();
     });
 
     it('rejects anchoring to a failed payment', async () => {
@@ -668,18 +792,8 @@ describe('ConsoleService', () => {
   // ---- F. Price health ----------------------------------------------------
 
   describe('getPriceHealth', () => {
-    it('auto-syncs when rows are missing their registration, then reports statuses', async () => {
-      const before = [
-        {
-          id: 'p1',
-          kind: 'SEAT',
-          currency: 'usd',
-          unitAmount: 2500,
-          providerPriceId: null,
-          lastSyncError: null,
-          lastSyncErrorAt: null,
-        },
-      ];
+    it('auto-syncs when the billing service reports pending work, then reports statuses', async () => {
+      billingService.needsPriceSync.mockResolvedValue(true);
       const after = [
         {
           id: 'p1',
@@ -691,7 +805,7 @@ describe('ConsoleService', () => {
           lastSyncErrorAt: null,
         },
       ];
-      priceRepo.find.mockResolvedValueOnce(before).mockResolvedValueOnce(after);
+      priceRepo.find.mockResolvedValue(after);
       const health = (await service.getPriceHealth()) as {
         rows: { status: string }[];
         registered: number;
@@ -701,7 +815,89 @@ describe('ConsoleService', () => {
       expect(health.registered).toBe(1);
     });
 
-    it('reports a failed row with the provider error verbatim, no sync when all registered rows exist', async () => {
+    it('does not sync when the billing service reports no pending work', async () => {
+      priceRepo.find.mockResolvedValue([]);
+      await service.getPriceHealth();
+      expect(billingService.syncPrices).not.toHaveBeenCalled();
+    });
+
+    it('returns country codes, null for a base row', async () => {
+      priceRepo.find.mockResolvedValue([
+        {
+          id: 'p1',
+          kind: 'SEAT',
+          currency: 'usd',
+          countryCodes: null,
+          unitAmount: 2500,
+          providerPriceId: 'price_1',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+        {
+          id: 'p2',
+          kind: 'SEAT',
+          currency: 'usd',
+          countryCodes: ['IN', 'PK'],
+          unitAmount: 1000,
+          providerPriceId: 'price_1',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+      ]);
+      const health = (await service.getPriceHealth()) as {
+        rows: { countryCodes: string[] | null }[];
+      };
+      expect(health.rows.map((r) => r.countryCodes)).toEqual([
+        null,
+        ['IN', 'PK'],
+      ]);
+    });
+
+    it('reports a base still selling on its superseded price as pending, with the error', async () => {
+      priceRepo.find.mockResolvedValue([
+        {
+          id: 'p1',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2600,
+          taxInclusive: false,
+          providerPriceId: 'price_old',
+          lastSyncError: 'provider down',
+          lastSyncErrorAt: new Date(),
+        },
+      ]);
+      billingService.pendingPriceChangeIds.mockResolvedValue(new Set(['p1']));
+
+      const health = (await service.getPriceHealth()) as {
+        rows: { status: string; lastError: string | null }[];
+        pending: number;
+        registered: number;
+      };
+
+      expect(health.rows[0]).toEqual(
+        expect.objectContaining({
+          status: 'pending',
+          lastError: 'provider down',
+          taxInclusive: false,
+        }),
+      );
+      expect(health.pending).toBe(1);
+      expect(health.registered).toBe(0);
+    });
+
+    it('tells the console whether the provider uses the tax setting', async () => {
+      priceRepo.find.mockResolvedValue([]);
+      await expect(service.getPriceHealth()).resolves.toEqual(
+        expect.objectContaining({ supportsTaxMode: true }),
+      );
+
+      billingService.supportsTaxMode = false;
+      await expect(service.getPriceHealth()).resolves.toEqual(
+        expect.objectContaining({ supportsTaxMode: false }),
+      );
+    });
+
+    it('reports a failed row with the provider error verbatim', async () => {
       const errAt = new Date();
       priceRepo.find.mockResolvedValue([
         {
@@ -728,7 +924,6 @@ describe('ConsoleService', () => {
         rows: { status: string; lastError: string | null }[];
         failed: number;
       };
-      // A row with a recorded error still triggers a retrying auto-sync.
       expect(health.rows[1].status).toBe('failed');
       expect(health.rows[1].lastError).toBe(
         'Invalid currency: pkr is not supported for this account',
@@ -738,6 +933,460 @@ describe('ConsoleService', () => {
   });
 
   // ---- E + G. Scoreboard and marketers ------------------------------------
+
+  describe('price management', () => {
+    let priceRowError: jest.Mock;
+    const price = (o: Partial<BillingPrice>): BillingPrice =>
+      ({
+        id: 'p-base',
+        kind: 'SEAT',
+        currency: 'usd',
+        unitAmount: 2500,
+        countryCodes: null,
+        taxInclusive: true,
+        active: true,
+        provider: 'paddle',
+        providerPriceId: 'pri_1',
+        ...o,
+      }) as BillingPrice;
+    let em: {
+      query: jest.Mock;
+      find: jest.Mock;
+      findOne: jest.Mock;
+      update: jest.Mock;
+      save: jest.Mock;
+      create: jest.Mock;
+    };
+    let transaction: jest.Mock;
+
+    beforeEach(() => {
+      em = {
+        query: jest.fn().mockResolvedValue([]),
+        find: jest.fn().mockResolvedValue([]),
+        findOne: jest.fn().mockResolvedValue(null),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+        save: jest
+          .fn()
+          .mockImplementation((x) => Promise.resolve({ id: 'p-new', ...x })),
+        create: jest.fn().mockImplementation((_entity, x) => x),
+      };
+      transaction = jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
+        cb(em),
+      );
+      Object.assign(priceRepo, { manager: { transaction } });
+      priceRowError = jest.fn().mockReturnValue(null);
+      Object.assign(billingService, {
+        priceRowError,
+        requiredBaseCurrencies: ['usd'],
+      });
+    });
+
+    describe('createPrice', () => {
+      it('stores a base row lowercase under the advisory lock, syncs and returns price health', async () => {
+        priceRepo.find.mockResolvedValue([price({ id: 'p-new' })]);
+
+        const health = (await service.createPrice(
+          { kind: 'SEAT', currency: 'USD', unitAmount: 2500 },
+          ACTOR,
+        )) as { rows: { id: string }[] };
+
+        expect(em.query).toHaveBeenCalledWith(
+          'SELECT pg_advisory_xact_lock(hashtext($1))',
+          ['billing_prices'],
+        );
+        expect(em.save).toHaveBeenCalledWith({
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          countryCodes: null,
+          taxInclusive: true,
+        });
+        expect(billingService.syncPrices).toHaveBeenCalledTimes(1);
+        expect(health.rows.map((r) => r.id)).toEqual(['p-new']);
+      });
+
+      it('stores the tax setting of a base row; a custom price keeps the default', async () => {
+        await service.createPrice(
+          {
+            kind: 'SEAT',
+            currency: 'usd',
+            unitAmount: 2500,
+            taxInclusive: false,
+          },
+          ACTOR,
+        );
+        expect(em.save).toHaveBeenLastCalledWith(
+          expect.objectContaining({ countryCodes: null, taxInclusive: false }),
+        );
+
+        em.find.mockResolvedValue([price({})]);
+        await service.createPrice(
+          {
+            kind: 'SEAT',
+            currency: 'usd',
+            unitAmount: 900,
+            countryCodes: ['IN'],
+            taxInclusive: false,
+          },
+          ACTOR,
+        );
+        expect(em.save).toHaveBeenLastCalledWith(
+          expect.objectContaining({ countryCodes: ['IN'], taxInclusive: true }),
+        );
+      });
+
+      it('upper-cases, dedupes and sorts country codes on an override', async () => {
+        em.find.mockResolvedValue([price({})]);
+
+        await service.createPrice(
+          {
+            kind: 'SEAT',
+            currency: 'eur',
+            unitAmount: 2000,
+            countryCodes: ['pk', 'IN', 'PK'],
+          },
+          ACTOR,
+        );
+
+        expect(em.save).toHaveBeenCalledWith(
+          expect.objectContaining({
+            currency: 'eur',
+            countryCodes: ['IN', 'PK'],
+          }),
+        );
+      });
+
+      it('refuses a draft the provider rules reject, with the rule text', async () => {
+        em.find.mockResolvedValue([price({})]);
+        priceRowError.mockReturnValue(
+          'The paddle provider does not sell to: IR, RU',
+        );
+
+        await expect(
+          service.createPrice(
+            {
+              kind: 'SEAT',
+              currency: 'USD',
+              unitAmount: 900,
+              countryCodes: ['ir', 'PK', 'RU'],
+            },
+            ACTOR,
+          ),
+        ).rejects.toThrow(
+          new BadRequestException(
+            'The paddle provider does not sell to: IR, RU.',
+          ),
+        );
+        expect(priceRowError).toHaveBeenCalledWith(
+          expect.objectContaining({
+            currency: 'usd',
+            countryCodes: ['IR', 'PK', 'RU'],
+          }),
+        );
+        expect(em.save).not.toHaveBeenCalled();
+      });
+
+      it('refuses a second active base for the same kind and currency', async () => {
+        em.find.mockResolvedValue([price({})]);
+
+        await expect(
+          service.createPrice(
+            { kind: 'SEAT', currency: 'usd', unitAmount: 3000 },
+            ACTOR,
+          ),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it('refuses an override with no active base of its kind', async () => {
+        await expect(
+          service.createPrice(
+            {
+              kind: 'ENTERPRISE_BASE',
+              currency: 'usd',
+              unitAmount: 10000,
+              countryCodes: ['PK'],
+            },
+            ACTOR,
+          ),
+        ).rejects.toThrow(
+          'Add an active ENTERPRISE_BASE base price before a custom price.',
+        );
+      });
+
+      it('refuses a country already held by another active override of the kind', async () => {
+        em.find.mockResolvedValue([
+          price({}),
+          price({ id: 'p-pk', currency: 'usd', countryCodes: ['pk', 'BD'] }),
+        ]);
+
+        await expect(
+          service.createPrice(
+            {
+              kind: 'SEAT',
+              currency: 'eur',
+              unitAmount: 1000,
+              countryCodes: ['PK', 'IN'],
+            },
+            ACTOR,
+          ),
+        ).rejects.toThrow(
+          new ConflictException(
+            'Countries PK already have an active SEAT custom price.',
+          ),
+        );
+      });
+
+      it('maps a unique-index race to 409', async () => {
+        em.save.mockRejectedValue({ code: '23505' });
+
+        await expect(
+          service.createPrice(
+            { kind: 'SEAT', currency: 'usd', unitAmount: 2500 },
+            ACTOR,
+          ),
+        ).rejects.toBeInstanceOf(ConflictException);
+      });
+
+      it('keeps the write and returns health when sync fails', async () => {
+        billingService.syncPrices.mockRejectedValue(new Error('provider down'));
+
+        await expect(
+          service.createPrice(
+            { kind: 'SEAT', currency: 'usd', unitAmount: 2500 },
+            ACTOR,
+          ),
+        ).resolves.toEqual(expect.objectContaining({ rows: [] }));
+        expect(em.save).toHaveBeenCalled();
+      });
+    });
+
+    describe('changePriceAmount', () => {
+      it('deactivates the row and inserts a copy with the new amount in one transaction', async () => {
+        const override = price({
+          id: 'p-pk',
+          currency: 'eur',
+          countryCodes: ['PK'],
+          unitAmount: 1000,
+        });
+        em.findOne.mockResolvedValue(override);
+        em.find.mockResolvedValue([price({}), override]);
+
+        await service.changePriceAmount('p-pk', { unitAmount: 1200 }, ACTOR);
+
+        expect(transaction).toHaveBeenCalledTimes(1);
+        expect(em.update).toHaveBeenCalledWith(BillingPrice, 'p-pk', {
+          active: false,
+        });
+        expect(em.save).toHaveBeenCalledWith({
+          kind: 'SEAT',
+          currency: 'eur',
+          unitAmount: 1200,
+          countryCodes: ['PK'],
+          taxInclusive: true,
+        });
+        expect(billingService.syncPrices).toHaveBeenCalledTimes(1);
+      });
+
+      it('supersedes a base row, carrying its provider price until the sync registers the new one', async () => {
+        em.findOne.mockResolvedValue(price({}));
+        em.find.mockResolvedValue([price({})]);
+
+        await service.changePriceAmount('p-base', { unitAmount: 3000 }, ACTOR);
+
+        expect(em.save).toHaveBeenCalledWith({
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 3000,
+          countryCodes: null,
+          taxInclusive: true,
+          provider: 'paddle',
+          providerPriceId: 'pri_1',
+        });
+      });
+
+      it('does not carry a provider price the base never registered', async () => {
+        const unsynced = price({ provider: null, providerPriceId: null });
+        em.findOne.mockResolvedValue(unsynced);
+        em.find.mockResolvedValue([unsynced]);
+
+        await service.changePriceAmount('p-base', { unitAmount: 3000 }, ACTOR);
+
+        expect(em.save).toHaveBeenCalledWith({
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 3000,
+          countryCodes: null,
+          taxInclusive: true,
+        });
+      });
+
+      it('supersedes a base row when only the tax setting changes', async () => {
+        em.findOne.mockResolvedValue(price({}));
+        em.find.mockResolvedValue([price({})]);
+
+        await service.changePriceAmount(
+          'p-base',
+          { unitAmount: 2500, taxInclusive: false },
+          ACTOR,
+        );
+
+        expect(em.save).toHaveBeenCalledWith(
+          expect.objectContaining({ unitAmount: 2500, taxInclusive: false }),
+        );
+      });
+
+      it('refuses an unchanged amount and tax setting without writing', async () => {
+        em.findOne.mockResolvedValue(price({ taxInclusive: true }));
+
+        await expect(
+          service.changePriceAmount(
+            'p-base',
+            { unitAmount: 2500, taxInclusive: true },
+            ACTOR,
+          ),
+        ).rejects.toThrow(
+          new ConflictException(
+            'This price already has that amount and tax setting.',
+          ),
+        );
+        expect(em.update).not.toHaveBeenCalled();
+        expect(billingService.syncPrices).not.toHaveBeenCalled();
+      });
+
+      it('ignores a tax setting sent for a custom price and still refuses its unchanged amount', async () => {
+        const override = price({
+          id: 'p-pk',
+          countryCodes: ['PK'],
+          unitAmount: 1000,
+        });
+        em.findOne.mockResolvedValue(override);
+        em.find.mockResolvedValue([price({}), override]);
+
+        await expect(
+          service.changePriceAmount(
+            'p-pk',
+            { unitAmount: 1000, taxInclusive: true },
+            ACTOR,
+          ),
+        ).rejects.toBeInstanceOf(ConflictException);
+
+        await service.changePriceAmount(
+          'p-pk',
+          { unitAmount: 1200, taxInclusive: true },
+          ACTOR,
+        );
+        expect(em.save).toHaveBeenCalledWith({
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1200,
+          countryCodes: ['PK'],
+          taxInclusive: true,
+        });
+      });
+
+      it('404s an unknown price and 409s an inactive one', async () => {
+        await expect(
+          service.changePriceAmount('nope', { unitAmount: 1 }, ACTOR),
+        ).rejects.toBeInstanceOf(NotFoundException);
+
+        em.findOne.mockResolvedValue(price({ active: false }));
+        await expect(
+          service.changePriceAmount('p-base', { unitAmount: 1 }, ACTOR),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(em.update).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('deactivatePrice', () => {
+      it('deactivates an override and syncs', async () => {
+        em.findOne.mockResolvedValue(
+          price({ id: 'p-pk', countryCodes: ['PK'] }),
+        );
+
+        await service.deactivatePrice('p-pk', ACTOR);
+
+        expect(em.update).toHaveBeenCalledWith(BillingPrice, 'p-pk', {
+          active: false,
+        });
+        expect(billingService.syncPrices).toHaveBeenCalledTimes(1);
+      });
+
+      it('refuses the last active base row in a required currency, counting only required-currency bases', async () => {
+        const base = price({});
+        em.findOne.mockResolvedValue(base);
+        em.find.mockResolvedValue([
+          base,
+          price({ id: 'p-aed', currency: 'aed' }),
+          price({ id: 'p-pk', countryCodes: ['PK'] }),
+        ]);
+
+        await expect(service.deactivatePrice('p-base', ACTOR)).rejects.toThrow(
+          new ConflictException(
+            'This is the last active SEAT base price. Checkouts need one; change its amount instead.',
+          ),
+        );
+        expect(em.find).toHaveBeenCalledWith(BillingPrice, {
+          where: { kind: 'SEAT', active: true },
+        });
+        expect(em.update).not.toHaveBeenCalled();
+        expect(billingService.syncPrices).not.toHaveBeenCalled();
+      });
+
+      it('deactivates a required-currency base when another one remains', async () => {
+        Object.assign(billingService, {
+          requiredBaseCurrencies: ['usd', 'eur'],
+        });
+        const base = price({});
+        em.findOne.mockResolvedValue(base);
+        em.find.mockResolvedValue([
+          base,
+          price({ id: 'p-eur', currency: 'eur' }),
+          price({ id: 'p-pk', countryCodes: ['PK'] }),
+        ]);
+
+        await service.deactivatePrice('p-base', ACTOR);
+
+        expect(em.update).toHaveBeenCalledWith(BillingPrice, 'p-base', {
+          active: false,
+        });
+      });
+
+      it('refuses the last carrier base outside the required currencies while custom prices exist', async () => {
+        const eur = price({ id: 'p-eur', currency: 'eur' });
+        em.findOne.mockResolvedValue(eur);
+        em.find.mockResolvedValue([
+          eur,
+          price({ id: 'p-pk', countryCodes: ['PK'] }),
+        ]);
+
+        await expect(service.deactivatePrice('p-eur', ACTOR)).rejects.toThrow(
+          new ConflictException(
+            'Active custom SEAT prices ride on this base price. Remove the custom prices first.',
+          ),
+        );
+        expect(em.update).not.toHaveBeenCalled();
+      });
+
+      it('deactivates a base the provider refuses even while custom prices ride another base', async () => {
+        const aed = price({ id: 'p-aed', currency: 'aed' });
+        priceRowError.mockImplementation((row: BillingPrice) =>
+          row.currency === 'aed' ? 'not a base currency' : null,
+        );
+        em.findOne.mockResolvedValue(aed);
+        em.find.mockResolvedValue([
+          aed,
+          price({}),
+          price({ id: 'p-pk', countryCodes: ['PK'] }),
+        ]);
+
+        await service.deactivatePrice('p-aed', ACTOR);
+
+        expect(em.update).toHaveBeenCalledWith(BillingPrice, 'p-aed', {
+          active: false,
+        });
+      });
+    });
+  });
 
   describe('MRR read model (overview + marketers)', () => {
     function wireCompanies(
@@ -843,6 +1492,86 @@ describe('ConsoleService', () => {
       const usd = overview.mrr.find((m) => m.currency === 'usd');
       // ENT: 25000 base + 2 extra seats x 2500 = 30000; flat deal adds 80000.
       expect(usd!.mrrMinor).toBe(30000 + 80000);
+    });
+
+    it('uses the stored net charged amounts before the price rows', async () => {
+      // Grandfathered PRO: list price is 2500, the subscription still pays 2000 net.
+      const grandfathered = company({
+        id: 'co-old-price',
+        billingSubscriptionId: 'sub_g',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 3,
+        chargedSeatNet: 2000,
+        chargedSeatGross: 2100,
+      });
+      const ent = company({
+        id: 'co-ent-charged',
+        billingSubscriptionId: 'sub_e2',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+        purchasedSeats: 3,
+        chargedSeatNet: 2381,
+        chargedBaseNet: 23809,
+        chargedBaseGross: 24999,
+      });
+      wireCompanies([grandfathered, ent]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number }[];
+      };
+      const usd = overview.mrr.find((m) => m.currency === 'usd');
+      expect(usd!.mrrMinor).toBe(3 * 2000 + 23809 + 2 * 2381);
+    });
+
+    it('falls back per kind to the price row when only the seat amount is stored', async () => {
+      const ent = company({
+        id: 'co-ent-seat-only',
+        billingSubscriptionId: 'sub_e3',
+        billingStatus: 'active',
+        billingCurrency: 'usd',
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+        purchasedSeats: 2,
+        chargedSeatNet: 2381,
+        chargedBaseNet: null,
+      });
+      wireCompanies([ent]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number }[];
+      };
+      expect(overview.mrr).toEqual([
+        { currency: 'usd', mrrMinor: 25000 + 2381, companies: 1 },
+      ]);
+    });
+
+    it('gives a company pinned to a currency with no price row a real MRR once amounts are stored', async () => {
+      const eurBuyer = company({
+        id: 'co-eur',
+        billingSubscriptionId: 'sub_eur',
+        billingStatus: 'active',
+        billingCurrency: 'eur',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 2,
+        chargedSeatNet: 900,
+        chargedSeatGross: 1062,
+      });
+      const eurUnstored = company({
+        id: 'co-eur-unstored',
+        billingSubscriptionId: 'sub_eur2',
+        billingStatus: 'active',
+        billingCurrency: 'eur',
+        subscriptionTier: SubscriptionTier.PRO,
+        purchasedSeats: 2,
+      });
+      wireCompanies([eurBuyer, eurUnstored]);
+      const overview = (await service.getOverview()) as {
+        mrr: { currency: string; mrrMinor: number; companies: number }[];
+      };
+      // The unstored company keeps the old fallback: no eur row, so 0.
+      expect(overview.mrr).toEqual([
+        { currency: 'eur', mrrMinor: 2 * 900, companies: 2 },
+      ]);
     });
 
     it('counts a zero-cost deal company as a customer but NEVER as paying (F2)', async () => {
@@ -965,7 +1694,7 @@ describe('ConsoleService', () => {
           currency: 'usd',
           coversEnd: dayOffset(2),
         },
-        // Churned one-time payer: > 90 days past covers-end, must drop out (F3).
+        // Churned one-time payer: > 90 days past covers-end, must drop out.
         {
           companyId: 'co-stale',
           amount: '5000',

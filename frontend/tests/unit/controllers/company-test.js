@@ -66,6 +66,60 @@ module('Unit | Controller | company', function (hooks) {
     );
   });
 
+  test('a downgrade is pending only while an effective time is set', function (assert) {
+    const controller = controllerWith.call(this, {
+      billing: {
+        cancelMode: 'delayed_refund',
+        downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+      },
+    });
+    assert.true(controller.isDowngradePending);
+    controller.billing = {
+      cancelMode: 'delayed_refund',
+      downgradeEffectiveAt: null,
+      cancelAtPeriodEnd: true,
+    };
+    assert.false(controller.isDowngradePending);
+    assert.true(controller.isScheduledToCancel);
+  });
+
+  test('only delayed_refund uses the 48 hour wording; a missing mode is period_end', function (assert) {
+    const controller = controllerWith.call(this, {
+      billing: {
+        cancelMode: 'delayed_refund',
+        downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+      },
+    });
+    assert.true(controller.isDelayedRefund);
+    assert.true(controller.refundTermsLabel.endsWith('is returned.'));
+    assert.true(
+      controller.downgradeConfirmMessage.startsWith('Your plan ends 48 hours'),
+    );
+    controller.billing = {
+      cancelMode: 'period_end',
+      downgradeEffectiveAt: '2026-10-06T12:00:00.000Z',
+    };
+    assert.false(controller.isDelayedRefund);
+    assert.false(controller.isDowngradePending);
+    assert.true(
+      controller.downgradeConfirmMessage.startsWith(
+        'Your subscription will be canceled at the end of the current billing period.',
+      ),
+    );
+    controller.billing = {};
+    assert.false(controller.isDelayedRefund);
+    assert.strictEqual(
+      controller.refundTermsLabel,
+      'I agree that the days I have already used are not refunded.',
+    );
+  });
+
+  test('the refund terms tick is not remembered after leaving the page', function (assert) {
+    const controller = controllerWith.call(this, { refundTermsAccepted: true });
+    controller.resetTransientState();
+    assert.false(controller.refundTermsAccepted);
+  });
+
   test('hasCreditAgents reflects the breakdown list', function (assert) {
     const controller = controllerWith.call(this, { creditAgents: [] });
     assert.false(controller.hasCreditAgents);
@@ -460,5 +514,79 @@ module('Unit | Controller | company', function (hooks) {
 
       assert.deepEqual(controller.formActiveRegions, ['dxb', 'auh']);
     });
+  });
+
+  module('seatPriceKind', function () {
+    function kindFor(context, billing, company = { subscriptionTier: 'FREE' }) {
+      return controllerWith.call(context, { billing, model: { company } })
+        .seatPriceKind;
+    }
+
+    test('FREE shows no price line', function (assert) {
+      const billing = { tier: 'FREE', seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), null);
+    });
+
+    test('PRO with an amount and currency is a per-seat line', function (assert) {
+      const billing = { tier: 'PRO', seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), 'per-seat');
+    });
+
+    test('ENTERPRISE keeps the custom pricing line', function (assert) {
+      const billing = { tier: 'ENTERPRISE', seatAmount: 5000, currency: 'usd' };
+      assert.strictEqual(kindFor(this, billing), 'enterprise');
+    });
+
+    test('a missing amount or currency shows nothing', function (assert) {
+      assert.strictEqual(
+        kindFor(this, { tier: 'PRO', seatAmount: null, currency: 'usd' }),
+        null,
+      );
+      assert.strictEqual(
+        kindFor(this, { tier: 'PRO', seatAmount: 2500, currency: null }),
+        null,
+      );
+    });
+
+    test('the tier falls back to the company when billing omits it', function (assert) {
+      const billing = { seatAmount: 2500, currency: 'usd' };
+      assert.strictEqual(
+        kindFor(this, billing, { subscriptionTier: 'PRO' }),
+        'per-seat',
+      );
+    });
+  });
+
+  test('billing history rows carry the amount the Credit cell displays', function (assert) {
+    const raw = [
+      {
+        id: 'paid',
+        type: 'payment_succeeded',
+        creditApplied: 0,
+        creditIssued: 0,
+      },
+      {
+        id: 'applied',
+        type: 'settled_without_charge',
+        creditApplied: 2498,
+        creditIssued: 0,
+      },
+      {
+        id: 'issued',
+        type: 'settled_without_charge',
+        creditApplied: 0,
+        creditIssued: 2500,
+      },
+    ];
+    const controller = controllerWith.call(this, { billingHistory: raw });
+    const amountById = Object.fromEntries(
+      controller.billingHistoryRows.map((r) => [r.id, r.creditAmount]),
+    );
+    assert.deepEqual(amountById, { paid: 0, applied: 2498, issued: 2500 });
+    assert.strictEqual(
+      raw[0].creditAmount,
+      undefined,
+      'raw rows are untouched',
+    );
   });
 });

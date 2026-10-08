@@ -40,25 +40,121 @@ $shell-background-image: radial-gradient(
   margin-inline-start: $shell-sidebar-collapsed;
 }
 
-.app-shell__brand-mark {
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
-  object-fit: contain;
-  margin-inline: auto;
-  display: none;
+.app-shell__user-full {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  min-inline-size: 0;
+  padding: nu-space(2);
+  margin-inline: calc(-1 * nu-space(2));
+  border-radius: nu-radius(lg);
+  color: var(--text-inverted);
+  text-decoration: none;
+  transition: background-color nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--text-inverted) 10%, transparent);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+  }
 }
 
-.app-shell__brand-dot {
+.app-shell__user-details {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.app-shell__user-name {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-shell__user-role {
+  font-size: nu-font-size(xs);
+  line-height: 1.3;
+  color: color-mix(in srgb, var(--text-inverted) 72%, transparent);
+}
+
+.app-shell__user-compact {
+  display: none;
+  margin-inline: auto;
+}
+
+.app-shell__user-trigger {
+  display: flex;
+  padding: 0;
+  border: none;
+  border-radius: nu-radius(full);
+  background: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+  }
+}
+
+.app-shell__user-menu {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  min-inline-size: 12rem;
+}
+
+.app-shell__user-menu-name {
+  margin: 0;
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+.app-shell__user-menu-meta {
+  margin: 0;
+  font-size: nu-font-size(xs);
   color: var(--text-muted);
 }
 
+.app-shell__user-menu-link {
+  margin-block-start: nu-space(2);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--primary);
+}
+
+.app-shell__user .nu-avatar {
+  border: none;
+}
+
 .nu-sidebar.is-collapsed {
-  .app-shell__brand-mark {
+  .app-shell__user {
+    padding-inline: 0;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .app-shell__user-full {
+    display: none;
+  }
+
+  .app-shell__user-compact {
     display: block;
   }
 
-  .app-shell__brand-text {
-    display: none;
+  .app-shell__user-trigger .nu-avatar {
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    font-size: nu-font-size(xs);
   }
 
   // Collapsed, the active group shows its items inline; the capsule ties them to their parent icon.

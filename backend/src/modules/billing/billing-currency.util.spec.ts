@@ -1,5 +1,6 @@
 import {
   BILLING_CURRENCIES,
+  currencyMinorDigits,
   isBillingCurrency,
   resolveBillingCurrency,
 } from './billing-currency.util';
@@ -55,5 +56,17 @@ describe('resolveBillingCurrency (fallback-only default)', () => {
 
   it('returns usd for an unrecognised region code', () => {
     expect(resolveBillingCurrency('atlantis')).toBe('usd');
+  });
+});
+
+describe('currencyMinorDigits', () => {
+  it('reads the minor unit digits per currency, any case', () => {
+    expect(currencyMinorDigits('usd')).toBe(2);
+    expect(currencyMinorDigits('JPY')).toBe(0);
+    expect(currencyMinorDigits('bhd')).toBe(3);
+  });
+
+  it('falls back to two digits for a code Intl does not accept', () => {
+    expect(currencyMinorDigits('not-a-code')).toBe(2);
   });
 });

@@ -7,13 +7,20 @@ import { User } from '../users/entities/user.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { EmailPreferencesService } from './email-preferences.service';
 import {
+  downgradeCancelledEmail,
+  downgradeRequestedEmail,
   inviteEmail,
+  memberAddedEmail,
   passwordResetEmail,
   paymentFailedEmail,
   paymentSucceededEmail,
   purchaseConfirmationEmail,
   quotaExceededEmail,
+  refundFailedEmail,
+  refundRequestedEmail,
+  refundSettledEmail,
   RenderedEmail,
+  settledWithoutChargeEmail,
   upcomingInvoiceEmail,
   welcomeEmail,
 } from './system-email.content';
@@ -25,8 +32,15 @@ export interface EmailRecipient {
   name: string;
 }
 
+/** Billing tab of the company page. */
+const BILLING_PAGE_PATH = '/company?tab=billing';
+
 function appUrl(): string {
   return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
+}
+
+function billingPageUrl(): string {
+  return `${appUrl()}${BILLING_PAGE_PATH}`;
 }
 
 // Account emails take explicit {email, name}; company emails resolve contact from companyId.
@@ -111,6 +125,22 @@ export class SystemEmailService {
     );
   }
 
+  async sendMemberAdded(
+    recipient: { email: string; name: string },
+    role: string,
+    companyName: string,
+  ): Promise<void> {
+    await this.send(
+      recipient.email,
+      memberAddedEmail({
+        name: recipient.name,
+        role,
+        companyName,
+        loginUrl: `${appUrl()}/login`,
+      }),
+    );
+  }
+
   /** Storage/resource limit hit. Sent to the company billing contact. */
   async sendQuotaExceededToCompany(
     companyId: string,
@@ -125,7 +155,7 @@ export class SystemEmailService {
         name: recipient.name,
         resourceLabel,
         detail,
-        upgradeUrl: `${appUrl()}/settings/billing`,
+        upgradeUrl: billingPageUrl(),
       }),
     );
   }
@@ -144,7 +174,7 @@ export class SystemEmailService {
         name: recipient.name,
         planLabel,
         seats,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
       }),
     );
@@ -172,8 +202,39 @@ export class SystemEmailService {
         amountMinor,
         currency,
         invoiceUrl,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
+      }),
+    );
+  }
+
+  /** Zero-charge notice. Suppressible (billing). */
+  async sendSettledWithoutChargeToCompany(
+    companyId: string,
+    creditAppliedMinor: number,
+    creditIssuedMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    if (!(await this.preferences.accepts(recipient.id, 'billing'))) {
+      this.logger.debug(
+        `Skipping credit notice for ${recipient.email}: billing emails muted`,
+      );
+      return;
+    }
+    await this.send(
+      recipient.email,
+      settledWithoutChargeEmail({
+        name: recipient.name,
+        creditAppliedMinor,
+        creditIssuedMinor,
+        currency,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
       }),
     );
   }
@@ -200,11 +261,124 @@ export class SystemEmailService {
         renewalDate,
         amountMinor,
         currency,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
         unsubscribeUrl: this.preferences.unsubscribeUrl(recipient.id, 'billing'),
       }),
     );
     return true;
+  }
+
+  /** Always sent. */
+  async sendDowngradeRequestedToCompany(
+    companyId: string,
+    effectiveAt: Date,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      downgradeRequestedEmail({
+        name: recipient.name,
+        effectiveAt,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundRequestedToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundRequestedEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundSettledToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+    outcome: 'approved' | 'rejected' | 'reversed',
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundSettledEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        outcome,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendRefundFailedToCompany(
+    companyId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      refundFailedEmail({
+        name: recipient.name,
+        amountMinor,
+        currency,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
+  }
+
+  /** Always sent. */
+  async sendDowngradeCancelledToCompany(
+    companyId: string,
+    reason: string,
+  ): Promise<void> {
+    const recipient = await this.billingContact(companyId);
+    if (!recipient) return;
+    await this.send(
+      recipient.email,
+      downgradeCancelledEmail({
+        name: recipient.name,
+        reason,
+        billingUrl: billingPageUrl(),
+        unsubscribeUrl: this.preferences.unsubscribeUrl(
+          recipient.id,
+          'billing',
+        ),
+      }),
+    );
   }
 
   async sendPaymentFailedToCompany(
@@ -223,7 +397,7 @@ export class SystemEmailService {
         amountMinor,
         currency,
         attemptCount,
-        billingUrl: `${appUrl()}/settings/billing`,
+        billingUrl: billingPageUrl(),
       }),
     );
   }

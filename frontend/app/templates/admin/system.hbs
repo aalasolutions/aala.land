@@ -14,14 +14,21 @@
           data-test-system-price-status
         />
       </div>
-      {{#if this.needsFix}}
+      <div class="flex x-center gap-2">
+        {{#if this.needsFix}}
+          <Nuvo::Button
+            @variant="secondary"
+            @loading={{this.fixing}}
+            data-test-system-price-fix
+            {{on "click" this.fix}}
+          >{{if this.fixing "Syncing…" "Fix"}}</Nuvo::Button>
+        {{/if}}
         <Nuvo::Button
-          @variant="secondary"
-          @loading={{this.fixing}}
-          data-test-system-price-fix
-          {{on "click" this.fix}}
-        >{{if this.fixing "Syncing…" "Fix"}}</Nuvo::Button>
-      {{/if}}
+          @variant="primary"
+          data-test-system-price-add
+          {{on "click" this.openAdd}}
+        >Add price</Nuvo::Button>
+      </div>
     </div>
 
     {{#if this.data.checkedAt}}
@@ -47,6 +54,10 @@
             class="font-bold"
             data-test-system-price-row={{cell.row.id}}
           >{{cell.value}}</span>
+        {{else if (eq cell.key "countries")}}
+          <span
+            data-test-system-price-countries={{cell.row.id}}
+          >{{cell.value}}</span>
         {{else if (eq cell.key "unitAmount")}}
           {{format-money cell.value currency=cell.row.currency minor=true}}
         {{else if (eq cell.key "status")}}
@@ -54,6 +65,17 @@
             <Nuvo::Tag class="tag-sub-active" @text="Registered" />
           {{else if (eq cell.value "missing")}}
             <Nuvo::Tag class="tag-sub-incomplete" @text="Not yet registered" />
+          {{else if (eq cell.value "pending")}}
+            <div class="flex col gap-2" data-test-system-price-pending>
+              <Nuvo::Tag class="tag-sub-incomplete" @text="Change pending" />
+              <p class="text-sm text-muted">Still selling at the previous price
+                until the provider registers this one. Use Fix to retry.</p>
+              {{#if cell.row.lastError}}
+                <Nuvo::Alert @variant="danger" data-test-system-price-error>
+                  <p class="text-sm">{{cell.row.lastError}}</p>
+                </Nuvo::Alert>
+              {{/if}}
+            </div>
           {{else}}
             <div class="flex col gap-2">
               <Nuvo::Tag class="tag-sub-unpaid" @text="Failed" />
@@ -68,6 +90,21 @@
               {{/if}}
             </div>
           {{/if}}
+        {{else if (eq cell.key "id")}}
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="btn btn-secondary btn-xs"
+              data-test-system-price-change-amount={{cell.row.id}}
+              {{on "click" (fn this.openAmount cell.row)}}
+            >Change price</button>
+            <button
+              type="button"
+              class="btn btn-danger btn-xs"
+              data-test-system-price-deactivate={{cell.row.id}}
+              {{on "click" (fn this.openDeactivate cell.row)}}
+            >Deactivate</button>
+          </div>
         {{else}}
           {{cell.value}}
         {{/if}}
@@ -76,4 +113,202 @@
       <p class="text-muted">No active price rows.</p>
     {{/if}}
   </Nuvo::Card>
+
+  <Nuvo::Modal
+    @open={{this.addOpen}}
+    @title="Add price"
+    @onClose={{this.closePriceModal}}
+    data-test-system-price-add-modal
+  >
+    <:body>
+      <div class="flex col gap-4">
+        <Nuvo::Field @label="Kind" @flush={{true}}>
+          <Nuvo::Select
+            @value={{this.addKind}}
+            @options={{this.kindOptions}}
+            @onChange={{this.setAddKind}}
+            data-test-system-price-kind
+          />
+        </Nuvo::Field>
+        <div class="nu-field-row">
+          <Nuvo::Field
+            @label="Currency"
+            @tooltip="Three letter code such as USD."
+            @flush={{true}}
+            class="nu-field-row__narrow"
+          >
+            <Nuvo::Input
+              id="price-currency"
+              type="text"
+              maxlength="3"
+              class="console-currency-input"
+              @value={{this.addCurrency}}
+              data-test-system-price-currency
+              {{on "input" (fn this.setPriceField "addCurrency")}}
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Monthly amount" @flush={{true}} class="grow">
+            <Nuvo::Input
+              id="price-amount"
+              type="number"
+              min="1"
+              step="0.01"
+              @value={{this.addAmount}}
+              data-test-system-price-amount
+              {{on "input" (fn this.setPriceField "addAmount")}}
+            />
+          </Nuvo::Field>
+        </div>
+        <Nuvo::Field
+          @label="Countries"
+          @tooltip="Leave empty for the base price. For a custom price, list 2-letter country codes separated by commas, such as PK, IN."
+          @flush={{true}}
+        >
+          <Nuvo::Input
+            id="price-countries"
+            type="text"
+            placeholder="PK, IN"
+            @value={{this.addCountries}}
+            data-test-system-price-countries-input
+            {{on "input" (fn this.setPriceField "addCountries")}}
+          />
+        </Nuvo::Field>
+        {{#if this.showTax}}
+          {{#if this.addIsBase}}
+            <div class="flex col gap-1">
+              <Nuvo::Checkbox
+                id="price-tax-inclusive"
+                @checked={{this.addTaxInclusive}}
+                @label="Price includes tax"
+                @onChange={{fn this.setTaxInclusive "addTaxInclusive"}}
+                data-test-system-price-tax-inclusive
+              />
+              <p class="text-sm text-muted">Not selected: tax is added on top at
+                checkout. Custom prices for this kind follow the same setting.</p>
+            </div>
+          {{else}}
+            <p class="text-sm text-muted">A custom price follows the tax setting
+              of its base price.</p>
+          {{/if}}
+        {{/if}}
+        <p class="text-sm text-muted">The price syncs to the billing provider
+          immediately.</p>
+        {{#if this.priceError}}
+          <Nuvo::Alert
+            @variant="danger"
+            @description={{this.priceError}}
+            data-test-system-price-modal-error
+          />
+        {{/if}}
+      </div>
+    </:body>
+    <:footer>
+      <Nuvo::Button
+        @variant="secondary"
+        data-test-system-price-add-cancel
+        {{on "click" this.closePriceModal}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
+        @loading={{this.priceBusy}}
+        @disabled={{this.priceBusy}}
+        data-test-system-price-add-submit
+        {{on "click" this.submitAdd}}
+      >{{if this.priceBusy "Saving…" "Add price"}}</Nuvo::Button>
+    </:footer>
+  </Nuvo::Modal>
+
+  <Nuvo::Modal
+    @open={{if this.amountRow true false}}
+    @title="Change price for {{this.amountRow.label}}"
+    @onClose={{this.closePriceModal}}
+    data-test-system-price-amount-modal
+  >
+    <:body>
+      <div class="flex col gap-4">
+        <p class="text-sm">Current amount:
+          {{format-money
+            this.amountRow.unitAmount
+            currency=this.amountRow.currency
+            minor=true
+            compact=false
+          }}</p>
+        <Nuvo::Field @label="New monthly amount" @flush={{true}}>
+          <Nuvo::Input
+            id="price-new-amount"
+            type="number"
+            min="1"
+            step="0.01"
+            @value={{this.newAmount}}
+            data-test-system-price-new-amount
+            {{on "input" (fn this.setPriceField "newAmount")}}
+          />
+        </Nuvo::Field>
+        {{#if this.showNewTax}}
+          <div class="flex col gap-1">
+            <Nuvo::Checkbox
+              id="price-new-tax-inclusive"
+              @checked={{this.newTaxInclusive}}
+              @label="Price includes tax"
+              @onChange={{fn this.setTaxInclusive "newTaxInclusive"}}
+              data-test-system-price-new-tax-inclusive
+            />
+            <p class="text-sm text-muted">Not selected: tax is added on top at
+              checkout. Applies to this price and its custom prices. Current
+              setting:
+              {{this.amountRow.tax}}.</p>
+          </div>
+        {{/if}}
+        <div class="alert alert-warning">
+          <div>
+            <p class="text-sm">Existing subscribers keep their current price
+              until they are migrated. New checkouts use the new price. The
+              change syncs to the billing provider immediately.</p>
+          </div>
+        </div>
+        {{#if this.priceError}}
+          <Nuvo::Alert
+            @variant="danger"
+            @description={{this.priceError}}
+            data-test-system-price-modal-error
+          />
+        {{/if}}
+      </div>
+    </:body>
+    <:footer>
+      <Nuvo::Button
+        @variant="secondary"
+        data-test-system-price-amount-cancel
+        {{on "click" this.closePriceModal}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
+        @loading={{this.priceBusy}}
+        @disabled={{this.priceBusy}}
+        data-test-system-price-amount-submit
+        {{on "click" this.submitAmount}}
+      >{{if this.priceBusy "Saving…" "Change price"}}</Nuvo::Button>
+    </:footer>
+  </Nuvo::Modal>
+
+  <ConfirmModal
+    @open={{if this.deactivateRow true false}}
+    @title="Deactivate {{this.deactivateRow.label}}?"
+    @message="New checkouts stop using this price. Existing subscribers keep their current price until they are migrated. The change syncs to the billing provider immediately."
+    @confirmText="Deactivate"
+    @confirmingText="Deactivating…"
+    @confirmVariant="danger"
+    @isConfirming={{this.priceBusy}}
+    @onConfirm={{this.submitDeactivate}}
+    @onClose={{this.closePriceModal}}
+  >
+    {{#if this.priceError}}
+      <Nuvo::Alert
+        @variant="danger"
+        @description={{this.priceError}}
+        class="mt-3"
+        data-test-system-price-modal-error
+      />
+    {{/if}}
+  </ConfirmModal>
 </div>

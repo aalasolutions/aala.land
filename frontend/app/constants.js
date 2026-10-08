@@ -121,17 +121,18 @@ export const CONTACT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// "All" first and "Other" last; the rest alphabetical.
 export const CATEGORIES = [
   { value: '', label: 'All Categories' },
+  { value: 'INSURANCE', label: 'Insurance Policy' },
+  { value: 'INVOICE', label: 'Invoice' },
   { value: 'LEASE', label: 'Lease / Tenancy Contract' },
+  { value: 'MAINTENANCE', label: 'Maintenance & Snagging' },
+  { value: 'NOC', label: 'No Objection Certificate (NOC)' },
+  { value: 'ID_COPY', label: 'Passport Copy' },
+  { value: 'RECEIPT', label: 'Receipt' },
   { value: 'TENANCY_REGISTRATION', label: 'Tenancy Registration' },
   { value: 'TITLE_DEED', label: 'Title Deed' },
-  { value: 'ID_COPY', label: 'Passport Copy' },
-  { value: 'NOC', label: 'No Objection Certificate (NOC)' },
-  { value: 'INSURANCE', label: 'Insurance Policy' },
-  { value: 'MAINTENANCE', label: 'Maintenance & Snagging' },
-  { value: 'INVOICE', label: 'Invoice' },
-  { value: 'RECEIPT', label: 'Receipt' },
   { value: 'OTHER', label: 'Other Documents' },
 ];
 
@@ -144,10 +145,10 @@ export const ACCESS_LEVELS = [
 export const RELATED_TYPES = [
   { value: '', label: 'All' },
   { value: 'none', label: 'Library only' },
-  { value: 'unit', label: 'Unit' },
-  { value: 'asset', label: 'Property' },
   { value: 'contact', label: 'Contact' },
   { value: 'lease', label: 'Lease' },
+  { value: 'asset', label: 'Property' },
+  { value: 'unit', label: 'Unit' },
   { value: 'work_order', label: 'Work Order' },
 ];
 

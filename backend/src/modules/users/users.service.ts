@@ -129,6 +129,13 @@ export class UsersService {
         if (seat) await seat.release();
         throw err;
       }
+    }).then((saved) => {
+      this.sendMemberAddedEmail(companyId, saved).catch((err) => {
+        this.logger.error(
+          `Failed to send member added email to ${saved.email}: ${errorMessage(err)}`,
+        );
+      });
+      return saved;
     });
   }
 
@@ -237,6 +244,7 @@ export class UsersService {
         'googleId',
         'authProvider',
         'isActive',
+        'regionCodes',
       ],
     });
   }
@@ -271,6 +279,7 @@ export class UsersService {
         'googleId',
         'authProvider',
         'isActive',
+        'regionCodes',
       ],
     });
   }
@@ -1061,6 +1070,21 @@ export class UsersService {
       throw new BadRequestException(label);
     }
     return company;
+  }
+
+  private async sendMemberAddedEmail(
+    companyId: string,
+    user: User,
+  ): Promise<void> {
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+      select: ['id', 'name'],
+    });
+    await this.systemEmail.sendMemberAdded(
+      { email: user.email, name: user.name },
+      user.role ?? '',
+      company?.name ?? 'your team',
+    );
   }
 
   private async sendInviteEmail(

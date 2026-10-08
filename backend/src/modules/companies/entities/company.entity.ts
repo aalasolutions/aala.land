@@ -120,9 +120,9 @@ export class Company {
     name: 'billing_provider',
     type: 'varchar',
     length: 32,
-    default: 'stripe',
+    nullable: true,
   })
-  billingProvider: string;
+  billingProvider: string | null;
 
   @Column({
     name: 'billing_customer_id',
@@ -157,8 +157,63 @@ export class Company {
   })
   billingCurrency: string | null;
 
+  // Last charged unit amounts, minor units in billingCurrency; null uses price rows.
+  @Column({ name: 'charged_seat_net', type: 'integer', nullable: true })
+  chargedSeatNet: number | null;
+
+  @Column({ name: 'charged_seat_gross', type: 'integer', nullable: true })
+  chargedSeatGross: number | null;
+
+  @Column({ name: 'charged_base_net', type: 'integer', nullable: true })
+  chargedBaseNet: number | null;
+
+  @Column({ name: 'charged_base_gross', type: 'integer', nullable: true })
+  chargedBaseGross: number | null;
+
   @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
   billingMeta: Record<string, unknown> | null;
+
+  // Customer's downgrade request; cleared on withdraw or execution.
+  @Column({
+    name: 'downgrade_requested_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  downgradeRequestedAt: Date | null;
+
+  @Column({ name: 'downgrade_requested_by', type: 'uuid', nullable: true })
+  downgradeRequestedBy: string | null;
+
+  /** The subscription the request targets, so execution never cancels a newer one. */
+  @Column({
+    name: 'downgrade_subscription_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  downgradeSubscriptionId: string | null;
+
+  /** Failed provider steps (planning or cancel) of the pending request. */
+  @Column({ name: 'downgrade_attempts', type: 'integer', default: 0 })
+  downgradeAttempts: number;
+
+  @Column({
+    name: 'refund_terms_accepted_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  refundTermsAcceptedAt: Date | null;
+
+  @Column({ name: 'refund_terms_accepted_by', type: 'uuid', nullable: true })
+  refundTermsAcceptedBy: string | null;
+
+  @Column({
+    name: 'refund_terms_version',
+    type: 'varchar',
+    length: 32,
+    nullable: true,
+  })
+  refundTermsVersion: string | null;
 
   // First-touch immutable: set only at signup, never present in the update DTO.
   @Column({

@@ -57,13 +57,12 @@ export class CompaniesService {
     const saved = await this.companyRepository.save(company);
 
     // fire-and-forget: never block signup on the billing provider
-    this.billingService
-      .ensureCompanyCustomer(saved)
-      .catch((err) =>
-        this.logger.error(
-          `billing customer creation failed for company ${saved.id}: ${errorMessage(err)}`,
-        ),
-      );
+    this.billingService.ensureCompanyCustomer(saved).catch((err) => {
+      const message = `billing customer creation failed for company ${saved.id}: ${errorMessage(err)}`;
+      // A console-created company has no admin yet; checkout creates the customer later.
+      if (err instanceof BadRequestException) this.logger.debug(message);
+      else this.logger.error(message);
+    });
 
     return saved;
   }

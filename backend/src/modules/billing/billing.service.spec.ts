@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   HttpException,
@@ -8,8 +9,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { BillingService } from './billing.service';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { BillingService, REFUND_TERMS_VERSION } from './billing.service';
+import { BillingDowngradeService } from './billing-downgrade.service';
+import { Role } from '@shared/enums/roles.enum';
 import { BillingPrice } from './entities/billing-price.entity';
 import {
   BILLING_PROVIDER,
@@ -38,8 +41,14 @@ const makeCompany = (overrides: Partial<Company> = {}): Company =>
   }) as Company;
 
 const mockProviderMethods = {
+  name: 'stripe',
+  supportsCountryOverrides: true,
+  supportsTaxMode: true,
+  supportsImmediateCancel: false,
+  supportedCountries: null,
   ensureCustomer: jest.fn(),
   ensurePrice: jest.fn(),
+  archivePrice: jest.fn(),
   createSubscription: jest.fn(),
   getSeatQuantity: jest.fn(),
   updateSeatQuantity: jest.fn(),
@@ -57,6 +66,7 @@ let managerMock: {
   query: jest.Mock;
   findOne: jest.Mock;
   update: jest.Mock;
+  count: jest.Mock;
 };
 
 describe('BillingService', () => {
@@ -65,6 +75,12 @@ describe('BillingService', () => {
   let priceRepo: jest.Mocked<Repository<BillingPrice>>;
   let userRepo: jest.Mocked<Repository<User>>;
   let provider: jest.Mocked<BillingProvider>;
+  let downgrades: jest.Mocked<
+    Pick<
+      BillingDowngradeService,
+      'request' | 'withdraw' | 'releaseScheduledCancel'
+    >
+  >;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -72,6 +88,7 @@ describe('BillingService', () => {
       query: jest.fn().mockResolvedValue(undefined),
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      count: jest.fn(),
     };
     const dataSourceMock = {
       transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
@@ -100,6 +117,9 @@ describe('BillingService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             count: jest.fn(),
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ email: 'admin@example.com' }),
           },
         },
         {
@@ -118,10 +138,19 @@ describe('BillingService', () => {
           provide: DataSource,
           useValue: dataSourceMock,
         },
+        {
+          provide: BillingDowngradeService,
+          useValue: {
+            request: jest.fn(),
+            withdraw: jest.fn().mockResolvedValue(false),
+            releaseScheduledCancel: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<BillingService>(BillingService);
+    downgrades = module.get(BillingDowngradeService);
     companyRepo = module.get(getRepositoryToken(Company));
     priceRepo = module.get(getRepositoryToken(BillingPrice));
     userRepo = module.get(getRepositoryToken(User));
@@ -177,13 +206,39 @@ describe('BillingService', () => {
       expect(provider.ensureCustomer).toHaveBeenCalledWith({
         companyId,
         companyName: 'Test Company',
+        email: 'admin@example.com',
         idempotencyKey: `ensure-customer:${companyId}`,
+      });
+      expect(userRepo.findOne).toHaveBeenCalledWith({
+        where: { companyId, role: Role.COMPANY_ADMIN, isActive: true },
+        select: ['email'],
+        order: { createdAt: 'ASC' },
       });
       expect(managerMock.update).toHaveBeenCalledWith(Company, companyId, {
         billingCustomerId: 'cus_new456',
         billingProvider: 'stripe',
       });
       expect(result).toBe('cus_new456');
+    });
+
+    it('creates a new customer when the saved id belongs to a different provider', async () => {
+      const company = makeCompany({
+        billingCustomerId: 'cus_old',
+        billingProvider: 'other',
+      });
+      managerMock.findOne.mockResolvedValue(
+        makeCompany({ billingCustomerId: 'cus_old', billingProvider: 'other' }),
+      );
+      (provider.ensureCustomer as jest.Mock).mockResolvedValue('cus_new789');
+
+      const result = await service.ensureCompanyCustomer(company);
+
+      expect(provider.ensureCustomer).toHaveBeenCalled();
+      expect(managerMock.update).toHaveBeenCalledWith(Company, companyId, {
+        billingCustomerId: 'cus_new789',
+        billingProvider: 'stripe',
+      });
+      expect(result).toBe('cus_new789');
     });
 
     it('propagates provider errors upward', async () => {
@@ -199,6 +254,760 @@ describe('BillingService', () => {
   });
 
   describe('syncPrices', () => {
+    it('pushes country overrides on their base price and repoints every row', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_seat');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['PK'], currency: 'usd', unitAmount: 1000 }],
+        undefined,
+      );
+      // One update repoints the whole group.
+      expect(priceRepo.update).toHaveBeenCalledTimes(1);
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base', 'bp-pk']) },
+        {
+          provider: 'stripe',
+          providerPriceId: 'pri_seat',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+      );
+      expect(provider.archivePrice).not.toHaveBeenCalled();
+      expect(result).toEqual({ synced: 2, failed: 0, total: 2 });
+    });
+
+    it('re-creates a synced base price when a new override appears', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          provider: 'stripe',
+          providerPriceId: 'pri_old',
+        },
+        {
+          id: 'bp-in',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1200,
+          active: true,
+          countryCodes: ['IN'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+      await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base', 'bp-in']) },
+        expect.objectContaining({ providerPriceId: 'pri_new' }),
+      );
+      // The superseded price is archived after the repoint.
+      expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+    });
+
+    it('logs and continues when archiving the superseded price fails', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          provider: 'stripe',
+          providerPriceId: 'pri_old',
+        },
+        {
+          id: 'bp-in',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1200,
+          active: true,
+          countryCodes: ['IN'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+      (provider.archivePrice as jest.Mock).mockRejectedValueOnce(
+        new Error('archive failed'),
+      );
+
+      const result = await service.syncPrices();
+
+      expect(result).toEqual({ synced: 2, failed: 0, total: 2 });
+    });
+
+    it('does not archive a previous price minted by another provider', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          provider: 'other',
+          providerPriceId: 'price_other',
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+      await service.syncPrices();
+
+      expect(provider.archivePrice).not.toHaveBeenCalled();
+    });
+
+    it('re-creates the base price when an override was removed and clears the removed row', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          provider: 'stripe',
+          providerPriceId: 'pri_old',
+        },
+        {
+          id: 'bp-pk-old',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: false,
+          countryCodes: ['PK'],
+          provider: 'stripe',
+          providerPriceId: 'pri_old',
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base']) },
+        expect.objectContaining({ providerPriceId: 'pri_new' }),
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-pk-old']) },
+        { providerPriceId: null },
+      );
+      expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+      expect(result).toEqual({ synced: 1, failed: 0, total: 1 });
+    });
+
+    it('ignores a removed override whose price id is already superseded', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          provider: 'stripe',
+          providerPriceId: 'pri_current',
+        },
+        {
+          id: 'bp-pk-old',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: false,
+          countryCodes: ['PK'],
+          provider: 'stripe',
+          providerPriceId: 'pri_older',
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+
+      await service.syncPrices();
+
+      expect(provider.ensurePrice).not.toHaveBeenCalled();
+      expect(priceRepo.update).not.toHaveBeenCalled();
+    });
+
+    describe('retired base prices', () => {
+      const active: Partial<BillingPrice> = {
+        id: 'bp-base',
+        kind: 'SEAT',
+        currency: 'usd',
+        unitAmount: 3000,
+        active: true,
+        countryCodes: null,
+        provider: 'stripe',
+        providerPriceId: 'pri_current',
+      };
+      const retired = (
+        o: Partial<BillingPrice> = {},
+      ): Partial<BillingPrice> => ({
+        ...active,
+        id: 'bp-base-old',
+        unitAmount: 2500,
+        active: false,
+        providerPriceId: 'pri_old',
+        ...o,
+      });
+
+      it('archives the price of a deactivated base row and clears its id', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([active, retired()]);
+
+        await expect(service.needsPriceSync()).resolves.toBe(true);
+        await service.syncPrices();
+
+        expect(provider.ensurePrice).not.toHaveBeenCalled();
+        expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+        expect(priceRepo.update).toHaveBeenCalledWith(
+          { id: In(['bp-base-old']) },
+          { providerPriceId: null },
+        );
+      });
+
+      it('keeps the id when the archive call fails, so the next sync retries', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([active, retired()]);
+        (provider.archivePrice as jest.Mock).mockRejectedValueOnce(
+          new Error('archive failed'),
+        );
+
+        await service.syncPrices();
+
+        expect(priceRepo.update).not.toHaveBeenCalled();
+      });
+
+      it('leaves a retired price minted by another provider', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([
+          active,
+          retired({ id: 'bp-other', provider: 'paddle' }),
+        ]);
+
+        await expect(service.needsPriceSync()).resolves.toBe(false);
+        await service.syncPrices();
+
+        expect(provider.archivePrice).not.toHaveBeenCalled();
+      });
+
+      describe('a replacement base still selling on the superseded price', () => {
+        const pendingRows = [
+          { ...active, taxInclusive: true },
+          retired({ providerPriceId: 'pri_current' }),
+          retired({ id: 'bp-base-older', providerPriceId: 'pri_current' }),
+        ];
+
+        it('counts as pending work and reports the row as pending', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+
+          await expect(service.needsPriceSync()).resolves.toBe(true);
+          await expect(service.pendingPriceChangeIds()).resolves.toEqual(
+            new Set(['bp-base']),
+          );
+        });
+
+        it('registers the new price, then archives the old one once and clears every retired row', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+          (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+          await service.syncPrices();
+
+          expect(provider.ensurePrice).toHaveBeenCalledWith(
+            'SEAT',
+            'usd',
+            3000,
+            [],
+            true,
+          );
+          expect(provider.archivePrice).toHaveBeenCalledTimes(1);
+          expect(provider.archivePrice).toHaveBeenCalledWith('pri_current');
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base-old', 'bp-base-older']) },
+            { providerPriceId: null },
+          );
+        });
+
+        it('keeps selling on the old price when the provider refuses the new one', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue(pendingRows);
+          (provider.ensurePrice as jest.Mock).mockRejectedValueOnce(
+            new Error('provider down'),
+          );
+
+          const result = await service.syncPrices();
+
+          expect(provider.archivePrice).not.toHaveBeenCalled();
+          expect(priceRepo.update).toHaveBeenCalledTimes(1);
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base']) },
+            {
+              lastSyncError: 'provider down',
+              lastSyncErrorAt: expect.any(Date),
+            },
+          );
+          expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
+        });
+
+        it('repoints its overrides and still archives the old price once', async () => {
+          (priceRepo.find as jest.Mock).mockResolvedValue([
+            pendingRows[0],
+            {
+              ...active,
+              id: 'bp-pk',
+              unitAmount: 1000,
+              countryCodes: ['PK'],
+            },
+            pendingRows[1],
+          ]);
+          (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+          await service.syncPrices();
+
+          expect(priceRepo.update).toHaveBeenCalledWith(
+            { id: In(['bp-base', 'bp-pk']) },
+            expect.objectContaining({ providerPriceId: 'pri_new' }),
+          );
+          expect(provider.archivePrice).toHaveBeenCalledTimes(1);
+          expect(provider.archivePrice).toHaveBeenCalledWith('pri_current');
+        });
+      });
+
+      it('archives the old price in the same sync that replaces a base carrying overrides', async () => {
+        (priceRepo.find as jest.Mock).mockResolvedValue([
+          { ...active, provider: null, providerPriceId: null },
+          {
+            ...active,
+            id: 'bp-pk',
+            unitAmount: 1000,
+            countryCodes: ['PK'],
+            providerPriceId: 'pri_old',
+          },
+          retired(),
+        ]);
+        (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_new');
+
+        await service.syncPrices();
+
+        expect(provider.archivePrice).toHaveBeenCalledWith('pri_old');
+        expect(priceRepo.update).toHaveBeenCalledWith(
+          { id: In(['bp-base-old']) },
+          { providerPriceId: null },
+        );
+      });
+    });
+
+    it('fails the whole group without calling the provider when override countries overlap', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['pk'],
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk-in',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1200,
+          active: true,
+          countryCodes: ['PK', 'IN'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).not.toHaveBeenCalled();
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base', 'bp-pk', 'bp-pk-in']) },
+        {
+          lastSyncError:
+            'Countries PK appear in more than one active SEAT override',
+          lastSyncErrorAt: expect.any(Date),
+        },
+      );
+      expect(result).toEqual({ synced: 0, failed: 3, total: 3 });
+    });
+
+    it('attaches an override in another currency to the base of its kind', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-de',
+          kind: 'SEAT',
+          currency: 'eur',
+          unitAmount: 2000,
+          active: true,
+          countryCodes: ['DE'],
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-ent',
+          kind: 'ENTERPRISE_BASE',
+          currency: 'usd',
+          unitAmount: 25000,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock)
+        .mockResolvedValueOnce('pri_seat')
+        .mockResolvedValueOnce('pri_ent');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['DE'], currency: 'eur', unitAmount: 2000 }],
+        undefined,
+      );
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'ENTERPRISE_BASE',
+        'usd',
+        25000,
+        [],
+        undefined,
+      );
+      expect(result).toEqual({ synced: 3, failed: 0, total: 3 });
+    });
+
+    it('requires the default checkout currency as a base when the provider has no base rule', () => {
+      expect(service.requiredBaseCurrencies).toEqual(['usd']);
+
+      Object.assign(provider, { baseCurrencies: ['usd', 'eur'] });
+      expect(service.requiredBaseCurrencies).toEqual(['usd', 'eur']);
+    });
+
+    it('fails a base row outside the provider base currencies without calling the provider', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-aed',
+          kind: 'SEAT',
+          currency: 'aed',
+          unitAmount: 9500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).not.toHaveBeenCalled();
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-aed', {
+        lastSyncError:
+          'Currency aed is not a base currency for the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
+    });
+
+    it('leaves an override for an unsold country out of its group and fails only that row', async () => {
+      Object.assign(provider, { supportedCountries: ['PK', 'IN'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-ir',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 900,
+          active: true,
+          countryCodes: ['IR', 'IN'],
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_seat');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [{ countryCodes: ['PK'], currency: 'usd', unitAmount: 1000 }],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-ir', {
+        lastSyncError: 'The stripe provider does not sell to: IR',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base', 'bp-pk']) },
+        expect.objectContaining({ providerPriceId: 'price_seat' }),
+      );
+      expect(result).toEqual({ synced: 2, failed: 1, total: 3 });
+
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        { ...rows[0], provider: 'stripe', providerPriceId: 'price_seat' },
+        { ...rows[1], provider: 'stripe', providerPriceId: 'price_seat' },
+        {
+          ...rows[2],
+          lastSyncError: 'The stripe provider does not sell to: IR',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('syncs bases alone and fails override rows when the provider has no country overrides', async () => {
+      Object.assign(provider, { supportsCountryOverrides: false });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 1000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+          lastSyncError: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_seat');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledTimes(1);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-pk', {
+        lastSyncError:
+          'Custom prices by country are not supported by the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-base']) },
+        expect.objectContaining({ providerPriceId: 'price_seat' }),
+      );
+      expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
+
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        { ...rows[0], provider: 'stripe', providerPriceId: 'price_seat' },
+        {
+          ...rows[1],
+          lastSyncError:
+            'Custom prices by country are not supported by the stripe provider',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('runs concurrent calls one after the other', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      const order: string[] = [];
+      let release!: () => void;
+      (provider.ensurePrice as jest.Mock)
+        .mockImplementationOnce(async () => {
+          order.push('first:start');
+          await new Promise<void>((resolve) => (release = resolve));
+          order.push('first:end');
+          return 'price_a';
+        })
+        .mockImplementationOnce(() => {
+          order.push('second:start');
+          return Promise.resolve('price_b');
+        });
+
+      const first = service.syncPrices();
+      const second = service.syncPrices();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(order).toEqual(['first:start']);
+      release();
+      await Promise.all([first, second]);
+
+      expect(order).toEqual(['first:start', 'first:end', 'second:start']);
+    });
+
+    it('keeps the queue running after a failed run', async () => {
+      (priceRepo.find as jest.Mock)
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce([]);
+
+      await expect(service.syncPrices()).rejects.toThrow('db down');
+      await expect(service.syncPrices()).resolves.toEqual({
+        synced: 0,
+        failed: 0,
+        total: 0,
+      });
+    });
+
+    it('fails only the override whose currency the provider cannot charge', async () => {
+      Object.assign(provider, { supportedCurrencies: ['usd'] });
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-base',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          countryCodes: null,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-pk',
+          kind: 'SEAT',
+          currency: 'pkr',
+          unitAmount: 280000,
+          active: true,
+          countryCodes: ['PK'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('pri_base');
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-pk', {
+        lastSyncError: 'Currency pkr is not supported by the stripe provider',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
+    });
+
+    it('marks an override with no base row as failed without calling the provider', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-eur',
+          kind: 'SEAT',
+          currency: 'eur',
+          unitAmount: 2000,
+          active: true,
+          countryCodes: ['DE'],
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+
+      const result = await service.syncPrices();
+
+      expect(provider.ensurePrice).not.toHaveBeenCalled();
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-eur', {
+        lastSyncError: 'No active base SEAT price to carry this override',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      expect(result).toEqual({ synced: 0, failed: 1, total: 1 });
+    });
+
     it('skips rows that already have providerPriceId and returns correct counts', async () => {
       const rows: Partial<BillingPrice>[] = [
         {
@@ -207,6 +1016,7 @@ describe('BillingService', () => {
           currency: 'usd',
           unitAmount: 2500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing',
         },
         {
@@ -215,6 +1025,7 @@ describe('BillingService', () => {
           currency: 'aed',
           unitAmount: 9500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing2',
         },
       ];
@@ -242,6 +1053,7 @@ describe('BillingService', () => {
           currency: 'aed',
           unitAmount: 9500,
           active: true,
+          provider: 'stripe',
           providerPriceId: 'price_existing',
         },
         {
@@ -262,13 +1074,51 @@ describe('BillingService', () => {
       const result = await service.syncPrices();
 
       expect(provider.ensurePrice).toHaveBeenCalledTimes(2);
-      expect(provider.ensurePrice).toHaveBeenCalledWith('SEAT', 'usd', 2500);
+      expect(provider.ensurePrice).toHaveBeenCalledWith(
+        'SEAT',
+        'usd',
+        2500,
+        [],
+        undefined,
+      );
       expect(provider.ensurePrice).toHaveBeenCalledWith(
         'ENTERPRISE_BASE',
         'usd',
         25000,
+        [],
+        undefined,
       );
       expect(result).toEqual({ synced: 2, failed: 0, total: 3 });
+    });
+
+    it('re-syncs a row whose price id belongs to a different provider', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-1',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          provider: 'other',
+          providerPriceId: 'price_other',
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock).mockResolvedValueOnce('price_new');
+      (priceRepo.update as jest.Mock).mockResolvedValue({ affected: 1 });
+
+      const result = await service.syncPrices();
+
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-1']) },
+        {
+          provider: 'stripe',
+          providerPriceId: 'price_new',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+      );
+      expect(result).toEqual({ synced: 1, failed: 0, total: 1 });
     });
 
     it('returns zero counts when no active prices exist', async () => {
@@ -307,17 +1157,24 @@ describe('BillingService', () => {
       const result = await service.syncPrices();
 
       expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
-      expect(priceRepo.update).toHaveBeenCalledWith('bp-1', {
-        lastSyncError:
-          'Invalid currency: pkr is not supported for this account',
-        lastSyncErrorAt: expect.any(Date),
-      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-1']) },
+        {
+          lastSyncError:
+            'Invalid currency: pkr is not supported for this account',
+          lastSyncErrorAt: expect.any(Date),
+        },
+      );
       // The success clears any previously recorded error.
-      expect(priceRepo.update).toHaveBeenCalledWith('bp-2', {
-        providerPriceId: 'price_new_usd',
-        lastSyncError: null,
-        lastSyncErrorAt: null,
-      });
+      expect(priceRepo.update).toHaveBeenCalledWith(
+        { id: In(['bp-2']) },
+        {
+          provider: 'stripe',
+          providerPriceId: 'price_new_usd',
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        },
+      );
     });
   });
 
@@ -325,7 +1182,161 @@ describe('BillingService', () => {
   // Unit 3 tests
   // -------------------------------------------------------------------------
 
+  describe('needsPriceSync', () => {
+    const base: Partial<BillingPrice> = {
+      id: 'bp-base',
+      kind: 'SEAT',
+      currency: 'usd',
+      unitAmount: 2500,
+      active: true,
+      countryCodes: null,
+      provider: 'stripe',
+      providerPriceId: 'pri_current',
+    };
+    const removed = (providerPriceId: string): Partial<BillingPrice> => ({
+      id: 'bp-pk-old',
+      kind: 'SEAT',
+      currency: 'usd',
+      unitAmount: 1000,
+      active: false,
+      countryCodes: ['PK'],
+      provider: 'stripe',
+      providerPriceId,
+    });
+
+    it('is false when every active row is synced and no removed override rides on a base', async () => {
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        base,
+        removed('pri_older'),
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('is true when a removed override still holds the base price id', async () => {
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        base,
+        removed('pri_current'),
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(true);
+    });
+
+    it('is false for a base row already marked as an unsupported base currency', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        base,
+        {
+          ...base,
+          id: 'bp-aed',
+          currency: 'aed',
+          provider: null,
+          providerPriceId: null,
+          lastSyncError:
+            'Currency aed is not a base currency for the stripe provider',
+        },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(false);
+    });
+
+    it('is true when an active row is unsynced', async () => {
+      (priceRepo.find as jest.Mock).mockResolvedValue([
+        { ...base, providerPriceId: null },
+      ]);
+      await expect(service.needsPriceSync()).resolves.toBe(true);
+    });
+  });
+
+  describe('getProviderPriceId', () => {
+    it('uses the base row in the given currency when the provider has no base rule', async () => {
+      priceRepo.findOne.mockResolvedValue({
+        provider: 'stripe',
+        providerPriceId: 'pri_eur',
+      } as BillingPrice);
+      await expect(service['getProviderPriceId']('SEAT', 'eur')).resolves.toBe(
+        'pri_eur',
+      );
+      expect(priceRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          kind: 'SEAT',
+          active: true,
+          countryCodes: IsNull(),
+          currency: 'eur',
+        },
+      });
+    });
+
+    it('uses the base of the kind in the provider base currency, whatever the company currency', async () => {
+      Object.assign(provider, { baseCurrencies: ['usd'] });
+      priceRepo.findOne.mockResolvedValue({
+        provider: 'stripe',
+        providerPriceId: 'pri_base',
+      } as BillingPrice);
+      await expect(service['getProviderPriceId']('SEAT', 'eur')).resolves.toBe(
+        'pri_base',
+      );
+      expect(priceRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          kind: 'SEAT',
+          active: true,
+          countryCodes: IsNull(),
+          currency: In(['usd']),
+        },
+      });
+    });
+
+    it('keeps the not-found error when no base row exists', async () => {
+      priceRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service['getProviderPriceId']('SEAT', 'eur'),
+      ).rejects.toThrow('No active SEAT price found for currency eur.');
+    });
+
+    it('keeps the not-synced error for an unsynced base row', async () => {
+      priceRepo.findOne.mockResolvedValue({
+        provider: null,
+        providerPriceId: null,
+      } as BillingPrice);
+      await expect(
+        service['getProviderPriceId']('SEAT', 'eur'),
+      ).rejects.toThrow(
+        'SEAT price for eur has not been synced to the billing provider yet.',
+      );
+    });
+  });
+
   describe('getSubscriptionState', () => {
+    beforeEach(() => {
+      priceRepo.find.mockResolvedValue([]);
+    });
+
+    it('lists the amount still being charged while a replacement price is registering', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      const base = {
+        id: 'bp-base',
+        kind: 'SEAT',
+        currency: 'usd',
+        unitAmount: 3000,
+        active: true,
+        countryCodes: null,
+        provider: 'stripe',
+        providerPriceId: 'pri_old',
+      };
+      priceRepo.findOne.mockResolvedValue(base as BillingPrice);
+      priceRepo.find.mockResolvedValue([
+        base,
+        { ...base, id: 'bp-base-old', unitAmount: 2500, active: false },
+      ] as BillingPrice[]);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(2500);
+    });
+
     it('returns the rich billing snapshot for a FREE company with no subscription', async () => {
       companyRepo.findOne.mockResolvedValue(makeCompany());
       priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
@@ -355,6 +1366,10 @@ describe('BillingService', () => {
         canDowngradeToFree: true,
         cancelAtPeriodEnd: false,
         cancelAt: null,
+        downgradeRequestedAt: null,
+        downgradeEffectiveAt: null,
+        refundTermsAcceptedAt: null,
+        cancelMode: 'period_end',
       });
       expect(provider.getCancellationState).not.toHaveBeenCalled();
       expect(state).not.toHaveProperty('billingSubscriptionId');
@@ -382,6 +1397,73 @@ describe('BillingService', () => {
       });
       expect(state.cancelAtPeriodEnd).toBe(true);
       expect(state.cancelAt).toBe('2026-08-01T00:00:00.000Z');
+    });
+
+    it('returns the pending request, its effective time and the consent time', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.PRO,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          downgradeRequestedAt: new Date('2026-10-04T10:00:00.000Z'),
+          refundTermsAcceptedAt: new Date('2026-09-01T08:00:00.000Z'),
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.downgradeRequestedAt).toBe('2026-10-04T10:00:00.000Z');
+      expect(state.downgradeEffectiveAt).toBe('2026-10-06T10:00:00.000Z');
+      expect(state.refundTermsAcceptedAt).toBe('2026-09-01T08:00:00.000Z');
+    });
+
+    it('reports the delayed cancel mode and no period-end date when nothing is scheduled', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+      (provider.getCancellationState as jest.Mock).mockResolvedValue({
+        cancelAtPeriodEnd: false,
+        cancelAt: new Date('2026-11-01T00:00:00.000Z'),
+      });
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.cancelMode).toBe('delayed_refund');
+      expect(state.cancelAtPeriodEnd).toBe(false);
+      expect(state.cancelAt).toBeNull();
+    });
+
+    it('still shows a cancel the provider has scheduled on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+      (provider.getCancellationState as jest.Mock).mockResolvedValue({
+        cancelAtPeriodEnd: true,
+        cancelAt: new Date('2026-11-01T00:00:00.000Z'),
+      });
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.cancelAtPeriodEnd).toBe(true);
+      expect(state.cancelAt).toBe('2026-11-01T00:00:00.000Z');
     });
 
     it('reports hasSubscription and blocks downgrade with more than 1 active user', async () => {
@@ -427,8 +1509,68 @@ describe('BillingService', () => {
 
       expect(state.currency).toBe('usd');
       expect(priceRepo.findOne).toHaveBeenCalledWith({
-        where: { kind: 'SEAT', currency: 'usd', active: true },
+        where: {
+          kind: 'SEAT',
+          currency: 'usd',
+          active: true,
+          countryCodes: IsNull(),
+        },
       });
+    });
+
+    it('returns the stored charged gross amounts once the currency is pinned', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.ENTERPRISE,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          billingCurrency: 'eur',
+          chargedSeatNet: 900,
+          chargedSeatGross: 1062,
+          chargedBaseNet: 21000,
+          chargedBaseGross: 24999,
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue(null);
+      userRepo.count.mockResolvedValue(2);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.currency).toBe('eur');
+      expect(state.seatAmount).toBe(1062);
+      expect(state.baseAmount).toBe(24999);
+    });
+
+    it('falls back per kind to the base row when only one charged amount is stored', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({
+          subscriptionTier: SubscriptionTier.PRO,
+          billingSubscriptionId: 'sub_123',
+          billingCustomerId: 'cus_1',
+          billingCurrency: 'usd',
+          chargedSeatGross: 2000,
+          chargedBaseGross: null,
+        }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(2000);
+      expect(state.baseAmount).toBe(2500);
+    });
+
+    it('ignores stored amounts while no billing currency is pinned', async () => {
+      companyRepo.findOne.mockResolvedValue(
+        makeCompany({ billingCurrency: null, chargedSeatGross: 1062 }),
+      );
+      priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as BillingPrice);
+      userRepo.count.mockResolvedValue(1);
+
+      const state = await service.getSubscriptionState(companyId);
+
+      expect(state.seatAmount).toBe(9500);
     });
 
     it('returns seatAmount null when no active SEAT price exists', async () => {
@@ -448,6 +1590,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const basePriceRow: Partial<BillingPrice> = {
@@ -456,6 +1599,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 95000,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_base',
     };
 
@@ -479,6 +1623,7 @@ describe('BillingService', () => {
     it('calls createSubscription with the seat price, PRO plan, no base, and all-seats quantity', async () => {
       const result = await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
@@ -497,11 +1642,41 @@ describe('BillingService', () => {
       expect(result.subscriptionId).toBeNull();
     });
 
+    it('stores who accepted the refund terms, when, and the wording version', async () => {
+      await service.startCheckout(
+        companyId,
+        'user-1',
+        'http://localhost:4200/billing/success',
+        'http://localhost:4200/billing/cancel',
+      );
+      expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+        refundTermsAcceptedAt: expect.any(Date),
+        refundTermsAcceptedBy: 'user-1',
+        refundTermsVersion: REFUND_TERMS_VERSION,
+      });
+    });
+
+    it('stores no acceptance when the provider refuses the checkout', async () => {
+      (provider.createSubscription as jest.Mock).mockRejectedValue(
+        new Error('declined'),
+      );
+      await expect(
+        service.startCheckout(
+          companyId,
+          'user-1',
+          'http://localhost:4200/billing/success',
+          'http://localhost:4200/billing/cancel',
+        ),
+      ).rejects.toBeInstanceOf(BadGatewayException);
+      expect(companyRepo.update).not.toHaveBeenCalled();
+    });
+
     it('uses quantity 1 (the solo owner seat) when company has no active users', async () => {
       userRepo.count.mockResolvedValue(0);
       (provider.createSubscription as jest.Mock).mockClear();
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
@@ -514,23 +1689,35 @@ describe('BillingService', () => {
     it('uses the user-selected payment currency for the seat price lookup', async () => {
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
         'sar',
       );
       expect(priceRepo.findOne).toHaveBeenCalledWith({
-        where: { kind: 'SEAT', currency: 'sar', active: true },
+        where: {
+          kind: 'SEAT',
+          currency: 'sar',
+          active: true,
+          countryCodes: IsNull(),
+        },
       });
     });
 
     it('defaults to USD when no currency is selected', async () => {
       await service.startCheckout(
         companyId,
+        'user-1',
         'http://localhost:4200/billing/success',
         'http://localhost:4200/billing/cancel',
       );
       expect(priceRepo.findOne).toHaveBeenCalledWith({
-        where: { kind: 'SEAT', currency: 'usd', active: true },
+        where: {
+          kind: 'SEAT',
+          currency: 'usd',
+          active: true,
+          countryCodes: IsNull(),
+        },
       });
     });
 
@@ -538,6 +1725,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
           'eur',
@@ -552,6 +1740,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -560,9 +1749,11 @@ describe('BillingService', () => {
 
     it('throws BadRequestException when no active SEAT price is found', async () => {
       priceRepo.findOne.mockResolvedValue(null);
+      priceRepo.find.mockResolvedValue([]);
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -577,6 +1768,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -593,6 +1785,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'http://localhost:4200/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -604,6 +1797,7 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           'https://evil.example.com/success',
           'http://localhost:4200/billing/cancel',
         ),
@@ -615,11 +1809,62 @@ describe('BillingService', () => {
       await expect(
         service.startCheckout(
           companyId,
+          'user-1',
           '/billing/success',
           'http://localhost:4200/billing/cancel',
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(provider.createSubscription).not.toHaveBeenCalled();
+    });
+
+    it('maps a provider failure to 502 without the provider reason', async () => {
+      (provider.createSubscription as jest.Mock).mockRejectedValue(
+        new Error('price is archived'),
+      );
+      await expect(
+        service.startCheckout(
+          companyId,
+          'user-1',
+          'http://localhost:4200/billing/success',
+          'http://localhost:4200/billing/cancel',
+        ),
+      ).rejects.toThrow(
+        new BadGatewayException(
+          'Checkout could not start. Please try again or contact support.',
+        ),
+      );
+    });
+
+    it('passes an HttpException from the provider through unchanged', async () => {
+      const conflict = new ConflictException('already billed');
+      (provider.createSubscription as jest.Mock).mockRejectedValue(conflict);
+      await expect(
+        service.startCheckout(
+          companyId,
+          'user-1',
+          'http://localhost:4200/billing/success',
+          'http://localhost:4200/billing/cancel',
+        ),
+      ).rejects.toBe(conflict);
+    });
+
+    it('adminStartCheckout maps a provider failure to 502 with the provider reason', async () => {
+      (provider.createSubscription as jest.Mock).mockRejectedValue(
+        new Error('customer is blocked'),
+      );
+      await expect(
+        service.adminStartCheckout(
+          companyId,
+          'ENTERPRISE',
+          3,
+          'http://localhost:4200/billing/success',
+          'http://localhost:4200/billing/cancel',
+        ),
+      ).rejects.toThrow(
+        new BadGatewayException(
+          'The payment provider rejected the checkout: customer is blocked',
+        ),
+      );
     });
   });
 
@@ -630,6 +1875,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const basePriceRow: Partial<BillingPrice> = {
@@ -638,6 +1884,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 95000,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_base',
     };
 
@@ -708,17 +1955,75 @@ describe('BillingService', () => {
     });
 
     it('calls provider.cancel when company has exactly 1 active user', async () => {
-      await service.cancelSubscription(companyId);
+      const result = await service.cancelSubscription(companyId, 'user-1');
       expect(provider.cancel).toHaveBeenCalledWith({
+        subscriptionId: 'sub_pro',
+        customerId: 'cus_1',
+      });
+      expect(result).toEqual({
+        downgradeRequestedAt: null,
+        downgradeEffectiveAt: null,
+      });
+      expect(downgrades.request).not.toHaveBeenCalled();
+    });
+
+    it('records a delayed request instead of cancelling on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      const pending = {
+        downgradeRequestedAt: '2026-10-04T10:00:00.000Z',
+        downgradeEffectiveAt: '2026-10-06T10:00:00.000Z',
+      };
+      downgrades.request.mockResolvedValue(pending);
+      await expect(
+        service.cancelSubscription(companyId, 'user-1'),
+      ).resolves.toEqual(pending);
+      expect(downgrades.request).toHaveBeenCalledWith(
+        companyId,
+        'sub_pro',
+        'user-1',
+      );
+      expect(provider.cancel).not.toHaveBeenCalled();
+      expect(downgrades.releaseScheduledCancel).toHaveBeenCalledWith({
         subscriptionId: 'sub_pro',
         customerId: 'cus_1',
       });
     });
 
+    it('still records the request when clearing a scheduled cancel fails', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      downgrades.releaseScheduledCancel.mockRejectedValue(new Error('down'));
+      downgrades.request.mockResolvedValue({
+        downgradeRequestedAt: 'a',
+        downgradeEffectiveAt: 'b',
+      });
+      await service.cancelSubscription(companyId, 'user-1');
+      expect(downgrades.request).toHaveBeenCalled();
+    });
+
+    it('never clears a scheduled cancel on a period-end adapter', async () => {
+      await service.cancelSubscription(companyId, 'user-1');
+      expect(downgrades.releaseScheduledCancel).not.toHaveBeenCalled();
+    });
+
+    it('keeps the one-active-user rule on an immediate-cancel adapter', async () => {
+      (
+        provider as { supportsImmediateCancel: boolean }
+      ).supportsImmediateCancel = true;
+      userRepo.count.mockResolvedValue(2);
+      await expect(
+        service.cancelSubscription(companyId, 'user-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(downgrades.request).not.toHaveBeenCalled();
+    });
+
     it('throws ConflictException (409) when company has more than 1 active user', async () => {
       userRepo.count.mockResolvedValue(3);
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(provider.cancel).not.toHaveBeenCalled();
     });
@@ -726,14 +2031,14 @@ describe('BillingService', () => {
     it('throws BadRequestException when company has no active subscription', async () => {
       companyRepo.findOne.mockResolvedValue(makeCompany());
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('throws NotFoundException when company does not exist', async () => {
       companyRepo.findOne.mockResolvedValue(null);
       await expect(
-        service.cancelSubscription(companyId),
+        service.cancelSubscription(companyId, 'user-1'),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -752,10 +2057,25 @@ describe('BillingService', () => {
 
     it('calls provider.resume with the subscription ref to clear a queued downgrade', async () => {
       await service.resumeSubscription(companyId);
+      expect(downgrades.withdraw).toHaveBeenCalledWith(companyId);
       expect(provider.resume).toHaveBeenCalledWith({
         subscriptionId: 'sub_pro',
         customerId: 'cus_1',
       });
+    });
+
+    it('withdraws a pending downgrade request without calling the provider', async () => {
+      downgrades.withdraw.mockResolvedValue(true);
+      await service.resumeSubscription(companyId);
+      expect(provider.resume).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the conflict when execution has already started', async () => {
+      downgrades.withdraw.mockRejectedValue(new ConflictException('started'));
+      await expect(
+        service.resumeSubscription(companyId),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(provider.resume).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException when company has no active subscription', async () => {
@@ -778,6 +2098,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const baseCompany = makeCompany({
@@ -892,6 +2213,7 @@ describe('BillingService', () => {
       currency: 'aed',
       unitAmount: 9500,
       active: true,
+      provider: 'stripe',
       providerPriceId: 'price_aed_seat',
     };
     const baseCompany = makeCompany({
@@ -993,6 +2315,182 @@ describe('BillingService', () => {
         .catch((e) => e);
       expect(err).toBeInstanceOf(HttpException);
       expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+    });
+  });
+
+  describe('reconcileSeatsToActiveUsers', () => {
+    const subscribed = (overrides: Partial<Company> = {}) =>
+      makeCompany({
+        subscriptionTier: SubscriptionTier.PRO,
+        billingSubscriptionId: 'sub_1',
+        billingCustomerId: 'cus_1',
+        billingCurrency: 'usd',
+        ...overrides,
+      });
+    const seatRow = {
+      kind: 'SEAT',
+      currency: 'usd',
+      unitAmount: 2500,
+      active: true,
+      countryCodes: null,
+      provider: 'stripe',
+      providerPriceId: 'pri_seat',
+    } as BillingPrice;
+
+    beforeEach(() => {
+      priceRepo.findOne.mockResolvedValue(seatRow);
+    });
+
+    it('sets a PRO seat line to the active users under the company lock', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(5);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(2);
+
+      expect(managerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(managerMock.count).toHaveBeenCalledWith(User, {
+        where: { companyId, isActive: true },
+      });
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        { subscriptionId: 'sub_1', customerId: 'cus_1' },
+        2,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('does not settle at once when the reconcile raises the quantity', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(4);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(2);
+
+      await service.reconcileSeatsToActiveUsers(companyId, 'sub_1');
+
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        4,
+        'pri_seat',
+        false,
+      );
+    });
+
+    it('floors a PRO seat line at one', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(0);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(3);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(1);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        1,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('sets an ENTERPRISE seat line to active users minus the base seat', async () => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed({ subscriptionTier: SubscriptionTier.ENTERPRISE }),
+      );
+      managerMock.count.mockResolvedValue(4);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(0);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(4);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        3,
+        'pri_seat',
+        false,
+      );
+    });
+
+    it('floors an ENTERPRISE seat line at zero for a solo team', async () => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed({ subscriptionTier: SubscriptionTier.ENTERPRISE }),
+      );
+      managerMock.count.mockResolvedValue(1);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(2);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(1);
+      expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+        expect.anything(),
+        0,
+        'pri_seat',
+        true,
+      );
+    });
+
+    it('makes no provider write when the live quantity already matches', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(3);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(3);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBe(3);
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['a replaced subscription', { billingSubscriptionId: 'sub_other' }],
+      ['a canceled subscription', { billingSubscriptionId: null }],
+      ['a FREE company', { subscriptionTier: SubscriptionTier.FREE }],
+    ])('skips %s without calling the provider', async (_label, overrides) => {
+      managerMock.findOne.mockResolvedValue(
+        subscribed(overrides as Partial<Company>),
+      );
+      managerMock.count.mockResolvedValue(2);
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBeNull();
+      expect(provider.getSeatQuantity).not.toHaveBeenCalled();
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it('skips a missing company', async () => {
+      managerMock.findOne.mockResolvedValue(null);
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).resolves.toBeNull();
+    });
+
+    it('throws when the provider rejects the seat change so the event is retried', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockResolvedValue(5);
+      (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(
+        new Error('provider down'),
+      );
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).rejects.toThrow('provider down');
+    });
+
+    it('throws when the live quantity cannot be read', async () => {
+      managerMock.findOne.mockResolvedValue(subscribed());
+      managerMock.count.mockResolvedValue(2);
+      (provider.getSeatQuantity as jest.Mock).mockRejectedValueOnce(
+        new Error('timeout'),
+      );
+
+      await expect(
+        service.reconcileSeatsToActiveUsers(companyId, 'sub_1'),
+      ).rejects.toBeInstanceOf(HttpException);
+      expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
     });
   });
 });

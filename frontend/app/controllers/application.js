@@ -486,6 +486,17 @@ export default class ApplicationController extends Controller {
   }
 
   @tracked showLogoutModal = false;
+  @tracked userMenuOpen = false;
+
+  @action
+  setUserMenuOpen(open) {
+    this.userMenuOpen = open;
+  }
+
+  @action
+  closeUserMenu() {
+    this.userMenuOpen = false;
+  }
 
   @action
   toggleRegionDropdown() {

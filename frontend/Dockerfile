@@ -6,6 +6,10 @@ ENV EMBER_CLI_DISABLE_ANALYTICS=true
 
 ARG GOOGLE_CLIENT_ID
 ENV GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+ARG PADDLE_CLIENT_TOKEN
+ENV PADDLE_CLIENT_TOKEN=$PADDLE_CLIENT_TOKEN
+ARG PADDLE_ENVIRONMENT
+ENV PADDLE_ENVIRONMENT=$PADDLE_ENVIRONMENT
 
 # Defaults to stripping data-test-* selectors so an unconfigured build never
 # ships test hooks. Staging sets this false at build time so the selectors

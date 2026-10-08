@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -7,13 +8,13 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, LessThan, Or, Repository } from 'typeorm';
 import {
   Company,
   SubscriptionTier,
   TIER_LIMITS,
 } from '../companies/entities/company.entity';
-import { StripeEvent } from './entities/stripe-event.entity';
+import { BillingEvent } from './entities/billing-event.entity';
 import {
   BILLING_PROVIDER,
   BillingPlan,
@@ -22,7 +23,11 @@ import {
 } from './provider/billing-provider.interface';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
 import { BillingHistoryService } from './billing-history.service';
+import { BillingService } from './billing.service';
+import { BillingDowngradeService } from './billing-downgrade.service';
 import {
+  ChargedUnitAmount,
+  NormalizedBillingEvent,
   PaymentFailedEvent,
   PaymentSucceededEvent,
   PlanChangedEvent,
@@ -39,6 +44,35 @@ export function planToTier(plan: BillingPlan): SubscriptionTier {
   return tier ?? SubscriptionTier.PRO;
 }
 
+type ChargedAmountColumns = Partial<
+  Pick<
+    Company,
+    | 'chargedSeatNet'
+    | 'chargedSeatGross'
+    | 'chargedBaseNet'
+    | 'chargedBaseGross'
+  >
+>;
+
+function chargedAmountPatch(
+  lines: ChargedUnitAmount[] | undefined,
+): ChargedAmountColumns {
+  const patch: ChargedAmountColumns = {};
+  for (const line of lines ?? []) {
+    if (line.kind === 'SEAT') {
+      patch.chargedSeatNet = line.net;
+      patch.chargedSeatGross = line.gross;
+    } else {
+      patch.chargedBaseNet = line.net;
+      patch.chargedBaseGross = line.gross;
+    }
+  }
+  return patch;
+}
+
+/** A claim older than this is taken as a crashed delivery; handlers finish well within it. */
+const PROCESSING_CLAIM_TTL_MS = 5 * 60 * 1000;
+
 function isUniqueViolation(err: unknown): boolean {
   const e = err as { code?: string; driverError?: { code?: string } };
   return e?.code === '23505' || e?.driverError?.code === '23505';
@@ -49,19 +83,25 @@ export class BillingWebhookService implements OnModuleInit {
   private readonly logger = new Logger(BillingWebhookService.name);
 
   constructor(
-    @InjectRepository(StripeEvent)
-    private readonly eventRepo: Repository<StripeEvent>,
+    @InjectRepository(BillingEvent)
+    private readonly eventRepo: Repository<BillingEvent>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
     @Inject(BILLING_PROVIDER)
     private readonly provider: BillingProvider,
     private readonly dispatcher: BillingEventDispatcher,
     private readonly history: BillingHistoryService,
+    private readonly billing: BillingService,
+    private readonly downgrades: BillingDowngradeService,
   ) {}
 
   onModuleInit(): void {
     this.dispatcher.register('SubscriptionActivated', (e) =>
       this.onSubscriptionActivated(e),
+    );
+    // Registered second: resizes only after the company row holds the subscription.
+    this.dispatcher.register('SubscriptionActivated', (e) =>
+      this.reconcileSeats(e),
     );
     this.dispatcher.register('SubscriptionUpdated', (e) =>
       this.onSubscriptionUpdated(e),
@@ -77,6 +117,9 @@ export class BillingWebhookService implements OnModuleInit {
       this.onPaymentSucceeded(e),
     );
     this.dispatcher.register('PaymentFailed', (e) => this.onPaymentFailed(e));
+    this.dispatcher.register('RefundUpdated', (e) =>
+      this.downgrades.applyRefundUpdate(e),
+    );
   }
 
   async handleWebhook(
@@ -96,13 +139,15 @@ export class BillingWebhookService implements OnModuleInit {
       throw new BadRequestException('Webhook signature verification failed');
     }
 
-    // Duplicate hits UNIQUE; re-dispatch instead of dropping if the prior row never finished.
+    // Duplicate hits UNIQUE; re-dispatch only if the prior delivery failed or went stale.
+    const claimedAt = new Date();
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await this.eventRepo.insert({
         providerEventId: parsed.providerEventId,
         type: parsed.providerEventType,
         payload: parsed.payload,
+        processingStartedAt: claimedAt,
       } as any);
     } catch (err) {
       if (!isUniqueViolation(err)) {
@@ -117,6 +162,21 @@ export class BillingWebhookService implements OnModuleInit {
         );
         return { received: true };
       }
+      const claim = await this.eventRepo.update(
+        {
+          providerEventId: parsed.providerEventId,
+          processedAt: IsNull(),
+          processingStartedAt: Or(
+            IsNull(),
+            LessThan(new Date(Date.now() - PROCESSING_CLAIM_TTL_MS)),
+          ),
+        },
+        { processingStartedAt: claimedAt },
+      );
+      if (!claim.affected) {
+        // 409 makes the provider retry after the delivery in flight has finished.
+        throw new ConflictException('Webhook is already being processed');
+      }
       this.logger.warn(
         `Webhook ${parsed.providerEventId} (${parsed.providerEventType}) was received but never finished processing; re-dispatching`,
       );
@@ -124,10 +184,22 @@ export class BillingWebhookService implements OnModuleInit {
 
     try {
       for (const event of parsed.events) {
+        if (!(await this.isCompanyCustomer(parsed.providerEventId, event))) {
+          continue;
+        }
         await this.dispatcher.dispatch(event);
       }
     } catch (err) {
-      // processed_at stays NULL so a failed handler can be inspected and retried.
+      // processed_at stays NULL and the claim is released so the next retry re-dispatches.
+      await this.eventRepo
+        .update(
+          {
+            providerEventId: parsed.providerEventId,
+            processingStartedAt: claimedAt,
+          },
+          { processingStartedAt: null },
+        )
+        .catch(() => undefined);
       this.logger.error(
         `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${errorMessage(err)}`,
       );
@@ -141,7 +213,24 @@ export class BillingWebhookService implements OnModuleInit {
     return { received: true };
   }
 
-  // Only writer of purchasedSeats, billingStatus, and billingSubscriptionId in the codebase.
+  /** A checkout opened client-side can name any company, so the customer must be the one the server stored. */
+  private async isCompanyCustomer(
+    providerEventId: string,
+    event: NormalizedBillingEvent,
+  ): Promise<boolean> {
+    const company = await this.companyRepo.findOne({
+      where: { id: event.companyId },
+      select: ['id', 'billingCustomerId'],
+    });
+    const stored = company?.billingCustomerId ?? null;
+    if (stored && stored === event.customerId) return true;
+    this.logger.warn(
+      `Webhook ${providerEventId} (${event.name}): customer ${event.customerId} does not match company ${event.companyId} customer ${stored ?? 'none'}; skipped`,
+    );
+    return false;
+  }
+
+  // Only writer of purchasedSeats, billingStatus, billingSubscriptionId and charged_* amounts.
 
   private async onSubscriptionActivated(
     event: SubscriptionActivatedEvent,
@@ -149,7 +238,7 @@ export class BillingWebhookService implements OnModuleInit {
     const tier = planToTier(event.plan);
     const limits = TIER_LIMITS[tier];
     // Guards purchasedSeats against stale/out-of-order delivery via billing_last_event_at.
-    await this.applyRecencyGuardedSync(
+    const applied = await this.applyRecencyGuardedSync(
       event.companyId,
       event.name,
       event.occurredAt,
@@ -165,6 +254,33 @@ export class BillingWebhookService implements OnModuleInit {
         maxProperties: limits.maxProperties,
       },
     );
+    if (applied) return;
+    // A late create still fills a paid company left without a subscription id.
+    await this.companyRepo
+      .createQueryBuilder()
+      .update(Company)
+      .set({
+        billingSubscriptionId: event.subscriptionId,
+        billingCurrency: event.currency,
+      })
+      .where('id = :companyId', { companyId: event.companyId })
+      .andWhere('billing_subscription_id IS NULL')
+      .andWhere('subscription_tier <> :free', { free: SubscriptionTier.FREE })
+      .execute();
+  }
+
+  /** Active team decides the seat count; a failure throws so the provider retries. */
+  private async reconcileSeats(
+    event: SubscriptionActivatedEvent,
+  ): Promise<void> {
+    if (!this.provider.checkoutQuantityEditable || !event.subscriptionId)
+      return;
+    const seats = await this.billing.reconcileSeatsToActiveUsers(
+      event.companyId,
+      event.subscriptionId,
+    );
+    // The purchase email runs after this and reports the reconciled count.
+    if (seats !== null) event.quantity = seats;
   }
 
   private async onSubscriptionUpdated(
@@ -197,17 +313,26 @@ export class BillingWebhookService implements OnModuleInit {
   private async onPlanChanged(event: PlanChangedEvent): Promise<void> {
     const tier = planToTier(event.plan);
     const limits = TIER_LIMITS[tier];
+    const stored = await this.companyRepo.findOne({
+      where: { id: event.companyId },
+      select: ['id', 'subscriptionTier'],
+    });
+    // Same tier (renewal, scheduled cancel): keep operator-set limits.
+    const patch =
+      stored?.subscriptionTier === tier
+        ? { subscriptionTier: tier }
+        : {
+            subscriptionTier: tier,
+            maxUsers: limits.maxUsers,
+            maxRegions: limits.maxRegions,
+            maxProperties: limits.maxProperties,
+          };
     // Recency-guarded too: an out-of-order/retried plan swap could clobber newer tier state.
     await this.applyRecencyGuardedSync(
       event.companyId,
       event.name,
       event.occurredAt,
-      {
-        subscriptionTier: tier,
-        maxUsers: limits.maxUsers,
-        maxRegions: limits.maxRegions,
-        maxProperties: limits.maxProperties,
-      },
+      patch,
     );
   }
 
@@ -224,6 +349,10 @@ export class BillingWebhookService implements OnModuleInit {
         subscriptionTier: SubscriptionTier.FREE,
         billingSubscriptionId: null,
         billingStatus: 'canceled',
+        chargedSeatNet: null,
+        chargedSeatGross: null,
+        chargedBaseNet: null,
+        chargedBaseGross: null,
         maxUsers: limits.maxUsers,
         maxRegions: limits.maxRegions,
         maxProperties: limits.maxProperties,
@@ -238,42 +367,67 @@ export class BillingWebhookService implements OnModuleInit {
     await this.history.recordPayment(event);
     // One-off invoices (future top-ups) carry no subscription: not our status.
     if (!event.subscriptionId) return;
-    await this.updateCompany(event.companyId, event.name, {
-      billingStatus: 'active',
-    });
+    const patch = {
+      ...chargedAmountPatch(event.chargedUnitAmounts),
+      // A zero-charge settlement never moves paid status.
+      ...(event.settledWithoutCharge ? {} : { billingStatus: 'active' }),
+    };
+    if (Object.keys(patch).length === 0) return;
+    await this.applyCurrentSubscriptionUpdate(
+      event.companyId,
+      event.subscriptionId,
+      event.occurredAt,
+      event.name,
+      patch,
+    );
   }
 
   private async onPaymentFailed(event: PaymentFailedEvent): Promise<void> {
     await this.history.recordPayment(event);
     if (!event.subscriptionId) return;
-    await this.updateCompany(event.companyId, event.name, {
-      billingStatus: 'past_due',
-    });
+    await this.applyCurrentSubscriptionUpdate(
+      event.companyId,
+      event.subscriptionId,
+      event.occurredAt,
+      event.name,
+      { billingStatus: 'past_due' },
+    );
   }
 
-  private async updateCompany(
+  /** Not recency-guarded (a transaction may precede its activation), but never from another subscription. */
+  private async applyCurrentSubscriptionUpdate(
     companyId: string,
+    subscriptionId: string,
+    occurredAt: Date,
     eventName: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    patch: Record<string, any>,
+    patch: ChargedAmountColumns & Partial<Pick<Company, 'billingStatus'>>,
   ): Promise<void> {
-    const result = await this.companyRepo.update(companyId, patch);
+    const result = await this.companyRepo
+      .createQueryBuilder()
+      .update(Company)
+      .set(patch)
+      .where('id = :companyId', { companyId })
+      .andWhere(
+        '(billing_subscription_id = :subscriptionId OR (billing_subscription_id IS NULL AND (billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)))',
+        { subscriptionId, occurredAt },
+      )
+      .execute();
     if (!result.affected) {
-      // Retry can't conjure a missing company row; warn and mark the event processed anyway.
-      this.logger.warn(
-        `${eventName}: company ${companyId} not found, nothing updated`,
+      // Zero rows is not an error: retrying cannot make a stale subscription current.
+      this.logger.log(
+        `${eventName}: company ${companyId} not updated, subscription ${subscriptionId} is not current or the company is missing`,
       );
     }
   }
 
-  /** <= not <: Stripe timestamps are shared by several events, so < would drop all but one. */
+  /** <= not <: provider timestamps are shared by several events, so < would drop all but one. */
   private async applyRecencyGuardedSync(
     companyId: string,
     eventName: string,
     occurredAt: Date,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     patch: Record<string, any>,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const result = await this.companyRepo
       .createQueryBuilder()
       .update(Company)
@@ -285,7 +439,7 @@ export class BillingWebhookService implements OnModuleInit {
       )
       .execute();
 
-    if (result.affected) return;
+    if (result.affected) return true;
 
     // 0 rows: either the company is gone, or a newer event already landed.
     const exists = await this.companyRepo.exists({ where: { id: companyId } });
@@ -299,5 +453,6 @@ export class BillingWebhookService implements OnModuleInit {
           `(event time ${occurredAt.toISOString()} is older than the last applied sync)`,
       );
     }
+    return false;
   }
 }

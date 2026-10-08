@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotImplementedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import {
@@ -9,7 +9,10 @@ import {
   CreateSubscriptionInput,
   CreateSubscriptionResult,
   EnsureCustomerInput,
+  PriceOverride,
   ProviderWebhookEvent,
+  PeriodPayments,
+  RefundBasis,
   SubscriptionRef,
 } from './billing-provider.interface';
 import {
@@ -133,6 +136,15 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
 
 @Injectable()
 export class StripeBillingProvider implements BillingProvider {
+  readonly name = 'stripe';
+  readonly signatureHeader = 'stripe-signature';
+  readonly baseCurrencies = null;
+  readonly supportsCountryOverrides = false;
+  readonly supportsTaxMode = false;
+  readonly checkoutQuantityEditable = false;
+  readonly supportsImmediateCancel = false;
+  readonly supportedCurrencies = null;
+  readonly supportedCountries = null;
   private readonly logger = new Logger(StripeBillingProvider.name);
   private readonly stripe: Stripe;
   private productIdCache: string | null = null;
@@ -167,7 +179,13 @@ export class StripeBillingProvider implements BillingProvider {
     kind: BillingPriceKind,
     currency: string,
     unitAmount: number,
+    overrides: PriceOverride[] = [],
   ): Promise<string> {
+    if (overrides.length) {
+      throw new Error(
+        'The Stripe billing adapter does not support country price overrides',
+      );
+    }
     const product = await this.ensureProduct();
     const price = await this.stripe.prices.create({
       product,
@@ -179,12 +197,17 @@ export class StripeBillingProvider implements BillingProvider {
     return price.id;
   }
 
+  async archivePrice(priceId: string): Promise<void> {
+    await this.stripe.prices.update(priceId, { active: false });
+  }
+
   async parseWebhook(
     rawBody: Buffer,
     signature: string,
   ): Promise<ProviderWebhookEvent> {
     // Read lazily: envs without webhooks still boot; missing secret fails the webhook, not startup.
     const secret = this.config.getOrThrow<string>('STRIPE_WEBHOOK_SECRET');
+    if (!secret.trim()) throw new Error('STRIPE_WEBHOOK_SECRET is empty');
     const event = this.stripe.webhooks.constructEvent(
       rawBody,
       signature,
@@ -458,7 +481,7 @@ export class StripeBillingProvider implements BillingProvider {
   ): Promise<CreateSubscriptionResult> {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
     if (input.basePriceId) {
-      // $250 base fee, qty always 1. ENTERPRISE only; base includes the first seat.
+      // Base fee, qty always 1. ENTERPRISE only; base includes the first seat.
       lineItems.push({ price: input.basePriceId, quantity: 1 });
     }
     if (input.quantity > 0) {
@@ -583,7 +606,7 @@ export class StripeBillingProvider implements BillingProvider {
       items.push({ price: input.seatPriceId, quantity: newSeatQty });
     }
 
-    // Base line: ENTERPRISE carries the $250 base, PRO does not.
+    // Base line: ENTERPRISE carries a base price, PRO does not.
     if (input.basePriceId) {
       // Add (PRO->ENTERPRISE) or update the existing base price.
       items.push(
@@ -631,6 +654,24 @@ export class StripeBillingProvider implements BillingProvider {
     await this.stripe.subscriptions.update(ref.subscriptionId, {
       cancel_at_period_end: false,
     });
+  }
+
+  getRefundBasis(): Promise<RefundBasis | null> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
+  }
+
+  getPeriodPayments(): Promise<PeriodPayments> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
+  }
+
+  cancelImmediately(): Promise<void> {
+    return Promise.reject(
+      new NotImplementedException('Stripe cancels at period end only.'),
+    );
   }
 
   async refundInvoicePayment(

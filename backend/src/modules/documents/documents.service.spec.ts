@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
@@ -1207,6 +1208,26 @@ describe('DocumentsService', () => {
         );
       });
 
+      it('keeps the linked record region over a requested region', async () => {
+        unitRepo.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        unitQb.row = { regionCode: 'dubai' };
+        manager.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        repo.create.mockReturnValue(mockDoc);
+        repo.save.mockResolvedValue(mockDoc);
+
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Contract', unitId: 'unit-1', regionCode: 'makkah' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: makkah },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCode: 'dubai' }),
+        );
+      });
+
       it('files an unattached document as company-wide for an admin', async () => {
         repo.create.mockReturnValue(mockDoc);
         repo.save.mockResolvedValue(mockDoc);
@@ -1476,17 +1497,18 @@ describe('DocumentsService', () => {
         ).rejects.toThrow('Invalid contactId: record not found');
       });
 
-      it('rejects a MANAGER sharing a document at ADMIN level with 400', async () => {
-        await expect(
-          service.uploadAndCreate(
-            companyId,
-            userId,
-            mockFile,
-            { name: 'Payroll', accessLevel: DocumentAccessLevel.ADMIN } as any,
-            { role: Role.MANAGER, regionCodes: callerRegions },
-          ),
-        ).rejects.toThrow('You cannot share a document at that level');
-        expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
+      it('lets a MANAGER share a document at ADMIN level', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Payroll', accessLevel: DocumentAccessLevel.ADMIN } as any,
+          { role: Role.MANAGER, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ accessLevel: DocumentAccessLevel.ADMIN }),
+        );
       });
 
       it('lets an admin share a document at ADMIN level', async () => {
@@ -1567,20 +1589,61 @@ describe('DocumentsService', () => {
         expect(repo.save).not.toHaveBeenCalled();
       });
 
-      it('rejects a MANAGER raising a document to ADMIN level', async () => {
-        qb().getOne.mockResolvedValue({ ...mockDoc });
+      it('rejects a MANAGER editing a document someone else uploaded', async () => {
+        qb().getOne.mockResolvedValue({
+          ...mockDoc,
+          uploadedBy: 'someone-else',
+        });
 
         await expect(
           service.update(
             'doc-uuid-1',
             companyId,
             Role.MANAGER,
-            { accessLevel: DocumentAccessLevel.ADMIN },
+            { name: 'Renamed' },
             ['dubai'],
             'user-uuid-1',
           ),
-        ).rejects.toThrow(BadRequestException);
+        ).rejects.toThrow(ForbiddenException);
         expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('lets an AGENT raise their own upload to ADMIN level', async () => {
+        qb().getOne.mockResolvedValue({
+          ...mockDoc,
+          uploadedBy: 'user-uuid-1',
+        });
+        repo.save.mockImplementation((d: unknown) => Promise.resolve(d));
+
+        await service.update(
+          'doc-uuid-1',
+          companyId,
+          Role.AGENT,
+          { accessLevel: DocumentAccessLevel.ADMIN },
+          ['dubai'],
+          'user-uuid-1',
+        );
+
+        expect(repo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ accessLevel: DocumentAccessLevel.ADMIN }),
+        );
+      });
+
+      it('reads ADMIN-level documents only as their uploader below admin', async () => {
+        qb().getOne.mockResolvedValue({ ...mockDoc });
+
+        await service.findOne(
+          'doc-uuid-1',
+          companyId,
+          Role.MANAGER,
+          ['dubai'],
+          'user-uuid-1',
+        );
+
+        expect(qb().andWhere).toHaveBeenCalledWith(
+          expect.stringContaining('doc.uploaded_by = :ownUploaderId'),
+          expect.objectContaining({ ownUploaderId: 'user-uuid-1' }),
+        );
       });
     });
 
