@@ -1,0 +1,108 @@
+<section class="record-sheet" data-test-contact-summary ...attributes>
+  <div class="record-sheet__top">
+    <div>
+      <p
+        class="record-sheet__statement"
+        data-test-contact-relationship
+      >{{this.relationship}}</p>
+      {{#if this.alsoLine}}
+        <p
+          class="record-sheet__also"
+          data-test-contact-also
+        >{{this.alsoLine}}</p>
+      {{/if}}
+      <p class="record-sheet__also" data-test-contact-added>Added by
+        <span data-test-contact-added-by>{{or
+            @contact.createdByName
+            "-"
+          }}</span>{{#if @contact.createdAt}}
+          on
+          {{format-date @contact.createdAt}}{{/if}}</p>
+    </div>
+    <div class="record-sheet__actions">
+      {{#if @contact.phone}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          @icon="phone"
+          @text="Call"
+          @href={{concat "tel:" @contact.phone}}
+          data-test-contact-call
+        />
+      {{/if}}
+      {{#if (can-whatsapp @contact)}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          @icon="whatsapp-logo"
+          @text="WhatsApp"
+          @href={{wa-link @contact.phone}}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open WhatsApp chat with {{this.name}}"
+          data-test-wa-link
+        />
+      {{/if}}
+      {{#if @contact.email}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          @icon="envelope-simple"
+          @text="Email"
+          @href={{concat "mailto:" @contact.email}}
+          data-test-contact-mail
+        />
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="record-sheet__trio">
+    <div class="record-sheet__cell">
+      <span class="record-sheet__label"><Ui::Ph @icon="phone" /> Reach</span>
+      <span class="record-sheet__value" data-test-contact-phone>
+        {{#if @contact.phone}}
+          <bdi dir="ltr">{{@contact.phone}}</bdi>
+        {{else}}
+          -
+        {{/if}}
+      </span>
+      <span class="record-sheet__sub" data-test-contact-email>{{or
+          @contact.email
+          "-"
+        }}</span>
+      <span class="record-sheet__sub" data-test-contact-address>{{or
+          @contact.address
+          "-"
+        }}</span>
+    </div>
+    <div class="record-sheet__cell">
+      <span class="record-sheet__label"><Ui::Ph @icon="identification-card" />
+        Identity</span>
+      <span class="record-sheet__value" data-test-contact-nationality>{{or
+          @contact.nationality
+          "-"
+        }}</span>
+      <span class="record-sheet__sub">ID
+        <span data-test-contact-national-id>{{or
+            @contact.nationalId
+            "-"
+          }}</span></span>
+    </div>
+    <div class="record-sheet__cell">
+      <span class="record-sheet__label"><Ui::Ph @icon="briefcase" /> Work</span>
+      <span class="record-sheet__value" data-test-contact-company>{{or
+          @contact.contactCompany
+          "-"
+        }}</span>
+      <span class="record-sheet__sub" data-test-contact-job-title>{{or
+          @contact.jobTitle
+          "-"
+        }}</span>
+    </div>
+  </div>
+
+  <div class="record-sheet__foot">
+    <p class="record-sheet__notes">Notes
+      <b data-test-contact-notes>{{or @contact.notes "-"}}</b></p>
+  </div>
+</section>

@@ -21,7 +21,10 @@
       {{else if @model.contact}}
         <div class="flex gap-1 flex-wrap">
           {{#each @model.contact.tags as |tag|}}
-            <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            <Nuvo::Tag
+              class="tag-contact-{{tag}}"
+              @text={{contact-tag-label tag}}
+            />
           {{else}}
             <Nuvo::Tag class="tag-contact-other" @text="Contact" />
           {{/each}}
@@ -31,17 +34,13 @@
     <:actions>
       {{#if this.isLimited}}
         <Contact::AccessAction @contact={{@model.contact}} />
-      {{else if
-        (and
-          @model.contact (not this.isEditing) (can-edit-contact @model.contact)
-        )
-      }}
+      {{else if (and @model.contact (can-edit-contact @model.contact))}}
         <Nuvo::Button
           @variant="secondary"
           @icon="pencil-simple"
           @text="Edit"
           data-test-edit-contact
-          {{on "click" this.startEdit}}
+          {{on "click" this.openEdit}}
         />
       {{/if}}
     </:actions>
@@ -50,28 +49,28 @@
   {{#if @model.contact}}
     <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
     <div class="contact-detail-grid flex col gap-6">
-      <Nuvo::Card @title="Contact Information">
-        {{#if this.isLimited}}
+      {{#if this.isLimited}}
+        <Nuvo::Card @title="Contact Information">
           <Nuvo::DescList @horizontal={{true}} data-test-limited-details>
             <div class="nu-desc-list__group">
               <dt class="nu-desc-list__term">Phone</dt>
               <dd class="nu-desc-list__description" data-test-limited-phone><bdi
                   dir="ltr"
-                >{{or (contact-phone @model.contact) "N/A"}}</bdi></dd>
+                >{{or (contact-phone @model.contact) "-"}}</bdi></dd>
             </div>
             <div class="nu-desc-list__group">
               <dt class="nu-desc-list__term">Region</dt>
               <dd
                 class="nu-desc-list__description"
                 data-test-limited-region
-              >{{or @model.contact.regionCode "N/A"}}</dd>
+              >{{or @model.contact.regionCode "-"}}</dd>
             </div>
             <div class="nu-desc-list__group">
               <dt class="nu-desc-list__term">Added by</dt>
               <dd
                 class="nu-desc-list__description"
                 data-test-contact-added-by
-              >{{or @model.contact.createdByName "N/A"}}</dd>
+              >{{or @model.contact.createdByName "-"}}</dd>
             </div>
             <div class="nu-desc-list__group">
               <dt class="nu-desc-list__term">Created</dt>
@@ -85,323 +84,26 @@
             @contactId={{@model.contact.id}}
             @onVerified={{this.onPhoneVerified}}
           />
-        {{else if this.isEditing}}
-          <form
-            id="contact-detail-form"
-            class="flex col gap-4"
-            {{on "submit" this.saveContact}}
-          >
-            <div class="flex gap-4">
-              <Nuvo::Field class="grow" @label="First Name">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formFirstName}}
-                  @onInput={{fn this.setFieldValue "formFirstName"}}
-                  data-test-input-first-name
-                />
-              </Nuvo::Field>
-              <Nuvo::Field class="grow" @label="Last Name">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formLastName}}
-                  @onInput={{fn this.setFieldValue "formLastName"}}
-                  data-test-input-last-name
-                />
-              </Nuvo::Field>
-            </div>
-            <div class="flex gap-4">
-              <Nuvo::Field class="grow" @label="Email">
-                <Nuvo::Input
-                  type="email"
-                  @value={{this.formEmail}}
-                  @onInput={{fn this.setFieldValue "formEmail"}}
-                  data-test-input-email
-                />
-              </Nuvo::Field>
-              <Nuvo::Field class="grow" @label="Phone">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formPhone}}
-                  @onInput={{fn this.setFieldValue "formPhone"}}
-                  data-test-input-phone
-                />
-              </Nuvo::Field>
-            </div>
-            <Nuvo::Checkbox
-              @checked={{this.formIsWhatsapp}}
-              @label="This phone number is on WhatsApp"
-              @onChange={{fn this.setFieldValue "formIsWhatsapp"}}
-              data-test-input-is-whatsapp
-            />
-            <div class="flex gap-4">
-              <Nuvo::Field class="grow" @label="Nationality">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formNationality}}
-                  @onInput={{fn this.setFieldValue "formNationality"}}
-                  data-test-input-nationality
-                />
-              </Nuvo::Field>
-              <Nuvo::Field class="grow" @label="National ID">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formNationalId}}
-                  @onInput={{fn this.setFieldValue "formNationalId"}}
-                  data-test-input-national-id
-                />
-              </Nuvo::Field>
-            </div>
-            <div class="flex gap-4">
-              <Nuvo::Field class="grow" @label="Company">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formContactCompany}}
-                  @onInput={{fn this.setFieldValue "formContactCompany"}}
-                  data-test-input-company
-                />
-              </Nuvo::Field>
-              <Nuvo::Field class="grow" @label="Job Title">
-                <Nuvo::Input
-                  type="text"
-                  @value={{this.formJobTitle}}
-                  @onInput={{fn this.setFieldValue "formJobTitle"}}
-                  data-test-input-job-title
-                />
-              </Nuvo::Field>
-            </div>
-            <Nuvo::Field @label="Address">
-              <Nuvo::Input
-                type="text"
-                @value={{this.formAddress}}
-                @onInput={{fn this.setFieldValue "formAddress"}}
-                data-test-input-address
-              />
-            </Nuvo::Field>
-            <Nuvo::Field @label="Notes">
-              <Nuvo::Textarea
-                rows="3"
-                @value={{this.formNotes}}
-                @onInput={{fn this.setFieldValue "formNotes"}}
-                data-test-input-notes
-              />
-            </Nuvo::Field>
-            {{#if this.errorMsg}}
-              <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-            {{/if}}
-            <div class="flex gap-3">
-              <Nuvo::Button
-                @variant="secondary"
-                @text="Cancel"
-                data-test-cancel-edit-contact
-                {{on "click" this.cancelEdit}}
-              />
-              <Nuvo::Button
-                @variant="primary"
-                @type="submit"
-                form="contact-detail-form"
-                @loading={{this.isSaving}}
-                @text={{if this.isSaving "Saving..." "Save"}}
-                data-test-save-contact
-              />
-            </div>
-          </form>
-        {{else}}
-          <Nuvo::DescList @horizontal={{true}}>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Email</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.email @model.contact.email "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Phone</dt>
-              <dd class="nu-desc-list__description">
-                {{#if @model.contact.phone}}
-                  <span class="flex gap-2 x-center">
-                    <span>{{@model.contact.phone}}</span>
-                    {{#if (can-whatsapp @model.contact)}}
-                      <a
-                        href={{wa-link @model.contact.phone}}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="wa-link"
-                        title="Open WhatsApp"
-                        aria-label="Open WhatsApp chat with {{contact-name
-                          @model.contact
-                        }}"
-                        data-test-wa-link
-                      ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
-                    {{/if}}
-                  </span>
-                {{else}}
-                  N/A
-                {{/if}}
-              </dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Nationality</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.nationality @model.contact.nationality "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">National ID</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.nationalId @model.contact.nationalId "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Company</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.contactCompany @model.contact.contactCompany "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Job Title</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.jobTitle @model.contact.jobTitle "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Address</dt>
-              <dd class="nu-desc-list__description">{{if @model.contact.address @model.contact.address "N/A"}}</dd>
-            </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Added by</dt>
-              <dd
-                class="nu-desc-list__description"
-                data-test-contact-added-by
-              >{{or @model.contact.createdByName "N/A"}}</dd>
-            </div>
-          </Nuvo::DescList>
-          {{#if @model.contact.notes}}
-            <p class="contact-detail__notes mt-4">{{@model.contact.notes}}</p>
-          {{/if}}
-        {{/if}}
-      </Nuvo::Card>
+        </Nuvo::Card>
+      {{else}}
+        <Contact::Summary
+          @contact={{@model.contact}}
+          @units={{@model.units}}
+          @leases={{@model.leases}}
+          @leads={{@model.leads}}
+        />
+      {{/if}}
 
       {{#unless this.isLimited}}
-        {{#if (includes @model.contact.tags "owner")}}
-          <Nuvo::Card @title="Properties Owned">
-            {{#if @model.units.length}}
-              <Nuvo::DataTable
-                @columns={{this.unitColumns}}
-                @rows={{@model.units}}
-                @pinColumns={{true}}
-                @reorderable={{true}}
-                @sortable={{true}}
-                @showOptions={{true}}
-                @tableId="contact-units"
-                as |cell|
-              >
-                {{#if (eq cell.key "unitNumber")}}
-                  <span
-                    class="font-bold"
-                    data-test-owned-unit-row
-                  >{{cell.value}}</span>
-                {{else if (eq cell.key "areaName")}}
-                  {{cell.value}}
-                {{else if (eq cell.key "propertyType")}}
-                  {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
-                {{else if (eq cell.key "status")}}
-                  <Nuvo::Tag
-                    class="tag-unit-{{lowercase cell.value}}"
-                    @text={{cell.value}}
-                  />
-                {{else if (eq cell.key "price")}}
-                  <Money @amount={{cell.value}} />
-                {{else if (eq cell.key "id")}}
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    @route="properties.unit"
-                    @models={{array cell.row.areaId cell.row.id}}
-                    @text="View"
-                    data-test-view-owned-unit
-                  />
-                {{else}}
-                  <span class="text-muted">{{cell.value}}</span>
-                {{/if}}
-              </Nuvo::DataTable>
-            {{else}}
-              <Nuvo::EmptyState
-                @description="No properties found for this owner."
-              />
-            {{/if}}
-          </Nuvo::Card>
-        {{/if}}
+        <Nuvo::Tabs
+          @tabs={{this.relatedTabs}}
+          @activeTab={{this.currentTab}}
+          @onChange={{this.setTab}}
+          data-test-contact-tabs
+        />
 
-        <section data-test-contact-documents>
-          <Documents::Panel
-            @filters={{hash contactId=@model.contact.id}}
-            @presetLink={{hash
-              type="contact"
-              id=@model.contact.id
-              label=@model.contact.displayName
-            }}
-            @compact={{true}}
-            @tableId="contact-documents"
-          >
-            <:header as |panel|>
-              <div class="flex between x-center">
-                <h2 class="text-md font-bold">Documents</h2>
-                {{#if panel.canUpload}}
-                  <Nuvo::Button
-                    @variant="primary"
-                    @size="sm"
-                    @icon="upload-simple"
-                    @text="Upload"
-                    data-test-contact-documents-upload
-                    {{on "click" panel.openUpload}}
-                  />
-                {{/if}}
-              </div>
-            </:header>
-          </Documents::Panel>
-        </section>
-
-        {{#if (includes @model.contact.tags "tenant")}}
-          <Nuvo::Card @title="Leases">
-            {{#if @model.leases.length}}
-              <Nuvo::DataTable
-                @columns={{this.leaseColumns}}
-                @rows={{@model.leases}}
-                @pinColumns={{true}}
-                @reorderable={{true}}
-                @sortable={{true}}
-                @showOptions={{true}}
-                @tableId="contact-leases"
-                as |cell|
-              >
-                {{#if (eq cell.key "unit.unitNumber")}}
-                  <span
-                    class="font-bold"
-                    data-test-lease-row
-                  >{{cell.value}}</span>
-                {{else if (eq cell.key "status")}}
-                  <div class="flex gap-1 wrap">
-                    <Nuvo::Tag
-                      class="tag-lease-{{lowercase cell.value}}"
-                      @text={{cell.value}}
-                    />
-                    {{#if cell.row.deletedAt}}
-                      <Nuvo::Tag
-                        @variant="secondary"
-                        @text="Archived"
-                        data-test-lease-archived-badge
-                      />
-                    {{/if}}
-                  </div>
-                {{else if (eq cell.key "startDate")}}
-                  {{format-date cell.value}}
-                {{else if (eq cell.key "endDate")}}
-                  {{format-date cell.value}}
-                {{else if (eq cell.key "monthlyRent")}}
-                  <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
-                {{else}}
-                  <span class="text-muted">{{cell.value}}</span>
-                {{/if}}
-              </Nuvo::DataTable>
-            {{else}}
-              <Nuvo::EmptyState
-                @description="No leases found for this tenant."
-              />
-            {{/if}}
-          </Nuvo::Card>
-        {{/if}}
-
-        {{#if (includes @model.contact.tags "lead")}}
-          <Nuvo::Card @title="Lead Requirements &amp; Activity">
+        {{#if (eq this.currentTab "leads")}}
+          <Nuvo::Card data-test-contact-leads>
             {{#if @model.leads.length}}
               <div class="flex col gap-3">
                 {{#each @model.leads as |lead|}}
@@ -502,18 +204,154 @@
               <Nuvo::EmptyState @description="No lead requirements found." />
             {{/if}}
           </Nuvo::Card>
-        {{/if}}
-
-        {{#if this.canViewHistory}}
-          <Nuvo::Card @title="History" data-test-contact-history>
+        {{else if (eq this.currentTab "leases")}}
+          <Nuvo::Card data-test-contact-leases>
+            {{#if @model.leases.length}}
+              <Nuvo::DataTable
+                @columns={{this.leaseColumns}}
+                @rows={{@model.leases}}
+                @pinColumns={{true}}
+                @reorderable={{true}}
+                @sortable={{true}}
+                @showOptions={{true}}
+                @tableId="contact-leases"
+                as |cell|
+              >
+                {{#if (eq cell.key "unit.unitNumber")}}
+                  <LinkTo
+                    @route="leases.detail"
+                    @model={{cell.row.id}}
+                    class="font-bold text-primary"
+                    data-test-lease-row
+                  >{{cell.value}}</LinkTo>
+                {{else if (eq cell.key "status")}}
+                  <div class="flex gap-1 wrap">
+                    <Nuvo::Tag
+                      class="tag-lease-{{lowercase cell.value}}"
+                      @text={{cell.value}}
+                    />
+                    {{#if cell.row.deletedAt}}
+                      <Nuvo::Tag
+                        @variant="secondary"
+                        @text="Archived"
+                        data-test-lease-archived-badge
+                      />
+                    {{/if}}
+                  </div>
+                {{else if (eq cell.key "startDate")}}
+                  {{format-date cell.value}}
+                {{else if (eq cell.key "endDate")}}
+                  {{format-date cell.value}}
+                {{else if (eq cell.key "monthlyRent")}}
+                  <Money
+                    @amount={{cell.value}}
+                    @currency={{cell.row.currency}}
+                  />
+                {{else}}
+                  <span class="text-muted">{{cell.value}}</span>
+                {{/if}}
+              </Nuvo::DataTable>
+            {{else}}
+              <Nuvo::EmptyState
+                @description="No leases found for this tenant."
+              />
+            {{/if}}
+          </Nuvo::Card>
+        {{else if (eq this.currentTab "properties")}}
+          <Nuvo::Card data-test-contact-properties>
+            {{#if @model.units.length}}
+              <Nuvo::DataTable
+                @columns={{this.unitColumns}}
+                @rows={{@model.units}}
+                @pinColumns={{true}}
+                @reorderable={{true}}
+                @sortable={{true}}
+                @showOptions={{true}}
+                @tableId="contact-units"
+                as |cell|
+              >
+                {{#if (eq cell.key "unitNumber")}}
+                  <span
+                    class="font-bold"
+                    data-test-owned-unit-row
+                  >{{cell.value}}</span>
+                {{else if (eq cell.key "areaName")}}
+                  {{cell.value}}
+                {{else if (eq cell.key "propertyType")}}
+                  {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
+                {{else if (eq cell.key "status")}}
+                  <Nuvo::Tag
+                    class="tag-unit-{{lowercase cell.value}}"
+                    @text={{cell.value}}
+                  />
+                {{else if (eq cell.key "price")}}
+                  <Money @amount={{cell.value}} />
+                {{else if (eq cell.key "id")}}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
+                    @route="properties.unit"
+                    @models={{array cell.row.areaId cell.row.id}}
+                    @text="View"
+                    data-test-view-owned-unit
+                  />
+                {{else}}
+                  <span class="text-muted">{{cell.value}}</span>
+                {{/if}}
+              </Nuvo::DataTable>
+            {{else}}
+              <Nuvo::EmptyState
+                @description="No properties found for this owner."
+              />
+            {{/if}}
+          </Nuvo::Card>
+        {{else if (eq this.currentTab "history")}}
+          <Nuvo::Card data-test-contact-history>
             <RecordHistoryList
               @entityType="Contact"
               @entityId={{@model.contact.id}}
             />
           </Nuvo::Card>
+        {{else}}
+          <section data-test-contact-documents>
+            <Documents::Panel
+              @filters={{hash contactId=@model.contact.id}}
+              @presetLink={{hash
+                type="contact"
+                id=@model.contact.id
+                label=@model.contact.displayName
+              }}
+              @compact={{true}}
+              @tableId="contact-documents"
+            >
+              <:header as |panel|>
+                <div class="flex between x-center">
+                  <h2 class="text-md font-bold">Documents</h2>
+                  {{#if panel.canUpload}}
+                    <Nuvo::Button
+                      @variant="primary"
+                      @size="sm"
+                      @icon="upload-simple"
+                      @text="Upload"
+                      data-test-contact-documents-upload
+                      {{on "click" panel.openUpload}}
+                    />
+                  {{/if}}
+                </div>
+              </:header>
+            </Documents::Panel>
+          </section>
         {{/if}}
       {{/unless}}
     </div>
+    {{#if (and (not this.isLimited) (can-edit-contact @model.contact))}}
+      <Contact::ContactDrawer
+        @open={{this.showEdit}}
+        @contact={{@model.contact}}
+        @onClose={{this.closeEdit}}
+        @onSaved={{this.refresh}}
+      />
+    {{/if}}
   {{else}}
     <Nuvo::Card>
       <Nuvo::EmptyState @description="Contact not found." />

@@ -1,0 +1,34 @@
+<ConfirmModal
+  @open={{@open}}
+  @title="Terminate lease"
+  @message="Terminate the lease for {{or
+    (contact-name @lease.contact)
+    'this tenant'
+  }}? It ends now and cannot be reactivated."
+  @confirmText="Terminate"
+  @cancelText="I changed my mind"
+  @confirmVariant="danger"
+  @isConfirming={{this.isTerminating}}
+  @confirmingText="Terminating..."
+  @onClose={{this.close}}
+  @onConfirm={{this.confirm}}
+>
+  <Nuvo::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
+    <Nuvo::Textarea
+      id="lease-terminate-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Tenant moved out early"
+      @value={{this.reason}}
+      @onInput={{this.setReason}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

@@ -1,0 +1,172 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{this.title}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form id="lease-form" class="flex col gap-4" {{on "submit" this.save}}>
+      {{#if this.unitArchivedMessage}}
+        <Nuvo::Alert
+          @variant="warning"
+          @description={{this.unitArchivedMessage}}
+          data-test-lease-unit-archived
+        />
+      {{/if}}
+      <Nuvo::Field @label="Property" @required={{true}}>
+        <Nuvo::Dropdown
+          id="lease-unit-id"
+          @align="start"
+          @value={{this.form.unitId}}
+          @onSelect={{this.selectUnit}}
+          @options={{this.unitOptions}}
+          @placeholder="Select a property..."
+        />
+      </Nuvo::Field>
+
+      {{#if this.isEdit}}
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            id="lease-status"
+            @align="start"
+            @value={{this.form.status}}
+            @onSelect={{fn this.setField "status"}}
+            @options={{this.statusOptions}}
+          />
+        </Nuvo::Field>
+      {{/if}}
+
+      <Contact::Picker
+        @label="Tenant"
+        @required={{true}}
+        @contact={{this.tenantSelection.contact}}
+        @identity={{this.tenantSelection.identity}}
+        @onSelectContact={{this.tenantSelection.attach}}
+        @onClear={{this.tenantSelection.clear}}
+        @onIdentityChange={{this.tenantSelection.setField}}
+        @conflict={{this.tenantSelection.conflict}}
+      />
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Property Type">
+          <Nuvo::Dropdown
+            id="lease-type"
+            @align="start"
+            @value={{this.form.type}}
+            @onSelect={{fn this.setField "type"}}
+            @disabled={{if this.unitLeaseType true false}}
+            @options={{this.leaseTypeOptions}}
+            @placeholder="Select property type..."
+          />
+        </Nuvo::Field>
+        <Nuvo::Field
+          class="grow"
+          @required={{true}}
+          @label="Number of Cheques"
+          @tooltip="How many post-dated rent cheques the tenant gives, such as 4 for quarterly or 12 for monthly. Add each cheque under Cheques."
+        >
+          <Nuvo::Input
+            id="lease-cheques"
+            type="number"
+            @value={{this.form.numberOfCheques}}
+            @onInput={{fn this.setField "numberOfCheques"}}
+            min="1"
+            max="12"
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Start Date" @required={{true}}>
+          <input
+            id="lease-start"
+            type="date"
+            class="nu-input"
+            value={{this.form.startDate}}
+            required
+            {{on "input" (fn this.setFieldFromEvent "startDate")}}
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="End Date" @required={{true}}>
+          <input
+            id="lease-end"
+            type="date"
+            class="nu-input"
+            value={{this.form.endDate}}
+            required
+            {{on "input" (fn this.setFieldFromEvent "endDate")}}
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Monthly Rent" @required={{true}}>
+          <Nuvo::Input
+            id="lease-rent"
+            type="number"
+            placeholder="e.g. 8500"
+            @value={{this.form.monthlyRent}}
+            @onInput={{fn this.setField "monthlyRent"}}
+            required={{true}}
+            min="0"
+            step="0.01"
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Security Deposit">
+          <Nuvo::Input
+            id="lease-deposit"
+            type="number"
+            placeholder="e.g. 17000"
+            @value={{this.form.securityDeposit}}
+            @onInput={{fn this.setField "securityDeposit"}}
+            min="0"
+            step="0.01"
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
+        <Nuvo::Input
+          id="lease-tenancy-registration-ref"
+          type="text"
+          placeholder="e.g. TR-2026-00001"
+          @value={{this.form.tenancyRegistrationRef}}
+          @onInput={{fn this.setField "tenancyRegistrationRef"}}
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Notes">
+        <Nuvo::Textarea
+          id="lease-notes"
+          placeholder="Additional notes..."
+          rows="3"
+          @value={{this.form.notes}}
+          @onInput={{fn this.setField "notes"}}
+          data-test-input-notes
+        />
+      </Nuvo::Field>
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.close}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="lease-form"
+      @loading={{this.isSaving}}
+      data-test-save-lease
+    >{{this.submitLabel}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

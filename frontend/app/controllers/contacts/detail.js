@@ -2,10 +2,6 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import {
-  contactFormToBody,
-  contactToFormFields,
-} from '../../utils/contact-form';
 import { ROLES } from '../../utils/roles';
 import { isLimited } from '../../utils/contact-display';
 
@@ -16,20 +12,8 @@ export default class ContactsDetailController extends Controller {
   @service notifications;
   @service router;
 
-  @tracked isEditing = false;
-  @tracked formFirstName = '';
-  @tracked formLastName = '';
-  @tracked formEmail = '';
-  @tracked formPhone = '';
-  @tracked formIsWhatsapp = false;
-  @tracked formNationality = '';
-  @tracked formNationalId = '';
-  @tracked formContactCompany = '';
-  @tracked formJobTitle = '';
-  @tracked formAddress = '';
-  @tracked formNotes = '';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
+  @tracked showEdit = false;
+  @tracked tab = null;
 
   @tracked expandedLeadId = null;
   @tracked leadActivities = {};
@@ -65,9 +49,7 @@ export default class ContactsDetailController extends Controller {
   ];
 
   resetEditState() {
-    this.isEditing = false;
-    this.errorMsg = '';
-    this.isSaving = false;
+    this.showEdit = false;
     this.expandedLeadId = null;
     this.leadActivities = {};
     this.loadingActivitiesFor = null;
@@ -80,6 +62,36 @@ export default class ContactsDetailController extends Controller {
 
   get isLimited() {
     return isLimited(this.model?.contact);
+  }
+
+  get relatedTabs() {
+    const { leads = [], leases = [], units = [] } = this.model ?? {};
+    return [
+      leads.length && { id: 'leads', label: 'Leads', count: leads.length },
+      leases.length && { id: 'leases', label: 'Leases', count: leases.length },
+      units.length && {
+        id: 'properties',
+        label: 'Properties',
+        count: units.length,
+      },
+      { id: 'documents', label: 'Documents' },
+      this.canViewHistory && { id: 'history', label: 'History' },
+    ].filter(Boolean);
+  }
+
+  get currentTab() {
+    const ids = this.relatedTabs.map((t) => t.id);
+    if (this.tab && ids.includes(this.tab)) return this.tab;
+    return ids[0];
+  }
+
+  @action setTab(id) {
+    this.tab = id;
+  }
+
+  // Cleared only when leaving the route.
+  resetTab() {
+    this.tab = null;
   }
 
   // The server grants access on a match; reloading swaps in whatever view it now returns.
@@ -96,42 +108,16 @@ export default class ContactsDetailController extends Controller {
     this.router.transitionTo('contacts.index');
   }
 
-  @action setFieldValue(fieldName, value) {
-    this[fieldName] = value;
+  @action openEdit() {
+    this.showEdit = true;
   }
 
-  @action startEdit() {
-    Object.assign(this, contactToFormFields(this.model.contact));
-    this.errorMsg = '';
-    this.isEditing = true;
+  @action closeEdit() {
+    this.showEdit = false;
   }
 
-  @action cancelEdit() {
-    this.isEditing = false;
-    this.errorMsg = '';
-  }
-
-  @action async saveContact(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const body = contactFormToBody(this);
-
-    try {
-      await this.auth.fetchJson(`/contacts/${this.model.contact.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success('Contact updated');
-      this.isEditing = false;
-      this.router.refresh('contacts.detail');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('contacts.detail');
   }
 
   @action async toggleLeadActivity(leadId) {
@@ -145,7 +131,10 @@ export default class ContactsDetailController extends Controller {
     this.loadingActivitiesFor = leadId;
     try {
       const data = await this.auth.fetchJson(`/leads/${leadId}/activities`);
-      this.leadActivities = { ...this.leadActivities, [leadId]: data.data || [] };
+      this.leadActivities = {
+        ...this.leadActivities,
+        [leadId]: data.data || [],
+      };
     } catch (e) {
       console.error('Failed to load lead activities:', e);
       this.leadActivities = { ...this.leadActivities, [leadId]: [] };

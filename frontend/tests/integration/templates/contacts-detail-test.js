@@ -49,7 +49,7 @@ module('Integration | Template | contacts/detail', function (hooks) {
   async function renderDetail(
     ctx,
     contact,
-    { role = 'manager', respond } = {},
+    { role = 'manager', respond, records = {} } = {},
   ) {
     ctx.calls = stubAuth(ctx.owner, {
       role,
@@ -64,7 +64,7 @@ module('Integration | Template | contacts/detail', function (hooks) {
     await renderRouteTemplate(ctx, template, {
       name: 'contacts.detail',
       controller,
-      model: { contact, units: [], leases: [], leads: [] },
+      model: { contact, units: [], leases: [], leads: [], ...records },
     });
     return controller;
   }
@@ -162,8 +162,41 @@ module('Integration | Template | contacts/detail', function (hooks) {
     assert.dom('[data-test-verify-phone-form]').doesNotExist();
     assert.dom('[data-test-request-access]').doesNotExist();
     assert.dom('[data-test-limited-badge]').doesNotExist();
-    assert.dom(detail).containsText('Properties Owned');
+    assert.dom('[data-test-nu-tabs-trigger="documents"]').exists();
+    assert
+      .dom('[data-test-contact-documents]')
+      .exists('no records: Documents is open');
+
+    await click('[data-test-nu-tabs-trigger="history"]');
     assert.dom('[data-test-contact-history]').exists();
+  });
+
+  test('the related tabs open on the lead, then the lease, and leases link to their page', async function (assert) {
+    const lease = {
+      id: 'lease-1',
+      status: 'ACTIVE',
+      unit: { unitNumber: '101' },
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      monthlyRent: '5000.00',
+      currency: 'AED',
+    };
+    const lead = { id: 'lead-1', status: 'NEW', temperature: 'HOT' };
+    this.owner.setupRouter();
+    await renderDetail(this, FULL, {
+      records: { leads: [lead], leases: [lease] },
+    });
+
+    assert
+      .dom('[data-test-nu-tabs-trigger="leads"]')
+      .hasAttribute('aria-selected', 'true');
+    assert.dom('[data-test-contact-leads] [data-test-lead-card]').exists();
+
+    await click('[data-test-nu-tabs-trigger="leases"]');
+    assert
+      .dom('[data-test-lease-row]')
+      .hasAttribute('href', /\/leases\/lease-1$/);
+    assert.dom('[data-test-nu-tabs-trigger="properties"]').doesNotExist();
   });
   test('an agent with a grant sees full details but no Edit', async function (assert) {
     await renderDetail(this, FULL, { role: 'agent' });

@@ -4,11 +4,9 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
 import {
-  UUID_PATTERN,
   LEASE_TYPE_OPTIONS,
   LEASE_STATUS_OPTIONS,
   LEASE_ARCHIVED_OPTIONS,
-  PROPERTY_SUB_TYPES,
 } from 'land/constants';
 import {
   closeDeleteModal,
@@ -16,10 +14,6 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { ROLES } from '../../utils/roles';
-import { addCalendarDays, toDateOnly } from '../../utils/local-date';
-import ContactSelection, {
-  CONTACT_REQUIRED_ERROR,
-} from '../../utils/contact-selection';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -47,28 +41,13 @@ export default class LeasesController extends PaginatedController {
   @tracked dateTo = '';
 
   @tracked showModal = false;
-  @tracked editLease = null;
-  tenantSelection = new ContactSelection();
-  @tracked formUnitId = '';
-  @tracked formType = 'RESIDENTIAL';
-  @tracked formStartDate = '';
-  @tracked formEndDate = '';
-  @tracked formMonthlyRent = '';
-  @tracked formSecurityDeposit = '';
-  @tracked formNumberOfCheques = '1';
-  @tracked formTenancyRegistrationRef = '';
-  @tracked formNotes = '';
-  @tracked renewingLeaseId = null;
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
+  @tracked drawerMode = 'create';
+  @tracked drawerLease = null;
   @tracked showTerminateModal = false;
   @tracked leaseToTerminate = null;
-  @tracked isTerminating = false;
-  @tracked formStatus = '';
   @tracked showDeleteModal = false;
   @tracked leaseToDelete = null;
   @tracked isDeleting = false;
-  @tracked terminateReason = '';
   @tracked deleteReason = '';
   @tracked reasonError = '';
   @tracked showArchiveModal = false;
@@ -78,7 +57,6 @@ export default class LeasesController extends PaginatedController {
   @tracked isArchiving = false;
   @tracked historyLease = null;
 
-  leaseTypeOptions = LEASE_TYPE_OPTIONS;
   statusTabs = LEASE_STATUS_OPTIONS;
   archivedTabs = LEASE_ARCHIVED_OPTIONS;
 
@@ -118,16 +96,12 @@ export default class LeasesController extends PaginatedController {
     this.dateFrom = '';
     this.dateTo = '';
     this.showModal = false;
-    this.editLease = null;
-    this.renewingLeaseId = null;
-    this.errorMsg = '';
+    this.drawerLease = null;
     this.showTerminateModal = false;
     this.leaseToTerminate = null;
-    this.isTerminating = false;
     this.showDeleteModal = false;
     this.leaseToDelete = null;
     this.isDeleting = false;
-    this.terminateReason = '';
     this.deleteReason = '';
     this.reasonError = '';
     this.showArchiveModal = false;
@@ -141,13 +115,6 @@ export default class LeasesController extends PaginatedController {
     return Boolean(
       this.type || this.search || this.dateFrom || this.dateTo || this.archived,
     );
-  }
-
-  get editLeaseUnitArchivedMessage() {
-    if (!this.editLease?.unit?.deletedAt) return '';
-    return this.editLease.status === 'DRAFT'
-      ? 'This unit is archived and no longer active. Select another unit.'
-      : 'This unit is archived. Its leases can no longer be edited.';
   }
 
   get canArchiveLease() {
@@ -167,52 +134,9 @@ export default class LeasesController extends PaginatedController {
     return [{ value: '', label: 'All types' }, ...LEASE_TYPE_OPTIONS];
   }
 
-  get unitOptions() {
-    return [
-      { value: '', label: 'Select a property...' },
-      ...(this.model.units || []).map((unit) => ({
-        value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Property ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`,
-      })),
-    ];
-  }
-
-  get validNextStatuses() {
-    const current = this.editLease?.status;
-    const map = {
-      DRAFT: ['DRAFT', 'ACTIVE'],
-      ACTIVE: ['ACTIVE', 'EXPIRED'],
-      EXPIRED: ['ACTIVE', 'EXPIRED'],
-      TERMINATED: ['TERMINATED'],
-      RENEWED: ['RENEWED'],
-    };
-    const statuses = map[current] ?? (current ? [current] : []);
-    return statuses.map((s) => ({ value: s, label: s }));
-  }
-
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
-  }
-
-  @action selectUnit(unitId) {
-    this.formUnitId = unitId;
-    if (this.unitLeaseType) this.formType = this.unitLeaseType;
-  }
-
-  get unitLeaseType() {
-    const unit = (this.model?.units ?? []).find(
-      (u) => u.id === this.formUnitId,
-    );
-    return (
-      PROPERTY_SUB_TYPES.find((k) => k.value === unit?.subType)?.leaseType ??
-      null
-    );
-  }
-
-  // Native <input type="date"> still emits a raw DOM event.
-  @action setFieldValueFromEvent(fieldName, event) {
-    this[fieldName] = event.target.value;
   }
 
   @action setArchivedTab(tabId) {
@@ -259,39 +183,20 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.tenantSelection.reset();
-    this.formUnitId = '';
-    this.formType = 'RESIDENTIAL';
-    this.formStartDate = '';
-    this.formEndDate = '';
-    this.formMonthlyRent = '';
-    this.formSecurityDeposit = '';
-    this.formNumberOfCheques = '1';
-    this.formTenancyRegistrationRef = '';
-    this.formNotes = '';
-    this.editLease = null;
-    this.renewingLeaseId = null;
-    this.errorMsg = '';
-    this.formStatus = '';
-    this.showModal = true;
+    this.openDrawer('create', null);
   }
 
   @action openEdit(lease) {
-    this.tenantSelection.attach(lease.contact ?? null);
-    this.formUnitId = lease.unitId ?? '';
-    this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = toDateOnly(lease.startDate);
-    this.formEndDate = toDateOnly(lease.endDate);
-    this.formMonthlyRent = String(lease.monthlyRent);
-    this.formSecurityDeposit = lease.securityDeposit
-      ? String(lease.securityDeposit)
-      : '';
-    this.formNumberOfCheques = String(lease.numberOfCheques ?? 1);
-    this.formTenancyRegistrationRef = lease.tenancyRegistrationRef ?? '';
-    this.formNotes = lease.notes ?? '';
-    this.editLease = lease;
-    this.formStatus = lease.status ?? 'DRAFT';
-    this.errorMsg = '';
+    this.openDrawer('edit', lease);
+  }
+
+  @action renewLease(lease) {
+    this.openDrawer('renew', lease);
+  }
+
+  openDrawer(mode, lease) {
+    this.drawerMode = mode;
+    this.drawerLease = lease;
     this.showModal = true;
   }
 
@@ -300,138 +205,11 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action resetDrawer() {
-    this.editLease = null;
-    this.renewingLeaseId = null;
-    this.errorMsg = '';
-    this.formStatus = '';
-  }
-
-  @action async saveLease(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editLease;
-    const isRenew = !!this.renewingLeaseId;
-
-    if (!isEdit && !UUID_PATTERN.test(this.formUnitId)) {
-      this.errorMsg = 'Please select a valid property.';
-      return;
-    }
-
-    if (!this.tenantSelection.isPresent) {
-      this.errorMsg = CONTACT_REQUIRED_ERROR;
-      return;
-    }
-
-    const cheques = Number(this.formNumberOfCheques);
-    if (!Number.isInteger(cheques) || cheques < 1) {
-      this.errorMsg = 'Enter the number of cheques, 1 or more.';
-      return;
-    }
-
-    this.isSaving = true;
-    let path;
-    let method;
-
-    if (isEdit) {
-      path = `/leases/${this.editLease.id}`;
-      method = 'PATCH';
-    } else if (isRenew) {
-      path = `/leases/${this.renewingLeaseId}/renew`;
-      method = 'POST';
-    } else {
-      path = '/leases';
-      method = 'POST';
-    }
-
-    const body = isEdit
-      ? {
-          ...this.tenantFields,
-          ...(this.formUnitId && this.formUnitId !== this.editLease.unitId
-            ? { unitId: this.formUnitId }
-            : {}),
-          type: this.formType,
-          startDate: this.formStartDate,
-          endDate: this.formEndDate,
-          monthlyRent: parseFloat(this.formMonthlyRent),
-          ...(this.formSecurityDeposit
-            ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
-            : {}),
-          numberOfCheques: cheques,
-          ...(this.formTenancyRegistrationRef
-            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
-            : {}),
-          ...(this.formNotes ? { notes: this.formNotes } : {}),
-          status: this.formStatus,
-        }
-      : {
-          ...this.tenantFields,
-          ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-          type: this.formType,
-          startDate: this.formStartDate,
-          endDate: this.formEndDate,
-          monthlyRent: parseFloat(this.formMonthlyRent),
-          ...(this.formSecurityDeposit
-            ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
-            : {}),
-          numberOfCheques: cheques,
-          ...(this.formTenancyRegistrationRef
-            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
-            : {}),
-          ...(this.formNotes ? { notes: this.formNotes } : {}),
-        };
-
-    let successMsg = 'Lease created';
-    if (isEdit) successMsg = 'Lease updated';
-    if (isRenew) successMsg = 'Lease renewed';
-
-    try {
-      await this.auth.fetchJson(path, {
-        method,
-        body: JSON.stringify(body),
-      });
-      this.notifications.success(successMsg);
-      this.closeModal();
-      this.router.refresh('leases');
-    } catch (e) {
-      this.errorMsg = this.tenantSelection.takeConflict(e)
-        ? 'Contact already added'
-        : e.message;
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  get tenantFields() {
-    const selection = this.tenantSelection;
-    if (selection.contactId) return { contactId: selection.contactId };
-    return selection.hasIdentity ? { tenant: selection.cleanIdentity } : {};
-  }
-
-  @action renewLease(lease) {
-    this.tenantSelection.attach(lease.contact ?? null);
-    this.formUnitId = lease.unitId ?? '';
-    this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = addCalendarDays(toDateOnly(lease.endDate), 1) ?? '';
-    this.formEndDate = '';
-    this.formMonthlyRent = String(lease.monthlyRent);
-    this.formSecurityDeposit = lease.securityDeposit
-      ? String(lease.securityDeposit)
-      : '';
-    this.formNumberOfCheques = String(lease.numberOfCheques ?? 1);
-    this.formTenancyRegistrationRef = '';
-    this.formNotes = '';
-    this.editLease = null;
-    this.renewingLeaseId = lease.id;
-    this.errorMsg = '';
-    this.showModal = true;
+    this.drawerLease = null;
   }
 
   @action openTerminate(lease) {
     this.leaseToTerminate = lease;
-    this.terminateReason = '';
-    this.reasonError = '';
     this.showTerminateModal = true;
   }
 
@@ -440,28 +218,8 @@ export default class LeasesController extends PaginatedController {
     this.leaseToTerminate = null;
   }
 
-  @action async confirmTerminate() {
-    if (!this.leaseToTerminate || this.isTerminating) return;
-    const reason = this.terminateReason.trim();
-    if (!reason) {
-      this.reasonError = 'Reason is required.';
-      return;
-    }
-
-    this.isTerminating = true;
-    try {
-      await this.auth.fetchJson(
-        `/leases/${this.leaseToTerminate.id}/terminate`,
-        { method: 'POST', body: JSON.stringify({ reason }) },
-      );
-      this.notifications.success('Lease terminated');
-      this.closeTerminateModal();
-      this.router.refresh('leases');
-    } catch (e) {
-      this.notifications.error(e.message || 'Failed to terminate lease');
-    } finally {
-      this.isTerminating = false;
-    }
+  @action refresh() {
+    this.router.refresh('leases');
   }
 
   @action openDelete(lease) {

@@ -41,4 +41,35 @@ module('Unit | Route | contacts/detail', function (hooks) {
     assert.ok(paths.some((p) => p.startsWith('/properties/units?ownerId=c-1')));
     assert.ok(paths.some((p) => p.startsWith('/leads?contactId=c-1')));
   });
+
+  test('leases load for every full contact, archived ones included', async function (assert) {
+    const calls = stubAuth(this.owner, {
+      respond: (path) =>
+        path === '/contacts/c-1'
+          ? { data: { id: 'c-1', accessLevel: 'FULL', tags: [] } }
+          : { data: { data: [] } },
+    });
+    const route = this.owner.lookup('route:contacts/detail');
+
+    await route.model({ contact_id: 'c-1' });
+
+    assert.ok(
+      calls.some(
+        (c) => c.path === '/leases?contactId=c-1&limit=100&archived=include',
+      ),
+      'no tenant tag, still fetched',
+    );
+  });
+
+  test('a refresh keeps the open tab; leaving the page forgets it', function (assert) {
+    const route = this.owner.lookup('route:contacts/detail');
+    const controller = this.owner.lookup('controller:contacts/detail');
+    controller.setTab('history');
+
+    controller.resetEditState();
+    assert.strictEqual(controller.tab, 'history');
+
+    route.resetController(controller, true);
+    assert.strictEqual(controller.tab, null);
+  });
 });

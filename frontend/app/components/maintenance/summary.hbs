@@ -1,133 +1,137 @@
-<Nuvo::Card @title="Work Order Summary" data-test-work-order-summary>
-  <Nuvo::DescList @horizontal={{true}}>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Title</dt>
-      <dd
-        class="nu-desc-list__description"
-        data-test-work-order-title
-      >{{@workOrder.title}}</dd>
+<div class="wo-story" data-test-work-order-summary ...attributes>
+  <Nuvo::Card>
+    <div class="wo-story__now" data-test-work-order-now>
+      <p
+        class="wo-story__statement"
+        data-test-work-order-next-step
+      >{{this.nextStep}}</p>
+      {{#unless this.isCancelled}}
+        <ol class="wo-story__steps" aria-label="Progress">
+          {{#each this.stages as |stage|}}
+            <li
+              class="wo-story__step is-{{stage.state}}"
+              aria-current={{if (eq stage.state "current") "step"}}
+              data-test-work-order-stage={{stage.state}}
+            >
+              <span class="wo-story__dot"></span>
+              <span class="wo-story__label">{{stage.label}}</span>
+            </li>
+          {{/each}}
+        </ol>
+        <Nuvo::Timeline
+          class="wo-story__timeline"
+          aria-label="Progress"
+          data-test-work-order-timeline
+        >
+          {{#each this.stages as |stage|}}
+            <Nuvo::TimelineItem
+              class="is-{{stage.state}}"
+              @title={{stage.label}}
+              @variant="primary"
+              @active={{eq stage.state "current"}}
+              aria-current={{if (eq stage.state "current") "step"}}
+              data-test-work-order-timeline-stage={{stage.state}}
+            />
+          {{/each}}
+        </Nuvo::Timeline>
+      {{/unless}}
     </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Description</dt>
-      <dd
-        class="nu-desc-list__description whitespace-pre-line"
-        data-test-work-order-description
-      >{{or @workOrder.description "-"}}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Unit</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-unit>
-        {{#if @unit.areaId}}
-          <LinkTo
-            @route="properties.unit"
-            @models={{array @unit.areaId @unit.id}}
-            class="text-primary"
-            data-test-work-order-unit-link
-          >{{@unit.label}}</LinkTo>
-        {{else}}
-          {{or @unit.label "-"}}
-        {{/if}}
-      </dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Region</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-region>{{or
-          (region-name @workOrder.regionCode)
+  </Nuvo::Card>
+
+  <Nuvo::Card @title="What needs fixing">
+    <p class="wo-story__issue" data-test-work-order-description>{{or
+        @workOrder.description
+        "-"
+      }}</p>
+    <p
+      class="wo-story__meta"
+      data-test-work-order-reported
+    >{{this.reportedLine}}</p>
+    <div class="wo-story__notes">
+      <p class="wo-story__notes-label">Notes</p>
+      <p class="wo-story__notes-text" data-test-work-order-notes>{{or
+          @workOrder.notes
           "-"
-        }}</dd>
+        }}</p>
     </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Status</dt>
-      <dd class="nu-desc-list__description">
-        <Nuvo::Tag
-          class="tag-wo-{{lowercase @workOrder.status}}"
-          @text={{@workOrder.status}}
-          data-test-work-order-status
-        />
-      </dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Priority</dt>
-      <dd class="nu-desc-list__description">
-        <Nuvo::Tag
-          class="tag-priority-{{lowercase @workOrder.priority}}"
-          @text={{@workOrder.priority}}
-          data-test-work-order-priority
-        />
-      </dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Category</dt>
-      <dd class="nu-desc-list__description">
-        <Nuvo::Tag
-          class="tag-trade-{{lowercase @workOrder.category}}"
-          @text={{@workOrder.category}}
-          data-test-work-order-category
-        />
-      </dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Vendor</dt>
-      <dd
-        class="nu-desc-list__description"
-        data-test-work-order-vendor
-      >{{this.vendorName}}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Assignee</dt>
-      <dd
-        class="nu-desc-list__description"
-        data-test-work-order-assignee
-      >{{this.assigneeName}}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Scheduled Date</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-scheduled>{{or
-          (format-date @workOrder.scheduledDate)
-          "-"
-        }}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Completed Date</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-completed>{{or
-          (format-date @workOrder.completedAt)
-          "-"
-        }}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Estimated Cost</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-estimated>{{or
-          (format-money @workOrder.estimatedCost currency=@workOrder.currency)
-          "-"
-        }}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Actual Cost</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-actual>{{or
-          (format-money @workOrder.actualCost currency=@workOrder.currency)
-          "-"
-        }}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Currency</dt>
-      <dd class="nu-desc-list__description" data-test-work-order-currency>{{or
-          @workOrder.currency
-          "-"
-        }}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Cost Notes</dt>
-      <dd
-        class="nu-desc-list__description whitespace-pre-line"
-        data-test-work-order-cost-notes
-      >{{or @workOrder.costNotes "-"}}</dd>
-    </div>
-    <div class="nu-desc-list__group">
-      <dt class="nu-desc-list__term">Notes</dt>
-      <dd
-        class="nu-desc-list__description whitespace-pre-line"
-        data-test-work-order-notes
-      >{{or @workOrder.notes "-"}}</dd>
-    </div>
-  </Nuvo::DescList>
-</Nuvo::Card>
+  </Nuvo::Card>
+
+  <div class="grid cols-1 cols-2@lg gap-6 align-start">
+    <Nuvo::Card @title="Who and when">
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="buildings" />
+          Unit</span>
+        <span class="nu-info-row__value" data-test-work-order-unit>
+          {{#if @unit.areaId}}
+            <LinkTo
+              @route="properties.unit"
+              @models={{array @unit.areaId @unit.id}}
+              class="text-primary"
+              data-test-work-order-unit-link
+            >{{@unit.label}}</LinkTo>
+          {{else}}
+            {{or @unit.label "-"}}
+          {{/if}}
+        </span>
+      </div>
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="toolbox" />
+          Vendor</span>
+        <span
+          class="nu-info-row__value"
+          data-test-work-order-vendor
+        >{{this.vendorName}}</span>
+      </div>
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="user" /> Assignee</span>
+        <span
+          class="nu-info-row__value"
+          data-test-work-order-assignee
+        >{{this.assigneeName}}</span>
+      </div>
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="calendar-blank" />
+          Scheduled</span>
+        <span class="nu-info-row__value" data-test-work-order-scheduled>{{or
+            (format-date @workOrder.scheduledDate)
+            "-"
+          }}</span>
+      </div>
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="calendar-check" />
+          Completed</span>
+        <span class="nu-info-row__value" data-test-work-order-completed>{{or
+            (format-date @workOrder.completedAt)
+            "-"
+          }}</span>
+      </div>
+    </Nuvo::Card>
+
+    <Nuvo::Card @title="Cost">
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="calculator" />
+          Estimated</span>
+        <span class="nu-info-row__value" data-test-work-order-estimated>{{or
+            (format-money @workOrder.estimatedCost currency=@workOrder.currency)
+            "-"
+          }}</span>
+      </div>
+      <div class="nu-info-row">
+        <span class="nu-info-row__label"><Ui::Ph @icon="receipt" />
+          Actual</span>
+        <span class="nu-info-row__value" data-test-work-order-actual>{{or
+            (format-money @workOrder.actualCost currency=@workOrder.currency)
+            "-"
+          }}</span>
+      </div>
+      <div class="nu-info-row m-stacked">
+        <span class="nu-info-row__label"><Ui::Ph @icon="note" />
+          Cost notes</span>
+        <span
+          class="nu-info-row__value whitespace-pre-line"
+          data-test-work-order-cost-notes
+        >{{or @workOrder.costNotes "-"}}</span>
+      </div>
+    </Nuvo::Card>
+  </div>
+</div>

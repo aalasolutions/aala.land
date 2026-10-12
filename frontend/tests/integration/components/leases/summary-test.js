@@ -2,7 +2,6 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
-import { formatDate } from 'land/helpers/format-date';
 
 // Shape of GET /leases/:id: the lease row plus its contact relation with displayName.
 const LEASE = {
@@ -31,11 +30,11 @@ const LEASE = {
 
 const UNIT = { id: 'unit-1', areaId: 'area-1', label: 'Bay Tower - 101' };
 
-function money(value) {
-  return new Intl.NumberFormat(navigator.language || 'en', {
-    style: 'currency',
-    currency: 'AED',
-  }).format(value);
+function dayOffset(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 module('Integration | Component | leases/summary', function (hooks) {
@@ -66,15 +65,8 @@ module('Integration | Component | leases/summary', function (hooks) {
       .dom('[data-test-lease-unit-link]')
       .hasAttribute('href', /\/properties\/area-1\/unit\/unit-1$/);
     assert.dom('[data-test-lease-region]').hasText('dxb');
-    assert.dom('[data-test-lease-status]').hasText('ACTIVE');
-    assert.dom('[data-test-lease-archived]').doesNotExist();
     assert.dom('[data-test-lease-type]').hasText('Residential (Long-Term)');
-    assert.dom('[data-test-lease-start]').hasText(formatDate('2026-01-01'));
-    assert.dom('[data-test-lease-end]').hasText(formatDate('2026-12-31'));
-    assert.dom('[data-test-lease-rent]').hasText(money(5000));
     assert.dom('[data-test-lease-currency]').hasText('AED');
-    assert.dom('[data-test-lease-deposit]').hasText(money(10000));
-    assert.dom('[data-test-lease-cheques]').hasText('4');
     assert.dom('[data-test-lease-registration]').hasText('TR-2026-001');
     assert.dom('[data-test-lease-notes]').hasText('Pays by cheque');
   });
@@ -120,21 +112,101 @@ module('Integration | Component | leases/summary', function (hooks) {
     assert.dom('[data-test-lease-unit]').hasText('-');
   });
 
-  test('empty optional fields show a dash and an archived lease is tagged', async function (assert) {
+  test('empty optional fields show a dash', async function (assert) {
     this.lease = {
       ...LEASE,
-      securityDeposit: null,
       tenancyRegistrationRef: null,
       notes: null,
-      deletedAt: '2026-09-01T00:00:00.000Z',
     };
     await render(
       hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
     );
 
-    assert.dom('[data-test-lease-deposit]').hasText('-');
     assert.dom('[data-test-lease-registration]').hasText('-');
     assert.dom('[data-test-lease-notes]').hasText('-');
-    assert.dom('[data-test-lease-archived]').hasText('Archived');
+  });
+
+  test('an active lease says how it is doing and how long is left', async function (assert) {
+    this.lease = {
+      ...LEASE,
+      startDate: dayOffset(-30),
+      endDate: dayOffset(200),
+    };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+
+    assert
+      .dom('[data-test-lease-next-step]')
+      .hasText('Running smoothly. Nothing needs your attention.');
+    assert.dom('[data-test-lease-countdown]').hasText('200 days left');
+  });
+
+  test('the last two months ask about renewal; a passed end date says so', async function (assert) {
+    this.lease = {
+      ...LEASE,
+      startDate: dayOffset(-300),
+      endDate: dayOffset(20),
+    };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+    assert
+      .dom('[data-test-lease-next-step]')
+      .hasText('Ends in 20 days. Time to talk about renewal.');
+
+    this.set('lease', { ...LEASE, endDate: dayOffset(-3) });
+    assert.dom('[data-test-lease-countdown]').hasText('Ended 3 days ago');
+  });
+
+  test('a draft shows no countdown', async function (assert) {
+    this.lease = { ...LEASE, status: 'DRAFT' };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+
+    assert
+      .dom('[data-test-lease-next-step]')
+      .hasText('This lease is a draft. Activate it once the tenant signs.');
+    assert.dom('[data-test-lease-countdown]').doesNotExist();
+  });
+
+  test('it shows the term, the cheque plan and the tenant contact details', async function (assert) {
+    this.lease = {
+      ...LEASE,
+      contact: {
+        ...LEASE.contact,
+        accessLevel: 'FULL',
+        phone: '+15551234567',
+        email: 'user@example.com',
+      },
+    };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+
+    assert.dom('[data-test-lease-length]').hasText('12 months');
+    assert.dom('[data-test-lease-cheques]').hasText('4');
+    assert.dom('[data-test-lease-tenant-phone]').hasText('+15551234567');
+    assert.dom('[data-test-lease-tenant-email]').hasText('user@example.com');
+  });
+
+  test('a limited tenant shows the masked phone and no email', async function (assert) {
+    this.lease = {
+      ...LEASE,
+      contact: {
+        id: 'contact-1',
+        accessLevel: 'LIMITED',
+        firstName: 'Test',
+        lastInitial: 'T.',
+        phoneMasked: '+1555***4567',
+      },
+    };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+
+    assert.dom('[data-test-lease-tenant-phone]').hasText('+1555***4567');
+    assert.dom('[data-test-lease-tenant-email]').doesNotExist();
   });
 });

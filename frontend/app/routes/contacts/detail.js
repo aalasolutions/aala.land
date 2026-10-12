@@ -23,13 +23,10 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
             .fetchJson(`/properties/units?ownerId=${contact_id}&limit=100`)
             .catch(() => null)
         : null,
-      tags.includes('tenant')
-        ? this.auth
-            .fetchJson(
-              `/leases?contactId=${contact_id}&limit=100&archived=include`,
-            )
-            .catch(() => null)
-        : null,
+      // The tenant tag ignores archived leases.
+      this.auth
+        .fetchJson(`/leases?contactId=${contact_id}&limit=100&archived=include`)
+        .catch(() => null),
       tags.includes('lead')
         ? this.auth
             .fetchJson(`/leads?contactId=${contact_id}&limit=100`)
@@ -48,5 +45,9 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
   setupController(controller, model, transition) {
     super.setupController(controller, model, transition);
     controller.resetEditState();
+  }
+
+  resetController(controller, isExiting) {
+    if (isExiting) controller.resetTab();
   }
 }

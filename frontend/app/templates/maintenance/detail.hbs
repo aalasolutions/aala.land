@@ -1,7 +1,7 @@
 {{page-title this.title}}
 
 <div data-test-work-order-detail class="flex col gap-6">
-  <Nuvo::PageHeader @title={{this.title}} @subtitle="Work order">
+  <Nuvo::PageHeader @title={{this.title}} @subtitle={{this.subtitle}}>
     <:breadcrumb>
       <LinkTo
         @route="maintenance.index"
@@ -10,6 +10,38 @@
       >Maintenance</LinkTo>
       <span class="text-muted">/</span>
     </:breadcrumb>
+    <:meta>
+      {{#if @model.workOrder}}
+        <div class="flex gap-1 wrap">
+          <Nuvo::Tag
+            class="tag-wo-{{lowercase @model.workOrder.status}}"
+            @text={{@model.workOrder.status}}
+            data-test-work-order-status
+          />
+          <Nuvo::Tag
+            class="tag-priority-{{lowercase @model.workOrder.priority}}"
+            @text={{@model.workOrder.priority}}
+            data-test-work-order-priority
+          />
+          <Nuvo::Tag
+            class="tag-trade-{{lowercase @model.workOrder.category}}"
+            @text={{@model.workOrder.category}}
+            data-test-work-order-category
+          />
+        </div>
+      {{/if}}
+    </:meta>
+    <:actions>
+      {{#if (and @model.workOrder this.canEdit)}}
+        <Nuvo::Button
+          @variant="secondary"
+          @icon="pencil-simple"
+          @text="Edit"
+          data-test-edit-work-order
+          {{on "click" this.openEdit}}
+        />
+      {{/if}}
+    </:actions>
   </Nuvo::PageHeader>
 
   {{#if @model.workOrder}}
@@ -48,6 +80,25 @@
         </:header>
       </Documents::Panel>
     </section>
+
+    {{#if this.canViewHistory}}
+      <Nuvo::Card @title="History" data-test-work-order-history-card>
+        <RecordHistoryList
+          @entityType="WorkOrder"
+          @entityId={{@model.workOrder.id}}
+          @reloadKey={{@model.workOrder}}
+        />
+      </Nuvo::Card>
+    {{/if}}
+
+    {{#if this.canEdit}}
+      <Maintenance::WorkOrderDrawer
+        @open={{this.showEdit}}
+        @workOrder={{@model.workOrder}}
+        @onClose={{this.closeEdit}}
+        @onSaved={{this.refresh}}
+      />
+    {{/if}}
   {{else}}
     <Nuvo::Card>
       <Nuvo::EmptyState
