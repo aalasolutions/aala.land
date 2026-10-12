@@ -15,6 +15,7 @@ import {
   FindOptionsWhere,
   In,
   IsNull,
+  Not,
 } from 'typeorm';
 import {
   LEAD_BOARDS,
@@ -293,11 +294,22 @@ export class LeadsService {
     regionCode?: string,
     contactId?: string,
     viewer?: ContactViewer,
+    openOnly = false,
   ): Promise<PaginatedLeadResponse> {
     const take = contactListLimit(limit);
     const base: FindOptionsWhere<Lead> = { companyId };
-    if (regionCode) base.regionCode = regionCode;
-    if (contactId) base.contactId = contactId;
+    if (contactId) {
+      // Record lists ignore the top-bar region.
+      const scopedCodes = scopedRegionCodes(viewer);
+      if (scopedCodes?.length === 0) {
+        return { data: [], total: 0, page, limit: take };
+      }
+      if (scopedCodes) base.regionCode = In(scopedCodes);
+      base.contactId = contactId;
+    } else if (regionCode) {
+      base.regionCode = regionCode;
+    }
+    if (openOnly) base.status = Not(In([LeadStatus.WON, LeadStatus.LOST]));
     const where = withAssigneeScope(base, viewer, viewer?.userId);
 
     const [data, total] = await this.leadRepository.findAndCount({

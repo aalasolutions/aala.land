@@ -75,7 +75,6 @@ export default class PropertiesPropertyDrawerComponent extends Component {
     return VARIANTS.includes(this.args.variant) ? this.args.variant : 'asset';
   }
 
-
   get isList() {
     return this.variant === 'list';
   }

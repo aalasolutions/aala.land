@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { modifier } from 'ember-modifier';
 import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
 import { toDateOnly } from 'land/utils/local-date';
 import { safeJson } from 'land/utils/safe-json';
@@ -42,22 +43,26 @@ export default class ChequesChequeDrawerComponent extends Component {
   @tracked error = null;
 
   draftFor = null;
+  unitsRequest = 0;
   chequeTypeOptions = CHEQUE_TYPE_OPTIONS;
 
-  constructor(owner, args) {
-    super(owner, args);
+  // The form mounts on every open, so the list follows the active region.
+  loadOnOpen = modifier(() => {
     this.loadUnits();
-  }
+  });
 
   async loadUnits() {
-    // Leave the render pass before touching tracked state.
+    // Leave the render pass; reads after this are not tracked by the modifier.
     await Promise.resolve();
+    if (this.isDestroying || this.isDestroyed) return;
+    const request = ++this.unitsRequest;
     const json = await safeJson(
       this.auth,
       '/properties/units?page=1&limit=100',
       'CHEQUES',
     );
     if (this.isDestroying || this.isDestroyed) return;
+    if (request !== this.unitsRequest) return;
     this.units = json?.data?.data ?? [];
   }
 
@@ -106,6 +111,7 @@ export default class ChequesChequeDrawerComponent extends Component {
   @action reset() {
     this.draft = null;
     this.draftFor = null;
+    this.units = [];
     this.error = null;
     this.args.onClosed?.();
   }

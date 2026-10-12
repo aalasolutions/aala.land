@@ -7,11 +7,7 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form
-      id="property-form"
-      class="flex col gap-4"
-      {{on "submit" this.save}}
-    >
+    <form id="property-form" class="flex col gap-4" {{on "submit" this.save}}>
       {{#if this.isList}}
         <Nuvo::Field @label="City" @required={{true}}>
           <RemoteAutocomplete
@@ -245,10 +241,7 @@
       {{/if}}
 
       {{#if this.errorMsg}}
-        <p
-          class="text-sm text-danger"
-          data-test-error
-        >{{this.errorMsg}}</p>
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
       {{/if}}
     </form>
   </:body>

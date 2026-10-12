@@ -46,7 +46,7 @@
                   <td
                     class="cheque-schedule__when"
                     data-test-schedule-when
-                  >{{cheque.when}}</td>
+                  >{{due-word cheque.dueDate format="relative"}}</td>
                   <td class="is-num"><Money
                       @amount={{cheque.amount}}
                       @currency={{cheque.currency}}

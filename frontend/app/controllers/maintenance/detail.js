@@ -2,19 +2,8 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { ROLES } from '../../utils/roles';
+import { canEditRecord, canViewRecordHistory } from '../../utils/roles';
 import { regionNameFor } from '../../utils/region-name';
-
-// Same roles as PATCH /maintenance/:id.
-const EDIT_ROLES = [
-  ROLES.SUPER_ADMIN,
-  ROLES.COMPANY_ADMIN,
-  ROLES.ADMIN,
-  ROLES.MANAGER,
-];
-
-// Same roles as GET /record-history.
-const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 
 export default class MaintenanceDetailController extends Controller {
   @service auth;
@@ -40,11 +29,11 @@ export default class MaintenanceDetailController extends Controller {
   }
 
   get canEdit() {
-    return EDIT_ROLES.includes(this.auth.currentUser?.role);
+    return canEditRecord(this.auth.currentUser?.role);
   }
 
   get canViewHistory() {
-    return HISTORY_ROLES.includes(this.auth.currentUser?.role);
+    return canViewRecordHistory(this.auth.currentUser?.role);
   }
 
   get documentFilters() {

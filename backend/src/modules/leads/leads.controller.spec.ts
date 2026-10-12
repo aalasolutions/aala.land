@@ -108,8 +108,33 @@ describe('LeadsController', () => {
         undefined,
         undefined,
         mockReq.user,
+        false,
       );
       expect(result).toEqual(paginated);
+    });
+
+    it('passes open=true through as a boolean', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await controller.findAll(mockReq, 1, 1, undefined, 'contact-1', 'true');
+
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        1,
+        undefined,
+        'contact-1',
+        mockReq.user,
+        true,
+      );
+    });
+
+    it('treats any other open value as not set', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await controller.findAll(mockReq, 1, 20, undefined, undefined, 'yes');
+
+      expect(service.findAll.mock.calls[0][6]).toBe(false);
     });
   });
 

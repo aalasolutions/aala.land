@@ -2,12 +2,10 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
+import { addCalendarDays, todayInZone } from 'land/utils/local-date';
 
 function dayOffset(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return addCalendarDays(todayInZone('Asia/Dubai'), days);
 }
 
 function cheque(id, amount, currency, days) {
@@ -31,10 +29,11 @@ module(
       this.owner.lookup('service:region').activeRegion = {
         code: 'dxb',
         currency: 'AED',
+        timezone: 'Asia/Dubai',
       };
     });
 
-    test('groups total per currency and say how late or soon each cheque is', async function (assert) {
+    test('groups total per currency and say how late or soon each cheque is in region time', async function (assert) {
       this.groups = [
         {
           period: 'Overdue',
@@ -43,13 +42,19 @@ module(
             cheque('c-2', '200.00', 'SAR', -1),
           ],
         },
-        { period: 'This Week', cheques: [cheque('c-3', '300.00', 'AED', 0)] },
+        {
+          period: 'This Week',
+          cheques: [
+            cheque('c-3', '300.00', 'AED', 0),
+            cheque('c-4', '100.00', 'AED', 2),
+          ],
+        },
       ];
       await render(
         hbs`<Cheques::CollectionSchedule @groups={{this.groups}} />`,
       );
 
-      assert.dom('[data-test-schedule-row]').exists({ count: 3 });
+      assert.dom('[data-test-schedule-row]').exists({ count: 4 });
       assert.dom('[data-test-schedule-group="Overdue"]').hasClass('is-overdue');
       const total = this.element
         .querySelector(
@@ -62,7 +67,12 @@ module(
       const when = [
         ...this.element.querySelectorAll('[data-test-schedule-when]'),
       ].map((el) => el.textContent.trim());
-      assert.deepEqual(when, ['3 days overdue', '1 day overdue', 'Due today']);
+      assert.deepEqual(when, [
+        '3 days overdue',
+        '1 day overdue',
+        'due today',
+        'due in 2 days',
+      ]);
     });
 
     test('no groups shows the empty state', async function (assert) {

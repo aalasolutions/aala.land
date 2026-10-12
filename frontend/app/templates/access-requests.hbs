@@ -5,14 +5,13 @@
     @icon="key"
     @title="Access Requests"
     @subtitle="Agents asking for full details of contacts they did not add."
-  >
-  </Nuvo::PageHeader>
+  />
 
   <Nuvo::Segmented
     @options={{this.statusOptions}}
     @value={{this.status}}
     @onChange={{this.setStatus}}
-    data-test-role-tabs
+    data-test-access-status-filter
   />
 
   <Nuvo::Card>

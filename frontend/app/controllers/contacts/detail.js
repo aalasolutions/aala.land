@@ -2,10 +2,13 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { ROLES } from '../../utils/roles';
+import { canViewRecordHistory } from '../../utils/roles';
 import { isLimited } from '../../utils/contact-display';
+import { primaryRole } from '../../utils/contact-role';
+import { RELATED_PAGE_SIZE, relatedListUrl } from '../../utils/contact-related';
 
-const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
+const ROLE_TAB = { lead: 'leads', tenant: 'leases', owner: 'properties' };
+const FIRST_PAGES = { leads: 1, leases: 1, properties: 1 };
 
 export default class ContactsDetailController extends Controller {
   @service auth;
@@ -18,6 +21,11 @@ export default class ContactsDetailController extends Controller {
   @tracked expandedLeadId = null;
   @tracked leadActivities = {};
   @tracked loadingActivitiesFor = null;
+
+  @tracked pages = FIRST_PAGES;
+  @tracked pagedRows = {};
+  pageSize = RELATED_PAGE_SIZE;
+  #pageRequests = { leads: 0, leases: 0, properties: 0 };
 
   unitColumns = [
     { name: 'Unit', valuePath: 'unitNumber', width: 200, isFixed: 'left' },
@@ -55,25 +63,36 @@ export default class ContactsDetailController extends Controller {
     this.loadingActivitiesFor = null;
   }
 
-  // Same roles as GET /record-history.
   get canViewHistory() {
-    return HISTORY_ROLES.includes(this.auth.currentUser?.role);
+    return canViewRecordHistory(this.auth.currentUser?.role);
   }
 
   get isLimited() {
     return isLimited(this.model?.contact);
   }
 
+  get totals() {
+    return this.model?.totals ?? {};
+  }
+
+  get leadRows() {
+    return this.pagedRows.leads ?? this.model?.leads ?? [];
+  }
+
+  get leaseRows() {
+    return this.pagedRows.leases ?? this.model?.leases ?? [];
+  }
+
+  get unitRows() {
+    return this.pagedRows.properties ?? this.model?.units ?? [];
+  }
+
   get relatedTabs() {
-    const { leads = [], leases = [], units = [] } = this.model ?? {};
+    const { leads, leases, units } = this.totals;
     return [
-      leads.length && { id: 'leads', label: 'Leads', count: leads.length },
-      leases.length && { id: 'leases', label: 'Leases', count: leases.length },
-      units.length && {
-        id: 'properties',
-        label: 'Properties',
-        count: units.length,
-      },
+      leads && { id: 'leads', label: 'Leads', count: leads },
+      leases && { id: 'leases', label: 'Leases', count: leases },
+      units && { id: 'properties', label: 'Properties', count: units },
       { id: 'documents', label: 'Documents' },
       this.canViewHistory && { id: 'history', label: 'History' },
     ].filter(Boolean);
@@ -82,7 +101,8 @@ export default class ContactsDetailController extends Controller {
   get currentTab() {
     const ids = this.relatedTabs.map((t) => t.id);
     if (this.tab && ids.includes(this.tab)) return this.tab;
-    return ids[0];
+    const roleTab = ROLE_TAB[primaryRole(this.model ?? {})];
+    return ids.includes(roleTab) ? roleTab : ids[0];
   }
 
   @action setTab(id) {
@@ -92,6 +112,27 @@ export default class ContactsDetailController extends Controller {
   // Cleared only when leaving the route.
   resetTab() {
     this.tab = null;
+  }
+
+  resetPages() {
+    for (const tab of Object.keys(this.#pageRequests)) {
+      this.#pageRequests[tab]++;
+    }
+    this.pages = FIRST_PAGES;
+    this.pagedRows = {};
+  }
+
+  // Replaces only this tab's rows; a newer request or a reload discards a late answer.
+  @action async goToRelatedPage(tab, page) {
+    const contactId = this.model?.contact?.id;
+    if (!contactId) return;
+    const request = ++this.#pageRequests[tab];
+    this.pages = { ...this.pages, [tab]: page };
+    const result = await this.auth
+      .fetchJson(relatedListUrl(tab, contactId, page))
+      .catch(() => null);
+    if (request !== this.#pageRequests[tab]) return;
+    this.pagedRows = { ...this.pagedRows, [tab]: result?.data?.data || [] };
   }
 
   // The server grants access on a match; reloading swaps in whatever view it now returns.

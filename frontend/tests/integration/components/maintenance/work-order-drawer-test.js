@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { click, fillIn, render, waitFor } from '@ember/test-helpers';
+import { click, fillIn, render, settled, waitFor } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
 
@@ -47,6 +47,43 @@ module(
     function sent(calls, method) {
       return calls.find((c) => c.options.method === method);
     }
+
+    function fetches(calls, prefix) {
+      return calls.filter((c) => c.path.startsWith(prefix)).length;
+    }
+
+    test('loads its unit and vendor lists when it opens, not before', async function (assert) {
+      this.open = false;
+      await render(
+        hbs`<Maintenance::WorkOrderDrawer @open={{this.open}} @workOrder={{this.workOrder}} @onClose={{this.noop}} />`,
+      );
+      assert.strictEqual(this.calls.length, 0, 'closed: nothing fetched');
+
+      this.set('open', true);
+      await waitFor('#wo-title');
+      await settled();
+      assert.strictEqual(
+        fetches(this.calls, '/properties/units?page=1&limit=500'),
+        1,
+      );
+      assert.strictEqual(fetches(this.calls, '/vendors?page=1&limit=100'), 1);
+    });
+
+    test('the lists are fetched again on a second open', async function (assert) {
+      await render(
+        hbs`<Maintenance::WorkOrderDrawer @open={{this.open}} @workOrder={{this.workOrder}} @onClose={{this.noop}} />`,
+      );
+      await waitFor('#wo-title');
+      await settled();
+
+      this.set('open', false);
+      await settled();
+      this.set('open', true);
+      await waitFor('#wo-title');
+      await settled();
+      assert.strictEqual(fetches(this.calls, '/properties/units'), 2);
+      assert.strictEqual(fetches(this.calls, '/vendors'), 2);
+    });
 
     test('create without a property is refused', async function (assert) {
       await render(

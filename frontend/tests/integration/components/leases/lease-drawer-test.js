@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { click, fillIn, render, waitFor } from '@ember/test-helpers';
+import { click, fillIn, render, settled, waitFor } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
 
@@ -86,6 +86,41 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     );
     await waitFor('#lease-form');
   }
+
+  function unitFetches(calls) {
+    return calls.filter((c) => c.path === '/properties/units?page=1&limit=100')
+      .length;
+  }
+
+  test('loads its unit list when it opens, not before', async function (assert) {
+    this.open = false;
+    await render(
+      hbs`<Leases::LeaseDrawer @open={{this.open}} @mode="create" @onClose={{this.noop}} />`,
+    );
+    assert.strictEqual(unitFetches(this.calls), 0, 'closed: nothing fetched');
+
+    this.set('open', true);
+    await waitFor('#lease-form');
+    await settled();
+    assert.strictEqual(unitFetches(this.calls), 1, 'fetched on open');
+  });
+
+  test('the unit list is fetched again on a second open', async function (assert) {
+    this.open = true;
+    await render(
+      hbs`<Leases::LeaseDrawer @open={{this.open}} @mode="create" @onClose={{this.noop}} />`,
+    );
+    await waitFor('#lease-form');
+    await settled();
+    assert.strictEqual(unitFetches(this.calls), 1);
+
+    this.set('open', false);
+    await settled();
+    this.set('open', true);
+    await waitFor('#lease-form');
+    await settled();
+    assert.strictEqual(unitFetches(this.calls), 2);
+  });
 
   test('a new lease starts with one cheque and needs a tenant and cheques', async function (assert) {
     await renderDrawer(this, 'create');

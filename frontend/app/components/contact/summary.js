@@ -4,12 +4,9 @@ import { contactName } from 'land/utils/contact-display';
 import { daysUntil } from 'land/utils/local-date';
 import { formatMoney } from 'land/utils/money';
 import { localeForRegion } from 'land/utils/locale';
-
-const CLOSED_LEAD = ['WON', 'LOST'];
-
-function plural(count, word, many = `${word}s`) {
-  return `${count} ${count === 1 ? word : many}`;
-}
+import { plural } from 'land/utils/plural';
+import { primaryRole } from 'land/utils/contact-role';
+import { regionCurrencyFor } from 'land/utils/region-name';
 
 export default class ContactSummaryComponent extends Component {
   @service region;
@@ -18,20 +15,12 @@ export default class ContactSummaryComponent extends Component {
     return contactName(this.args.contact, 'Contact');
   }
 
-  get units() {
-    return this.args.units ?? [];
+  get totals() {
+    return this.args.totals ?? {};
   }
 
-  get activeLeases() {
-    return (this.args.leases ?? []).filter(
-      (l) => l.status === 'ACTIVE' && !l.deletedAt,
-    );
-  }
-
-  get openLeads() {
-    return (this.args.leads ?? []).filter(
-      (l) => !CLOSED_LEAD.includes(l.status),
-    );
+  get role() {
+    return primaryRole({ totals: this.args.totals });
   }
 
   money(value, currency) {
@@ -46,11 +35,12 @@ export default class ContactSummaryComponent extends Component {
     const want = lead.unit?.unitNumber
       ? `Interested in ${lead.unit.unitNumber}`
       : `Looking for a property${where}`;
+    const currency = regionCurrencyFor(this.region.regions, lead.regionCode);
     let budget = '';
     if (lead.budgetMin && lead.budgetMax) {
-      budget = `, budget ${this.money(lead.budgetMin)} to ${this.money(lead.budgetMax)}`;
+      budget = `, budget ${this.money(lead.budgetMin, currency)} to ${this.money(lead.budgetMax, currency)}`;
     } else if (lead.budgetMin || lead.budgetMax) {
-      budget = `, budget ${this.money(lead.budgetMin || lead.budgetMax)}`;
+      budget = `, budget ${this.money(lead.budgetMin || lead.budgetMax, currency)}`;
     }
     const temp = lead.temperature
       ? `${lead.temperature.charAt(0)}${lead.temperature.slice(1).toLowerCase()} lead`
@@ -79,41 +69,33 @@ export default class ContactSummaryComponent extends Component {
   }
 
   ownerLine() {
-    const units = this.units;
-    const available = units.filter((u) => u.status === 'available').length;
-    const owns = `Owns ${plural(units.length, 'property', 'properties')}`;
-    return available ? `${owns}, ${available} available.` : `${owns}.`;
+    const { units = 0, availableUnits: available = 0 } = this.totals;
+    const owns = `Owns ${plural(units, 'property', 'properties')}`;
+    return available ? `${owns}, ${available} marked available.` : `${owns}.`;
   }
 
   get relationship() {
-    const lines = [];
-    if (this.openLeads.length) lines.push(this.leadLine(this.openLeads[0]));
-    if (this.activeLeases.length) {
-      lines.push(this.tenantLine(this.activeLeases[0]));
+    if (this.role === 'lead')
+      return this.leadLine(this.args.firstOpenLead ?? {});
+    if (this.role === 'tenant') {
+      return this.tenantLine(this.args.firstActiveLease ?? {});
     }
-    if (this.units.length) lines.push(this.ownerLine());
-    return lines[0] ?? 'No open leads, leases or properties yet.';
+    if (this.role === 'owner') return this.ownerLine();
+    return 'No open leads, leases or properties yet.';
   }
 
   get alsoLine() {
+    const { openLeads = 0, activeLeases = 0, units = 0 } = this.totals;
     const also = [];
-    if (this.openLeads.length > 1) {
-      also.push(
-        `${this.openLeads.length - 1} more open lead${this.openLeads.length > 2 ? 's' : ''}`,
-      );
+    if (openLeads > 1) {
+      also.push(plural(openLeads - 1, 'more open lead', 'more open leads'));
     }
-    const leading = this.openLeads.length
-      ? 'lead'
-      : this.activeLeases.length
-        ? 'tenant'
-        : 'owner';
-    if (leading !== 'tenant' && this.activeLeases.length) {
-      also.push(
-        `rents ${plural(this.activeLeases.length, 'property', 'properties')}`,
-      );
+    const leading = this.role;
+    if (leading !== 'tenant' && activeLeases) {
+      also.push(`rents ${plural(activeLeases, 'property', 'properties')}`);
     }
-    if (leading !== 'owner' && this.units.length) {
-      also.push(`owns ${plural(this.units.length, 'property', 'properties')}`);
+    if (leading !== 'owner' && units) {
+      also.push(`owns ${plural(units, 'property', 'properties')}`);
     }
     return also.length ? `Also ${also.join(', ')}.` : '';
   }

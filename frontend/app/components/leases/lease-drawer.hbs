@@ -7,7 +7,12 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="lease-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form
+      id="lease-form"
+      class="flex col gap-4"
+      {{this.loadOnOpen}}
+      {{on "submit" this.save}}
+    >
       {{#if this.unitArchivedMessage}}
         <Nuvo::Alert
           @variant="warning"
@@ -23,6 +28,7 @@
           @onSelect={{this.selectUnit}}
           @options={{this.unitOptions}}
           @placeholder="Select a property..."
+          data-test-lease-unit
         />
       </Nuvo::Field>
 
@@ -34,6 +40,7 @@
             @value={{this.form.status}}
             @onSelect={{fn this.setField "status"}}
             @options={{this.statusOptions}}
+            data-test-lease-status
           />
         </Nuvo::Field>
       {{/if}}
@@ -59,6 +66,7 @@
             @disabled={{if this.unitLeaseType true false}}
             @options={{this.leaseTypeOptions}}
             @placeholder="Select property type..."
+            data-test-lease-type
           />
         </Nuvo::Field>
         <Nuvo::Field
@@ -74,6 +82,7 @@
             @onInput={{fn this.setField "numberOfCheques"}}
             min="1"
             max="12"
+            data-test-lease-cheques
           />
         </Nuvo::Field>
       </div>
@@ -86,6 +95,7 @@
             class="nu-input"
             value={{this.form.startDate}}
             required
+            data-test-lease-start
             {{on "input" (fn this.setFieldFromEvent "startDate")}}
           />
         </Nuvo::Field>
@@ -96,6 +106,7 @@
             class="nu-input"
             value={{this.form.endDate}}
             required
+            data-test-lease-end
             {{on "input" (fn this.setFieldFromEvent "endDate")}}
           />
         </Nuvo::Field>
@@ -112,6 +123,7 @@
             required={{true}}
             min="0"
             step="0.01"
+            data-test-lease-rent
           />
         </Nuvo::Field>
         <Nuvo::Field class="grow" @label="Security Deposit">
@@ -123,6 +135,7 @@
             @onInput={{fn this.setField "securityDeposit"}}
             min="0"
             step="0.01"
+            data-test-lease-deposit
           />
         </Nuvo::Field>
       </div>
@@ -137,6 +150,7 @@
           placeholder="e.g. TR-2026-00001"
           @value={{this.form.tenancyRegistrationRef}}
           @onInput={{fn this.setField "tenancyRegistrationRef"}}
+          data-test-lease-registration-ref
         />
       </Nuvo::Field>
 
@@ -160,6 +174,7 @@
     <Nuvo::Button
       @variant="secondary"
       @onClick={{this.close}}
+      data-test-cancel-lease
     >Cancel</Nuvo::Button>
     <Nuvo::Button
       @variant="primary"

@@ -7,7 +7,12 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="cheque-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form
+      id="cheque-form"
+      class="flex col gap-4"
+      {{this.loadOnOpen}}
+      {{on "submit" this.save}}
+    >
       <div class="flex gap-4">
         <Nuvo::Field @label="Cheque Number" @required={{true}} class="grow">
           <Nuvo::Input

@@ -54,6 +54,7 @@ export default class CommissionsCommissionDrawerComponent extends Component {
 
   @action async save(event) {
     event.preventDefault();
+    if (this.isSaving) return;
     const form = this.form;
     if (!form.agentId) {
       this.errorMsg = 'Please select an agent';

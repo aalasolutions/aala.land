@@ -71,6 +71,7 @@
               @onSelect={{fn this.setField "status"}}
               @options={{this.statusOptions}}
               @placeholder="Select status..."
+              data-test-lead-status
             />
           </Nuvo::Field>
         </div>
@@ -86,6 +87,7 @@
               @onSelect={{fn this.setField "temperature"}}
               @options={{this.temperatureOptions}}
               @placeholder="Select temperature..."
+              data-test-lead-temperature
             />
           </Nuvo::Field>
         </div>
@@ -101,6 +103,7 @@
           @onSelect={{fn this.setField "source"}}
           @options={{this.sourceOptions}}
           @placeholder="Select source..."
+          data-test-lead-source
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Location / Area">
@@ -110,6 +113,7 @@
           @value={{this.form.localityId}}
           @onSelect={{this.setLocalityId}}
           @options={{this.localityOptions}}
+          data-test-lead-locality
         />
       </Nuvo::Field>
       {{#if this.form.localityId}}
@@ -120,6 +124,7 @@
             @value={{this.form.unitId}}
             @onSelect={{fn this.setField "unitId"}}
             @options={{this.unitOptions}}
+            data-test-lead-unit
           />
         </Nuvo::Field>
       {{/if}}

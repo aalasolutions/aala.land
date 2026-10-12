@@ -37,4 +37,8 @@ export default class MaintenanceDetailRoute extends AuthenticatedRoute {
       assignee: assigneeResult?.data || null,
     };
   }
+
+  resetController(controller, isExiting) {
+    if (isExiting) controller.showEdit = false;
+  }
 }

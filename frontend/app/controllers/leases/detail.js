@@ -3,18 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { contactName } from '../../utils/contact-display';
-import { ROLES } from '../../utils/roles';
-
-// Same roles as PATCH /leases/:id, POST /leases/:id/renew and /terminate.
-const EDIT_ROLES = [
-  ROLES.SUPER_ADMIN,
-  ROLES.COMPANY_ADMIN,
-  ROLES.ADMIN,
-  ROLES.MANAGER,
-];
-
-// Same roles as GET /record-history.
-const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
+import { canEditRecord, canViewRecordHistory } from '../../utils/roles';
 
 export default class LeasesDetailController extends Controller {
   @service auth;
@@ -53,7 +42,7 @@ export default class LeasesDetailController extends Controller {
     return (
       Boolean(this.lease) &&
       !this.lease.deletedAt &&
-      EDIT_ROLES.includes(this.auth.currentUser?.role)
+      canEditRecord(this.auth.currentUser?.role)
     );
   }
 
@@ -67,7 +56,7 @@ export default class LeasesDetailController extends Controller {
   }
 
   get canViewHistory() {
-    return HISTORY_ROLES.includes(this.auth.currentUser?.role);
+    return canViewRecordHistory(this.auth.currentUser?.role);
   }
 
   get documentFilters() {

@@ -48,7 +48,7 @@
 
   {{#if @model.contact}}
     <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
-    <div class="contact-detail-grid flex col gap-6">
+    <div class="flex col gap-6">
       {{#if this.isLimited}}
         <Nuvo::Card @title="Contact Information">
           <Nuvo::DescList @horizontal={{true}} data-test-limited-details>
@@ -88,9 +88,9 @@
       {{else}}
         <Contact::Summary
           @contact={{@model.contact}}
-          @units={{@model.units}}
-          @leases={{@model.leases}}
-          @leads={{@model.leads}}
+          @totals={{@model.totals}}
+          @firstOpenLead={{@model.firstOpenLead}}
+          @firstActiveLease={{@model.firstActiveLease}}
         />
       {{/if}}
 
@@ -104,9 +104,9 @@
 
         {{#if (eq this.currentTab "leads")}}
           <Nuvo::Card data-test-contact-leads>
-            {{#if @model.leads.length}}
+            {{#if this.leadRows.length}}
               <div class="flex col gap-3">
-                {{#each @model.leads as |lead|}}
+                {{#each this.leadRows as |lead|}}
                   <Nuvo::Panel
                     @compact={{true}}
                     @interactive={{true}}
@@ -155,11 +155,15 @@
                       <span>Source: {{lead.source}}</span>
                       {{#if lead.budgetMin}}
                         <span>Budget:
-                          <Money @amount={{lead.budgetMin}} />{{#if
-                            lead.budgetMax
-                          }}
+                          <Money
+                            @amount={{lead.budgetMin}}
+                            @currency={{region-currency lead.regionCode}}
+                          />{{#if lead.budgetMax}}
                             &ndash;
-                            <Money @amount={{lead.budgetMax}} />{{/if}}</span>
+                            <Money
+                              @amount={{lead.budgetMax}}
+                              @currency={{region-currency lead.regionCode}}
+                            />{{/if}}</span>
                       {{/if}}
                       <span>Created {{format-date lead.createdAt}}</span>
                     </div>
@@ -200,16 +204,26 @@
                   </Nuvo::Panel>
                 {{/each}}
               </div>
+              {{#if (gt this.totals.leads this.pageSize)}}
+                <Nuvo::Pagination
+                  class="mt-4"
+                  @page={{this.pages.leads}}
+                  @limit={{this.pageSize}}
+                  @total={{this.totals.leads}}
+                  @onPageChange={{fn this.goToRelatedPage "leads"}}
+                  data-test-contact-leads-pager
+                />
+              {{/if}}
             {{else}}
               <Nuvo::EmptyState @description="No lead requirements found." />
             {{/if}}
           </Nuvo::Card>
         {{else if (eq this.currentTab "leases")}}
           <Nuvo::Card data-test-contact-leases>
-            {{#if @model.leases.length}}
+            {{#if this.leaseRows.length}}
               <Nuvo::DataTable
                 @columns={{this.leaseColumns}}
-                @rows={{@model.leases}}
+                @rows={{this.leaseRows}}
                 @pinColumns={{true}}
                 @reorderable={{true}}
                 @sortable={{true}}
@@ -251,6 +265,16 @@
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}
               </Nuvo::DataTable>
+              {{#if (gt this.totals.leases this.pageSize)}}
+                <Nuvo::Pagination
+                  class="mt-4"
+                  @page={{this.pages.leases}}
+                  @limit={{this.pageSize}}
+                  @total={{this.totals.leases}}
+                  @onPageChange={{fn this.goToRelatedPage "leases"}}
+                  data-test-contact-leases-pager
+                />
+              {{/if}}
             {{else}}
               <Nuvo::EmptyState
                 @description="No leases found for this tenant."
@@ -259,10 +283,10 @@
           </Nuvo::Card>
         {{else if (eq this.currentTab "properties")}}
           <Nuvo::Card data-test-contact-properties>
-            {{#if @model.units.length}}
+            {{#if this.unitRows.length}}
               <Nuvo::DataTable
                 @columns={{this.unitColumns}}
-                @rows={{@model.units}}
+                @rows={{this.unitRows}}
                 @pinColumns={{true}}
                 @reorderable={{true}}
                 @sortable={{true}}
@@ -285,7 +309,10 @@
                     @text={{cell.value}}
                   />
                 {{else if (eq cell.key "price")}}
-                  <Money @amount={{cell.value}} />
+                  <Money
+                    @amount={{cell.value}}
+                    @currency={{region-currency cell.row.regionCode}}
+                  />
                 {{else if (eq cell.key "id")}}
                   <Nuvo::Button
                     @variant="secondary"
@@ -299,6 +326,16 @@
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}
               </Nuvo::DataTable>
+              {{#if (gt this.totals.units this.pageSize)}}
+                <Nuvo::Pagination
+                  class="mt-4"
+                  @page={{this.pages.properties}}
+                  @limit={{this.pageSize}}
+                  @total={{this.totals.units}}
+                  @onPageChange={{fn this.goToRelatedPage "properties"}}
+                  data-test-contact-properties-pager
+                />
+              {{/if}}
             {{else}}
               <Nuvo::EmptyState
                 @description="No properties found for this owner."

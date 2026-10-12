@@ -2,15 +2,12 @@ import Component from '@glimmer/component';
 import { LEASE_TYPE_OPTIONS, optionLabelFor } from 'land/constants';
 import { contactName } from 'land/utils/contact-display';
 import { daysUntil, toEpochMs } from 'land/utils/local-date';
+import { plural } from 'land/utils/plural';
 
 const DAY_MS = 86400000;
 const DAYS_PER_MONTH = 30.4375;
 const WARN_DAYS = 60;
 const DANGER_DAYS = 30;
-
-function plural(count, word) {
-  return `${count} ${word}${count === 1 ? '' : 's'}`;
-}
 
 export default class LeasesSummaryComponent extends Component {
   get tenantName() {
@@ -59,11 +56,22 @@ export default class LeasesSummaryComponent extends Component {
     return left > DANGER_DAYS ? 'warning' : 'danger';
   }
 
-  get length() {
+  // Inclusive of the end date.
+  get termDays() {
     if (!this.hasTerm || this.end < this.start) return null;
-    const days = Math.round((this.end - this.start) / DAY_MS) + 1;
-    const months = Math.round(days / DAYS_PER_MONTH);
-    return months >= 1 ? plural(months, 'month') : plural(days, 'day');
+    return Math.round((this.end - this.start) / DAY_MS) + 1;
+  }
+
+  get termMonths() {
+    const months = this.termDays && Math.round(this.termDays / DAYS_PER_MONTH);
+    return months >= 1 ? months : null;
+  }
+
+  get length() {
+    if (this.termDays === null) return null;
+    return this.termMonths
+      ? plural(this.termMonths, 'month')
+      : plural(this.termDays, 'day');
   }
 
   get countdown() {
@@ -101,13 +109,6 @@ export default class LeasesSummaryComponent extends Component {
       default:
         return '';
     }
-  }
-
-  get termMonths() {
-    if (!this.hasTerm || this.end < this.start) return null;
-    const days = Math.round((this.end - this.start) / DAY_MS) + 1;
-    const months = Math.round(days / DAYS_PER_MONTH);
-    return months >= 1 ? months : null;
   }
 
   get termRent() {

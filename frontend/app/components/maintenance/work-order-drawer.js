@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { modifier } from 'ember-modifier';
 import {
   MAINTENANCE_STATUS_OPTIONS,
   PRIORITY_OPTIONS,
@@ -51,38 +52,49 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
 
   @tracked draft = null;
   draftFor = null;
+  optionsRequest = 0;
   @tracked units = [];
   @tracked vendors = [];
   @tracked isSaving = false;
-  @tracked errorMsg = '';
+  @tracked error = null;
   @tracked reasonError = '';
 
   priorityOptions = PRIORITY_OPTIONS;
   categoryOptions = MAINTENANCE_CATEGORY_OPTIONS;
   statusOptions = MAINTENANCE_STATUS_OPTIONS.filter((o) => o.value);
 
-  constructor(owner, args) {
-    super(owner, args);
+  // The form mounts on every open, so the lists follow the active region.
+  loadOnOpen = modifier(() => {
     this.loadOptions();
-  }
+  });
 
   async loadOptions() {
-    // Leave the render pass before touching tracked state.
+    // Leave the render pass; reads after this are not tracked by the modifier.
     await Promise.resolve();
+    if (this.isDestroying || this.isDestroyed) return;
+    const request = ++this.optionsRequest;
     const [unitsJson, vendorsJson] = await Promise.all([
       safeJson(this.auth, '/properties/units?page=1&limit=500', 'MAINT'),
       safeJson(this.auth, '/vendors?page=1&limit=100', 'MAINT'),
     ]);
     if (this.isDestroying || this.isDestroyed) return;
+    if (request !== this.optionsRequest) return;
     this.units = unitsJson?.data?.data ?? [];
     this.vendors = vendorsJson?.data?.data ?? [];
   }
 
-  // Draft is keyed to the work order it was made from.
+  // Draft and error are keyed to the record they were made for.
+  get source() {
+    return this.args.workOrder?.id ?? 'new';
+  }
+
   get form() {
-    const source = this.args.workOrder ?? null;
-    if (this.draft && this.draftFor === source) return this.draft;
-    return formFrom(source);
+    if (this.draft && this.draftFor === this.source) return this.draft;
+    return formFrom(this.args.workOrder);
+  }
+
+  get errorMsg() {
+    return this.error?.source === this.source ? this.error.message : '';
   }
 
   get isEdit() {
@@ -139,7 +151,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     }
 
     if (name === 'reason') this.reasonError = '';
-    this.draftFor = this.args.workOrder ?? null;
+    this.draftFor = this.source;
     this.draft = next;
   }
 
@@ -150,7 +162,9 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
   @action reset() {
     this.draft = null;
     this.draftFor = null;
-    this.errorMsg = '';
+    this.units = [];
+    this.vendors = [];
+    this.error = null;
     this.reasonError = '';
     this.args.onClosed?.();
   }
@@ -160,8 +174,12 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     if (this.isSaving) return;
 
     const form = this.form;
+    const source = this.source;
     if (!form.unitId) {
-      this.errorMsg = 'Please select a property before saving the work order.';
+      this.error = {
+        source,
+        message: 'Please select a property before saving the work order.',
+      };
       return;
     }
     const reason = form.reason.trim();
@@ -171,7 +189,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     }
 
     this.isSaving = true;
-    this.errorMsg = '';
+    this.error = null;
     this.reasonError = '';
 
     const isEdit = this.isEdit;
@@ -207,7 +225,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
       this.close();
       this.args.onSaved?.();
     } catch (e) {
-      this.errorMsg = e.message;
+      this.error = { source, message: e.message };
     } finally {
       this.isSaving = false;
     }

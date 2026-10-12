@@ -4,6 +4,8 @@ import { click, fillIn } from '@ember/test-helpers';
 import template from 'land/templates/contacts/detail';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import { formatMoney } from 'land/utils/money';
+import { localeForRegion } from 'land/utils/locale';
 
 const LIMITED = {
   id: 'c-9',
@@ -64,7 +66,16 @@ module('Integration | Template | contacts/detail', function (hooks) {
     await renderRouteTemplate(ctx, template, {
       name: 'contacts.detail',
       controller,
-      model: { contact, units: [], leases: [], leads: [], ...records },
+      model: {
+        contact,
+        units: [],
+        leases: [],
+        leads: [],
+        totals: {},
+        firstOpenLead: null,
+        firstActiveLease: null,
+        ...records,
+      },
     });
     return controller;
   }
@@ -184,7 +195,13 @@ module('Integration | Template | contacts/detail', function (hooks) {
     const lead = { id: 'lead-1', status: 'NEW', temperature: 'HOT' };
     this.owner.setupRouter();
     await renderDetail(this, FULL, {
-      records: { leads: [lead], leases: [lease] },
+      records: {
+        leads: [lead],
+        leases: [lease],
+        totals: { leads: 1, openLeads: 1, leases: 1, activeLeases: 1 },
+        firstOpenLead: lead,
+        firstActiveLease: lease,
+      },
     });
 
     assert
@@ -198,6 +215,159 @@ module('Integration | Template | contacts/detail', function (hooks) {
       .hasAttribute('href', /\/leases\/lease-1$/);
     assert.dom('[data-test-nu-tabs-trigger="properties"]').doesNotExist();
   });
+
+  test("a lead in another region prices its budget in that region's currency", async function (assert) {
+    const region = this.owner.lookup('service:region');
+    region.regions = [
+      { code: 'DXB', name: 'Dubai', currency: 'AED' },
+      { code: 'PB', name: 'Punjab', currency: 'PKR' },
+    ];
+    region.activeRegion = region.regions[0];
+    const lead = {
+      id: 'lead-1',
+      status: 'NEW',
+      temperature: 'HOT',
+      regionCode: 'PB',
+      budgetMin: '1200',
+      budgetMax: '5000',
+    };
+    await renderDetail(this, FULL, {
+      records: {
+        leads: [lead],
+        totals: { leads: 1, openLeads: 1 },
+        firstOpenLead: lead,
+      },
+    });
+
+    const locale = localeForRegion(region.activeRegion);
+    const price = (v, currency) =>
+      formatMoney(v, locale, { currency, compact: true });
+    const card = '[data-test-contact-leads] [data-test-lead-card]';
+    assert.dom(card).includesText(price('1200', 'PKR'));
+    assert.dom(card).includesText(price('5000', 'PKR'));
+    assert.dom(card).doesNotIncludeText(price('1200', 'AED'));
+  });
+
+  test('a won lead with an active lease opens on Leases, like the sentence', async function (assert) {
+    const lease = {
+      id: 'lease-1',
+      status: 'ACTIVE',
+      unit: { unitNumber: '302' },
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      monthlyRent: '5000.00',
+      currency: 'AED',
+    };
+    const lead = { id: 'lead-1', status: 'WON', temperature: 'HOT' };
+    this.owner.setupRouter();
+    await renderDetail(this, FULL, {
+      records: {
+        leads: [lead],
+        leases: [lease],
+        totals: { leads: 1, openLeads: 0, leases: 1, activeLeases: 1 },
+        firstActiveLease: lease,
+      },
+    });
+
+    assert
+      .dom('[data-test-nu-tabs-trigger="leases"]')
+      .hasAttribute('aria-selected', 'true');
+    assert
+      .dom('[data-test-nu-tabs-trigger="leads"]')
+      .hasAttribute('aria-selected', 'false');
+    assert.dom('[data-test-contact-relationship]').includesText('Rents 302');
+  });
+  test('a tab counts the list total, not the rows loaded', async function (assert) {
+    const units = Array.from({ length: 50 }, (_, i) => ({
+      id: `u-${i}`,
+      unitNumber: `U${i}`,
+      areaId: 'a-1',
+      status: 'rented',
+    }));
+    this.owner.setupRouter();
+    await renderDetail(this, FULL, {
+      records: { units, totals: { units: 150, availableUnits: 0 } },
+    });
+
+    assert
+      .dom('[data-test-nu-tabs-trigger="properties"]')
+      .hasAttribute('aria-selected', 'true');
+    assert.dom('[data-test-nu-tabs-trigger="properties"]').includesText('150');
+    assert
+      .dom('[data-test-contact-relationship]')
+      .hasText('Owns 150 properties.');
+    assert.dom('[data-test-contact-properties-pager]').exists();
+  });
+
+  test('the pager fetches the next page for that tab only', async function (assert) {
+    const units = Array.from({ length: 50 }, (_, i) => ({
+      id: `u-${i}`,
+      unitNumber: `U${i}`,
+      areaId: 'a-1',
+      status: 'rented',
+    }));
+    const lease = {
+      id: 'lease-1',
+      status: 'EXPIRED',
+      unit: { unitNumber: 'L1' },
+    };
+    this.owner.setupRouter();
+    const controller = await renderDetail(this, FULL, {
+      respond: (path) =>
+        path.startsWith('/properties/units')
+          ? {
+              data: {
+                data: [{ id: 'u-99', unitNumber: 'P2-UNIT', areaId: 'a-1' }],
+                total: 120,
+              },
+            }
+          : { data: { data: [], total: 0 } },
+      records: {
+        units,
+        leases: [lease],
+        totals: { units: 120, leases: 1 },
+      },
+    });
+
+    await click(
+      '[data-test-contact-properties-pager] [data-test-nu-pagination-page="2"]',
+    );
+
+    const paths = this.calls.map((c) => c.path);
+    assert.deepEqual(paths, ['/properties/units?ownerId=c-1&page=2&limit=50']);
+    assert.dom('[data-test-owned-unit-row]').exists({ count: 1 });
+    assert.dom('[data-test-owned-unit-row]').hasText('P2-UNIT');
+    assert.strictEqual(controller.pages.properties, 2);
+    assert.strictEqual(controller.pages.leases, 1);
+
+    await click('[data-test-nu-tabs-trigger="leases"]');
+    assert.dom('[data-test-lease-row]').hasText('L1');
+    assert.dom('[data-test-contact-leases-pager]').doesNotExist();
+  });
+
+  test('a late page answer is dropped once a newer page was asked for', async function (assert) {
+    const resolvers = [];
+    this.owner.setupRouter();
+    const controller = await renderDetail(this, FULL, {
+      respond: (path) =>
+        new Promise((resolve) => resolvers.push({ path, resolve })),
+      records: { totals: { leads: 200, openLeads: 0 } },
+    });
+
+    const first = controller.goToRelatedPage('leads', 2);
+    const second = controller.goToRelatedPage('leads', 3);
+    resolvers[1].resolve({ data: { data: [{ id: 'page-3' }], total: 200 } });
+    await second;
+    resolvers[0].resolve({ data: { data: [{ id: 'page-2' }], total: 200 } });
+    await first;
+
+    assert.deepEqual(
+      controller.leadRows.map((l) => l.id),
+      ['page-3'],
+    );
+    assert.strictEqual(controller.pages.leads, 3);
+  });
+
   test('an agent with a grant sees full details but no Edit', async function (assert) {
     await renderDetail(this, FULL, { role: 'agent' });
 

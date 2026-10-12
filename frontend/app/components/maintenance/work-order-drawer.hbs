@@ -7,7 +7,12 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="work-order-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form
+      id="work-order-form"
+      class="flex col gap-4"
+      {{this.loadOnOpen}}
+      {{on "submit" this.save}}
+    >
       <Nuvo::Field @label="Property" @required={{true}}>
         <Nuvo::Dropdown
           id="wo-unit"
@@ -28,6 +33,7 @@
           @value={{this.form.title}}
           @onInput={{fn this.setField "title"}}
           required={{true}}
+          data-test-wo-title
         />
       </Nuvo::Field>
 
@@ -39,6 +45,7 @@
           @value={{this.form.description}}
           @onInput={{fn this.setField "description"}}
           required={{true}}
+          data-test-wo-description
         />
       </Nuvo::Field>
 
@@ -52,6 +59,7 @@
               @onSelect={{fn this.setField "priority"}}
               @options={{this.priorityOptions}}
               @placeholder="Select priority..."
+              data-test-wo-priority
             />
           </Nuvo::Field>
         </div>
@@ -64,6 +72,7 @@
               @onSelect={{fn this.setField "category"}}
               @options={{this.categoryOptions}}
               @placeholder="Select category..."
+              data-test-wo-category
             />
           </Nuvo::Field>
         </div>
@@ -78,6 +87,7 @@
             @onSelect={{fn this.setField "status"}}
             @options={{this.statusOptions}}
             @placeholder="Select status..."
+            data-test-wo-status
           />
         </Nuvo::Field>
         {{#if this.isCancelling}}
@@ -111,6 +121,7 @@
             @onInput={{fn this.setField "estimatedCost"}}
             min="0"
             step="0.01"
+            data-test-wo-est-cost
           />
         </Nuvo::Field>
       {{else}}
@@ -123,6 +134,7 @@
                 placeholder="Tenant or staff name"
                 @value={{this.form.reportedBy}}
                 @onInput={{fn this.setField "reportedBy"}}
+                data-test-wo-reported-by
               />
             </Nuvo::Field>
           </div>
@@ -136,6 +148,7 @@
                 @onInput={{fn this.setField "estimatedCost"}}
                 min="0"
                 step="0.01"
+                data-test-wo-est-cost
               />
             </Nuvo::Field>
           </div>
@@ -153,6 +166,7 @@
               @onInput={{fn this.setField "actualCost"}}
               min="0"
               step="0.01"
+              data-test-wo-act-cost
             />
           </Nuvo::Field>
         </div>
@@ -164,6 +178,7 @@
               placeholder="e.g. Parts + labor"
               @value={{this.form.costNotes}}
               @onInput={{fn this.setField "costNotes"}}
+              data-test-wo-cost-notes
             />
           </Nuvo::Field>
         </div>
@@ -177,6 +192,7 @@
               type="date"
               @value={{this.form.scheduledDate}}
               @onInput={{fn this.setField "scheduledDate"}}
+              data-test-wo-scheduled
             />
           </Nuvo::Field>
         </div>
@@ -189,6 +205,7 @@
               @onSelect={{fn this.setField "vendorId"}}
               @options={{this.vendorOptions}}
               @placeholder="No vendor assigned"
+              data-test-wo-vendor
             />
           </Nuvo::Field>
         </div>
@@ -200,7 +217,11 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button @variant="secondary" {{on "click" this.close}}>
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-cancel-work-order
+      {{on "click" this.close}}
+    >
       Cancel
     </Nuvo::Button>
     <Nuvo::Button

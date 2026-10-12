@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, IsNull } from 'typeorm';
+import { DataSource, Repository, IsNull, In, Not } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -643,6 +643,116 @@ describe('LeadsService', () => {
         { companyId, assignedTo: IsNull() },
         { companyId, assignedTo: 'agent-uuid-1' },
       ]);
+    });
+
+    it('excludes WON and LOST leads when open only', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(
+        companyId,
+        1,
+        1,
+        undefined,
+        'contact-uuid-1',
+        undefined,
+        true,
+      );
+
+      expect(leadRepo.findAndCount.mock.calls[0][0]?.where).toEqual({
+        companyId,
+        contactId: 'contact-uuid-1',
+        status: Not(In([LeadStatus.WON, LeadStatus.LOST])),
+      });
+    });
+
+    it('keeps the assignee scope when open only', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+        true,
+      );
+
+      const open = Not(In([LeadStatus.WON, LeadStatus.LOST]));
+      expect(leadRepo.findAndCount.mock.calls[0][0]?.where).toEqual([
+        { companyId, status: open, assignedTo: IsNull() },
+        { companyId, status: open, assignedTo: 'agent-uuid-1' },
+      ]);
+    });
+
+    it('ignores the top-bar region for a contact record list', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(companyId, 1, 20, 'makkah', 'contact-uuid-1', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      expect(leadRepo.findAndCount.mock.calls[0][0]?.where).toEqual({
+        companyId,
+        regionCode: In(['makkah', 'punjab']),
+        contactId: 'contact-uuid-1',
+      });
+    });
+
+    it('keeps the assignee scope on a contact record list', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        'makkah',
+        'contact-uuid-1',
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['punjab'] },
+        true,
+      );
+
+      const base = {
+        companyId,
+        regionCode: In(['punjab']),
+        contactId: 'contact-uuid-1',
+        status: Not(In([LeadStatus.WON, LeadStatus.LOST])),
+      };
+      expect(leadRepo.findAndCount.mock.calls[0][0]?.where).toEqual([
+        { ...base, assignedTo: IsNull() },
+        { ...base, assignedTo: 'agent-uuid-1' },
+      ]);
+    });
+
+    it('lists nothing on a contact record for a caller with no regions', async () => {
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'contact-uuid-1',
+        { userId: 'manager-uuid-1', role: Role.MANAGER, regionCodes: [] },
+      );
+
+      expect(leadRepo.findAndCount).not.toHaveBeenCalled();
+      expect(result.total).toBe(0);
+    });
+
+    it('narrows by the top-bar region without a record filter', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[], 0]);
+
+      await service.findAll(companyId, 1, 20, 'makkah', undefined, {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      expect(leadRepo.findAndCount.mock.calls[0][0]?.where).toEqual({
+        companyId,
+        regionCode: 'makkah',
+      });
     });
 
     it('does not limit a manager by assignee', async () => {

@@ -7,7 +7,7 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../../utils/delete-modal';
-import { ROLES } from '../../utils/roles';
+import { ROLES, canViewRecordHistory } from '../../utils/roles';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -229,9 +229,8 @@ export default class PropertiesUnitController extends Controller {
     return DELETE_ROLES.includes(this.auth.currentUser?.role);
   }
 
-  // Same roles as GET /record-history.
   get canViewHistory() {
-    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+    return canViewRecordHistory(this.auth.currentUser?.role);
   }
 
   get unitActionConfig() {

@@ -661,6 +661,90 @@ describe('PropertiesService', () => {
         ),
       ).toBe(false);
     });
+
+    it('ignores the top-bar region for an owner record list', async () => {
+      const qb = qbMock([], 0);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      const viewer = {
+        userId: 'user-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      };
+
+      await service.findAllUnits(
+        companyId,
+        1,
+        20,
+        { ownerId: 'owner-uuid-1', regionCode: 'makkah' },
+        undefined,
+        viewer,
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'ci.regionCode IN (:...recordCodes)',
+        { recordCodes: ['makkah', 'punjab'] },
+      );
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'ci.regionCode = :regionCode',
+        expect.anything(),
+      );
+    });
+
+    it('lists no units on an owner record for a caller with no regions', async () => {
+      const result = await service.findAllUnits(
+        companyId,
+        1,
+        20,
+        { ownerId: 'owner-uuid-1' },
+        undefined,
+        { userId: 'user-1', role: Role.MANAGER, regionCodes: [] },
+      );
+
+      expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(result.total).toBe(0);
+    });
+
+    it('narrows by the top-bar region without a record filter', async () => {
+      const qb = qbMock([], 0);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+      await service.findAllUnits(
+        companyId,
+        1,
+        20,
+        { regionCode: 'makkah' },
+        undefined,
+        { userId: 'user-1', role: Role.MANAGER, regionCodes: ['makkah'] },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith('ci.regionCode = :regionCode', {
+        regionCode: 'makkah',
+      });
+    });
+
+    it("returns each unit's region from its city", async () => {
+      const unit = {
+        ...mockUnit,
+        asset: {
+          ...mockAsset,
+          locality: {
+            id: 'loc-1',
+            name: 'Area',
+            city: { regionCode: 'pk-pb' },
+          },
+        },
+      } as unknown as Partial<Unit>;
+      const qb = qbMock([unit], 1);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      mediaRepo.find.mockResolvedValue([]);
+
+      const result = await service.findAllUnits(companyId, 1, 20, {});
+
+      expect(qb.addSelect).toHaveBeenCalledWith(
+        expect.arrayContaining(['ci.id', 'ci.regionCode']),
+      );
+      expect(result.data[0].regionCode).toBe('pk-pb');
+    });
   });
 
   describe('updateUnit', () => {

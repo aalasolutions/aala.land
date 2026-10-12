@@ -21,6 +21,29 @@ export function canManageUsers(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }
 
+// Same roles as GET /record-history.
+export const RECORD_HISTORY_ROLES = [
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+
+export function canViewRecordHistory(role) {
+  return RECORD_HISTORY_ROLES.includes(role);
+}
+
+// Same roles as PATCH on leases and work orders, and lease renew and terminate.
+export const RECORD_EDIT_ROLES = [
+  ROLES.SUPER_ADMIN,
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+
+export function canEditRecord(role) {
+  return RECORD_EDIT_ROLES.includes(role);
+}
+
 export function canViewReports(role) {
   return [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER].includes(role);
 }

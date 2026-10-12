@@ -1,6 +1,13 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { click, fillIn, render, settled, waitFor } from '@ember/test-helpers';
+import {
+  click,
+  fillIn,
+  render,
+  settled,
+  waitFor,
+  waitUntil,
+} from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
 
@@ -20,6 +27,17 @@ const CHEQUE = {
   leaseId: 'lease-1',
   unitId: 'unit-1',
 };
+
+// A menu opened while the drawer still slides in is re-clamped inside its ResizeObserver callback.
+async function drawerSettled() {
+  await waitUntil(() => {
+    const drawer = document.querySelector('[data-test-nu-drawer]');
+    return (
+      drawer?.classList.contains('is-open') &&
+      drawer.getAnimations().length === 0
+    );
+  });
+}
 
 module('Integration | Component | cheques/cheque-drawer', function (hooks) {
   setupRenderingTest(hooks);
@@ -62,6 +80,7 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
   }
 
   async function pick(selector, label) {
+    await drawerSettled();
     await click(`${selector} [data-test-nu-dropdown-trigger]`);
     const item = [
       ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
@@ -77,11 +96,23 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
     await settled();
   }
 
-  test('loads its own unit list for the property picker', async function (assert) {
-    await renderDrawer();
-    assert.ok(
-      this.calls.find((c) => c.path === '/properties/units?page=1&limit=100'),
+  function unitFetches(calls) {
+    return calls.filter((c) => c.path === '/properties/units?page=1&limit=100')
+      .length;
+  }
+
+  test('loads its unit list when it opens, not before', async function (assert) {
+    this.open = false;
+    await render(
+      hbs`<Cheques::ChequeDrawer @open={{this.open}} @cheque={{this.cheque}} @onClose={{this.onClose}} @onSaved={{this.onSaved}} />`,
     );
+    assert.strictEqual(unitFetches(this.calls), 0, 'closed: nothing fetched');
+
+    this.set('open', true);
+    await waitFor('#chq-number');
+    await settled();
+    assert.strictEqual(unitFetches(this.calls), 1, 'fetched on open');
+    await drawerSettled();
     await click('#chq-unit [data-test-nu-dropdown-trigger]');
     const labels = [
       ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
@@ -91,6 +122,18 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
       'Area - Tower - Property 101',
       'Area - Tower - Property 202',
     ]);
+  });
+
+  test('the unit list is fetched again on a second open', async function (assert) {
+    await renderDrawer();
+    assert.strictEqual(unitFetches(this.calls), 1);
+
+    this.set('open', false);
+    await settled();
+    this.set('open', true);
+    await waitFor('#chq-number');
+    await settled();
+    assert.strictEqual(unitFetches(this.calls), 2);
   });
 
   test('create posts the full body with amount parsed to a number', async function (assert) {

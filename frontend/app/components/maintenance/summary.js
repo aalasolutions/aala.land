@@ -1,5 +1,6 @@
 import Component from '@glimmer/component';
 import { daysUntil } from 'land/utils/local-date';
+import { plural } from 'land/utils/plural';
 import { formatDate } from 'land/helpers/format-date';
 
 const STAGES = [
@@ -57,15 +58,14 @@ export default class MaintenanceSummaryComponent extends Component {
     if (this.isCancelled) return 'This work order was cancelled.';
     if (wo.status === 'COMPLETED') return 'The work is done and closed.';
     if (wo.status === 'PENDING_APPROVAL')
-      return 'Waiting for approval before work goes ahead.';
+      return 'Work is done and waiting for owner or manager approval to close.';
     if (!this.hasPeople)
       return 'Nobody is on this yet. Assign a vendor or a team member.';
     if (!wo.scheduledDate)
       return 'Someone is on it, but no visit is scheduled yet.';
     const days = this.scheduledIn;
     if (days === 0) return 'The visit is scheduled for today.';
-    if (days > 0)
-      return `The visit is scheduled in ${days} ${days === 1 ? 'day' : 'days'}.`;
+    if (days > 0) return `The visit is scheduled in ${plural(days, 'day')}.`;
     return 'The scheduled visit date has passed. Check in with whoever is on it.';
   }
 
@@ -76,9 +76,7 @@ export default class MaintenanceSummaryComponent extends Component {
     if (wo.reportedBy) parts.push(`Reported by ${wo.reportedBy}`);
     if (wo.createdAt) parts.push(formatDate(wo.createdAt));
     if (this.daysOpen) {
-      parts.push(
-        `open ${this.daysOpen} ${this.daysOpen === 1 ? 'day' : 'days'}`,
-      );
+      parts.push(`open ${plural(this.daysOpen, 'day')}`);
     }
     return parts.join(' · ');
   }

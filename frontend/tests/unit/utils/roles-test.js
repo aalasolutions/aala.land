@@ -8,6 +8,7 @@ import {
   canManageUsers,
   canUpdateUser,
   canViewContactCompanies,
+  canViewRecordHistory,
   canViewReports,
   getVisibleGroups,
   isAdminRole,
@@ -171,5 +172,15 @@ module('Unit | Utility | roles', function () {
   test('no role sees nothing at all', function (assert) {
     assert.deepEqual(getVisibleGroups(null), {});
     assert.deepEqual(getVisibleGroups(undefined), {});
+  });
+
+  test('record history follows GET /record-history roles', function (assert) {
+    assert.true(canViewRecordHistory(ROLES.COMPANY_ADMIN));
+    assert.true(canViewRecordHistory(ROLES.ADMIN));
+    assert.true(canViewRecordHistory(ROLES.MANAGER));
+    assert.false(canViewRecordHistory(ROLES.SUPER_ADMIN));
+    assert.false(canViewRecordHistory(ROLES.AGENT));
+    assert.false(canViewRecordHistory(ROLES.ACCOUNTANT));
+    assert.false(canViewRecordHistory(undefined));
   });
 });

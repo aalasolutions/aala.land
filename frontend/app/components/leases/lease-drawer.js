@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { cached, tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { modifier } from 'ember-modifier';
 import {
   UUID_PATTERN,
   LEASE_TYPE_OPTIONS,
@@ -66,22 +67,26 @@ export default class LeasesLeaseDrawerComponent extends Component {
   @tracked selectionEpoch = 0;
 
   draftFor = null;
+  unitsRequest = 0;
   leaseTypeOptions = LEASE_TYPE_OPTIONS;
 
-  constructor(owner, args) {
-    super(owner, args);
+  // The form mounts on every open, so the list follows the active region.
+  loadOnOpen = modifier(() => {
     this.loadUnits();
-  }
+  });
 
   async loadUnits() {
-    // Leave the render pass before touching tracked state.
+    // Leave the render pass; reads after this are not tracked by the modifier.
     await Promise.resolve();
+    if (this.isDestroying || this.isDestroyed) return;
+    const request = ++this.unitsRequest;
     const json = await safeJson(
       this.auth,
       '/properties/units?page=1&limit=100',
       'LEASES',
     );
     if (this.isDestroying || this.isDestroyed) return;
+    if (request !== this.unitsRequest) return;
     this.units = json?.data?.data ?? [];
   }
 
@@ -203,6 +208,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
   @action reset() {
     this.draft = null;
     this.draftFor = null;
+    this.units = [];
     this.selectionEpoch += 1;
     this.errorMsg = '';
     this.args.onClosed?.();

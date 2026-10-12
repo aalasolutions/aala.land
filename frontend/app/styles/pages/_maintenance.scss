@@ -48,7 +48,7 @@
   &::before {
     position: absolute;
     inset-block-start: 0.4375rem;
-    inset-inline: 0.5rem -0.5rem;
+    inset-inline: nu-space(2) (-1 * nu-space(2));
     block-size: 2px;
     content: "";
     background: var(--border-base);
@@ -56,7 +56,7 @@
 
   // Dot-wide so the previous segment ends on its centre.
   &:last-child {
-    flex: 0 0 1rem;
+    flex: 0 0 nu-space(4);
     min-inline-size: 0;
     align-items: flex-end;
     white-space: nowrap;
@@ -74,8 +74,8 @@
 .wo-story__dot {
   position: relative;
   z-index: 1;
-  inline-size: 1rem;
-  block-size: 1rem;
+  inline-size: nu-space(4);
+  block-size: nu-space(4);
   background: var(--bg-surface);
   border: 2px solid var(--border-base);
   border-radius: nu-radius(full);

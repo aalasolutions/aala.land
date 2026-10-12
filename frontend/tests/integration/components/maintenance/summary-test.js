@@ -158,4 +158,17 @@ module('Integration | Component | maintenance/summary', function (hooks) {
       .hasText('This work order was cancelled.');
     assert.dom('[data-test-work-order-stage]').doesNotExist();
   });
+
+  test('pending approval means the work is done and waits for sign-off', async function (assert) {
+    this.workOrder = { ...ORDER, status: 'PENDING_APPROVAL' };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-next-step]')
+      .hasText(
+        'Work is done and waiting for owner or manager approval to close.',
+      );
+    assert.dom('[data-test-work-order-stage="current"]').hasText('Approval');
+    assert.dom('[data-test-work-order-stage="done"]').exists({ count: 2 });
+  });
 });
