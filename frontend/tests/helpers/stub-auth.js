@@ -1,12 +1,15 @@
 import Service from '@ember/service';
 
 // Registers an auth service whose fetchJson answers from `respond` and records every call.
-export function stubAuth(owner, { role = 'agent', respond = () => ({}) } = {}) {
+export function stubAuth(
+  owner,
+  { role = 'agent', companyId, respond = () => ({}) } = {},
+) {
   const calls = [];
   owner.register(
     'service:auth',
     class extends Service {
-      currentUser = { id: 'user-1', role };
+      currentUser = { id: 'user-1', role, companyId };
 
       async fetchJson(path, options = {}) {
         const body = options.body ? JSON.parse(options.body) : undefined;

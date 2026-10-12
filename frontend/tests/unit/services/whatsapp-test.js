@@ -887,7 +887,7 @@ module('Unit | Service | whatsapp', function (hooks) {
 
       inbound('m-3', 'c-1');
       assert.deepEqual(this.toasts, [
-        { message: 'New WhatsApp message from Layla', duration: 0 },
+        { message: 'New WhatsApp message from Layla', duration: undefined },
       ]);
 
       inbound('m-4', 'c-1');

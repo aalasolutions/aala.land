@@ -37,6 +37,7 @@ interface StorageUsageResponse {
   percentUsed: number;
   tier: string;
   purchasedSeats: number;
+  hasSubscription: boolean;
 }
 
 @ApiTags('Companies')
@@ -152,6 +153,7 @@ export class CompaniesController {
       percentUsed,
       tier: company.subscriptionTier,
       purchasedSeats: company.purchasedSeats ?? 1,
+      hasSubscription: !!company.billingSubscriptionId,
     };
   }
 

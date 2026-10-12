@@ -3,11 +3,13 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
-import { formatMoney, minorUnitDigits } from '../../../utils/money';
+import { formatMoney, toMajorUnits, toMinorUnits } from '../../../utils/money';
 import { localeForRegion } from '../../../utils/locale';
+import { creditDisplayAmount } from '../../../utils/billing-credit';
 import {
   formatCalendarDate,
   localDateString,
+  formatLongInstant,
   localEndOfDayIso,
   toEpochMs,
 } from 'land/utils/local-date';
@@ -33,6 +35,9 @@ const HISTORY_EVENTS = {
   lift_ended: 'Lift ended',
   manual_payment_recorded: 'Manual payment recorded',
   refund_initiated: 'Refund initiated',
+  downgrade_executed: 'Plan ended, refund requested',
+  refund_failed: 'Refund failed',
+  downgrade_released: 'Downgrade request dropped',
   next_bill_discount: 'Next-bill discount',
 };
 
@@ -110,6 +115,8 @@ export default class AdminCompaniesCompanyController extends Controller {
       numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
+    { name: 'Credit', valuePath: 'creditAmount', width: 180, numeric: true },
+    { name: 'Status', valuePath: 'type', width: 160 },
     { name: 'Covers', valuePath: 'coversLabel', width: 200 },
     { name: 'Source', valuePath: 'source', width: 120 },
     { name: 'Notes', valuePath: 'notes', width: 220 },
@@ -178,6 +185,10 @@ export default class AdminCompaniesCompanyController extends Controller {
     return this.detail?.billing ?? null;
   }
 
+  get downgradeDateLabel() {
+    return formatLongInstant(this.billing?.downgradeEffectiveAt);
+  }
+
   get lock() {
     return this.detail?.lockState ?? null;
   }
@@ -240,10 +251,10 @@ export default class AdminCompaniesCompanyController extends Controller {
       const amt =
         this.remedyScope === 'full'
           ? this.remedyAnchor?.amountMinor
-          : this.toMinor(this.remedyAmount, this.remedyAnchor?.currency);
+          : toMinorUnits(this.remedyAmount, this.remedyAnchor?.currency);
       return `Refund ${this.formatMoney(amt || 0, this.remedyAnchor?.currency)}`;
     }
-    const amt = this.toMinor(this.remedyAmount, this.remedyAnchor?.currency);
+    const amt = toMinorUnits(this.remedyAmount, this.remedyAnchor?.currency);
     return `Discount next bill by ${this.formatMoney(
       amt || 0,
       this.remedyAnchor?.currency,
@@ -294,7 +305,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     const d = this.deal;
     this.dealEditing = !!d;
     if (d) {
-      this.dealPrice = String(this.toMajor(d.priceAmount, d.currency));
+      this.dealPrice = String(toMajorUnits(d.priceAmount, d.currency));
       this.dealCurrency = d.currency;
       this.dealBasis = d.basis;
       this.dealSeatCap = String(d.seatCap);
@@ -338,7 +349,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   async submitDeal() {
     if (this.dealBusy) return;
-    const price = this.toMinor(this.dealPrice, this.dealCurrency);
+    const price = toMinorUnits(this.dealPrice, this.dealCurrency);
     const seatCap = parseInt(this.dealSeatCap, 10);
     const currency = (this.dealCurrency || '').trim().toLowerCase();
 
@@ -564,6 +575,10 @@ export default class AdminCompaniesCompanyController extends Controller {
         date: p.receivedAt,
         amount: p.amount,
         currency: p.currency,
+        type: 'payment_succeeded',
+        creditApplied: 0,
+        creditIssued: 0,
+        creditAmount: 0,
         coversLabel: `${this.formatDate(p.coversStart)} – ${this.formatDate(
           p.coversEnd,
         )}`,
@@ -578,6 +593,11 @@ export default class AdminCompaniesCompanyController extends Controller {
         date: h.occurredAt,
         amount: h.amount,
         currency: h.currency,
+        type: h.type,
+        refundStatus: h.refundStatus ?? null,
+        creditApplied: h.creditApplied ?? 0,
+        creditIssued: h.creditIssued ?? 0,
+        creditAmount: creditDisplayAmount(h),
         coversLabel:
           h.periodStart && h.periodEnd
             ? `${this.formatDate(h.periodStart)} – ${this.formatDate(
@@ -641,7 +661,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   async submitPayment() {
     if (this.payBusy) return;
-    const amount = this.toMinor(this.payAmount, this.payCurrency);
+    const amount = toMinorUnits(this.payAmount, this.payCurrency);
     const currency = (this.payCurrency || '').trim().toLowerCase();
     if (amount == null || amount < 1) {
       this.notifications.error('Enter a valid amount.');
@@ -776,7 +796,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (this.remedyKind === 'refund') {
       body.scope = this.remedyScope;
       if (this.remedyScope === 'partial') {
-        const amount = this.toMinor(this.remedyAmount, currency);
+        const amount = toMinorUnits(this.remedyAmount, currency);
         if (amount == null || amount < 1 || amount > anchorAmount) {
           this.notifications.error(
             'Enter a partial amount up to the payment total.',
@@ -786,7 +806,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         body.amount = amount;
       }
     } else {
-      const amount = this.toMinor(this.remedyAmount, currency);
+      const amount = toMinorUnits(this.remedyAmount, currency);
       if (amount == null || amount < 1 || amount > anchorAmount) {
         this.notifications.error(
           'Enter a discount amount up to the payment total.',
@@ -856,26 +876,6 @@ export default class AdminCompaniesCompanyController extends Controller {
       return base;
     }
     return `${row.action} ${row.entityType}`;
-  }
-
-  minorDigits(currency) {
-    return minorUnitDigits(
-      currency || 'USD',
-      localeForRegion(this.region.activeRegion),
-    );
-  }
-
-  /** Major-unit input to minor units; null when the input is not a number. */
-  toMinor(major, currency) {
-    if (major === '' || major === null || major === undefined) return null;
-    const num = Number(major);
-    if (Number.isNaN(num)) return null;
-    return Math.round(num * 10 ** this.minorDigits(currency));
-  }
-
-  toMajor(minor, currency) {
-    const num = Number(minor ?? 0);
-    return num / 10 ** this.minorDigits(currency);
   }
 
   formatMoney(minor, currency) {

@@ -16,6 +16,7 @@ const DOCS = [
   {
     id: 'doc-unit',
     name: 'Title Deed',
+    originalFileName: 'deed scan.pdf',
     category: 'TITLE_DEED',
     accessLevel: 'TEAM',
     fileSize: 1024,
@@ -261,7 +262,85 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.dom('[data-test-documents-upload]').doesNotExist();
   });
 
+  function openMenuLabels() {
+    return [
+      ...document.querySelectorAll(
+        '.nu-menu.is-open [data-test-nu-dropdown-item]',
+      ),
+    ].map((el) => el.textContent.trim());
+  }
+
+  test('the category list follows the chosen record type', async function (assert) {
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    assert.strictEqual(openMenuLabels().length, 10, 'library only offers all');
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+
+    await chooseOption('[data-test-field-related-type]', 'Work Order');
+    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    assert.deepEqual(openMenuLabels(), [
+      'Invoice',
+      'Maintenance & Snagging',
+      'Receipt',
+      'Other Documents',
+    ]);
+  });
+
+  test('a category the new record type does not allow resets to Other', async function (assert) {
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    await chooseOption('[data-test-field-related-type]', 'Lease');
+    await chooseOption('[data-test-field-category]', 'Tenancy Registration');
+    await chooseOption('[data-test-field-related-type]', 'Work Order');
+
+    assert
+      .dom('[data-test-field-category] [data-test-nu-dropdown-trigger]')
+      .includesText('Other Documents');
+  });
+
+  test('editing shows the uploaded file name with a download, and no file picker', async function (assert) {
+    this.responses.list = [DOCS[0]];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
+
+    await click('[data-test-edit-btn]');
+    await drawerSettled();
+
+    assert.dom('[data-test-file-input]').doesNotExist();
+    assert.dom('[data-test-edit-file-name]').includesText('deed scan.pdf');
+    assert.dom('[data-test-edit-file-download]').exists();
+  });
+
+  test('a library-only upload carries the selected region', async function (assert) {
+    this.owner.lookup('service:region').activeRegion = { code: 'dubai' };
+    this.responses.list = [];
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-documents-empty]');
+
+    await click('[data-test-documents-upload]');
+    await drawerSettled();
+    const file = new File(['pdf'], 'policy.pdf', { type: 'application/pdf' });
+    await triggerEvent('[data-test-file-input]', 'change', { files: [file] });
+    await fillIn('[data-test-field-name]', 'Policy');
+    await click('[data-test-save-btn]');
+
+    const upload = this.calls.find((c) =>
+      c.path.startsWith('/documents/upload'),
+    );
+    assert.strictEqual(upload.options.body.get('regionCode'), 'dubai');
+  });
+
   test('the upload drawer sends the chosen link field', async function (assert) {
+    this.owner.lookup('service:region').activeRegion = { code: 'dubai' };
     this.responses.list = [];
     this.responses.lists['/maintenance'] = [
       { id: 'wo-1', title: 'Fix AC' },
@@ -292,6 +371,11 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.strictEqual(body.get('name'), 'Lobby invoice');
     assert.strictEqual(body.get('unitId'), null, 'only one link field is sent');
     assert.strictEqual(body.get('leaseId'), null);
+    assert.strictEqual(
+      body.get('regionCode'),
+      null,
+      'a linked file takes its record region',
+    );
     assert.deepEqual(this.toasts, [['success', 'Document uploaded']]);
     const listCalls = this.calls.filter((c) =>
       c.path.startsWith('/documents?'),
@@ -337,13 +421,17 @@ module('Integration | Component | documents/panel', function (hooks) {
 
     const patch = this.calls.find((c) => c.options.method === 'PATCH');
     assert.strictEqual(patch.path, '/documents/doc-unit');
-    assert.deepEqual(JSON.parse(patch.options.body), {
-      name: 'Title Deed',
-      category: 'TITLE_DEED',
-      accessLevel: 'TEAM',
-      unitId: null,
-      workOrderId: 'wo-9',
-    });
+    assert.deepEqual(
+      JSON.parse(patch.options.body),
+      {
+        name: 'Title Deed',
+        category: 'OTHER',
+        accessLevel: 'TEAM',
+        unitId: null,
+        workOrderId: 'wo-9',
+      },
+      'a work order does not allow Title Deed, so the category resets',
+    );
     assert.deepEqual(this.toasts, [['success', 'Document updated']]);
   });
 
@@ -409,7 +497,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.strictEqual(upload.options.body.get('name'), 'contract.pdf');
   });
 
-  test('a non-admin is offered the Team access level only', async function (assert) {
+  test('a non-admin is offered both access levels', async function (assert) {
     this.owner.lookup('service:auth').currentUser = {
       id: 'user-1',
       role: 'manager',
@@ -426,10 +514,10 @@ module('Integration | Component | documents/panel', function (hooks) {
         '.nu-menu.is-open [data-test-nu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
-    assert.deepEqual(labels, ['Share with Team']);
+    assert.deepEqual(labels, ['Share with Team', 'Share with Admin']);
   });
 
-  test('row actions follow the role: agent downloads, manager edits, admin deletes', async function (assert) {
+  test('row actions follow the role: agent and manager edit own uploads, admin deletes', async function (assert) {
     const auth = this.owner.lookup('service:auth');
     this.responses.list = [DOCS[0]];
 
@@ -437,13 +525,30 @@ module('Integration | Component | documents/panel', function (hooks) {
     await render(hbs`<Documents::Panel />`);
     await waitFor('[data-test-download-btn]');
     assert.dom('[data-test-documents-upload]').exists('an agent may upload');
-    assert.dom('[data-test-edit-btn]').doesNotExist();
+    assert
+      .dom('[data-test-edit-btn]')
+      .doesNotExist('not on a file someone else uploaded');
+    assert.dom('[data-test-delete-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-2', role: 'agent' };
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
     assert.dom('[data-test-delete-btn]').doesNotExist();
 
     auth.currentUser = { id: 'user-1', role: 'manager' };
     await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-download-btn]');
+    assert.dom('[data-test-edit-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-2', role: 'manager' };
+    await render(hbs`<Documents::Panel />`);
     await waitFor('[data-test-edit-btn]');
     assert.dom('[data-test-delete-btn]').doesNotExist();
+
+    auth.currentUser = { id: 'user-1', role: 'admin' };
+    await render(hbs`<Documents::Panel />`);
+    await waitFor('[data-test-edit-btn]');
+    assert.dom('[data-test-delete-btn]').exists();
 
     auth.currentUser = { id: 'user-1', role: 'accountant' };
     await render(hbs`<Documents::Panel />`);

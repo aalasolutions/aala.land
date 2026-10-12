@@ -38,7 +38,11 @@ module('Integration | Template | access-requests', function (hooks) {
     this.calls = stubAuth(this.owner, { role: 'manager', respond: () => ({}) });
     const controller = this.owner.lookup('controller:access-requests');
     this.refreshed = [];
+    this.countReloads = 0;
     controller.router = { refresh: (name) => this.refreshed.push(name) };
+    controller.accessRequests = {
+      loadPendingCount: () => this.countReloads++,
+    };
     await renderRouteTemplate(this, template, {
       name: 'access-requests',
       controller,
@@ -83,6 +87,7 @@ module('Integration | Template | access-requests', function (hooks) {
       },
     ]);
     assert.deepEqual(this.refreshed, ['access-requests']);
+    assert.strictEqual(this.countReloads, 1, 'the sidebar count reloads');
     assert.strictEqual(this.toasts[0].type, 'success');
     assert.dom('[data-test-approve-modal]').doesNotExist();
   });
@@ -134,6 +139,7 @@ module('Integration | Template | access-requests', function (hooks) {
       },
     ]);
     assert.deepEqual(this.refreshed, ['access-requests']);
+    assert.strictEqual(this.countReloads, 1, 'the sidebar count reloads');
   });
 
   test('revoking an approved grant sends the reason to revoke', async function (assert) {

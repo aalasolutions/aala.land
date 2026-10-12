@@ -32,7 +32,7 @@
     <div class="nu-desc-list__group">
       <dt class="nu-desc-list__term">Region</dt>
       <dd class="nu-desc-list__description" data-test-work-order-region>{{or
-          @workOrder.regionCode
+          (region-name @workOrder.regionCode)
           "-"
         }}</dd>
     </div>

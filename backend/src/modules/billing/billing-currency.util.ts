@@ -1,8 +1,11 @@
 import { getRegionByCode } from '@shared/constants/regions';
 
-/** Same value across currencies (~$25 = AED 95 = SAR 95); USD is default, listed first. */
+/** Supported billing currencies; USD is default, listed first. */
 export const BILLING_CURRENCIES = ['usd', 'aed', 'sar'] as const;
 export type BillingCurrency = (typeof BILLING_CURRENCIES)[number];
+
+/** Charged when checkout names no currency, so its base price must always exist. */
+export const DEFAULT_BILLING_CURRENCY: BillingCurrency = 'usd';
 
 export function isBillingCurrency(value: string): value is BillingCurrency {
   return (BILLING_CURRENCIES as readonly string[]).includes(value);
@@ -22,5 +25,19 @@ export function resolveBillingCurrency(
       return 'sar';
     default:
       return 'usd';
+  }
+}
+
+/** Digits after the decimal point of a currency's minor unit: USD 2, JPY 0, BHD 3. */
+export function currencyMinorDigits(currency: string): number {
+  try {
+    return (
+      new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).resolvedOptions().maximumFractionDigits ?? 2
+    );
+  } catch {
+    return 2;
   }
 }

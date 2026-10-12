@@ -36,7 +36,10 @@ import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { Contact } from '../contacts/entities/contact.entity';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
-import { contactDisplayName } from '../../shared/utils/contact.util';
+import {
+  contactDisplayName,
+  hasContactIdentity,
+} from '../../shared/utils/contact.util';
 import { limitedDisplayName } from '../../shared/utils/contact-privacy.util';
 import {
   ContactPrivacyService,
@@ -69,15 +72,6 @@ import {
 } from '../../shared/utils/region-visibility.util';
 import { errorMessage } from '@shared/utils/error.util';
 
-// An empty object must not reach resolveOrCreate, which would insert an all-null contact
-function hasContactIdentity(
-  owner: ContactIdentityDto | undefined,
-): owner is ContactIdentityDto {
-  return Boolean(
-    owner && (owner.firstName || owner.lastName || owner.phone || owner.email),
-  );
-}
-
 function joinList(items: string[]): string {
   return items.length <= 1
     ? items.join('')
@@ -104,6 +98,7 @@ function parseImportBathrooms(
 
 export type UnitResponse = Omit<Unit, 'owner'> & {
   owner: PresentedContact | null;
+  regionCode?: string | null;
 };
 
 interface ResolvedOwner {
@@ -625,6 +620,7 @@ export class PropertiesService {
       bedrooms: u.bedrooms,
       bathrooms: u.bathrooms,
       propertyType: u.propertyType ?? null,
+      subType: u.subType,
       amenities: u.amenities,
       photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
       floor: u.floor,
@@ -794,7 +790,10 @@ export class PropertiesService {
   ): Promise<UnitResponse> {
     const unit = await this.loadUnitOrThrow(id, companyId, user);
     const [presented] = await this.presentUnits(companyId, user, [unit]);
-    return presented;
+    return {
+      ...presented,
+      regionCode: unit.asset?.locality?.city?.regionCode ?? null,
+    };
   }
 
   private async loadUnitOrThrow(
@@ -813,7 +812,7 @@ export class PropertiesService {
 
     const unit = await this.unitRepository.findOne({
       where,
-      relations: ['asset', 'asset.locality', 'owner'],
+      relations: ['asset', 'asset.locality', 'asset.locality.city', 'owner'],
     });
     if (!unit) throw new NotFoundException(`Property not found`);
     return unit;

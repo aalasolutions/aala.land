@@ -6,7 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
-import { contactDisplayName } from '../../shared/utils/contact.util';
+import {
+  contactDisplayName,
+  hasContactIdentity,
+} from '../../shared/utils/contact.util';
+import { LEASE_TYPE_BY_UNIT_SUB_TYPE } from './lease-type-for-unit';
+import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
 import { ContactsService } from '../contacts/contacts.service';
 import {
   ContactPrivacyService,
@@ -121,6 +126,48 @@ export class LeasesService {
   }
 
   // Company scope only: a tenant from any region may be attached, the presenter guards the PII.
+  // A kind that takes either type keeps the requested one.
+  private async leaseTypeForUnit(
+    companyId: string,
+    unitId: string,
+    requested: LeaseType | undefined,
+  ): Promise<LeaseType | undefined> {
+    const unit = await this.unitRepository.findOne({
+      where: { id: unitId, companyId },
+      select: { id: true, subType: true },
+    });
+    const expected = unit ? LEASE_TYPE_BY_UNIT_SUB_TYPE[unit.subType] : null;
+    if (!expected) return requested;
+    if (requested && requested !== expected) {
+      throw new BadRequestException(
+        `This unit takes a ${expected.toLowerCase()} lease`,
+      );
+    }
+    return expected;
+  }
+
+  private async resolveTenantId(
+    companyId: string,
+    contactId: string | undefined,
+    tenant: ContactIdentityDto | undefined,
+    regionCode: string,
+    caller?: ContactViewer,
+  ): Promise<string | undefined> {
+    if (contactId) {
+      await this.assertContactInCompany(contactId, companyId);
+      return contactId;
+    }
+    if (!hasContactIdentity(tenant)) return undefined;
+    const { contact } = await this.contactsService.resolveOrCreate(
+      companyId,
+      tenant,
+      caller?.userId,
+      regionCode,
+      caller?.role,
+    );
+    return contact.id;
+  }
+
   private async assertContactInCompany(
     contactId: string | null | undefined,
     companyId: string,
@@ -254,12 +301,22 @@ export class LeasesService {
     dto: CreateLeaseDto,
     caller?: ContactViewer,
   ): Promise<LeaseResponse> {
-    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
     );
+    const { tenant, ...fields } = dto;
+    const type = await this.leaseTypeForUnit(companyId, dto.unitId, dto.type);
+    const contactId = await this.resolveTenantId(
+      companyId,
+      dto.contactId,
+      tenant,
+      regionCode,
+      caller,
+    );
     const lease = this.leaseRepository.create({
-      ...dto,
+      ...fields,
+      type,
+      contactId,
       companyId,
       regionCode,
       currency: regionCurrency(regionCode),
@@ -331,7 +388,7 @@ export class LeasesService {
     }
     if (filters?.search) {
       qb.andWhere(
-        `(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)`,
+        `(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR CONCAT_WS(' ', tenant.firstName, tenant.lastName) ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)`,
         { s: `%${filters.search}%` },
       );
     }
@@ -421,7 +478,41 @@ export class LeasesService {
     actorId: string,
     caller?: ContactViewer,
   ): Promise<LeaseResponse> {
-    await this.assertContactInCompany(dto.contactId, companyId);
+    const { tenant, ...changes } = dto;
+    if (!dto.contactId && tenant) {
+      const current = await this.leaseRepository.findOne({
+        where: { id, companyId, ...this.regionScopedWhere(caller) },
+        select: { id: true, regionCode: true },
+      });
+      if (!current) throw new NotFoundException('Lease not found');
+      changes.contactId = await this.resolveTenantId(
+        companyId,
+        undefined,
+        tenant,
+        current.regionCode,
+        caller,
+      );
+    } else {
+      await this.assertContactInCompany(dto.contactId, companyId);
+    }
+    if (changes.type !== undefined || changes.unitId !== undefined) {
+      const unitId =
+        changes.unitId ??
+        (
+          await this.leaseRepository.findOne({
+            where: { id, companyId },
+            select: { id: true, unitId: true },
+          })
+        )?.unitId;
+      if (unitId) {
+        changes.type = await this.leaseTypeForUnit(
+          companyId,
+          unitId,
+          changes.type,
+        );
+      }
+    }
+    dto = changes;
     const regionWhere = this.regionScopedWhere(caller);
     const saved = await this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
@@ -523,9 +614,17 @@ export class LeasesService {
     dto: CreateLeaseDto,
     caller?: ContactViewer,
   ): Promise<{ oldLease: LeaseResponse; newLease: LeaseResponse }> {
-    await this.assertContactInCompany(dto.contactId, companyId);
     const regionCode = this.requireUnitRegion(
       await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true),
+    );
+    const { tenant, ...fields } = dto;
+    const type = await this.leaseTypeForUnit(companyId, dto.unitId, dto.type);
+    const contactId = await this.resolveTenantId(
+      companyId,
+      dto.contactId,
+      tenant,
+      regionCode,
+      caller,
     );
     const regionWhere = this.regionScopedWhere(caller);
     const renewed = await this.dataSource.transaction(async (manager) => {
@@ -560,7 +659,9 @@ export class LeasesService {
       const savedOldLease = await manager.save(Lease, oldLease);
 
       const newLease = manager.create(Lease, {
-        ...dto,
+        ...fields,
+        type,
+        contactId,
         companyId,
         regionCode,
         currency: regionCurrency(regionCode),

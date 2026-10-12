@@ -8,6 +8,7 @@ import {
   LEASE_TYPE_OPTIONS,
   LEASE_STATUS_OPTIONS,
   LEASE_ARCHIVED_OPTIONS,
+  PROPERTY_SUB_TYPES,
 } from 'land/constants';
 import {
   closeDeleteModal,
@@ -15,8 +16,10 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { ROLES } from '../../utils/roles';
-import { toDateOnly } from '../../utils/local-date';
-import { contactName } from '../../utils/contact-display';
+import { addCalendarDays, toDateOnly } from '../../utils/local-date';
+import ContactSelection, {
+  CONTACT_REQUIRED_ERROR,
+} from '../../utils/contact-selection';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -45,14 +48,14 @@ export default class LeasesController extends PaginatedController {
 
   @tracked showModal = false;
   @tracked editLease = null;
-  @tracked formTenantContactId = '';
+  tenantSelection = new ContactSelection();
   @tracked formUnitId = '';
   @tracked formType = 'RESIDENTIAL';
   @tracked formStartDate = '';
   @tracked formEndDate = '';
   @tracked formMonthlyRent = '';
   @tracked formSecurityDeposit = '';
-  @tracked formNumberOfCheques = '4';
+  @tracked formNumberOfCheques = '1';
   @tracked formTenancyRegistrationRef = '';
   @tracked formNotes = '';
   @tracked renewingLeaseId = null;
@@ -174,17 +177,6 @@ export default class LeasesController extends PaginatedController {
     ];
   }
 
-  // The tenant is a contact (identity lives on the contact).
-  get tenantOptions() {
-    return [
-      { value: '', label: 'Select a tenant...' },
-      ...(this.model.contacts || []).map((contact) => ({
-        value: contact.id,
-        label: contactName(contact),
-      })),
-    ];
-  }
-
   get validNextStatuses() {
     const current = this.editLease?.status;
     const map = {
@@ -201,6 +193,21 @@ export default class LeasesController extends PaginatedController {
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+  }
+
+  @action selectUnit(unitId) {
+    this.formUnitId = unitId;
+    if (this.unitLeaseType) this.formType = this.unitLeaseType;
+  }
+
+  get unitLeaseType() {
+    const unit = (this.model?.units ?? []).find(
+      (u) => u.id === this.formUnitId,
+    );
+    return (
+      PROPERTY_SUB_TYPES.find((k) => k.value === unit?.subType)?.leaseType ??
+      null
+    );
   }
 
   // Native <input type="date"> still emits a raw DOM event.
@@ -252,14 +259,14 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.formTenantContactId = '';
+    this.tenantSelection.reset();
     this.formUnitId = '';
     this.formType = 'RESIDENTIAL';
     this.formStartDate = '';
     this.formEndDate = '';
     this.formMonthlyRent = '';
     this.formSecurityDeposit = '';
-    this.formNumberOfCheques = '4';
+    this.formNumberOfCheques = '1';
     this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;
@@ -270,7 +277,7 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action openEdit(lease) {
-    this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
+    this.tenantSelection.attach(lease.contact ?? null);
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
     this.formStartDate = toDateOnly(lease.startDate);
@@ -279,7 +286,7 @@ export default class LeasesController extends PaginatedController {
     this.formSecurityDeposit = lease.securityDeposit
       ? String(lease.securityDeposit)
       : '';
-    this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
+    this.formNumberOfCheques = String(lease.numberOfCheques ?? 1);
     this.formTenancyRegistrationRef = lease.tenancyRegistrationRef ?? '';
     this.formNotes = lease.notes ?? '';
     this.editLease = lease;
@@ -312,9 +319,14 @@ export default class LeasesController extends PaginatedController {
       return;
     }
 
-    // Nuvo dropdown's `required` isn't native-validated, so tenant presence is enforced here.
-    if (!isEdit && !UUID_PATTERN.test(this.formTenantContactId)) {
-      this.errorMsg = 'Please select a tenant.';
+    if (!this.tenantSelection.isPresent) {
+      this.errorMsg = CONTACT_REQUIRED_ERROR;
+      return;
+    }
+
+    const cheques = Number(this.formNumberOfCheques);
+    if (!Number.isInteger(cheques) || cheques < 1) {
+      this.errorMsg = 'Enter the number of cheques, 1 or more.';
       return;
     }
 
@@ -335,9 +347,7 @@ export default class LeasesController extends PaginatedController {
 
     const body = isEdit
       ? {
-          ...(this.formTenantContactId
-            ? { contactId: this.formTenantContactId }
-            : {}),
+          ...this.tenantFields,
           ...(this.formUnitId && this.formUnitId !== this.editLease.unitId
             ? { unitId: this.formUnitId }
             : {}),
@@ -348,7 +358,7 @@ export default class LeasesController extends PaginatedController {
           ...(this.formSecurityDeposit
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
-          numberOfCheques: parseInt(this.formNumberOfCheques, 10),
+          numberOfCheques: cheques,
           ...(this.formTenancyRegistrationRef
             ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
@@ -356,9 +366,7 @@ export default class LeasesController extends PaginatedController {
           status: this.formStatus,
         }
       : {
-          ...(this.formTenantContactId
-            ? { contactId: this.formTenantContactId }
-            : {}),
+          ...this.tenantFields,
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
           type: this.formType,
           startDate: this.formStartDate,
@@ -367,7 +375,7 @@ export default class LeasesController extends PaginatedController {
           ...(this.formSecurityDeposit
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
-          numberOfCheques: parseInt(this.formNumberOfCheques, 10),
+          numberOfCheques: cheques,
           ...(this.formTenancyRegistrationRef
             ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
@@ -387,23 +395,31 @@ export default class LeasesController extends PaginatedController {
       this.closeModal();
       this.router.refresh('leases');
     } catch (e) {
-      this.errorMsg = e.message;
+      this.errorMsg = this.tenantSelection.takeConflict(e)
+        ? 'Contact already added'
+        : e.message;
     } finally {
       this.isSaving = false;
     }
   }
 
+  get tenantFields() {
+    const selection = this.tenantSelection;
+    if (selection.contactId) return { contactId: selection.contactId };
+    return selection.hasIdentity ? { tenant: selection.cleanIdentity } : {};
+  }
+
   @action renewLease(lease) {
-    this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
+    this.tenantSelection.attach(lease.contact ?? null);
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = toDateOnly(lease.endDate);
+    this.formStartDate = addCalendarDays(toDateOnly(lease.endDate), 1) ?? '';
     this.formEndDate = '';
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit
       ? String(lease.securityDeposit)
       : '';
-    this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
+    this.formNumberOfCheques = String(lease.numberOfCheques ?? 1);
     this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;

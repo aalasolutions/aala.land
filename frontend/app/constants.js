@@ -65,16 +65,23 @@ export const PROPERTY_TYPE_OPTIONS = [
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
 
+// `leaseType` mirrors the backend LEASE_TYPE_BY_UNIT_SUB_TYPE; null takes either.
 export const PROPERTY_SUB_TYPES = [
-  { value: 'APARTMENT', label: 'Apartment / Flat' },
-  { value: 'VILLA', label: 'Villa / House' },
-  { value: 'TOWNHOUSE', label: 'Townhouse' },
-  { value: 'PENTHOUSE', label: 'Penthouse' },
-  { value: 'OFFICE_SPACE', label: 'Office' },
-  { value: 'RETAIL_STORE', label: 'Retail / Shop' },
-  { value: 'WAREHOUSE', label: 'Warehouse / Industrial' },
-  { value: 'LAND_PLOT', label: 'Plot of Land' },
+  { value: 'APARTMENT', label: 'Apartment / Flat', leaseType: 'RESIDENTIAL' },
+  { value: 'OFFICE_SPACE', label: 'Office', leaseType: 'COMMERCIAL' },
+  { value: 'PENTHOUSE', label: 'Penthouse', leaseType: 'RESIDENTIAL' },
+  { value: 'LAND_PLOT', label: 'Plot of Land', leaseType: null },
+  { value: 'RETAIL_STORE', label: 'Retail / Shop', leaseType: 'COMMERCIAL' },
+  { value: 'TOWNHOUSE', label: 'Townhouse', leaseType: 'RESIDENTIAL' },
+  { value: 'VILLA', label: 'Villa / House', leaseType: 'RESIDENTIAL' },
+  {
+    value: 'WAREHOUSE',
+    label: 'Warehouse / Industrial',
+    leaseType: 'COMMERCIAL',
+  },
 ];
+
+export const UNIT_KIND_REQUIRED_ERROR = 'Choose the property kind.';
 
 export const FILTER_TYPE_OPTIONS = [
   { value: '', label: 'All' },
@@ -121,19 +128,52 @@ export const CONTACT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// "All" first, "Other" last; `allow` mirrors the backend DOCUMENT_CATEGORY_LINKS.
 export const CATEGORIES = [
   { value: '', label: 'All Categories' },
-  { value: 'LEASE', label: 'Lease / Tenancy Contract' },
-  { value: 'TENANCY_REGISTRATION', label: 'Tenancy Registration' },
-  { value: 'TITLE_DEED', label: 'Title Deed' },
-  { value: 'ID_COPY', label: 'Passport Copy' },
-  { value: 'NOC', label: 'No Objection Certificate (NOC)' },
-  { value: 'INSURANCE', label: 'Insurance Policy' },
-  { value: 'MAINTENANCE', label: 'Maintenance & Snagging' },
-  { value: 'INVOICE', label: 'Invoice' },
-  { value: 'RECEIPT', label: 'Receipt' },
-  { value: 'OTHER', label: 'Other Documents' },
+  { value: 'INSURANCE', label: 'Insurance Policy', allow: ['unit', 'asset'] },
+  { value: 'INVOICE', label: 'Invoice', allow: ['lease', 'work_order'] },
+  {
+    value: 'LEASE',
+    label: 'Lease / Tenancy Contract',
+    allow: ['unit', 'lease'],
+  },
+  {
+    value: 'MAINTENANCE',
+    label: 'Maintenance & Snagging',
+    allow: ['unit', 'asset', 'work_order'],
+  },
+  {
+    value: 'NOC',
+    label: 'No Objection Certificate (NOC)',
+    allow: ['unit', 'asset', 'lease'],
+  },
+  { value: 'ID_COPY', label: 'Passport Copy', allow: ['contact', 'lease'] },
+  {
+    value: 'RECEIPT',
+    label: 'Receipt',
+    allow: ['contact', 'lease', 'work_order'],
+  },
+  {
+    value: 'TENANCY_REGISTRATION',
+    label: 'Tenancy Registration',
+    allow: ['lease'],
+  },
+  { value: 'TITLE_DEED', label: 'Title Deed', allow: ['unit', 'asset'] },
+  {
+    value: 'OTHER',
+    label: 'Other Documents',
+    allow: ['unit', 'asset', 'contact', 'lease', 'work_order'],
+  },
 ];
+
+// No type, or library only, fits any category.
+export function categoryFits(value, type) {
+  if (!type || type === 'none') return true;
+  return (
+    CATEGORIES.find((c) => c.value === value)?.allow?.includes(type) ?? false
+  );
+}
 
 export const ACCESS_LEVELS = [
   { value: 'TEAM', label: 'Share with Team' },
@@ -144,10 +184,10 @@ export const ACCESS_LEVELS = [
 export const RELATED_TYPES = [
   { value: '', label: 'All' },
   { value: 'none', label: 'Library only' },
-  { value: 'unit', label: 'Unit' },
-  { value: 'asset', label: 'Property' },
   { value: 'contact', label: 'Contact' },
   { value: 'lease', label: 'Lease' },
+  { value: 'asset', label: 'Property' },
+  { value: 'unit', label: 'Unit' },
   { value: 'work_order', label: 'Work Order' },
 ];
 
@@ -290,14 +330,15 @@ export const PRIORITY_OPTIONS = [
   { value: 'URGENT', label: 'Urgent' },
 ];
 
+// Alphabetical, "Other" last.
 export const MAINTENANCE_CATEGORY_OPTIONS = [
-  { value: 'PLUMBING', label: 'Plumbing / Water Systems' },
-  { value: 'ELECTRICAL', label: 'Electrical / Power' },
-  { value: 'HVAC', label: 'HVAC / Air Conditioning' },
-  { value: 'STRUCTURAL', label: 'Structural / Masonry / Civil' },
   { value: 'CLEANING', label: 'Cleaning & Deep Wash' },
-  { value: 'PEST_CONTROL', label: 'Pest Control / Sanitisation' },
+  { value: 'ELECTRICAL', label: 'Electrical / Power' },
   { value: 'APPLIANCE', label: 'Home Appliances / White Goods' },
+  { value: 'HVAC', label: 'HVAC / Air Conditioning' },
+  { value: 'PEST_CONTROL', label: 'Pest Control / Sanitisation' },
+  { value: 'PLUMBING', label: 'Plumbing / Water Systems' },
+  { value: 'STRUCTURAL', label: 'Structural / Masonry / Civil' },
   { value: 'OTHER', label: 'Other Miscellaneous' },
 ];
 

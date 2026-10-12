@@ -18,6 +18,7 @@ import { Type } from 'class-transformer';
 import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
 import { UnitStatus, MAX_BATHROOMS } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
+import { UnitSubType } from '../entities/unit-sub-type.enum';
 
 export class CreateUnitDto {
   @ApiProperty({ example: '1A' })
@@ -67,6 +68,10 @@ export class CreateUnitDto {
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;
+
+  @ApiProperty({ enum: UnitSubType, example: UnitSubType.APARTMENT })
+  @IsEnum(UnitSubType)
+  subType: UnitSubType;
 
   @ApiPropertyOptional({ example: 150000 })
   @IsNumber()

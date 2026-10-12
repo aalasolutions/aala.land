@@ -200,11 +200,12 @@ $tag-domains: (
     "enterprise": "accent",
   ),
 
-  // Stripe spells it `canceled`; normalised to `cancelled` in JS before render.
+  // Stripe and Paddle spell it `canceled`; normalised to `cancelled` in JS before render.
   "sub": (
     "active": "success",
     "trialing": "success",
     "past_due": "warning",
+    "paused": "warning",
     "incomplete": "warning",
     "incomplete_expired": "danger",
     "unpaid": "danger",

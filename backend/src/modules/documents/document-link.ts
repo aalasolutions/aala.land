@@ -1,7 +1,10 @@
 import { contactDisplayNameOr } from '@shared/utils/contact.util';
 import { limitedDisplayName } from '@shared/utils/contact-privacy.util';
 import type { ContactAccessLevel } from '../contacts/contact-privacy.service';
-import { PropertyDocument } from '../properties/entities/property-document.entity';
+import {
+  DocumentCategory,
+  PropertyDocument,
+} from '../properties/entities/property-document.entity';
 
 export type DocumentLinkType =
   | 'unit'
@@ -9,6 +12,23 @@ export type DocumentLinkType =
   | 'contact'
   | 'lease'
   | 'work_order';
+
+// Mirrors the frontend CATEGORIES `allow`; library-only files may use any category.
+export const DOCUMENT_CATEGORY_LINKS: Record<
+  DocumentCategory,
+  readonly DocumentLinkType[]
+> = {
+  [DocumentCategory.INSURANCE]: ['unit', 'asset'],
+  [DocumentCategory.INVOICE]: ['lease', 'work_order'],
+  [DocumentCategory.LEASE]: ['unit', 'lease'],
+  [DocumentCategory.MAINTENANCE]: ['unit', 'asset', 'work_order'],
+  [DocumentCategory.NOC]: ['unit', 'asset', 'lease'],
+  [DocumentCategory.ID_COPY]: ['contact', 'lease'],
+  [DocumentCategory.RECEIPT]: ['contact', 'lease', 'work_order'],
+  [DocumentCategory.TENANCY_REGISTRATION]: ['lease'],
+  [DocumentCategory.TITLE_DEED]: ['unit', 'asset'],
+  [DocumentCategory.OTHER]: ['unit', 'asset', 'contact', 'lease', 'work_order'],
+};
 
 export const DOCUMENT_RELATED_FILTERS = [
   'unit',

@@ -32,6 +32,7 @@ export default class AccessRequestsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
+  @service accessRequests;
 
   queryParams = ['page', 'limit', 'status'];
   @tracked status = 'PENDING';
@@ -161,6 +162,7 @@ export default class AccessRequestsController extends PaginatedController {
       this.notifications.success('Access approved');
       this.approving = null;
       this.router.refresh('access-requests');
+      this.accessRequests.loadPendingCount();
     } catch (e) {
       this.approveError = e.message;
     } finally {
@@ -200,6 +202,7 @@ export default class AccessRequestsController extends PaginatedController {
       );
       this.closeDecision();
       this.router.refresh('access-requests');
+      this.accessRequests.loadPendingCount();
     } catch (e) {
       this.reasonError = e.message;
     } finally {

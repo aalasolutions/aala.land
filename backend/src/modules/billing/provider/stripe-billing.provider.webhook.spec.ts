@@ -127,6 +127,22 @@ describe('StripeBillingProvider webhook parsing', () => {
     expect(parsed.payload).toBe(event);
   });
 
+  it.each(['', '   '])(
+    'refuses an empty webhook secret (%j) before verifying the signature',
+    async (blank) => {
+      const { config } = provider as unknown as {
+        config: { getOrThrow: jest.Mock };
+      };
+      config.getOrThrow.mockImplementation((key: string) =>
+        key === 'STRIPE_WEBHOOK_SECRET' ? blank : 'sk_test_dummy',
+      );
+      await expect(provider.parseWebhook(rawBody, signature)).rejects.toThrow(
+        'STRIPE_WEBHOOK_SECRET is empty',
+      );
+      expect(stripe.webhooks.constructEvent).not.toHaveBeenCalled();
+    },
+  );
+
   it('throws when the signature does not verify', async () => {
     stripe.webhooks.constructEvent.mockImplementation(() => {
       throw new Error(

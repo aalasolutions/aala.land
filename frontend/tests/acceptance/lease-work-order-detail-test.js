@@ -182,6 +182,29 @@ module('Acceptance | leases/detail', function (hooks) {
     assert.dom('[data-test-lease-documents]').doesNotExist();
     assert.deepEqual(documentListCalls(this.calls), []);
   });
+
+  test('a company admin sees the lease history', async function (assert) {
+    await visit('/leases/lease-1');
+
+    assert.dom('[data-test-lease-history-card]').exists();
+    assert.ok(
+      this.calls.some(
+        (c) =>
+          c.path.startsWith('/record-history?') &&
+          c.path.includes('entityType=Lease') &&
+          c.path.includes('entityId=lease-1'),
+      ),
+      'loads the lease history',
+    );
+  });
+
+  test('an accountant sees no lease history', async function (assert) {
+    this.currentUser = { id: 'user-1', role: 'accountant' };
+    await visit('/leases/lease-1');
+
+    assert.dom('[data-test-lease-summary]').exists();
+    assert.dom('[data-test-lease-history-card]').doesNotExist();
+  });
 });
 
 module('Acceptance | maintenance/detail', function (hooks) {

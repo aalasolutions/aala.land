@@ -1,3 +1,4 @@
+import { UnitSubType } from './entities/unit-sub-type.enum';
 import {
   BadRequestException,
   ConflictException,
@@ -480,6 +481,7 @@ describe('PropertiesService', () => {
 
       const result = await service.createUnit(companyId, {
         unitNumber: '1A',
+        subType: UnitSubType.APARTMENT,
         assetId: 'asset-uuid-1',
         ownerId: 'owner-uuid-1',
       });
@@ -548,6 +550,7 @@ describe('PropertiesService', () => {
         companyId,
         {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-uuid-1',
           owner: {
             firstName: 'Ahmed',
@@ -577,6 +580,7 @@ describe('PropertiesService', () => {
 
       const result = await service.createUnit(companyId, {
         unitNumber: '1A',
+        subType: UnitSubType.APARTMENT,
         assetId: 'asset-uuid-1',
         owner: {},
       });
@@ -595,6 +599,7 @@ describe('PropertiesService', () => {
 
       const result = await service.createUnit(companyId, {
         unitNumber: '1A',
+        subType: UnitSubType.APARTMENT,
         assetId: 'asset-uuid-1',
         owner: { lastName: 'Al-Rashid Holdings' },
       });
@@ -616,6 +621,7 @@ describe('PropertiesService', () => {
 
       const result = await service.createUnit(companyId, {
         unitNumber: '1A',
+        subType: UnitSubType.APARTMENT,
         assetId: 'asset-uuid-1',
         ownerId: 'owner-uuid-1',
         owner: { firstName: 'Ahmed' },
@@ -1438,6 +1444,7 @@ describe('PropertiesService', () => {
 
         const result = await service.createUnit(companyId, {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-punjab',
         });
 
@@ -2251,6 +2258,7 @@ describe('PropertiesService', () => {
         companyId,
         {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-uuid-1',
           ownerId: 'owner-uuid-1',
           ownerVerifyPhone: '0501234567',
@@ -2285,6 +2293,7 @@ describe('PropertiesService', () => {
         companyId,
         {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-uuid-1',
           owner: { firstName: 'Test', phone: '0501234567' },
         },
@@ -2308,7 +2317,12 @@ describe('PropertiesService', () => {
 
       await service.createUnit(
         companyId,
-        { unitNumber: '1A', assetId: 'asset-uuid-1', ownerId: 'owner-uuid-1' },
+        {
+          subType: UnitSubType.APARTMENT,
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          ownerId: 'owner-uuid-1',
+        },
         'agent-uuid-1',
         agent,
       );
@@ -2334,6 +2348,7 @@ describe('PropertiesService', () => {
         companyId,
         {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-uuid-1',
           owner: { phone: '0501234567' },
         },
@@ -2357,6 +2372,7 @@ describe('PropertiesService', () => {
         companyId,
         {
           unitNumber: '1A',
+          subType: UnitSubType.APARTMENT,
           assetId: 'asset-uuid-1',
           ownerId: 'owner-uuid-1',
           assignedAgentId: 'agent-uuid-2',

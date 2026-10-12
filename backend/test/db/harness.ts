@@ -65,8 +65,8 @@ export async function seedUnit(
     [`Asset ${suffix}`, locality[0].id, companyId],
   );
   const unit: { id: string }[] = await manager.query(
-    `INSERT INTO "units" ("unit_number", "asset_id", "company_id")
-     VALUES ($1, $2, $3) RETURNING id`,
+    `INSERT INTO "units" ("unit_number", "asset_id", "company_id", "sub_type")
+     VALUES ($1, $2, $3, 'APARTMENT') RETURNING id`,
     [`U-${suffix}`, asset[0].id, companyId],
   );
   return unit[0].id;

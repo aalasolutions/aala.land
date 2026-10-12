@@ -21,7 +21,7 @@ interface AuditRequestContext {
   user?: { role?: string };
 }
 
-// billing/webhook skipped: billing module already persists every event in stripe_events.
+// billing/webhook skipped: billing module already persists every event in billing_events.
 const SKIP_SEGMENTS = ['auth/refresh', 'health', 'docs', 'billing/webhook'];
 
 const ACTION_OVERRIDES: Record<string, AuditAction> = {

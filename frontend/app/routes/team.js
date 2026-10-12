@@ -2,6 +2,7 @@ import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
 import { canManageUsers } from '../utils/roles';
 import { safeJson } from '../utils/safe-json';
+import { toSeatInfo } from '../utils/seat-info';
 
 export default class TeamRoute extends AuthenticatedRoute {
   @service router;
@@ -15,6 +16,11 @@ export default class TeamRoute extends AuthenticatedRoute {
     if (!canManageUsers(role)) {
       return this.router.transitionTo('dashboard');
     }
+  }
+
+  setupController(controller, model) {
+    super.setupController(controller, model);
+    controller.resetSeatInfo();
   }
 
   queryParams = {
@@ -41,12 +47,7 @@ export default class TeamRoute extends AuthenticatedRoute {
       users: usersJson?.data?.data || [],
       total: usersJson?.data?.total || 0,
       page: usersJson?.data?.page || 1,
-      seatInfo: usage?.data
-        ? {
-            purchasedSeats: usage.data.purchasedSeats ?? 1,
-            tier: usage.data.tier ?? 'FREE',
-          }
-        : null,
+      seatInfo: toSeatInfo(usage),
     };
   }
 }

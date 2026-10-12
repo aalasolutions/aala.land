@@ -1,6 +1,8 @@
 // Local picker matching: substring hits rank first, then trigram overlap so a typo still finds the item.
 
 const FUZZY_THRESHOLD = 0.5;
+// fuzzyScore returns above this only when the label contains the term.
+const SUBSTRING_SCORE_FLOOR = 1;
 
 export function normalizeForMatch(value) {
   return String(value ?? '')
@@ -38,10 +40,15 @@ export function fuzzyScore(label, term) {
   return wanted.size ? hits / wanted.size : 0;
 }
 
+// Typo matches show only when no label contains the term.
 export function fuzzyFilter(options, term, labelKey = 'label') {
-  return options
+  const scored = options
     .map((option) => ({ option, score: fuzzyScore(option[labelKey], term) }))
-    .filter((entry) => entry.score >= FUZZY_THRESHOLD)
+    .filter((entry) => entry.score >= FUZZY_THRESHOLD);
+  const substringHits = scored.filter(
+    (entry) => entry.score > SUBSTRING_SCORE_FLOOR,
+  );
+  return (substringHits.length ? substringHits : scored)
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.option);
 }

@@ -49,7 +49,7 @@ export class UpcomingInvoiceCron {
     }
   }
 
-  // Scheduled downgrades aren't tracked on the company; an ending plan may still get a reminder.
+  // Skips a pending downgrade request; a provider-scheduled cancel is not tracked.
   private async findRenewingSoon(): Promise<RenewalRow[]> {
     return this.companyRepo.query(
       `
@@ -67,6 +67,7 @@ export class UpcomingInvoiceCron {
       WHERE c.billing_subscription_id IS NOT NULL
         AND c.billing_status = 'active'
         AND c.subscription_tier <> 'FREE'
+        AND c.downgrade_requested_at IS NULL
         AND bh.period_end >= now() + interval '2 days'
         AND bh.period_end <  now() + interval '3 days'
       `,

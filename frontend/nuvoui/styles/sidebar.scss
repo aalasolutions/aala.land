@@ -19,7 +19,7 @@
   @include nu-root-el("sidebar", "link", (
     "Color": #b5b5b5,
     "BackgroundColor": transparent,
-    "hover--Color": white,
+    "hover--Color": var(--text-color),
     "hover--BackgroundColor": var(--bg-alternate),
   ));
 

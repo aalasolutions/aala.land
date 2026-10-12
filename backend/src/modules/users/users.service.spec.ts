@@ -80,11 +80,20 @@ const emptyReport = {
   entities: [],
 };
 
+const withoutCredentials = (user: object) => ({
+  ...user,
+  password: undefined,
+  resetPasswordToken: undefined,
+  resetPasswordExpires: undefined,
+});
+
 describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
   let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne' | 'update'>>;
-  let systemEmail: jest.Mocked<Pick<SystemEmailService, 'sendInvite'>>;
+  let systemEmail: jest.Mocked<
+    Pick<SystemEmailService, 'sendInvite' | 'sendMemberAdded'>
+  >;
   let billingService: jest.Mocked<
     Pick<BillingService, 'reserveSeat' | 'setSeatQuantity'>
   >;
@@ -282,7 +291,10 @@ describe('UsersService', () => {
         },
         {
           provide: SystemEmailService,
-          useValue: { sendInvite: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            sendInvite: jest.fn().mockResolvedValue(undefined),
+            sendMemberAdded: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -327,7 +339,92 @@ describe('UsersService', () => {
       );
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
+      expect(result).not.toHaveProperty('password', 'hashed-password');
+    });
+
+    it('emails the added member, without the password', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        name: 'Acme Realty',
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+      repo.count.mockResolvedValue(2);
+
+      await service.create(
+        {
+          name: 'Test Agent',
+          email: 'agent@test.com',
+          password: 'pass123',
+          companyId,
+          role: Role.AGENT,
+        } as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(systemEmail.sendMemberAdded).toHaveBeenCalledWith(
+        { email: mockUser.email, name: mockUser.name },
+        mockUser.role,
+        'Acme Realty',
+      );
+    });
+
+    it('still returns the user when the member added email fails', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+      repo.count.mockResolvedValue(2);
+      systemEmail.sendMemberAdded.mockRejectedValue(new Error('smtp down'));
+
+      const result = await service.create(
+        {
+          name: 'Test Agent',
+          email: 'agent@test.com',
+          password: 'pass123',
+          companyId,
+          role: Role.AGENT,
+        } as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(result).toEqual(withoutCredentials(mockUser));
+    });
+
+    it('sends no member added email when the add fails', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any);
+
+      await expect(
+        service.create(
+          {
+            name: 'Test',
+            email: 'agent@test.com',
+            password: 'pass123',
+            companyId,
+            role: Role.AGENT,
+          } as any,
+          companyId,
+          Role.COMPANY_ADMIN,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(systemEmail.sendMemberAdded).not.toHaveBeenCalled();
     });
 
     it('throws ConflictException when email already exists', async () => {
@@ -499,6 +596,21 @@ describe('UsersService', () => {
     });
   });
 
+  describe('login lookups', () => {
+    it('select the assigned regions, which the login response is built from', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+
+      await service.findByEmail('user@example.com');
+      await service.findByGoogleId('google-1');
+
+      for (const [options] of repo.findOne.mock.calls) {
+        expect((options as { select: string[] }).select).toContain(
+          'regionCodes',
+        );
+      }
+    });
+  });
+
   describe('update', () => {
     const mockCompanyAdmin: User = {
       ...mockUser,
@@ -651,7 +763,9 @@ describe('UsersService', () => {
 
     it('does not fail the removal when the disconnect fails', async () => {
       primeRemovalLookups(proCompany);
-      whatsappServiceMock.disconnect.mockRejectedValue(new Error('socket gone'));
+      whatsappServiceMock.disconnect.mockRejectedValue(
+        new Error('socket gone'),
+      );
 
       await expect(
         service.deactivateUser(
@@ -1480,7 +1594,7 @@ describe('UsersService', () => {
         companyId,
         Role.COMPANY_ADMIN,
       );
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
 
     it('should throw NotFoundException when company is not found', async () => {
@@ -1849,7 +1963,7 @@ describe('UsersService', () => {
         billingService.reserveSeat.mock.invocationCallOrder[0],
       ).toBeLessThan(repo.save.mock.invocationCallOrder[0]);
       expect(release).not.toHaveBeenCalled();
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
 
     it('creates no user when the provider rejects the seat change', async () => {
@@ -1920,7 +2034,7 @@ describe('UsersService', () => {
       );
 
       expect(billingService.reserveSeat).toHaveBeenCalledWith(freeCompany);
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(withoutCredentials(mockUser));
     });
   });
   // Region assignment is a permission boundary, so every branch is pinned here.

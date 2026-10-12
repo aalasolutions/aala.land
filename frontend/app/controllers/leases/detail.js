@@ -1,7 +1,14 @@
 import Controller from '@ember/controller';
+import { service } from '@ember/service';
 import { contactName } from '../../utils/contact-display';
+import { ROLES } from '../../utils/roles';
+
+// Same roles as GET /record-history.
+const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 
 export default class LeasesDetailController extends Controller {
+  @service auth;
+
   get lease() {
     return this.model?.lease ?? null;
   }
@@ -10,9 +17,13 @@ export default class LeasesDetailController extends Controller {
     return contactName(this.lease?.contact, 'Unknown tenant');
   }
 
-  // The server refuses uploads to an archived lease.
+  // An archived lease is read-only: no uploads, no document edits.
   get canUpload() {
     return !this.lease?.deletedAt;
+  }
+
+  get canViewHistory() {
+    return HISTORY_ROLES.includes(this.auth.currentUser?.role);
   }
 
   get documentFilters() {

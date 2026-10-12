@@ -16,6 +16,9 @@ export const ALLOWED_DOCUMENT_TYPES = [
   'image/gif',
 ] as const;
 
+export const DOCUMENT_TYPE_NOT_ALLOWED =
+  'This file type is not allowed. Upload a PDF, Office document, text file or image.';
+
 // Legacy Office files share one container format, which file-type reports only as x-cfb.
 const LEGACY_OFFICE_BY_EXT: Record<string, string> = {
   doc: 'application/msword',

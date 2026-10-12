@@ -53,6 +53,8 @@ describe('BillingHistoryService', () => {
           useValue: {
             query: jest.fn().mockResolvedValue([]),
             findAndCount: jest.fn().mockResolvedValue([[], 0]),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            manager: { query: jest.fn().mockResolvedValue([]) },
           },
         },
       ],
@@ -63,15 +65,18 @@ describe('BillingHistoryService', () => {
   });
 
   describe('recordPayment', () => {
-    it('upserts a payment_succeeded row keyed on (stripeInvoiceId, type) with a recency guard', async () => {
+    it('upserts a payment_succeeded row keyed on (providerInvoiceId, type) with a recency guard', async () => {
       await service.recordPayment(succeeded);
       expect(repo.query).toHaveBeenCalledTimes(1);
       const [sql, params] = repo.query.mock.calls[0];
-      expect(sql).toContain('ON CONFLICT (stripe_invoice_id, type) DO UPDATE');
+      expect(sql).toContain('ON CONFLICT (provider_invoice_id, type) DO UPDATE');
       // Recency guard: an older redelivery must not regress a newer row.
       expect(sql).toContain(
         'WHERE billing_history.occurred_at <= EXCLUDED.occurred_at',
       );
+      expect(sql).toContain('credit_applied = EXCLUDED.credit_applied');
+      expect(sql).toContain('credit_issued = EXCLUDED.credit_issued');
+      expect(sql).toContain('origin = EXCLUDED.origin');
       expect(params).toEqual([
         'company-uuid-1',
         'in_1',
@@ -84,14 +89,61 @@ describe('BillingHistoryService', () => {
         base.periodEnd,
         null,
         occurredAt,
+        0,
+        0,
+        null,
       ]);
     });
 
-    it('records payment_failed with the attempt count', async () => {
+    it('stores the credits and origin a provider reports on a charge', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        creditApplied: 500,
+        creditIssued: 0,
+        origin: 'subscription_recurring',
+        settledWithoutCharge: false,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('payment_succeeded');
+      expect(params[3]).toBe(2500);
+      expect(params.slice(11)).toEqual([500, 0, 'subscription_recurring']);
+    });
+
+    it('records a zero-charge settlement as settled_without_charge with its credit', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        amount: 0,
+        creditApplied: 2498,
+        creditIssued: 0,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('settled_without_charge');
+      expect(params[3]).toBe(0);
+      expect(params.slice(11)).toEqual([2498, 0, 'subscription_update']);
+    });
+
+    it('records credit issued to the balance on a zero-charge settlement', async () => {
+      await service.recordPayment({
+        ...succeeded,
+        amount: 0,
+        creditApplied: 0,
+        creditIssued: 2500,
+        origin: 'subscription_update',
+        settledWithoutCharge: true,
+      });
+      const params = repo.query.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBe('settled_without_charge');
+      expect(params.slice(11)).toEqual([0, 2500, 'subscription_update']);
+    });
+
+    it('records payment_failed with the attempt count and no credits', async () => {
       await service.recordPayment(failed);
       const params = repo.query.mock.calls[0][1] as unknown[];
       expect(params[2]).toBe('payment_failed');
       expect(params[9]).toBe(2); // attempt_count
+      expect(params.slice(11)).toEqual([0, 0, null]);
     });
 
     it('skips (no write) when the invoice id is missing', async () => {
@@ -138,6 +190,64 @@ describe('BillingHistoryService', () => {
       );
       expect(result.page).toBe(1);
       expect(result.limit).toBe(MAX_PAGE_LIMIT);
+    });
+  });
+
+  describe('refund rows', () => {
+    const row = {
+      companyId: 'company-uuid-1',
+      refundId: 'adj_1',
+      amount: 1650,
+      currency: 'usd',
+      refundStatus: 'pending' as const,
+      occurredAt,
+    };
+
+    it('inserts one refund row keyed on the refund id and never overwrites it', async () => {
+      const manager = { query: jest.fn().mockResolvedValue([]) };
+      await service.recordRefund(row, manager as never);
+      const [sql, params] = manager.query.mock.calls[0];
+      expect(sql).toContain("VALUES ($1, $2, 'refund', $3, $4, $5, $6)");
+      expect(sql).toContain(
+        'ON CONFLICT (provider_invoice_id, type) DO NOTHING',
+      );
+      expect(params).toEqual([
+        'company-uuid-1',
+        'adj_1',
+        1650,
+        'usd',
+        'pending',
+        occurredAt,
+      ]);
+    });
+
+    it('uses the repository connection when no transaction is given', async () => {
+      const repoManager = (
+        service as unknown as {
+          historyRepo: { manager: { query: jest.Mock } };
+        }
+      ).historyRepo.manager;
+      await service.recordRefund(row);
+      expect(repoManager.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('updates the status of the company refund row only, inside the caller transaction', async () => {
+      const manager = { update: jest.fn().mockResolvedValue({}) };
+      await service.setRefundStatus(
+        'company-uuid-1',
+        'adj_1',
+        'approved',
+        manager as never,
+      );
+      expect(manager.update).toHaveBeenCalledWith(
+        BillingHistory,
+        {
+          companyId: 'company-uuid-1',
+          providerInvoiceId: 'adj_1',
+          type: 'refund',
+        },
+        { refundStatus: 'approved' },
+      );
     });
   });
 });

@@ -9,6 +9,15 @@ import {
 export type RemedyKind = 'discount_next_bill' | 'refund';
 export type RemedyScope = 'partial' | 'full';
 export type RemedySource = 'card' | 'manual';
+export type RemedyCause = 'make_it_right' | 'cancel';
+/** queued: planned, not sent; failed: given up after retries; the rest follow the provider. */
+export type RemedyStatus =
+  | 'queued'
+  | 'initiated'
+  | 'approved'
+  | 'rejected'
+  | 'reversed'
+  | 'failed';
 
 // Manual rail stays 'initiated': settlement is a process, not an automated status transition.
 @Entity('payment_remedies')
@@ -47,6 +56,15 @@ export class PaymentRemedy {
   @Column({ name: 'billing_history_id', type: 'uuid', nullable: true })
   billingHistoryId: string | null;
 
+  /** Provider id of the refunded card payment; keys a refund before its history row exists. */
+  @Column({
+    name: 'provider_invoice_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  providerInvoiceId: string | null;
+
   /** Anchor for manual-rail remedies. */
   @Column({ name: 'manual_payment_id', type: 'uuid', nullable: true })
   manualPaymentId: string | null;
@@ -60,18 +78,37 @@ export class PaymentRemedy {
   })
   providerRef: string | null;
 
-  /** 'initiated' (provider call made / manual obligation open). */
   @Column({ type: 'varchar', length: 16, default: 'initiated' })
-  status: string;
+  status: RemedyStatus;
+
+  /** make_it_right: an operator remedy; cancel: the refund of unused days on downgrade. */
+  @Column({ type: 'varchar', length: 16, default: 'make_it_right' })
+  cause: RemedyCause;
 
   @Column({ name: 'why_note', type: 'text' })
   whyNote: string;
 
-  @Column({ name: 'created_by', type: 'uuid' })
-  createdBy: string;
+  @Column({ type: 'integer', default: 0 })
+  attempts: number;
 
-  @Column({ name: 'created_by_email', type: 'varchar', length: 255 })
-  createdByEmail: string;
+  @Column({ name: 'last_error', type: 'text', nullable: true })
+  lastError: string | null;
+
+  /** How a system-computed amount was reached; null for operator remedies. */
+  @Column({ type: 'jsonb', nullable: true })
+  breakdown: Record<string, unknown> | null;
+
+  /** Null when the system created the remedy. */
+  @Column({ name: 'created_by', type: 'uuid', nullable: true })
+  createdBy: string | null;
+
+  @Column({
+    name: 'created_by_email',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  createdByEmail: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

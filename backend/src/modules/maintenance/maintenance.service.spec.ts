@@ -217,6 +217,7 @@ describe('MaintenanceService', () => {
         unitNumber: null,
         assetName: null,
         areaName: null,
+        vendorName: null,
       });
     });
   });

@@ -1,0 +1,16 @@
+{{#if this.rows.length}}
+  <Nuvo::Panel data-test-record-summary={{@type}} ...attributes>
+    {{#if this.isLimited}}
+      <Nuvo::Tag
+        @variant="secondary"
+        @text="Limited"
+        data-test-record-summary-limited
+      />
+    {{/if}}
+    <Nuvo::DescList
+      @items={{this.rows}}
+      @horizontal={{true}}
+      @compact={{true}}
+    />
+  </Nuvo::Panel>
+{{/if}}

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
@@ -211,7 +212,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-archived' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -242,7 +246,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-late' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -260,7 +267,10 @@ describe('DocumentsService', () => {
         service.uploadAndCreate(
           companyId,
           userId,
-          { mimetype: 'application/pdf' } as Express.Multer.File,
+          {
+            mimetype: 'application/pdf',
+            originalname: 'contract.pdf',
+          } as Express.Multer.File,
           { name: 'Contract', unitId: 'unit-missing' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
         ),
@@ -281,7 +291,10 @@ describe('DocumentsService', () => {
       await service.uploadAndCreate(
         companyId,
         userId,
-        { mimetype: 'application/pdf' } as Express.Multer.File,
+        {
+          mimetype: 'application/pdf',
+          originalname: 'contract.pdf',
+        } as Express.Multer.File,
         { name: 'Contract', assetId: 'asset-1' } as any,
         { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
       );
@@ -355,7 +368,13 @@ describe('DocumentsService', () => {
       );
 
       expect(result.data).toEqual([
-        { ...sanitizedMockDoc, uploadedByName: null, unit: null, link: null },
+        {
+          ...sanitizedMockDoc,
+          uploadedByName: null,
+          unit: null,
+          buildingName: null,
+          link: null,
+        },
       ]);
       expect(result.data[0]).not.toHaveProperty('s3Key');
       expect(result.total).toBe(1);
@@ -1207,6 +1226,26 @@ describe('DocumentsService', () => {
         );
       });
 
+      it('keeps the linked record region over a requested region', async () => {
+        unitRepo.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        unitQb.row = { regionCode: 'dubai' };
+        manager.findOne.mockResolvedValue({ id: 'unit-1', deletedAt: null });
+        repo.create.mockReturnValue(mockDoc);
+        repo.save.mockResolvedValue(mockDoc);
+
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Contract', unitId: 'unit-1', regionCode: 'makkah' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: makkah },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCode: 'dubai' }),
+        );
+      });
+
       it('files an unattached document as company-wide for an admin', async () => {
         repo.create.mockReturnValue(mockDoc);
         repo.save.mockResolvedValue(mockDoc);
@@ -1476,17 +1515,75 @@ describe('DocumentsService', () => {
         ).rejects.toThrow('Invalid contactId: record not found');
       });
 
-      it('rejects a MANAGER sharing a document at ADMIN level with 400', async () => {
+      it('rejects a category the linked record type does not allow, before the storage write', async () => {
+        workOrderRepo.findOne.mockResolvedValue({
+          id: 'wo-1',
+          regionCode: 'dubai',
+        });
+
         await expect(
           service.uploadAndCreate(
             companyId,
             userId,
             mockFile,
-            { name: 'Payroll', accessLevel: DocumentAccessLevel.ADMIN } as any,
-            { role: Role.MANAGER, regionCodes: callerRegions },
+            {
+              name: 'Deed',
+              workOrderId: 'wo-1',
+              category: DocumentCategory.TITLE_DEED,
+            } as any,
+            { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
           ),
-        ).rejects.toThrow('You cannot share a document at that level');
+        ).rejects.toThrow(
+          'That category is not allowed on a work order document',
+        );
         expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
+      });
+
+      it('keeps the uploaded file name as the browser sent it', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          {
+            ...mockFile,
+            originalname: Buffer.from('عقد الإيجار.pdf', 'utf8').toString(
+              'latin1',
+            ),
+          } as Express.Multer.File,
+          { name: 'Contract' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ originalFileName: 'عقد الإيجار.pdf' }),
+        );
+      });
+
+      it('accepts any category on a library-only upload', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Deed', category: DocumentCategory.TITLE_DEED } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ category: DocumentCategory.TITLE_DEED }),
+        );
+      });
+
+      it('lets a MANAGER share a document at ADMIN level', async () => {
+        await service.uploadAndCreate(
+          companyId,
+          userId,
+          mockFile,
+          { name: 'Payroll', accessLevel: DocumentAccessLevel.ADMIN } as any,
+          { role: Role.MANAGER, regionCodes: callerRegions },
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ accessLevel: DocumentAccessLevel.ADMIN }),
+        );
       });
 
       it('lets an admin share a document at ADMIN level', async () => {
@@ -1527,7 +1624,31 @@ describe('DocumentsService', () => {
 
         expect(result.leaseId).toBeNull();
         expect(result.regionCode).toBe('punjab');
-        expect(leaseRepo.findOne).not.toHaveBeenCalled();
+        expect(leaseRepo.findOne).toHaveBeenCalledTimes(1);
+        expect(leaseRepo.findOne).toHaveBeenCalledWith({
+          where: { id: 'lease-1', companyId },
+          select: { id: true, deletedAt: true },
+        });
+      });
+
+      it('refuses any edit to a document on an archived lease', async () => {
+        qb().getOne.mockResolvedValue({ ...linkedDoc });
+        leaseRepo.findOne.mockResolvedValue({
+          id: 'lease-1',
+          deletedAt: new Date(),
+        });
+
+        await expect(
+          service.update(
+            'doc-uuid-1',
+            companyId,
+            Role.COMPANY_ADMIN,
+            { name: 'Renamed' },
+            callerRegions,
+            'user-uuid-1',
+          ),
+        ).rejects.toThrow(ConflictException);
+        expect(repo.save).not.toHaveBeenCalled();
       });
 
       it('recomputes the region when relinked to another parent', async () => {
@@ -1541,7 +1662,11 @@ describe('DocumentsService', () => {
           'doc-uuid-1',
           companyId,
           Role.COMPANY_ADMIN,
-          { leaseId: null, workOrderId: 'wo-1' },
+          {
+            leaseId: null,
+            workOrderId: 'wo-1',
+            category: DocumentCategory.INVOICE,
+          },
           callerRegions,
           'user-uuid-1',
         );
@@ -1549,6 +1674,49 @@ describe('DocumentsService', () => {
         expect(result.leaseId).toBeNull();
         expect(result.workOrderId).toBe('wo-1');
         expect(result.regionCode).toBe('makkah');
+      });
+
+      it('rejects a relink that keeps a category the new record type does not allow', async () => {
+        qb().getOne.mockResolvedValue({ ...linkedDoc });
+        workOrderRepo.findOne.mockResolvedValue({
+          id: 'wo-1',
+          regionCode: 'makkah',
+        });
+
+        await expect(
+          service.update(
+            'doc-uuid-1',
+            companyId,
+            Role.COMPANY_ADMIN,
+            { leaseId: null, workOrderId: 'wo-1' },
+            callerRegions,
+            'user-uuid-1',
+          ),
+        ).rejects.toThrow(
+          'That category is not allowed on a work order document',
+        );
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('lets an older mismatched file be renamed without a category check', async () => {
+        qb().getOne.mockResolvedValue({
+          ...linkedDoc,
+          leaseId: null,
+          workOrderId: 'wo-1',
+          category: DocumentCategory.TITLE_DEED,
+        });
+        repo.save.mockImplementation((d: unknown) => Promise.resolve(d));
+
+        const result = await service.update(
+          'doc-uuid-1',
+          companyId,
+          Role.COMPANY_ADMIN,
+          { name: 'Renamed', category: DocumentCategory.TITLE_DEED },
+          callerRegions,
+          'user-uuid-1',
+        );
+
+        expect(result.name).toBe('Renamed');
       });
 
       it('rejects a relink that would leave two links set', async () => {
@@ -1567,24 +1735,105 @@ describe('DocumentsService', () => {
         expect(repo.save).not.toHaveBeenCalled();
       });
 
-      it('rejects a MANAGER raising a document to ADMIN level', async () => {
-        qb().getOne.mockResolvedValue({ ...mockDoc });
+      it('rejects a MANAGER editing a document someone else uploaded', async () => {
+        qb().getOne.mockResolvedValue({
+          ...mockDoc,
+          uploadedBy: 'someone-else',
+        });
 
         await expect(
           service.update(
             'doc-uuid-1',
             companyId,
             Role.MANAGER,
-            { accessLevel: DocumentAccessLevel.ADMIN },
+            { name: 'Renamed' },
             ['dubai'],
             'user-uuid-1',
           ),
-        ).rejects.toThrow(BadRequestException);
+        ).rejects.toThrow(ForbiddenException);
         expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('lets an AGENT raise their own upload to ADMIN level', async () => {
+        qb().getOne.mockResolvedValue({
+          ...mockDoc,
+          uploadedBy: 'user-uuid-1',
+        });
+        repo.save.mockImplementation((d: unknown) => Promise.resolve(d));
+
+        await service.update(
+          'doc-uuid-1',
+          companyId,
+          Role.AGENT,
+          { accessLevel: DocumentAccessLevel.ADMIN },
+          ['dubai'],
+          'user-uuid-1',
+        );
+
+        expect(repo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ accessLevel: DocumentAccessLevel.ADMIN }),
+        );
+      });
+
+      it('reads ADMIN-level documents only as their uploader below admin', async () => {
+        qb().getOne.mockResolvedValue({ ...mockDoc });
+
+        await service.findOne(
+          'doc-uuid-1',
+          companyId,
+          Role.MANAGER,
+          ['dubai'],
+          'user-uuid-1',
+        );
+
+        expect(qb().andWhere).toHaveBeenCalledWith(
+          expect.stringContaining('doc.uploaded_by = :ownUploaderId'),
+          expect.objectContaining({ ownUploaderId: 'user-uuid-1' }),
+        );
       });
     });
 
     describe('findAll', () => {
+      it("lists a record's documents whatever region the top bar selected", async () => {
+        qb().getManyAndCount.mockResolvedValue([[], 0]);
+
+        await service.findAll(
+          companyId,
+          Role.COMPANY_ADMIN,
+          1,
+          20,
+          undefined,
+          undefined,
+          { leaseId: 'lease-1', regionCode: 'abu-dhabi' },
+          [],
+        );
+
+        expect(qb().andWhere).not.toHaveBeenCalledWith(
+          '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+          expect.anything(),
+        );
+      });
+
+      it('keeps a manager to their own regions on a record page', async () => {
+        qb().getManyAndCount.mockResolvedValue([[], 0]);
+
+        await service.findAll(
+          companyId,
+          Role.MANAGER,
+          1,
+          20,
+          undefined,
+          undefined,
+          { leaseId: 'lease-1', regionCode: 'abu-dhabi' },
+          ['dubai'],
+        );
+
+        expect(qb().andWhere).toHaveBeenCalledWith(
+          '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+          { scopedCodes: ['dubai'] },
+        );
+      });
+
       it('ORs in lease and work order documents of the unit when includeDerived is set', async () => {
         const direct = { ...mockDoc, id: 'd1', unitId: 'unit-1' };
         const viaLease = { ...mockDoc, id: 'd2', leaseId: 'lease-1' };

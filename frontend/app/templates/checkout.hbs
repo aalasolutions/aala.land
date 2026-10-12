@@ -1,0 +1,31 @@
+{{page-title "Checkout"}}
+
+<div class="flex col x-center y-center" data-test-checkout>
+  {{#if this.errorMsg}}
+    <Nuvo::EmptyState
+      @title="Checkout could not start"
+      @description={{this.errorMsg}}
+      data-test-checkout-error
+    >
+      <:icon><Ui::Ph @icon="warning-circle" /></:icon>
+      <:actions>
+        <Nuvo::Button
+          @variant="primary"
+          @icon="building-office"
+          @route="company"
+          data-test-checkout-back
+        >
+          Back to Company Settings
+        </Nuvo::Button>
+      </:actions>
+    </Nuvo::EmptyState>
+  {{else}}
+    <Nuvo::EmptyState
+      @title="Opening secure checkout..."
+      @description="Payment is handled by our billing provider. You return here when it is done."
+      data-test-checkout-loading
+    >
+      <:icon><Ui::Ph @icon="lock-simple" /></:icon>
+    </Nuvo::EmptyState>
+  {{/if}}
+</div>

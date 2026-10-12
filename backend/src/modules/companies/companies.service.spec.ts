@@ -6,6 +6,7 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
@@ -126,6 +127,32 @@ describe('CompaniesService', () => {
       });
 
       expect(result).toEqual(mockCompany);
+    });
+
+    it('logs a missing admin email at debug, not error', async () => {
+      repo.create.mockReturnValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+      const billingService = module.get<BillingService>(BillingService);
+      jest
+        .spyOn(billingService, 'ensureCompanyCustomer')
+        .mockRejectedValueOnce(
+          new BadRequestException(
+            'Company has no active admin email for billing',
+          ),
+        );
+      const logger = (service as unknown as { logger: Logger }).logger;
+      const debug = jest.spyOn(logger, 'debug').mockImplementation();
+      const error = jest.spyOn(logger, 'error').mockImplementation();
+
+      await service.create({
+        name: 'Test Company',
+        slug: 'test-company',
+        defaultRegionCode: 'dubai',
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(debug).toHaveBeenCalled();
+      expect(error).not.toHaveBeenCalled();
     });
   });
 

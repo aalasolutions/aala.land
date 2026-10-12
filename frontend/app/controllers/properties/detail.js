@@ -11,6 +11,8 @@ import {
   AMENITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
+  PROPERTY_SUB_TYPES,
+  UNIT_KIND_REQUIRED_ERROR,
   ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
@@ -164,6 +166,7 @@ export default class PropertiesDetailController extends Controller {
   statusOptions = PROPERTY_STATUS_OPTIONS;
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
+  subTypeOptions = PROPERTY_SUB_TYPES;
 
   ownerSelection = new ContactSelection();
 
@@ -232,6 +235,7 @@ export default class PropertiesDetailController extends Controller {
   @tracked formUnitNumber = '';
   @tracked formUnitStatus = 'available';
   @tracked formUnitPropertyType = '';
+  @tracked formUnitSubType = '';
   @tracked formUnitPrice = '';
   @tracked formUnitSqFt = '';
   @tracked formUnitBedrooms = '';
@@ -336,6 +340,7 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitBedrooms = '';
     this.formUnitBathrooms = '';
     this.ownerSelection.reset();
+    this.formUnitSubType = '';
     this.formUnitAmenities = [];
     this.editUnit = null;
     this.unitError = '';
@@ -347,6 +352,7 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitNumber = unit.unitNumber;
     this.formUnitStatus = unit.status ?? 'available';
     this.formUnitPropertyType = unit.propertyType ?? '';
+    this.formUnitSubType = unit.subType ?? '';
     this.formUnitPrice = unit.price ? String(unit.price) : '';
     this.formUnitSqFt = unit.sqFt ? String(unit.sqFt) : '';
     this.formUnitBedrooms = unit.bedrooms != null ? String(unit.bedrooms) : '';
@@ -373,6 +379,10 @@ export default class PropertiesDetailController extends Controller {
   @action async saveUnit(event) {
     event.preventDefault();
     if (this.isSavingUnit) return;
+    if (!this.formUnitSubType) {
+      this.unitError = UNIT_KIND_REQUIRED_ERROR;
+      return;
+    }
     if (!this.ownerSelection.isPresent) {
       this.unitError = OWNER_REQUIRED_ERROR;
       return;
@@ -388,6 +398,7 @@ export default class PropertiesDetailController extends Controller {
     const body = {
       unitNumber: this.formUnitNumber,
       status: this.formUnitStatus,
+      subType: this.formUnitSubType,
       ...(!isEdit ? { assetId: this.activeAssetId } : {}),
       ...(this.formUnitPropertyType
         ? { propertyType: this.formUnitPropertyType }

@@ -1,6 +1,7 @@
 // Routes through renderLayout so footer changes propagate; returns a text fallback for MailService.
 import { renderLayout, esc, p } from './system-email.templates';
 import { formatDateLong } from '../../shared/utils/region-time.util';
+import { currencyMinorDigits } from '../billing/billing-currency.util';
 
 export interface RenderedEmail {
   subject: string;
@@ -9,7 +10,8 @@ export interface RenderedEmail {
 }
 
 function money(amountMinor: number, currency: string): string {
-  const major = (amountMinor / 100).toFixed(2);
+  const digits = currencyMinorDigits(currency);
+  const major = (amountMinor / 10 ** digits).toFixed(digits);
   return `${currency.toUpperCase()} ${major}`;
 }
 
@@ -104,6 +106,39 @@ export function inviteEmail(vars: {
       `Activate your account: ${vars.inviteUrl}`,
       ``,
       `This link expires in 72 hours.`,
+    ].join('\n'),
+  };
+}
+
+export function memberAddedEmail(vars: {
+  name: string;
+  role: string;
+  companyName: string;
+  loginUrl: string;
+}): RenderedEmail {
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(
+      `You have been added to <strong>${esc(vars.companyName)}</strong> on AALA.LAND as ${esc(vars.role)}.`,
+    ) +
+    p(
+      `Your company admin has set your password. Contact them for it, then sign in.`,
+    );
+  return {
+    subject: `You have been added to ${vars.companyName} on AALA.LAND`,
+    html: renderLayout({
+      title: 'You have been added',
+      previewText: `Your account at ${vars.companyName} is ready.`,
+      bodyHtml: body,
+      cta: { label: 'Sign in', url: vars.loginUrl },
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `You have been added to ${vars.companyName} on AALA.LAND as ${vars.role}.`,
+      `Your company admin has set your password. Contact them for it, then sign in.`,
+      ``,
+      `Sign in: ${vars.loginUrl}`,
     ].join('\n'),
   };
 }
@@ -260,6 +295,57 @@ export function paymentSucceededEmail(vars: {
   };
 }
 
+/** Zero-charge notice: paid from credit, or credit issued. */
+export function settledWithoutChargeEmail(vars: {
+  name: string;
+  creditAppliedMinor: number;
+  creditIssuedMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const applied = money(vars.creditAppliedMinor, vars.currency);
+  const issued = money(vars.creditIssuedMinor, vars.currency);
+  const lines: string[] = [];
+  if (vars.creditAppliedMinor > 0) {
+    lines.push(
+      `An invoice of ${applied} was paid in full from your account credit balance.`,
+    );
+  }
+  if (vars.creditIssuedMinor > 0) {
+    lines.push(
+      `A change to your subscription added ${issued} to your account credit balance. It will be used on your future invoices.`,
+    );
+  }
+  lines.push(`Nothing was charged to your payment method.`);
+  const subject =
+    vars.creditAppliedMinor > 0
+      ? `Invoice paid from your credit balance: ${applied}`
+      : `Credit added to your balance: ${issued}`;
+  const body =
+    p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(line)).join('');
+  return {
+    subject,
+    html: renderLayout({
+      title:
+        vars.creditAppliedMinor > 0
+          ? 'Invoice paid from credit'
+          : 'Credit added to your balance',
+      previewText: lines[0],
+      bodyHtml: body,
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
 export function paymentFailedEmail(vars: {
   name: string;
   amountMinor: number;
@@ -292,6 +378,194 @@ export function paymentFailedEmail(vars: {
       ``,
       `We could not process your payment of ${amount}. Your account is now past due.`,
       `Update your payment method: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+function dateTimeUtc(at: Date): string {
+  return `${formatDateLong(at)} at ${at.toISOString().slice(11, 16)} UTC`;
+}
+
+export function downgradeRequestedEmail(vars: {
+  name: string;
+  effectiveAt: Date;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const when = dateTimeUtc(vars.effectiveAt);
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(
+      `We received your request to move to the Free plan. Your paid plan ends on <strong>${when}</strong>. Until then nothing changes.`,
+    ) +
+    p(
+      `To keep your plan, open your billing page and choose Keep my plan before that time.`,
+    ) +
+    p(
+      `Now is the time to export any data you need. After the plan ends, the unused days of your current period are refunded to your payment method.`,
+    );
+  return {
+    subject: `Your AALA.LAND plan ends on ${when}`,
+    html: renderLayout({
+      title: 'Your plan is ending',
+      previewText: `Your paid plan ends on ${when}.`,
+      bodyHtml: body,
+      cta: { label: 'Manage billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `We received your request to move to the Free plan. Your paid plan ends on ${when}. Until then nothing changes.`,
+      `To keep your plan, open your billing page and choose Keep my plan before that time.`,
+      `Now is the time to export any data you need. After the plan ends, the unused days of your current period are refunded to your payment method.`,
+      ``,
+      `Manage billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function refundRequestedEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(`Your paid plan has ended and your account is now on the Free plan.`) +
+    p(
+      `We have requested a refund of <strong>${amount}</strong> for the unused days. It reaches your payment method once the payment provider confirms it.`,
+    );
+  return {
+    subject: `Refund requested: ${amount}`,
+    html: renderLayout({
+      title: 'Your plan has ended',
+      previewText: `We have requested a refund of ${amount}.`,
+      bodyHtml: body,
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `Your paid plan has ended and your account is now on the Free plan.`,
+      `We have requested a refund of ${amount} for the unused days. It reaches your payment method once the payment provider confirms it.`,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+const REFUND_OUTCOME = {
+  approved: {
+    title: 'Refund approved',
+    line: (amount: string) =>
+      `Your refund of ${amount} was approved. Card refunds usually take 3 to 5 working days to appear.`,
+  },
+  rejected: {
+    title: 'Refund not approved',
+    line: (amount: string) =>
+      `Your refund of ${amount} was not approved by the payment provider. Reply to this email and we will make it right.`,
+  },
+  reversed: {
+    title: 'Refund reversed',
+    line: (amount: string) =>
+      `Your refund of ${amount} was reversed by the payment provider and did not reach your payment method. Reply to this email and we will make it right.`,
+  },
+} as const;
+
+export function refundSettledEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  outcome: keyof typeof REFUND_OUTCOME;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const outcome = REFUND_OUTCOME[vars.outcome];
+  const line = outcome.line(amount);
+  return {
+    subject: `${outcome.title}: ${amount}`,
+    html: renderLayout({
+      title: outcome.title,
+      previewText: line,
+      bodyHtml: p(`Hi ${esc(vars.name)},`) + p(esc(line)),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      line,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function downgradeCancelledEmail(vars: {
+  name: string;
+  reason: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const lines = [
+    `Your request to move to the Free plan has been cancelled.`,
+    vars.reason,
+    `Your paid plan continues and keeps renewing as before. You can request the move to Free again from your billing page.`,
+  ];
+  return {
+    subject: 'Your request to move to the Free plan was cancelled',
+    html: renderLayout({
+      title: 'Downgrade request cancelled',
+      previewText: lines[0],
+      bodyHtml:
+        p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(esc(line))).join(''),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
+    ].join('\n'),
+  };
+}
+
+export function refundFailedEmail(vars: {
+  name: string;
+  amountMinor: number;
+  currency: string;
+  billingUrl: string;
+  unsubscribeUrl?: string;
+}): RenderedEmail {
+  const amount = money(vars.amountMinor, vars.currency);
+  const lines = [
+    `Your refund of ${amount} for the unused days could not be sent automatically.`,
+    `Reply to this email and we will complete it.`,
+  ];
+  return {
+    subject: `Your refund of ${amount} could not be sent automatically`,
+    html: renderLayout({
+      title: 'Your refund needs a reply',
+      previewText: lines[0],
+      bodyHtml:
+        p(`Hi ${esc(vars.name)},`) + lines.map((line) => p(esc(line))).join(''),
+      cta: { label: 'View billing', url: vars.billingUrl },
+      unsubscribeUrl: vars.unsubscribeUrl,
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      ...lines,
+      ``,
+      `View billing: ${vars.billingUrl}`,
     ].join('\n'),
   };
 }

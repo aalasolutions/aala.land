@@ -13,6 +13,10 @@
   </Nuvo::PageHeader>
 
   {{#if @model.workOrder}}
+    <RegionNotice
+      @regionCode={{@model.workOrder.regionCode}}
+      @noun="work order"
+    />
     <Maintenance::Summary
       @workOrder={{@model.workOrder}}
       @unit={{@model.unit}}

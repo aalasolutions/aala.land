@@ -84,6 +84,20 @@ export function minorUnitDigits(currency, locale = 'en') {
   }
 }
 
+// Major-unit input to minor units; null when it is not a number or has more decimals than the currency.
+export function toMinorUnits(major, currency) {
+  if (major === '' || major === null || major === undefined) return null;
+  const scaled = Number(major) * 10 ** minorUnitDigits(currency);
+  const minor = Math.round(scaled);
+  if (!Number.isFinite(scaled) || Math.abs(scaled - minor) > 1e-6) return null;
+  return minor;
+}
+
+// Minor units to a major-unit number.
+export function toMajorUnits(minor, currency) {
+  return Number(minor ?? 0) / 10 ** minorUnitDigits(currency);
+}
+
 export function formatMoney(value, locale, options) {
   if (value === null || value === undefined || value === '') return '';
   if (Number.isNaN(Number(value))) return '';

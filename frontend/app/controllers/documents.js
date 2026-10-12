@@ -2,7 +2,12 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { debounceTask } from 'ember-lifeline';
-import { CATEGORIES, ACCESS_LEVELS, RELATED_TYPES } from 'land/constants';
+import {
+  CATEGORIES,
+  ACCESS_LEVELS,
+  RELATED_TYPES,
+  categoryFits,
+} from 'land/constants';
 import { localMidnightIso } from 'land/utils/local-date';
 
 export default class DocumentsController extends PaginatedController {
@@ -34,7 +39,9 @@ export default class DocumentsController extends PaginatedController {
   }
 
   get categories() {
-    return CATEGORIES;
+    return CATEGORIES.filter(
+      (c) => c.value === '' || categoryFits(c.value, this.related),
+    );
   }
 
   relatedTypes = RELATED_TYPES;
@@ -79,6 +86,9 @@ export default class DocumentsController extends PaginatedController {
 
   @action setRelated(value) {
     this.related = value;
+    if (this.category && !categoryFits(this.category, value)) {
+      this.category = '';
+    }
     this.page = 1;
   }
 

@@ -19,6 +19,8 @@ module.exports = function (environment) {
     APP: {
       API_BASE: process.env.API_BASE || 'http://localhost:3010/v1',
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+      PADDLE_CLIENT_TOKEN: process.env.PADDLE_CLIENT_TOKEN || '',
+      PADDLE_ENVIRONMENT: process.env.PADDLE_ENVIRONMENT || 'sandbox',
     },
 
     // Prefix for kit UI state kept in localStorage (Nuvo::DataTable layouts).
@@ -51,6 +53,8 @@ module.exports = function (environment) {
   if (environment === 'production') {
     ENV.APP.API_BASE = process.env.API_BASE || '/v1';
     ENV.APP.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+    ENV.APP.PADDLE_CLIENT_TOKEN = process.env.PADDLE_CLIENT_TOKEN || '';
+    ENV.APP.PADDLE_ENVIRONMENT = process.env.PADDLE_ENVIRONMENT || 'sandbox';
   }
 
   return ENV;

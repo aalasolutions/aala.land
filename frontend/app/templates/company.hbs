@@ -117,7 +117,21 @@
       <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
-        {{#if this.isScheduledToCancel}}
+        {{#if this.isDowngradePending}}
+          <Nuvo::Alert
+            @variant="warning"
+            class="mb-4"
+            data-test-downgrade-pending
+          >
+            <div class="font-bold">Your plan ends on
+              {{this.downgradeDateLabel}}</div>
+            <p class="text-sm mt-1">
+              You keep Pro until then. Export anything you need. After that the
+              unused part of your billing period is refunded to your payment
+              method.
+            </p>
+          </Nuvo::Alert>
+        {{else if this.isScheduledToCancel}}
           <Nuvo::Alert
             @variant="warning"
             class="mb-4"
@@ -142,7 +156,7 @@
             {{#if this.billing.billingStatus}}
               <Nuvo::Tag
                 class="tag-sub-{{this.billingStatusBadgeValue}}"
-                @text={{this.billing.billingStatus}}
+                @text={{this.billingStatusLabel}}
                 data-test-billing-status
               />
             {{/if}}
@@ -150,11 +164,20 @@
           <p class="text-sm text-muted mt-2" data-test-seat-count>
             {{this.seatSummaryLabel}}
           </p>
-          {{#if this.seatPriceLabel}}
-            <p
-              class="text-sm text-muted"
-              data-test-seat-price
-            >{{this.seatPriceLabel}}</p>
+          {{#if this.seatPriceKind}}
+            <p class="text-sm text-muted" data-test-seat-price>
+              {{#if (eq this.seatPriceKind "enterprise")}}
+                Custom Enterprise pricing
+              {{else}}
+                {{format-money
+                  this.billing.seatAmount
+                  currency=this.billing.currency
+                  minor=true
+                  compact=false
+                }}
+                per seat per month
+              {{/if}}
+            </p>
           {{/if}}
           {{#if this.purchasedCurrency}}
             <p class="text-sm text-muted" data-test-billed-currency>
@@ -165,33 +188,26 @@
         </div>
 
         {{#if this.isFreeTier}}
-          {{#if this.paymentCurrencyOptions.length}}
-            <Nuvo::Field
-              @label="Select your Payment currency"
-              class="mb-3"
-              @tooltip="Pick the currency you will be billed in. It is locked to your account once you subscribe, so contact support to change it later."
-              data-test-currency-select
-            >
-              <Nuvo::Dropdown
-                @align="start"
-                @value={{this.selectedCurrency}}
-                @onSelect={{fn this.setFieldValue "selectedCurrency"}}
-                @options={{this.paymentCurrencyOptions}}
-              />
-              <p
-                class="text-sm text-muted mt-1"
-                data-test-currency-lock-note
-              >Locked to your account once you subscribe.</p>
-            </Nuvo::Field>
-          {{/if}}
+          <div class="mb-3" data-test-refund-terms-field>
+            <Nuvo::Checkbox
+              @checked={{this.refundTermsAccepted}}
+              @label={{this.refundTermsLabel}}
+              @onChange={{this.setRefundTermsAccepted}}
+              data-test-refund-terms
+            />
+          </div>
           <Nuvo::Button
             @variant="primary"
             @loading={{this.isBillingBusy}}
+            @disabled={{not this.refundTermsAccepted}}
             data-test-upgrade-pro
             {{on "click" this.upgradeToPro}}
           >
             {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
           </Nuvo::Button>
+          <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
+            Pro starts with your current team. Add members later under Team.
+          </p>
           <p class="text-sm text-muted mt-3">
             Every Pro seat adds 5 GB of storage. Need white-label, ERP
             integration, or dedicated infrastructure?
@@ -201,14 +217,18 @@
             >Contact us about Enterprise</a>.
           </p>
         {{else if this.billing.hasSubscription}}
-          {{#if this.isScheduledToCancel}}
+          {{#if (or this.isDowngradePending this.isScheduledToCancel)}}
             <Nuvo::Button
               @variant="primary"
               @loading={{this.isBillingBusy}}
               data-test-reactivate-pro
               {{on "click" this.reactivatePro}}
             >
-              {{if this.isBillingBusy "Working..." "Reactivate plan"}}
+              {{if
+                this.isBillingBusy
+                "Working..."
+                (if this.isDowngradePending "Keep my plan" "Reactivate plan")
+              }}
             </Nuvo::Button>
           {{else}}
             <Nuvo::Button
@@ -247,7 +267,7 @@
         {{#if this.billingHistory.length}}
           <Nuvo::DataTable
             @columns={{this.billingHistoryColumns}}
-            @rows={{this.billingHistory}}
+            @rows={{this.billingHistoryRows}}
             @pinColumns={{true}}
             @reorderable={{true}}
             @sortable={{true}}
@@ -265,20 +285,32 @@
                   currency=cell.row.currency
                   minor=true
                 }}</span>
+            {{else if (eq cell.key "creditAmount")}}
+              {{#let (billing-history-status cell.row) as |status|}}
+                {{#if status.creditAmount}}
+                  <span
+                    class="font-bold"
+                    data-test-history-credit
+                  >{{format-money
+                      status.creditAmount
+                      currency=cell.row.currency
+                      minor=true
+                    }}</span>
+                  <span
+                    class="text-muted text-sm"
+                  >{{status.creditNote}}</span>
+                {{else}}
+                  <span class="text-muted">-</span>
+                {{/if}}
+              {{/let}}
             {{else if (eq cell.key "type")}}
-              {{#if (eq cell.value "payment_succeeded")}}
+              {{#let (billing-history-status cell.row) as |status|}}
                 <Nuvo::Tag
-                  class="tag-txn-completed"
-                  @text="Paid"
+                  class={{status.tagClass}}
+                  @text={{status.label}}
                   data-test-history-status
                 />
-              {{else}}
-                <Nuvo::Tag
-                  class="tag-txn-failed"
-                  @text="Failed"
-                  data-test-history-status
-                />
-              {{/if}}
+              {{/let}}
             {{else if (eq cell.key "hostedInvoiceUrl")}}
               {{#if cell.value}}
                 <a
@@ -318,7 +350,7 @@
     <ConfirmModal
       @open={{this.showDowngradeConfirm}}
       @title="Downgrade to Free"
-      @message="Your subscription will be canceled at the end of the current billing period. Paid features, extra seats, and per-seat storage go away when it ends. Nothing is deleted, but uploads beyond the Free 2 GB quota will be blocked."
+      @message={{this.downgradeConfirmMessage}}
       @confirmText="Downgrade to Free"
       @confirmingText="Canceling..."
       @confirmVariant="danger"

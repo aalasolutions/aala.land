@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   ConflictException,
   HttpException,
@@ -10,7 +11,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -18,18 +26,28 @@ import {
   SubscriptionTier,
 } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { Role } from '@shared/enums/roles.enum';
 import { BillingPrice } from './entities/billing-price.entity';
 import {
   BillingPlan,
   BillingProvider,
   BILLING_PROVIDER,
+  CreateSubscriptionInput,
   SubscriptionRef,
 } from './provider/billing-provider.interface';
 import {
   BILLING_CURRENCIES,
+  DEFAULT_BILLING_CURRENCY,
   isBillingCurrency,
   resolveBillingCurrency,
 } from './billing-currency.util';
+import {
+  BillingDowngradeService,
+  DowngradeRequest,
+  downgradeEffectiveAt,
+} from './billing-downgrade.service';
+
+export const REFUND_TERMS_VERSION = 'v1';
 
 /** Call release() only if the caller's local write, made after reserveSeat, fails. */
 export interface SeatReservation {
@@ -47,8 +65,9 @@ export interface SubscriptionState {
   activeUsers: number;
   /** Pinned billing currency for a subscribed company; the region-derived fallback otherwise. */
   currency: string;
+  /** Stored charged gross, else the price row amount. */
   seatAmount: number | null;
-  /** $250 base fee (minor units) for the first ENTERPRISE seat; null if unavailable in currency. */
+  /** ENTERPRISE base fee, minor units; null if unavailable in currency. */
   baseAmount: number | null;
   /** Per-currency seat prices for the checkout selector; empty once subscribed. */
   currencyOptions: { currency: string; seatAmount: number }[];
@@ -57,6 +76,14 @@ export interface SubscriptionState {
   cancelAtPeriodEnd: boolean;
   /** ISO date the plan reverts to FREE (the paid-through / period-end date), or null. */
   cancelAt: string | null;
+  /** Pending downgrade request, ISO; null when none. */
+  downgradeRequestedAt: string | null;
+  /** When the pending request executes, ISO; null when none. */
+  downgradeEffectiveAt: string | null;
+  /** Last acceptance of the refund terms at checkout, ISO; null when never. */
+  refundTermsAcceptedAt: string | null;
+  /** delayed_refund: 48-hour request with refund; period_end: cancel at period end. */
+  cancelMode: 'delayed_refund' | 'period_end';
 }
 
 export interface CheckoutResult {
@@ -68,6 +95,8 @@ export interface CheckoutResult {
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
+  // Serialises provider calls so two console writes cannot both create a price for one group.
+  private syncQueue: Promise<unknown> = Promise.resolve();
 
   constructor(
     @InjectRepository(Company)
@@ -78,12 +107,17 @@ export class BillingService {
     @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider,
     private readonly config: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly downgrades: BillingDowngradeService,
   ) {}
 
-  /** Race-safe via company lock, re-read, Stripe idempotency key, and UNIQUE index as backstops. */
+  /** Race-safe via company lock, re-read, provider idempotency key, and UNIQUE index as backstops. */
   async ensureCompanyCustomer(company: Company): Promise<string> {
-    // Fast path: already resolved, no lock needed.
-    if (company.billingCustomerId) return company.billingCustomerId;
+    // Fast path: already resolved by the active provider, no lock needed.
+    if (
+      company.billingCustomerId &&
+      company.billingProvider === this.provider.name
+    )
+      return company.billingCustomerId;
 
     return withCompanyLock(
       this.dataSource,
@@ -93,79 +127,374 @@ export class BillingService {
         const fresh = await manager.findOne(Company, {
           where: { id: company.id },
         });
-        if (fresh?.billingCustomerId) return fresh.billingCustomerId;
+        if (
+          fresh?.billingCustomerId &&
+          fresh.billingProvider === this.provider.name
+        )
+          return fresh.billingCustomerId;
 
         const customerId = await this.provider.ensureCustomer({
           companyId: company.id,
           companyName: company.name,
+          email: await this.findBillingEmail(company.id),
           idempotencyKey: `ensure-customer:${company.id}`,
         });
         await manager.update(Company, company.id, {
           billingCustomerId: customerId,
-          billingProvider: 'stripe',
+          billingProvider: this.provider.name,
         });
         return customerId;
       },
     );
   }
 
+  /** A price id minted by a previous provider does not count as synced. */
+  isPriceSynced(row: BillingPrice): boolean {
+    return !!row.providerPriceId && row.provider === this.provider.name;
+  }
+
+  /** False when the provider ignores a price's tax setting, so the console hides it. */
+  get supportsTaxMode(): boolean {
+    return this.provider.supportsTaxMode;
+  }
+
+  /** Checkout needs an active base in one of these, so the last one cannot be deactivated. */
+  get requiredBaseCurrencies(): readonly string[] {
+    return this.provider.baseCurrencies ?? [DEFAULT_BILLING_CURRENCY];
+  }
+
+  /** True when syncPrices has work: an unsynced active row, a removed override still on its base, or a retired base price to archive. */
+  async needsPriceSync(): Promise<boolean> {
+    const { rows, removedOverrides, retiredBases } =
+      await this.loadPriceSyncRows();
+    return (
+      this.unarchivedBases(
+        retiredBases,
+        new Set(rows.map((r) => r.providerPriceId)),
+      ).length > 0 ||
+      rows.some(
+        (r) =>
+          (!this.isPriceSynced(r) && !this.isRecordedUnsupportedRow(r)) ||
+          (!r.countryCodes &&
+            this.sharingPriceOf(r, [...removedOverrides, ...retiredBases])
+              .length > 0),
+      )
+    );
+  }
+
+  /** Active base rows still selling on the price they replaced, because their own is not registered yet. */
+  async pendingPriceChangeIds(): Promise<Set<string>> {
+    const { rows, retiredBases } = await this.loadPriceSyncRows();
+    return new Set(
+      rows
+        .filter(
+          (r) =>
+            !r.countryCodes && this.sharingPriceOf(r, retiredBases).length > 0,
+        )
+        .map((r) => r.id),
+    );
+  }
+
+  /** Null when the provider accepts this row as a base or override price. */
+  priceRowError(
+    row: Pick<BillingPrice, 'currency' | 'countryCodes'>,
+  ): string | null {
+    const {
+      name,
+      baseCurrencies,
+      supportedCurrencies,
+      supportedCountries,
+      supportsCountryOverrides,
+    } = this.provider;
+    if (row.countryCodes && !supportsCountryOverrides) {
+      return `Custom prices by country are not supported by the ${name} provider`;
+    }
+    const unsold = supportedCountries
+      ? (row.countryCodes ?? [])
+          .map((c) => c.toUpperCase())
+          .filter((c) => !supportedCountries.includes(c))
+      : [];
+    if (unsold.length) {
+      return `The ${name} provider does not sell to: ${unsold.join(', ')}`;
+    }
+    if (
+      !row.countryCodes &&
+      baseCurrencies &&
+      !baseCurrencies.includes(row.currency)
+    ) {
+      return `Currency ${row.currency} is not a base currency for the ${name} provider`;
+    }
+    if (supportedCurrencies && !supportedCurrencies.includes(row.currency)) {
+      return `Currency ${row.currency} is not supported by the ${name} provider`;
+    }
+    return null;
+  }
+
+  /** Already marked failed by a previous sync; re-running it would change nothing. */
+  private isRecordedUnsupportedRow(row: BillingPrice): boolean {
+    const error = this.priceRowError(row);
+    return !!error && row.lastSyncError === error;
+  }
+
+  /** Active rows, plus deactivated rows that still hold a provider price. */
+  private async loadPriceSyncRows(): Promise<{
+    rows: BillingPrice[];
+    removedOverrides: BillingPrice[];
+    retiredBases: BillingPrice[];
+  }> {
+    const loaded = await this.priceRepo.find({
+      where: [
+        { active: true },
+        { active: false, providerPriceId: Not(IsNull()) },
+      ],
+    });
+    const inactive = loaded.filter((r) => !r.active);
+    return {
+      rows: loaded.filter((r) => r.active),
+      removedOverrides: inactive.filter((r) => r.countryCodes),
+      retiredBases: inactive.filter(
+        (r) => !r.countryCodes && r.provider === this.provider.name,
+      ),
+    };
+  }
+
+  /** Deactivated base rows whose provider price no active row uses; it stays purchasable until archived. */
+  private unarchivedBases(
+    retiredBases: BillingPrice[],
+    liveIds: Set<string | null>,
+  ): BillingPrice[] {
+    return retiredBases.filter((r) => !liveIds.has(r.providerPriceId));
+  }
+
+  /** Inactive rows of the base's kind that still hold its provider price id. */
+  private sharingPriceOf(
+    base: BillingPrice,
+    inactiveRows: BillingPrice[],
+  ): BillingPrice[] {
+    return inactiveRows.filter(
+      (r) =>
+        r.kind === base.kind &&
+        !!base.providerPriceId &&
+        r.providerPriceId === base.providerPriceId,
+    );
+  }
+
   /** Per-row failures persist, not throw, so one bad row doesn't abort the rest. */
-  async syncPrices(): Promise<{
+  syncPrices(): Promise<{
     synced: number;
     failed: number;
     total: number;
   }> {
-    const rows = await this.priceRepo.find({ where: { active: true } });
+    const run = this.syncQueue.then(() => this.runPriceSync());
+    this.syncQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async runPriceSync(): Promise<{
+    synced: number;
+    failed: number;
+    total: number;
+  }> {
+    const { rows, removedOverrides, retiredBases } =
+      await this.loadPriceSyncRows();
+    const baseRows = rows.filter(
+      (r) => !r.countryCodes && !this.priceRowError(r),
+    );
+    // Overrides ride the base price of their kind, in any currency the provider charges.
+    const overridesOf = (base: BillingPrice) =>
+      rows.filter(
+        (r) => r.countryCodes && r.kind === base.kind && !this.priceRowError(r),
+      );
+    // Provider price ids active rows use; a re-created group swaps its old ids for the new one.
+    const liveIds = new Set(rows.map((r) => r.providerPriceId));
     let synced = 0;
     let failed = 0;
     for (const row of rows) {
-      if (row.providerPriceId) continue;
+      const error = this.priceRowError(row);
+      if (!error || this.isPriceSynced(row)) continue;
+      if (row.lastSyncError !== error) {
+        await this.priceRepo.update(row.id, {
+          lastSyncError: error,
+          lastSyncErrorAt: new Date(),
+        });
+      }
+      failed++;
+    }
+    for (const row of baseRows) {
+      const overrides = overridesOf(row);
+      const removed = this.sharingPriceOf(row, removedOverrides);
+      // A replacement base keeps selling on the price it supersedes until its own is registered here.
+      const superseded = this.sharingPriceOf(row, retiredBases);
+      // A new, repointed or removed override re-creates the base price (create-and-supersede).
+      const upToDate =
+        this.isPriceSynced(row) &&
+        removed.length === 0 &&
+        superseded.length === 0 &&
+        overrides.every(
+          (o) =>
+            this.isPriceSynced(o) && o.providerPriceId === row.providerPriceId,
+        );
+      if (upToDate) continue;
+      const group = [row, ...overrides];
+      const groupIds = group.map((m) => m.id);
+      const duplicates = this.duplicateCountries(overrides);
+      if (duplicates.length) {
+        const message = `Countries ${duplicates.join(', ')} appear in more than one active ${row.kind} override`;
+        this.logger.error(
+          `Price sync skipped for ${row.kind}/${row.currency}: ${message}`,
+        );
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          { lastSyncError: message, lastSyncErrorAt: new Date() },
+        );
+        failed += group.length;
+        continue;
+      }
+      const previousPriceId = this.isPriceSynced(row)
+        ? row.providerPriceId
+        : null;
       try {
         const priceId = await this.provider.ensurePrice(
           row.kind,
           row.currency,
           row.unitAmount,
+          overrides.map((o) => ({
+            countryCodes: o.countryCodes as string[],
+            currency: o.currency,
+            unitAmount: o.unitAmount,
+          })),
+          row.taxInclusive,
         );
-        await this.priceRepo.update(row.id, {
-          providerPriceId: priceId,
-          lastSyncError: null,
-          lastSyncErrorAt: null,
-        });
-        synced++;
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          {
+            provider: this.provider.name,
+            providerPriceId: priceId,
+            lastSyncError: null,
+            lastSyncErrorAt: null,
+          },
+        );
+        synced += group.length;
+        for (const member of group) liveIds.delete(member.providerPriceId);
+        liveIds.add(priceId);
+        if (removed.length) {
+          await this.priceRepo.update(
+            { id: In(removed.map((r) => r.id)) },
+            { providerPriceId: null },
+          );
+        }
+        // A superseded base's price is archived below, where a failure is retried.
+        if (
+          previousPriceId &&
+          previousPriceId !== priceId &&
+          superseded.length === 0
+        ) {
+          await this.archiveSupersededPrice(previousPriceId);
+        }
       } catch (err) {
         const message = errorMessage(err);
         this.logger.error(
           `Price sync failed for ${row.kind}/${row.currency}: ${message}`,
         );
-        await this.priceRepo.update(row.id, {
-          lastSyncError: message,
-          lastSyncErrorAt: new Date(),
-        });
-        failed++;
+        await this.priceRepo.update(
+          { id: In(groupIds) },
+          { lastSyncError: message, lastSyncErrorAt: new Date() },
+        );
+        failed += group.length;
+      }
+    }
+    for (const orphan of rows.filter(
+      (r) =>
+        r.countryCodes &&
+        !this.isPriceSynced(r) &&
+        !this.priceRowError(r) &&
+        !baseRows.some((b) => b.kind === r.kind),
+    )) {
+      await this.priceRepo.update(orphan.id, {
+        lastSyncError: `No active base ${orphan.kind} price to carry this override`,
+        lastSyncErrorAt: new Date(),
+      });
+      failed++;
+    }
+    // One archive call per price; a failed one keeps the id, so the next sync retries it.
+    const retiredByPrice = new Map<string, string[]>();
+    for (const retired of this.unarchivedBases(retiredBases, liveIds)) {
+      const priceId = retired.providerPriceId as string;
+      retiredByPrice.set(priceId, [
+        ...(retiredByPrice.get(priceId) ?? []),
+        retired.id,
+      ]);
+    }
+    for (const [priceId, rowIds] of retiredByPrice) {
+      if (await this.archiveSupersededPrice(priceId)) {
+        await this.priceRepo.update(
+          { id: In(rowIds) },
+          { providerPriceId: null },
+        );
       }
     }
     return { synced, failed, total: rows.length };
+  }
+
+  /** Upper-cased countries listed by more than one override; the provider rejects a repeat. */
+  private duplicateCountries(overrides: BillingPrice[]): string[] {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const o of overrides) {
+      for (const code of new Set(
+        (o.countryCodes ?? []).map((c) => c.toUpperCase()),
+      )) {
+        if (seen.has(code)) duplicates.add(code);
+        seen.add(code);
+      }
+    }
+    return [...duplicates].sort();
+  }
+
+  /** Non-fatal; false when the provider call failed. */
+  private async archiveSupersededPrice(priceId: string): Promise<boolean> {
+    try {
+      await this.provider.archivePrice(priceId);
+      return true;
+    } catch (err) {
+      this.logger.warn(
+        `Could not archive superseded price ${priceId}: ${errorMessage(err)}`,
+      );
+      return false;
+    }
   }
 
   async getSubscriptionState(companyId: string): Promise<SubscriptionState> {
     const company = await this.findCompany(companyId);
     const currency = this.effectiveBillingCurrency(company);
     const hasSubscription = !!company.billingSubscriptionId;
-    const [seatPrice, basePrice, seatPrices, activeUsers] = await Promise.all([
-      this.priceRepo.findOne({
-        where: { kind: 'SEAT', currency, active: true },
-      }),
-      this.priceRepo.findOne({
-        where: { kind: 'ENTERPRISE_BASE', currency, active: true },
-      }),
-      // Selector options are only needed before the currency is locked.
-      hasSubscription
-        ? Promise.resolve<BillingPrice[]>([])
-        : this.priceRepo.find({
-            where: { kind: 'SEAT', active: true },
-          }),
-      this.countActiveUsers(companyId),
-    ]);
+    const [seatPrice, basePrice, seatPrices, activeUsers, { retiredBases }] =
+      await Promise.all([
+        this.priceRepo.findOne({
+          where: {
+            kind: 'SEAT',
+            currency,
+            active: true,
+            countryCodes: IsNull(),
+          },
+        }),
+        this.priceRepo.findOne({
+          where: {
+            kind: 'ENTERPRISE_BASE',
+            currency,
+            active: true,
+            countryCodes: IsNull(),
+          },
+        }),
+        // Selector options are only needed before the currency is locked.
+        hasSubscription
+          ? Promise.resolve<BillingPrice[]>([])
+          : this.priceRepo.find({
+              where: { kind: 'SEAT', active: true, countryCodes: IsNull() },
+            }),
+        this.countActiveUsers(companyId),
+        this.loadPriceSyncRows(),
+      ]);
     const seatByCurrency = new Map(
       (seatPrices ?? []).map((p) => [p.currency, p.unitAmount]),
     );
@@ -173,7 +502,8 @@ export class BillingService {
       const amount = seatByCurrency.get(c);
       return amount != null ? [{ currency: c, seatAmount: amount }] : [];
     });
-    // Not mirrored on Company; ask the provider live.
+    // Read live from the provider; immediate-cancel adapters show only a real schedule.
+    const immediate = this.provider.supportsImmediateCancel;
     let cancelAtPeriodEnd = false;
     let cancelAt: string | null = null;
     if (company.billingSubscriptionId && company.billingCustomerId) {
@@ -183,7 +513,10 @@ export class BillingService {
           customerId: company.billingCustomerId,
         });
         cancelAtPeriodEnd = schedule.cancelAtPeriodEnd;
-        cancelAt = schedule.cancelAt ? schedule.cancelAt.toISOString() : null;
+        cancelAt =
+          schedule.cancelAt && (!immediate || schedule.cancelAtPeriodEnd)
+            ? schedule.cancelAt.toISOString()
+            : null;
       } catch (err) {
         this.logger.warn(
           `Could not read cancellation state for company ${companyId}: ` +
@@ -191,6 +524,8 @@ export class BillingService {
         );
       }
     }
+    // Stored amounts apply only once the currency is pinned.
+    const pinned = !!company.billingCurrency;
     return {
       tier: company.subscriptionTier,
       billingStatus: company.billingStatus ?? null,
@@ -198,18 +533,42 @@ export class BillingService {
       purchasedSeats: company.purchasedSeats,
       activeUsers,
       currency,
-      seatAmount: seatPrice?.unitAmount ?? null,
-      baseAmount: basePrice?.unitAmount ?? null,
+      seatAmount:
+        (pinned ? company.chargedSeatGross : null) ??
+        this.chargedAmount(seatPrice, retiredBases),
+      baseAmount:
+        (pinned ? company.chargedBaseGross : null) ??
+        this.chargedAmount(basePrice, retiredBases),
       currencyOptions,
       canDowngradeToFree: activeUsers <= 1,
       cancelAtPeriodEnd,
       cancelAt,
+      downgradeRequestedAt: company.downgradeRequestedAt?.toISOString() ?? null,
+      downgradeEffectiveAt: company.downgradeRequestedAt
+        ? downgradeEffectiveAt(company.downgradeRequestedAt).toISOString()
+        : null,
+      refundTermsAcceptedAt:
+        company.refundTermsAcceptedAt?.toISOString() ?? null,
+      cancelMode: immediate ? 'delayed_refund' : 'period_end',
     };
+  }
+
+  /** What checkout charges for a base row: the amount it replaced while its own price is still registering. */
+  private chargedAmount(
+    row: BillingPrice | null,
+    retiredBases: BillingPrice[],
+  ): number | null {
+    if (!row) return null;
+    const [original] = this.sharingPriceOf(row, retiredBases).sort(
+      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+    return (original ?? row).unitAmount;
   }
 
   /** ENTERPRISE is gated in the controller; subscriptionId is null here, it arrives via webhook. */
   async startCheckout(
     companyId: string,
+    acceptedBy: string,
     successUrl: string,
     cancelUrl: string,
     currencyChoice?: string,
@@ -236,7 +595,7 @@ export class BillingService {
 
     const seatPriceId = await this.getProviderPriceId('SEAT', currency);
 
-    const result = await this.provider.createSubscription({
+    const checkout = await this.createProviderCheckout({
       customerId,
       seatPriceId,
       basePriceId: null,
@@ -246,7 +605,13 @@ export class BillingService {
       cancelUrl,
       companyId,
     });
-    return result;
+    // The buyer's own consent, not a provider fact, so it is written here.
+    await this.companyRepo.update(companyId, {
+      refundTermsAcceptedAt: new Date(),
+      refundTermsAcceptedBy: acceptedBy,
+      refundTermsVersion: REFUND_TERMS_VERSION,
+    });
+    return checkout;
   }
 
   /** ENTERPRISE requires basePriceId; PRO does not. */
@@ -279,17 +644,40 @@ export class BillingService {
     const seatUnits =
       plan === 'ENTERPRISE' ? Math.max(quantity - 1, 0) : quantity;
 
-    const result = await this.provider.createSubscription({
-      customerId,
-      seatPriceId,
-      basePriceId,
-      plan,
-      quantity: seatUnits,
-      successUrl,
-      cancelUrl,
-      companyId,
-    });
-    return result;
+    return this.createProviderCheckout(
+      {
+        customerId,
+        seatPriceId,
+        basePriceId,
+        plan,
+        quantity: seatUnits,
+        successUrl,
+        cancelUrl,
+        companyId,
+      },
+      true,
+    );
+  }
+
+  /** Only the operator sees the provider's reason; it can carry internal provider ids. */
+  private async createProviderCheckout(
+    input: CreateSubscriptionInput,
+    showProviderReason = false,
+  ): Promise<CheckoutResult> {
+    try {
+      return await this.provider.createSubscription(input);
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      const msg = errorMessage(err);
+      this.logger.error(
+        `Checkout provider call failed for company ${input.companyId}: ${msg}`,
+      );
+      throw new BadGatewayException(
+        showProviderReason
+          ? `The payment provider rejected the checkout: ${msg}`
+          : 'Checkout could not start. Please try again or contact support.',
+      );
+    }
   }
 
   /** Uses the LIVE provider quantity, not company.purchasedSeats, which is a stale read model. */
@@ -320,8 +708,11 @@ export class BillingService {
     });
   }
 
-  /** Blocked 409 if more than 1 active user; trim to 1 first. */
-  async cancelSubscription(companyId: string): Promise<void> {
+  /** Blocked 409 if more than 1 active user; immediate-cancel adapters record a delayed request. */
+  async cancelSubscription(
+    companyId: string,
+    requestedBy: string,
+  ): Promise<DowngradeRequest> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
       throw new BadRequestException(
@@ -337,13 +728,40 @@ export class BillingService {
       );
     }
 
+    if (this.provider.supportsImmediateCancel) {
+      const ref = {
+        subscriptionId: company.billingSubscriptionId,
+        customerId: company.billingCustomerId,
+      };
+      await this.releaseScheduledCancel(ref, companyId);
+      return this.downgrades.request(
+        companyId,
+        company.billingSubscriptionId,
+        requestedBy,
+      );
+    }
     await this.provider.cancel({
       subscriptionId: company.billingSubscriptionId,
       customerId: company.billingCustomerId,
     });
+    return { downgradeRequestedAt: null, downgradeEffectiveAt: null };
   }
 
-  /** Clears cancel_at_period_end so the subscription keeps renewing and the plan stays. */
+  /** Best effort here; the job clears it again before it plans the refund. */
+  private async releaseScheduledCancel(
+    ref: SubscriptionRef,
+    companyId: string,
+  ): Promise<void> {
+    try {
+      await this.downgrades.releaseScheduledCancel(ref);
+    } catch (err) {
+      this.logger.warn(
+        `Could not clear a scheduled cancel for company ${companyId}: ${errorMessage(err)}`,
+      );
+    }
+  }
+
+  /** Withdraws a pending downgrade request, else clears a scheduled period-end cancel. */
   async resumeSubscription(companyId: string): Promise<void> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
@@ -351,6 +769,7 @@ export class BillingService {
         'Company does not have an active subscription to resume',
       );
     }
+    if (await this.downgrades.withdraw(companyId)) return;
     await this.provider.resume({
       subscriptionId: company.billingSubscriptionId,
       customerId: company.billingCustomerId,
@@ -441,6 +860,7 @@ export class BillingService {
   async setSeatQuantity(
     company: Company,
     quantity: number,
+    settleNow = false,
   ): Promise<SubscriptionRef> {
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
       throw new HttpException(
@@ -453,8 +873,47 @@ export class BillingService {
       customerId: company.billingCustomerId,
     };
     const seatPriceId = await this.resolveSeatPriceId(company);
-    await this.provider.updateSeatQuantity(ref, quantity, seatPriceId);
+    await this.provider.updateSeatQuantity(
+      ref,
+      quantity,
+      seatPriceId,
+      settleNow,
+    );
     return ref;
+  }
+
+  /** Aligns the seat line to active users; returns total seats, null when skipped. */
+  async reconcileSeatsToActiveUsers(
+    companyId: string,
+    subscriptionId: string,
+  ): Promise<number | null> {
+    return withCompanyLock(this.dataSource, companyId, async (manager) => {
+      const company = await manager.findOne(Company, {
+        where: { id: companyId },
+      });
+      // Skip canceled or replaced subscriptions.
+      if (
+        !company ||
+        company.billingSubscriptionId !== subscriptionId ||
+        company.subscriptionTier === SubscriptionTier.FREE
+      ) {
+        return null;
+      }
+      const activeUsers = await manager.count(User, {
+        where: { companyId, isActive: true },
+      });
+      // PRO bills every seat (min 1); the ENTERPRISE base covers the first.
+      const enterprise =
+        company.subscriptionTier === SubscriptionTier.ENTERPRISE;
+      const target = enterprise
+        ? Math.max(activeUsers - 1, 0)
+        : Math.max(activeUsers, 1);
+      const live = await this.getLiveSeatQuantity(company);
+      if (live !== target) {
+        await this.setSeatQuantity(company, target, target < live);
+      }
+      return enterprise ? target + 1 : target;
+    });
   }
 
   /** Null for FREE and for a paid comp account with no subscription. */
@@ -484,7 +943,7 @@ export class BillingService {
 
   /** Validate the selected currency; default USD, 400 on an unsupported value. */
   private normalizeCheckoutCurrency(currencyChoice?: string): string {
-    if (currencyChoice == null) return 'usd';
+    if (currencyChoice == null) return DEFAULT_BILLING_CURRENCY;
     const currency = currencyChoice.toLowerCase();
     if (!isBillingCurrency(currency)) {
       throw new BadRequestException(
@@ -620,17 +1079,32 @@ export class BillingService {
     }
   }
 
+  private async findBillingEmail(companyId: string): Promise<string | null> {
+    const admin = await this.userRepo.findOne({
+      where: { companyId, role: Role.COMPANY_ADMIN, isActive: true },
+      select: ['email'],
+      order: { createdAt: 'ASC' },
+    });
+    return admin?.email ?? null;
+  }
+
   private async countActiveUsers(companyId: string): Promise<number> {
     return this.userRepo.count({ where: { companyId, isActive: true } });
   }
 
-  /** Throws if not found or not yet synced to Stripe (providerPriceId is null). */
+  /** The base row that carries the price: the provider's base currency, else the given currency. */
   private async getProviderPriceId(
     kind: 'SEAT' | 'ENTERPRISE_BASE',
     currency: string,
   ): Promise<string> {
+    const baseCurrencies = this.provider.baseCurrencies;
     const row = await this.priceRepo.findOne({
-      where: { kind, currency, active: true },
+      where: {
+        kind,
+        active: true,
+        countryCodes: IsNull(),
+        currency: baseCurrencies ? In([...baseCurrencies]) : currency,
+      },
     });
     if (!row) {
       throw new BadRequestException(
@@ -638,9 +1112,9 @@ export class BillingService {
           `Run POST /billing/prices/sync first.`,
       );
     }
-    if (!row.providerPriceId) {
+    if (!this.isPriceSynced(row) || !row.providerPriceId) {
       throw new BadRequestException(
-        `${kind} price for ${currency} has not been synced to Stripe yet. ` +
+        `${kind} price for ${currency} has not been synced to the billing provider yet. ` +
           `Run POST /billing/prices/sync first.`,
       );
     }

@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { originalFileName } from '@shared/utils/file-name.util';
 import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import {
   DataSource,
@@ -46,8 +48,10 @@ import {
 } from '@shared/utils/region-visibility.util';
 import { isDateOnly } from '../../shared/utils/region-time.util';
 import {
+  DOCUMENT_CATEGORY_LINKS,
   DOCUMENT_LINK_COLUMNS,
   DocumentLink,
+  DocumentLinkType,
   DocumentRelatedFilter,
   documentLink,
 } from './document-link';
@@ -91,6 +95,9 @@ export interface DocumentListFilters {
   includeDerived?: boolean;
 }
 
+// Below admin, these roles may edit only the documents they uploaded.
+const OWN_EDIT_ROLES: string[] = [Role.MANAGER, Role.AGENT];
+
 const LINK_ID_KEYS = [
   'unitId',
   'assetId',
@@ -100,7 +107,29 @@ const LINK_ID_KEYS = [
 ] as const;
 
 type LinkIdKey = (typeof LINK_ID_KEYS)[number];
+
+const LINK_TYPE_BY_KEY: Record<LinkIdKey, DocumentLinkType> = {
+  unitId: 'unit',
+  assetId: 'asset',
+  contactId: 'contact',
+  leaseId: 'lease',
+  workOrderId: 'work_order',
+};
+
+const LINK_TYPE_NOUNS: Record<DocumentLinkType, string> = {
+  unit: 'unit',
+  asset: 'property',
+  contact: 'contact',
+  lease: 'lease',
+  work_order: 'work order',
+};
 type DocumentLinkIds = Partial<Record<LinkIdKey, string | null>>;
+
+function archivedLeaseError(verb: 'uploading' | 'editing') {
+  return new ConflictException(
+    `This lease is archived. Unarchive it before ${verb} documents.`,
+  );
+}
 
 @Injectable()
 export class DocumentsService {
@@ -147,14 +176,13 @@ export class DocumentsService {
     dto: UploadDocumentDto,
     caller: RegionScope,
   ): Promise<SanitizedDocument> {
-    // Checked before the storage write so a refusal leaves no object behind.
-    this.assertAccessLevelAllowed(caller.role, dto.accessLevel);
     const attachedRegion = await this.validateLink(
       companyId,
       caller,
       dto,
       'uploading',
     );
+    this.assertCategoryFitsLink(dto.category ?? DocumentCategory.OTHER, dto);
     const regionCode = await this.resolveDocumentRegion(
       companyId,
       dto.regionCode,
@@ -170,6 +198,7 @@ export class DocumentsService {
       s3Key,
       fileSize,
       fileType: dto.fileType ?? file.mimetype,
+      originalFileName: originalFileName(file.originalname),
       unitId: dto.unitId ?? null,
       assetId: dto.assetId ?? null,
       contactId: dto.contactId ?? null,
@@ -213,11 +242,15 @@ export class DocumentsService {
     page: number;
     limit: number;
   }> {
-    const allowedLevels = this.getAllowedAccessLevels(userRole);
-    const scopedCodes = effectiveRegionCodes(filters?.regionCode, {
-      role: userRole,
-      regionCodes: regionCodes ?? [],
-    });
+    const levelSql = this.accessLevelSql(userRole, userId);
+    const caller = { role: userRole, regionCodes: regionCodes ?? [] };
+    // Record pages ignore the top-bar region.
+    const forRecord = Boolean(
+      unitId || filters?.contactId || filters?.leaseId || filters?.workOrderId,
+    );
+    const scopedCodes = forRecord
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(filters?.regionCode, caller);
 
     // No assignment means no access, and an empty IN () is invalid SQL.
     if (scopedCodes?.length === 0) {
@@ -259,8 +292,27 @@ export class DocumentsService {
         'workOrder.company_id = doc.company_id',
       )
       .addSelect(['workOrder.id', 'workOrder.title'])
+      // Units behind lease and work order links, for the Property column.
+      .leftJoin('lease.unit', 'leaseUnit')
+      .leftJoin('leaseUnit.asset', 'leaseAsset')
+      .leftJoin('leaseAsset.locality', 'leaseLocality')
+      .leftJoin('workOrder.unit', 'woUnit')
+      .leftJoin('woUnit.asset', 'woAsset')
+      .leftJoin('woAsset.locality', 'woLocality')
+      .addSelect([
+        'leaseUnit.id',
+        'leaseUnit.unitNumber',
+        'leaseAsset.id',
+        'leaseAsset.name',
+        'leaseLocality.id',
+        'woUnit.id',
+        'woUnit.unitNumber',
+        'woAsset.id',
+        'woAsset.name',
+        'woLocality.id',
+      ])
       .where('doc.company_id = :companyId', { companyId })
-      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+      .andWhere(levelSql.sql, levelSql.params);
 
     if (scopedCodes) {
       qb.andWhere(
@@ -385,14 +437,8 @@ export class DocumentsService {
         uploadedByName: d.uploadedBy
           ? (uploaderNames.get(d.uploadedBy) ?? null)
           : null,
-        unit: d.unit
-          ? {
-              id: d.unit.id,
-              unitNumber: d.unit.unitNumber,
-              areaId: d.unit.asset?.locality?.id ?? null,
-              assetName: d.unit.asset?.name ?? null,
-            }
-          : null,
+        unit: this.propertyUnit(d),
+        buildingName: d.asset?.name ?? null,
       })),
       total,
       page,
@@ -420,7 +466,7 @@ export class DocumentsService {
     regionCodes: string[],
     userId: string,
   ): Promise<PropertyDocument> {
-    const allowedLevels = this.getAllowedAccessLevels(userRole);
+    const levelSql = this.accessLevelSql(userRole, userId);
     const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
 
     // No assignment means no access, and an empty IN () is invalid SQL.
@@ -432,7 +478,7 @@ export class DocumentsService {
       .createQueryBuilder('doc')
       .where('doc.id = :id', { id })
       .andWhere('doc.company_id = :companyId', { companyId })
-      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+      .andWhere(levelSql.sql, levelSql.params);
 
     if (scopedCodes) {
       qb.andWhere(
@@ -470,7 +516,12 @@ export class DocumentsService {
       userId,
     );
     const caller: RegionScope = { role: userRole, regionCodes };
-    this.assertAccessLevelAllowed(userRole, dto.accessLevel);
+    if (OWN_EDIT_ROLES.includes(userRole) && existing.uploadedBy !== userId) {
+      throw new ForbiddenException('You can only edit documents you uploaded');
+    }
+    if (existing.leaseId) {
+      await this.assertLeaseNotArchived(companyId, existing.leaseId, 'editing');
+    }
 
     const { unitId, assetId, contactId, leaseId, workOrderId, ...metadata } =
       dto;
@@ -507,6 +558,13 @@ export class DocumentsService {
           caller,
         );
       }
+    }
+
+    // Only a changed pair is checked, so an older mismatched file can still be renamed.
+    const categoryChanged =
+      dto.category !== undefined && dto.category !== existing.category;
+    if (categoryChanged || linkChanged) {
+      this.assertCategoryFitsLink(dto.category ?? existing.category, nextLink);
     }
 
     return this.sanitize(
@@ -630,6 +688,11 @@ export class DocumentsService {
     attachedRegion: string | undefined,
     caller: RegionScope,
   ): Promise<string | null> {
+    // A linked record's region always wins; the requested region places library-only files.
+    if (attachedRegion) {
+      return attachedRegion;
+    }
+
     if (requestedRegion) {
       return resolveRegionCode(
         this.companyRepository,
@@ -637,10 +700,6 @@ export class DocumentsService {
         requestedRegion,
         caller,
       );
-    }
-
-    if (attachedRegion) {
-      return attachedRegion;
     }
 
     if (isAdminRole(caller.role)) {
@@ -686,11 +745,7 @@ export class DocumentsService {
         select: { id: true, regionCode: true, deletedAt: true },
       });
       const region = this.visibleParentRegion(lease, 'leaseId', caller);
-      if (lease?.deletedAt) {
-        throw new ConflictException(
-          `This lease is archived. Unarchive it before ${verb} documents.`,
-        );
-      }
+      if (lease?.deletedAt) throw archivedLeaseError(verb);
       return region;
     }
     if (workOrderId) {
@@ -719,19 +774,52 @@ export class DocumentsService {
     return parent.regionCode;
   }
 
-  // Refuses a level the caller could not read back, which would strand the document.
-  private assertAccessLevelAllowed(
-    userRole: string,
-    accessLevel?: DocumentAccessLevel,
+  private assertCategoryFitsLink(
+    category: DocumentCategory,
+    link: Partial<Record<LinkIdKey, string | null>>,
   ): void {
-    if (
-      accessLevel &&
-      !this.getAllowedAccessLevels(userRole).includes(accessLevel)
-    ) {
+    const key = LINK_ID_KEYS.find((k) => link[k]);
+    if (!key) return;
+    const type = LINK_TYPE_BY_KEY[key];
+    if (!DOCUMENT_CATEGORY_LINKS[category]?.includes(type)) {
       throw new BadRequestException(
-        'You cannot share a document at that level',
+        `That category is not allowed on a ${LINK_TYPE_NOUNS[type]} document`,
       );
     }
+  }
+
+  // Admin-level files are readable by admin roles and by their uploader.
+  private accessLevelSql(
+    userRole: string,
+    userId?: string,
+  ): { sql: string; params: Record<string, unknown> } {
+    const allowedLevels = this.getAllowedAccessLevels(userRole);
+    if (allowedLevels.includes(DocumentAccessLevel.ADMIN) || !userId) {
+      return {
+        sql: 'doc.access_level IN (:...allowedLevels)',
+        params: { allowedLevels },
+      };
+    }
+    return {
+      sql: '(doc.access_level IN (:...allowedLevels) OR (doc.access_level = :ownLevel AND doc.uploaded_by = :ownUploaderId))',
+      params: {
+        allowedLevels,
+        ownLevel: DocumentAccessLevel.ADMIN,
+        ownUploaderId: userId,
+      },
+    };
+  }
+
+  private propertyUnit(d: PropertyDocument) {
+    const unit = d.unit ?? d.lease?.unit ?? d.workOrder?.unit;
+    return unit
+      ? {
+          id: unit.id,
+          unitNumber: unit.unitNumber,
+          areaId: unit.asset?.locality?.id ?? null,
+          assetName: unit.asset?.name ?? null,
+        }
+      : null;
   }
 
   private derivedFrom(
@@ -742,6 +830,18 @@ export class DocumentsService {
     if (doc.leaseId) return { derivedFrom: 'lease' };
     if (doc.workOrderId) return { derivedFrom: 'work_order' };
     return {};
+  }
+
+  private async assertLeaseNotArchived(
+    companyId: string,
+    leaseId: string,
+    verb: 'uploading' | 'editing',
+  ): Promise<void> {
+    const lease = await this.leaseRepository.findOne({
+      where: { id: leaseId, companyId },
+      select: { id: true, deletedAt: true },
+    });
+    if (lease?.deletedAt) throw archivedLeaseError(verb);
   }
 
   private async assertUnitNotArchived(

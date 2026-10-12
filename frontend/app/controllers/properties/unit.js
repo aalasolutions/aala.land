@@ -15,6 +15,8 @@ import { ROLES } from '../../utils/roles';
 import {
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
+  PROPERTY_SUB_TYPES,
+  UNIT_KIND_REQUIRED_ERROR,
   AMENITY_OPTIONS,
 } from 'land/constants';
 
@@ -95,6 +97,7 @@ export default class PropertiesUnitController extends Controller {
   @tracked formUnitNumber = '';
   @tracked formStatus = 'available';
   @tracked formPropertyType = '';
+  @tracked formSubType = '';
   @tracked formPrice = '';
   @tracked formSqFt = '';
   @tracked formBedrooms = '';
@@ -106,6 +109,7 @@ export default class PropertiesUnitController extends Controller {
   statusOptions = PROPERTY_STATUS_OPTIONS;
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
+  subTypeOptions = PROPERTY_SUB_TYPES;
 
   amenityOptions = AMENITY_OPTIONS;
 
@@ -131,6 +135,7 @@ export default class PropertiesUnitController extends Controller {
     this.formUnitNumber = unit.unitNumber ?? '';
     this.formStatus = unit.status ?? 'available';
     this.formPropertyType = unit.propertyType ?? '';
+    this.formSubType = unit.subType ?? '';
     this.formPrice = unit.price ? String(unit.price) : '';
     this.formSqFt = unit.sqFt ? String(unit.sqFt) : '';
     this.formBedrooms = unit.bedrooms != null ? String(unit.bedrooms) : '';
@@ -259,6 +264,10 @@ export default class PropertiesUnitController extends Controller {
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
+    if (!this.formSubType) {
+      this.errorMsg = UNIT_KIND_REQUIRED_ERROR;
+      return;
+    }
     if (!this.ownerSelection.isPresent) {
       this.errorMsg = OWNER_REQUIRED_ERROR;
       return;
@@ -272,6 +281,7 @@ export default class PropertiesUnitController extends Controller {
     const body = {
       unitNumber: this.formUnitNumber,
       status: this.formStatus,
+      subType: this.formSubType,
       ...(this.formPropertyType
         ? { propertyType: this.formPropertyType }
         : { propertyType: null }),

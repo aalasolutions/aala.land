@@ -209,3 +209,14 @@ export function formatInstant(value, locale, options = {}, timeZone = null) {
   if (!date?.isValid) return null;
   return withLocale(date, locale).toLocaleString(options).replace(/\s/g, ' ');
 }
+
+// An instant as a long date with the time of day, in browser time; null if invalid.
+export function formatLongInstant(value) {
+  return formatInstant(value, 'en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}

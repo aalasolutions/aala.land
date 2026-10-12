@@ -31,9 +31,6 @@ export default class ContactCompaniesComponent extends Component {
     },
   ];
 
-  regionName = (code) =>
-    this.region.regions.find((r) => r.code === code)?.name ?? code;
-
   constructor() {
     super(...arguments);
     this.load(1);

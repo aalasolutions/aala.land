@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
+import { UnitSubType } from '../properties/entities/unit-sub-type.enum';
+import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactPrivacyService } from '../contacts/contact-privacy.service';
 import { contactDisplayName } from '../../shared/utils/contact.util';
@@ -27,7 +29,10 @@ describe('LeasesService', () => {
   let service: LeasesService;
   let repo: jest.Mocked<Repository<Lease>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
-  let contactsService: { findOneEntity: jest.Mock };
+  let contactsService: {
+    findOneEntity: jest.Mock;
+    resolveOrCreate: jest.Mock;
+  };
   let privacy: { presentMany: jest.Mock };
   let dataSource: { transaction: jest.Mock };
   let manager: {
@@ -164,6 +169,9 @@ describe('LeasesService', () => {
             findOneEntity: jest
               .fn()
               .mockResolvedValue({ id: 'contact-uuid-1' }),
+            resolveOrCreate: jest
+              .fn()
+              .mockResolvedValue({ contact: { id: 'new-tenant-1' } }),
           },
         },
         { provide: RecordHistoryService, useValue: recordHistory },
@@ -219,6 +227,97 @@ describe('LeasesService', () => {
         relations: ['contact'],
       });
       expect(result).toEqual(mockLease);
+    });
+
+    it('resolves a typed tenant to a contact in the unit region', async () => {
+      repo.create.mockReturnValue(mockLease as Lease);
+      manager.findOne.mockResolvedValue({ id: 'unit-uuid-1', deletedAt: null });
+      manager.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+
+      await service.create(
+        companyId,
+        {
+          unitId: 'unit-uuid-1',
+          tenant: {
+            firstName: 'Test',
+            lastName: 'User',
+            phone: '+15551234567',
+          },
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          monthlyRent: 5000,
+        } as any,
+        { userId: 'user-1', role: Role.MANAGER, regionCodes: ['dubai'] },
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { firstName: 'Test', lastName: 'User', phone: '+15551234567' },
+        'user-1',
+        'dubai',
+        Role.MANAGER,
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: 'new-tenant-1' }),
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ tenant: expect.anything() }),
+      );
+    });
+
+    function unitOfKind(subType: UnitSubType) {
+      unitRepo.findOne.mockResolvedValue({
+        ...unitWithRegion('unit-uuid-1'),
+        subType,
+      } as Unit);
+      repo.create.mockReturnValue(mockLease as Lease);
+      manager.findOne.mockResolvedValue({ id: 'unit-uuid-1', deletedAt: null });
+      manager.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
+    }
+
+    const leaseInput = {
+      unitId: 'unit-uuid-1',
+      contactId: 'contact-uuid-1',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      monthlyRent: 5000,
+    };
+
+    it('takes the lease type from the unit kind', async () => {
+      unitOfKind(UnitSubType.OFFICE_SPACE);
+
+      await service.create(companyId, leaseInput as any);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: LeaseType.COMMERCIAL }),
+      );
+    });
+
+    it('refuses a lease type the unit kind does not take', async () => {
+      unitOfKind(UnitSubType.VILLA);
+
+      await expect(
+        service.create(companyId, {
+          ...leaseInput,
+          type: LeaseType.COMMERCIAL,
+        } as any),
+      ).rejects.toThrow('This unit takes a residential lease');
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('lets a plot of land take either lease type', async () => {
+      unitOfKind(UnitSubType.LAND_PLOT);
+
+      await service.create(companyId, {
+        ...leaseInput,
+        type: LeaseType.COMMERCIAL,
+      } as any);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: LeaseType.COMMERCIAL }),
+      );
     });
 
     it('derives the lease region and currency from its unit', async () => {
@@ -354,7 +453,7 @@ describe('LeasesService', () => {
       });
 
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
+        "(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR CONCAT_WS(' ', tenant.firstName, tenant.lastName) ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)",
         { s: '%zainab%' },
       );
     });
@@ -443,7 +542,7 @@ describe('LeasesService', () => {
         type: LeaseType.RESIDENTIAL,
       });
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
+        "(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR CONCAT_WS(' ', tenant.firstName, tenant.lastName) ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)",
         { s: '%zainab%' },
       );
       expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {

@@ -48,6 +48,7 @@
   </Nuvo::PageHeader>
 
   {{#if @model.contact}}
+    <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
     <div class="contact-detail-grid flex col gap-6">
       <Nuvo::Card @title="Contact Information">
         {{#if this.isLimited}}

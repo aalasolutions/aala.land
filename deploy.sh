@@ -19,6 +19,8 @@ echo "==> [backend] start the app, wait for healthy"
 
 echo "==> [frontend] build image (Ember build runs inside Docker) and serve"
 export GOOGLE_CLIENT_ID="$(env_get GOOGLE_CLIENT_ID backend/.env)"
+export PADDLE_CLIENT_TOKEN="$(env_get PADDLE_CLIENT_TOKEN backend/.env)"
+export PADDLE_ENVIRONMENT="$(env_get PADDLE_ENVIRONMENT backend/.env)"
 export STACK_NAME="$(env_get STACK_NAME backend/.env)"
 ( cd frontend && docker compose up -d --build )
 
