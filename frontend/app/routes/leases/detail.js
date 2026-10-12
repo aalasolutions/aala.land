@@ -13,4 +13,8 @@ export default class LeasesDetailRoute extends AuthenticatedRoute {
     const unit = await fetchUnitSummary(this.auth, lease?.unitId);
     return { lease, unit };
   }
+
+  resetController(controller, isExiting) {
+    if (isExiting) controller.resetState();
+  }
 }

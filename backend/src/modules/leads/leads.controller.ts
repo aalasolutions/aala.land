@@ -78,6 +78,12 @@ export class LeadsController {
     type: String,
     description: 'All lead records for this contact',
   })
+  @ApiQuery({
+    name: 'open',
+    required: false,
+    type: Boolean,
+    description: 'true limits the list to leads not WON or LOST',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -85,6 +91,7 @@ export class LeadsController {
     @Query('regionCode') regionCode?: string,
     @Query('contactId', new ParseUUIDPipe({ optional: true }))
     contactId?: string,
+    @Query('open') open?: string,
   ) {
     return this.leadsService.findAll(
       requireCompanyId(req.user),
@@ -93,6 +100,7 @@ export class LeadsController {
       regionCode,
       contactId,
       req.user,
+      open === 'true',
     );
   }
 

@@ -27,10 +27,10 @@ export default class AccessRequestsMyRequestsComponent extends Component {
       isFixed: 'left',
     },
     { name: 'Status', valuePath: 'status', width: 130 },
-    { name: 'Requested', valuePath: 'createdAt', width: 140, numeric: true },
+    { name: 'Requested', valuePath: 'createdAt', width: 140 },
     { name: 'Decided by', valuePath: 'decidedBy.name', width: 180 },
-    { name: 'Decided', valuePath: 'decidedAt', width: 140, numeric: true },
-    { name: 'Expires', valuePath: 'expiresAt', width: 140, numeric: true },
+    { name: 'Decided', valuePath: 'decidedAt', width: 140 },
+    { name: 'Expires', valuePath: 'expiresAt', width: 140 },
     { name: 'Note', valuePath: 'note', width: 240 },
   ];
 

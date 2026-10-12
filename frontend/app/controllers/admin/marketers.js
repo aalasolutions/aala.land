@@ -16,7 +16,6 @@ export default class AdminMarketersController extends Controller {
       name: 'Last signup',
       valuePath: 'lastSignupAt',
       width: 140,
-      numeric: true,
     },
   ];
 

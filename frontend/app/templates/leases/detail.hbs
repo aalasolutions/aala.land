@@ -3,7 +3,7 @@
 <div data-test-lease-detail class="flex col gap-6">
   <Nuvo::PageHeader
     @title={{if @model.lease this.tenantName "Lease"}}
-    @subtitle="Lease agreement"
+    @subtitle={{this.subtitle}}
   >
     <:breadcrumb>
       <LinkTo
@@ -13,10 +13,61 @@
       >Leases</LinkTo>
       <span class="text-muted">/</span>
     </:breadcrumb>
+    <:meta>
+      {{#if @model.lease}}
+        <div class="flex gap-1 wrap">
+          <Nuvo::Tag
+            class="tag-lease-{{lowercase @model.lease.status}}"
+            @text={{@model.lease.status}}
+            data-test-lease-status
+          />
+          {{#if @model.lease.deletedAt}}
+            <Nuvo::Tag
+              @variant="secondary"
+              @text="Archived"
+              data-test-lease-archived
+            />
+          {{/if}}
+        </div>
+      {{/if}}
+    </:meta>
+    <:actions>
+      {{#if this.canManage}}
+        <div class="flex gap-2 wrap">
+          {{#if this.canTerminate}}
+            <Nuvo::Button
+              @variant="danger"
+              @subtle={{true}}
+              @icon="x-circle"
+              @text="Terminate"
+              data-test-terminate-lease
+              {{on "click" this.openTerminate}}
+            />
+          {{/if}}
+          {{#if this.canRenew}}
+            <Nuvo::Button
+              @variant="secondary"
+              @icon="arrows-clockwise"
+              @text="Renew"
+              data-test-renew-lease
+              {{on "click" (fn this.openDrawer "renew")}}
+            />
+          {{/if}}
+          <Nuvo::Button
+            @variant="secondary"
+            @icon="pencil-simple"
+            @text="Edit"
+            data-test-edit-lease
+            {{on "click" (fn this.openDrawer "edit")}}
+          />
+        </div>
+      {{/if}}
+    </:actions>
   </Nuvo::PageHeader>
 
   {{#if @model.lease}}
     <RegionNotice @regionCode={{@model.lease.regionCode}} @noun="lease" />
+
     <Leases::Summary @lease={{@model.lease}} @unit={{@model.unit}} />
 
     <section data-test-lease-documents>
@@ -48,8 +99,29 @@
 
     {{#if this.canViewHistory}}
       <Nuvo::Card @title="History" data-test-lease-history-card>
-        <RecordHistoryList @entityType="Lease" @entityId={{@model.lease.id}} />
+        <RecordHistoryList
+          @entityType="Lease"
+          @entityId={{@model.lease.id}}
+          @reloadKey={{@model.lease}}
+        />
       </Nuvo::Card>
+    {{/if}}
+
+    {{#if this.canManage}}
+      <Leases::LeaseDrawer
+        @open={{this.showDrawer}}
+        @mode={{this.drawerMode}}
+        @lease={{this.drawerLease}}
+        @unitArchived={{if @model.unit.deletedAt true false}}
+        @onClose={{this.closeDrawer}}
+        @onSaved={{this.afterSave}}
+      />
+      <Leases::TerminateModal
+        @open={{this.showTerminate}}
+        @lease={{@model.lease}}
+        @onClose={{this.closeTerminate}}
+        @onTerminated={{this.refresh}}
+      />
     {{/if}}
   {{else}}
     <Nuvo::Card>

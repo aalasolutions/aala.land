@@ -11,5 +11,6 @@ export async function fetchUnitSummary(auth, unitId) {
     id: unit.id,
     areaId: unit.asset?.localityId ?? unit.asset?.locality?.id ?? null,
     label: label || 'Unit',
+    ...(unit.deletedAt ? { deletedAt: unit.deletedAt } : {}),
   };
 }

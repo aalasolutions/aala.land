@@ -1,3 +1,5 @@
+import { ALL_ROLES } from 'land/constants';
+
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   COMPANY_ADMIN: 'company_admin',
@@ -17,6 +19,29 @@ export function isSuperAdmin(role) {
 
 export function canManageUsers(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
+}
+
+// Same roles as GET /record-history.
+export const RECORD_HISTORY_ROLES = [
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+
+export function canViewRecordHistory(role) {
+  return RECORD_HISTORY_ROLES.includes(role);
+}
+
+// Same roles as PATCH on leases and work orders, and lease renew and terminate.
+export const RECORD_EDIT_ROLES = [
+  ROLES.SUPER_ADMIN,
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+
+export function canEditRecord(role) {
+  return RECORD_EDIT_ROLES.includes(role);
 }
 
 export function canViewReports(role) {
@@ -154,4 +179,11 @@ export function getVisibleGroups(role) {
     groups[group] = allowedRoles.includes(role);
   }
   return groups;
+}
+
+// Roles strictly below the given role; empty for an unknown role.
+export function assignableRoles(myRole) {
+  const myLevel = ROLE_HIERARCHY.indexOf(myRole);
+  if (myLevel === -1) return [];
+  return ALL_ROLES.filter((r) => ROLE_HIERARCHY.indexOf(r.value) > myLevel);
 }

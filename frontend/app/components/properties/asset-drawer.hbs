@@ -1,0 +1,82 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Asset" "New Asset"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form id="asset-form" class="flex col gap-4" {{on "submit" this.save}}>
+      {{#unless this.isEdit}}
+        <Nuvo::Field @label="City" @required={{true}}>
+          <RemoteAutocomplete
+            @listUrl={{this.cityListUrl}}
+            @searchUrl={{this.citySearchUrl}}
+            @createUrl="/locations/cities"
+            @createPayload={{this.cityCreatePayload}}
+            @placeholder="Search city..."
+            @selectedName={{this.form.city.name}}
+            @onSelect={{this.selectCity}}
+            @onClear={{this.clearCity}}
+          />
+        </Nuvo::Field>
+        {{#if this.form.city}}
+          <Nuvo::Field @label="Location / Area" @required={{true}}>
+            <RemoteAutocomplete
+              @listUrl={{this.localityListUrl}}
+              @searchUrl={{this.localitySearchUrl}}
+              @createUrl="/locations/localities"
+              @createPayload={{this.localityCreatePayload}}
+              @placeholder="Search location..."
+              @selectedName={{this.form.locality.name}}
+              @onSelect={{this.selectLocality}}
+              @onClear={{this.clearLocality}}
+            />
+          </Nuvo::Field>
+        {{/if}}
+      {{/unless}}
+      <Nuvo::Field @label="Asset Name" @required={{true}}>
+        <Nuvo::Input
+          data-test-asset-name
+          id="b-name"
+          @type="text"
+          @placeholder="e.g. Tower A"
+          @value={{this.form.name}}
+          @onInput={{fn this.setField "name"}}
+          required={{true}}
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Address">
+        <Nuvo::Input
+          data-test-asset-address
+          id="b-address"
+          @type="text"
+          @placeholder="e.g. 123 Sheikh Zayed Road"
+          @value={{this.form.address}}
+          @onInput={{fn this.setField "address"}}
+        />
+      </Nuvo::Field>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      data-test-asset-cancel
+      @variant="secondary"
+      {{on "click" this.close}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      data-test-asset-save
+      @type="submit"
+      form="asset-form"
+      @variant="primary"
+      @disabled={{this.isSaving}}
+      @loading={{this.isSaving}}
+    >
+      {{this.submitLabel}}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

@@ -60,7 +60,6 @@ export default class ReportsController extends PaginatedController {
       valuePath: 'createdAt',
       width: 180,
       isFixed: 'left',
-      numeric: true,
     },
     { name: 'Action', valuePath: 'actionLabel', width: 140 },
     { name: 'Record', valuePath: 'entityType', width: 200 },

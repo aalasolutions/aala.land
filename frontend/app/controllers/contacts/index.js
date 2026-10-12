@@ -8,10 +8,6 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../../utils/delete-modal';
-import {
-  contactFormToBody,
-  contactToFormFields,
-} from '../../utils/contact-form';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 import { formatNumber } from '../../helpers/format-number';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
@@ -129,8 +125,6 @@ export default class ContactsIndexController extends PaginatedController {
     this.page = 1;
     this.showModal = false;
     this.editContact = null;
-    this.errorMsg = '';
-    this.isSaving = false;
     this.showDeleteModal = false;
     this.contactToDelete = null;
     this.isDeleting = false;
@@ -162,19 +156,6 @@ export default class ContactsIndexController extends PaginatedController {
 
   @tracked showModal = false;
   @tracked editContact = null;
-  @tracked formFirstName = '';
-  @tracked formLastName = '';
-  @tracked formEmail = '';
-  @tracked formPhone = '';
-  @tracked formIsWhatsapp = false;
-  @tracked formNationality = '';
-  @tracked formNationalId = '';
-  @tracked formContactCompany = '';
-  @tracked formJobTitle = '';
-  @tracked formAddress = '';
-  @tracked formNotes = '';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
   @tracked showDeleteModal = false;
   @tracked contactToDelete = null;
   @tracked isDeleting = false;
@@ -251,26 +232,12 @@ export default class ContactsIndexController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.formFirstName = '';
-    this.formLastName = '';
-    this.formEmail = '';
-    this.formPhone = '';
-    this.formIsWhatsapp = false;
-    this.formNationality = '';
-    this.formNationalId = '';
-    this.formContactCompany = '';
-    this.formJobTitle = '';
-    this.formAddress = '';
-    this.formNotes = '';
     this.editContact = null;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
   @action openEdit(contact) {
-    Object.assign(this, contactToFormFields(contact));
     this.editContact = contact;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
@@ -280,55 +247,10 @@ export default class ContactsIndexController extends PaginatedController {
 
   @action resetDrawer() {
     this.editContact = null;
-    this.errorMsg = '';
   }
 
-  @action async saveContact(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editContact;
-    const path = isEdit ? `/contacts/${this.editContact.id}` : '/contacts';
-
-    const body = isEdit
-      ? contactFormToBody(this)
-      : {
-          ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
-          ...(this.formLastName ? { lastName: this.formLastName } : {}),
-          ...(this.formEmail ? { email: this.formEmail } : {}),
-          ...(this.formPhone ? { phone: this.formPhone } : {}),
-          isWhatsapp: this.formIsWhatsapp,
-          ...(this.formNationality
-            ? { nationality: this.formNationality }
-            : {}),
-          ...(this.formNationalId
-            ? { nationalId: this.formNationalId }
-            : {}),
-          ...(this.formContactCompany
-            ? { contactCompany: this.formContactCompany }
-            : {}),
-          ...(this.formJobTitle ? { jobTitle: this.formJobTitle } : {}),
-          ...(this.formAddress ? { address: this.formAddress } : {}),
-          ...(this.formNotes ? { notes: this.formNotes } : {}),
-        };
-
-    try {
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success(
-        isEdit ? 'Contact updated' : 'Contact created',
-      );
-      this.closeModal();
-      this.router.refresh('contacts.index');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('contacts.index');
   }
 
   @action openDelete(contact) {

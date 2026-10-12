@@ -1,7 +1,4 @@
 import Controller from '@ember/controller';
-import ContactSelection, {
-  OWNER_REQUIRED_ERROR,
-} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -10,19 +7,13 @@ import {
   PROPERTY_FILTER_STATUS_OPTIONS,
   FILTER_TYPE_OPTIONS,
   FILTER_BEDS_OPTIONS,
-  PROPERTY_TYPE_OPTIONS,
-  PROPERTY_SUB_TYPES,
-  UNIT_KIND_REQUIRED_ERROR,
-  PROPERTY_STATUS_OPTIONS,
   ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
 
 export default class PropertiesIndexController extends Controller {
   queryParams = ['archived'];
   @service auth;
-  @service notifications;
   @service router;
-  @service region;
   @service preferences;
 
   @tracked activeView = null;
@@ -107,11 +98,6 @@ export default class PropertiesIndexController extends Controller {
   filterStatusOptions = PROPERTY_FILTER_STATUS_OPTIONS;
 
   filterBedsOptions = FILTER_BEDS_OPTIONS;
-
-  unitTypeOptions = PROPERTY_TYPE_OPTIONS;
-  subTypeOptions = PROPERTY_SUB_TYPES;
-
-  unitStatusOptions = PROPERTY_STATUS_OPTIONS;
 
   get browseHasNextPage() {
     return this.browseTotal > this.browsePage * 20;
@@ -259,179 +245,16 @@ export default class PropertiesIndexController extends Controller {
   }
 
   @tracked showNewUnitModal = false;
-  @tracked selectedCity = null;
-  @tracked selectedLocality = null;
-  @tracked selectedAsset = null;
-  @tracked newUnitNumber = '';
-  @tracked newUnitType = '';
-  @tracked newUnitSubType = '';
-  @tracked newUnitStatus = 'available';
-  @tracked newUnitPrice = '';
-  @tracked newUnitBedrooms = '';
-  @tracked newUnitBathrooms = '';
-  @tracked newUnitError = '';
-  @tracked isSavingNewUnit = false;
-
-  get citySearchUrl() {
-    return this.region.regionCode ? '/locations/cities/search' : null;
-  }
-
-  get cityListUrl() {
-    return this.region.regionCode
-      ? `/locations/cities/${this.region.regionCode}`
-      : null;
-  }
-
-  get cityCreatePayload() {
-    return { regionCode: this.region.regionCode };
-  }
-
-  get localitySearchUrl() {
-    return this.selectedCity
-      ? `/locations/localities/search?cityId=${this.selectedCity.id}`
-      : null;
-  }
-
-  get localityListUrl() {
-    return this.selectedCity
-      ? `/locations/localities/${this.selectedCity.id}`
-      : null;
-  }
-
-  get localityCreatePayload() {
-    return this.selectedCity ? { cityId: this.selectedCity.id } : {};
-  }
-
-  get assetSearchUrl() {
-    return this.selectedLocality
-      ? `/properties/assets/search?localityId=${this.selectedLocality.id}`
-      : null;
-  }
-
-  get assetListUrl() {
-    return this.selectedLocality
-      ? `/properties/assets/list?localityId=${this.selectedLocality.id}`
-      : null;
-  }
-
-  get assetCreatePayload() {
-    return this.selectedLocality
-      ? { localityId: this.selectedLocality.id }
-      : {};
-  }
-
-  @action selectCity(city) {
-    this.selectedCity = city;
-    this.selectedLocality = null;
-    this.selectedAsset = null;
-  }
-
-  @action clearCity() {
-    this.selectedCity = null;
-    this.selectedLocality = null;
-    this.selectedAsset = null;
-  }
-
-  @action selectLocality(locality) {
-    this.selectedLocality = locality;
-    this.selectedAsset = null;
-  }
-
-  @action clearLocality() {
-    this.selectedLocality = null;
-    this.selectedAsset = null;
-  }
-
-  @action selectAsset(asset) {
-    this.selectedAsset = asset;
-  }
-
-  @action clearAsset() {
-    this.selectedAsset = null;
-  }
-
-  ownerSelection = new ContactSelection();
 
   @action openNewUnitModal() {
-    this.ownerSelection.reset();
-    this.selectedCity = null;
-    this.selectedLocality = null;
-    this.selectedAsset = null;
-    this.newUnitNumber = '';
-    this.newUnitType = '';
-    this.newUnitSubType = '';
-    this.newUnitStatus = 'available';
-    this.newUnitPrice = '';
-    this.newUnitBedrooms = '';
-    this.newUnitBathrooms = '';
-    this.newUnitError = '';
     this.showNewUnitModal = true;
   }
 
   @action closeNewUnitModal() {
     this.showNewUnitModal = false;
-    this.newUnitError = '';
   }
 
-  @action async saveNewUnit(event) {
-    event.preventDefault();
-    if (this.isSavingNewUnit) return;
-
-    if (!this.selectedAsset) {
-      this.newUnitError = 'Please select a city, location, and asset first.';
-      return;
-    }
-    if (!this.newUnitNumber.trim()) {
-      this.newUnitError = 'Property number is required.';
-      return;
-    }
-    if (!this.newUnitSubType) {
-      this.newUnitError = UNIT_KIND_REQUIRED_ERROR;
-      return;
-    }
-    if (!this.ownerSelection.isPresent) {
-      this.newUnitError = OWNER_REQUIRED_ERROR;
-      return;
-    }
-
-    this.isSavingNewUnit = true;
-    this.newUnitError = '';
-
-    const body = {
-      assetId: this.selectedAsset.id,
-      unitNumber: this.newUnitNumber.trim(),
-      status: this.newUnitStatus,
-      subType: this.newUnitSubType,
-      ...(this.newUnitType ? { propertyType: this.newUnitType } : {}),
-      ...(this.newUnitPrice ? { price: parseFloat(this.newUnitPrice) } : {}),
-      ...(this.newUnitBedrooms
-        ? { bedrooms: parseInt(this.newUnitBedrooms, 10) }
-        : {}),
-      ...(this.newUnitBathrooms
-        ? { bathrooms: Number(this.newUnitBathrooms) }
-        : {}),
-      ...(this.ownerSelection.contactId
-        ? {
-            ownerId: this.ownerSelection.contactId,
-            ...this.ownerSelection.verifyPhoneField('ownerVerifyPhone'),
-          }
-        : { owner: this.ownerSelection.cleanIdentity }),
-    };
-
-    try {
-      await this.auth.fetchJson('/properties/units', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success('Property created');
-      this.closeNewUnitModal();
-      this.router.refresh('properties.index');
-    } catch (e) {
-      this.newUnitError = this.ownerSelection.takeConflict(e)
-        ? 'Contact already added'
-        : e.message;
-    } finally {
-      this.isSavingNewUnit = false;
-    }
+  @action refresh() {
+    this.router.refresh('properties.index');
   }
 }

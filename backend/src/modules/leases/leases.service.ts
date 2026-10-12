@@ -352,7 +352,10 @@ export class LeasesService {
     page: number;
     limit: number;
   }> {
-    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // Record lists ignore the top-bar region.
+    const regionCodes = contactId
+      ? scopedRegionCodes(caller)
+      : effectiveRegionCodes(regionCode, caller);
     // No readable region means no rows, and an empty IN () is invalid SQL.
     if (regionCodes?.length === 0) {
       return { data: [], total: 0, page, limit };

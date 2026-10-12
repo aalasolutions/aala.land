@@ -22,16 +22,14 @@ module('Unit | Utility | money', function () {
     );
   });
 
-  test('compact shortens from one million upward and leaves smaller amounts alone', function (assert) {
+  test('compact shortens from one thousand upward and leaves smaller amounts alone', function (assert) {
     const opts = { currency: 'SAR', compact: true };
     assert.strictEqual(plain(formatMoney(20000000, 'en', opts)), 'SAR 20M');
     assert.strictEqual(plain(formatMoney(1500000000, 'en', opts)), 'SAR 1.5B');
     assert.strictEqual(plain(formatMoney(-2500000, 'en', opts)), '-SAR 2.5M');
-    assert.strictEqual(
-      plain(formatMoney(999999.99, 'en', opts)),
-      'SAR 999,999.99',
-    );
-    assert.strictEqual(plain(formatMoney(5000, 'en', opts)), 'SAR 5,000.00');
+    assert.strictEqual(plain(formatMoney(500000, 'en', opts)), 'SAR 500K');
+    assert.strictEqual(plain(formatMoney(7500.5, 'en', opts)), 'SAR 7.5K');
+    assert.strictEqual(plain(formatMoney(999.99, 'en', opts)), 'SAR 999.99');
   });
 
   test('minor units divide by the currency fraction digits', function (assert) {

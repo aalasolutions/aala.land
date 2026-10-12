@@ -412,6 +412,60 @@ describe('LeasesService', () => {
       expect(result.data).toEqual([mockLease]);
     });
 
+    it('ignores the top-bar region for a contact record list', async () => {
+      const qb = qbMock([], 0);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+      const caller = {
+        userId: 'user-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      };
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        'makkah',
+        'contact-uuid-1',
+        undefined,
+        caller,
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'l.regionCode IN (:...regionCodes)',
+        { regionCodes: ['makkah', 'punjab'] },
+      );
+    });
+
+    it('narrows by the top-bar region without a record filter', async () => {
+      const qb = qbMock([], 0);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+      const caller = {
+        userId: 'user-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah', 'punjab'],
+      };
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        'makkah',
+        undefined,
+        undefined,
+        caller,
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'l.regionCode IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
+    });
+
     it('filters by status when provided', async () => {
       const qb = qbMock([mockLease as Lease], 1);
       (repo.createQueryBuilder as unknown as jest.Mock) = jest

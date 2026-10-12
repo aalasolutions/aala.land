@@ -1,18 +1,8 @@
 import Controller from '@ember/controller';
-import ContactSelection, {
-  CONTACT_REQUIRED_ERROR,
-} from '../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import {
-  LEAD_STAGES,
-  TEMPERATURE_STAGES,
-  LEAD_STATUS_OPTIONS,
-  TEMPERATURE_OPTIONS,
-  LEAD_SOURCE_OPTIONS,
-  NONE_OPTION,
-} from 'land/constants';
+import { LEAD_STAGES, TEMPERATURE_STAGES } from 'land/constants';
 import { seesOnlyOwnLeads } from '../utils/roles';
 
 const HIGH_LOAD = 8;
@@ -89,7 +79,6 @@ export default class LeadsController extends Controller {
   @service auth;
   @service notifications;
   @service router;
-  @service region;
   @service preferences;
   @service socket;
   leadUpdatedHandler = null;
@@ -132,16 +121,6 @@ export default class LeadsController extends Controller {
   @tracked assignLead = null;
   @tracked detailLead = null;
   @tracked leadActivities = [];
-  contactSelection = new ContactSelection();
-  @tracked formStatus = 'NEW';
-  @tracked formTemperature = 'WARM';
-  @tracked formSource = 'OTHER';
-  @tracked formLocalityId = '';
-  @tracked formUnitId = '';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
-  @tracked localities = [];
-  @tracked filteredUnits = [];
 
   @tracked _viewMode = null;
 
@@ -191,41 +170,6 @@ export default class LeadsController extends Controller {
   // `{ board, value }` of the column under the dragged card.
   @tracked dropTarget = null;
   @tracked selectedAgentId = '';
-  @tracked formRegionCode = '';
-
-  get showRegionField() {
-    return this.region.regions.length > 1;
-  }
-
-  statusOptions = LEAD_STATUS_OPTIONS;
-
-  temperatureOptions = TEMPERATURE_OPTIONS;
-
-  sourceOptions = LEAD_SOURCE_OPTIONS;
-
-  get regionOptions() {
-    return this.region.regionOptions;
-  }
-
-  get localityOptions() {
-    return [
-      NONE_OPTION,
-      ...(this.localities || []).map((locality) => ({
-        value: locality.id,
-        label: locality.name,
-      })),
-    ];
-  }
-
-  get unitOptions() {
-    return [
-      NONE_OPTION,
-      ...(this.filteredUnits || []).map((unit) => ({
-        value: unit.id,
-        label: `Property ${unit.unitNumber} (${unit.status})`,
-      })),
-    ];
-  }
 
   get agentOptions() {
     return [
@@ -249,7 +193,7 @@ export default class LeadsController extends Controller {
     { name: 'Temperature', valuePath: 'temperature', width: 140 },
     { name: 'Property', valuePath: 'locality.name', width: 200 },
     { name: 'Assigned', valuePath: 'assignedAgentName', width: 180 },
-    { name: 'Created', valuePath: 'createdAt', width: 140, numeric: true },
+    { name: 'Created', valuePath: 'createdAt', width: 140 },
     {
       name: 'Actions',
       valuePath: 'id',
@@ -391,45 +335,14 @@ export default class LeadsController extends Controller {
     }
   }
 
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
-  }
-
   // Kit form components call onInput/onChange as (value, event).
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }
 
-  @action setRegionCode(value) {
-    this.formRegionCode = value;
-    this.formLocalityId = '';
-    this.formUnitId = '';
-    this.filteredUnits = [];
-    this.loadLocalities(this.formRegionCode);
-  }
-
-  @action setLocalityId(value) {
-    this.formLocalityId = value;
-    this.formUnitId = '';
-    this.filteredUnits = [];
-    if (value) {
-      this.loadUnits(value, this.formRegionCode);
-    }
-  }
-
   @action openCreate() {
-    this.contactSelection.reset();
-    this.formStatus = 'NEW';
-    this.formTemperature = 'WARM';
-    this.formSource = 'OTHER';
-    this.formLocalityId = '';
-    this.formUnitId = '';
-    this.formRegionCode = this.region.regionCode;
-    this.filteredUnits = [];
     this.editLead = null;
-    this.errorMsg = '';
     this.showModal = true;
-    this.loadLocalities(this.formRegionCode);
   }
 
   @action openEdit(lead) {
@@ -437,20 +350,8 @@ export default class LeadsController extends Controller {
       this.closeDetailModal();
     }
 
-    this.formStatus = lead.status ?? 'NEW';
-    this.formTemperature = lead.temperature ?? 'WARM';
-    this.formSource = lead.source ?? 'OTHER';
-    this.formRegionCode = lead.regionCode ?? this.region.regionCode;
-    const localityId = lead.locality?.id ?? lead.localityId ?? '';
-    this.formLocalityId = localityId;
-    this.formUnitId = lead.unitId ?? '';
     this.editLead = lead;
-    this.errorMsg = '';
     this.showModal = true;
-    this.loadLocalities(this.formRegionCode);
-    if (localityId) {
-      this.loadUnits(localityId, this.formRegionCode);
-    }
   }
 
   @action openAssignModal(lead) {
@@ -498,52 +399,10 @@ export default class LeadsController extends Controller {
 
   @action resetDrawer() {
     this.editLead = null;
-    this.errorMsg = '';
   }
 
-  @action async loadLocalities(
-    regionCode = this.formRegionCode || this.region.regionCode,
-  ) {
-    try {
-      const params = new URLSearchParams();
-      if (regionCode) {
-        params.set('regionCode', regionCode);
-      }
-
-      const queryString = params.toString();
-      const url = queryString
-        ? `/locations/company/localities?${queryString}`
-        : '/locations/company/localities';
-      const json = await this.auth.fetchJson(url);
-      this.localities = json.data || [];
-    } catch (e) {
-      console.error('Failed to load localities:', e);
-      this.localities = [];
-    }
-  }
-
-  @action async loadUnits(
-    localityId,
-    regionCode = this.formRegionCode || this.region.regionCode,
-  ) {
-    try {
-      const params = new URLSearchParams({
-        localityId,
-        limit: '100',
-      });
-
-      if (regionCode) {
-        params.set('regionCode', regionCode);
-      }
-
-      const json = await this.auth.fetchJson(
-        `/properties/units?${params.toString()}`,
-      );
-      this.filteredUnits = json.data?.data || [];
-    } catch (e) {
-      console.error('Failed to load units:', e);
-      this.filteredUnits = [];
-    }
+  @action refresh() {
+    this.router.refresh('leads');
   }
 
   @action async loadAgents() {
@@ -756,81 +615,6 @@ export default class LeadsController extends Controller {
       this.router.refresh('leads');
     } catch (e) {
       this.notifications.error(e.message);
-    }
-  }
-
-  @action async saveLead(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    if (!this.editLead && !this.contactSelection.isPresent) {
-      this.errorMsg = CONTACT_REQUIRED_ERROR;
-      return;
-    }
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editLead;
-    const path = isEdit ? `/leads/${this.editLead.id}` : '/leads';
-
-    try {
-      const originalLocalityId =
-        this.editLead?.locality?.id ?? this.editLead?.localityId ?? '';
-      const originalUnitId = this.editLead?.unitId ?? '';
-      const originalRegionCode = this.editLead?.regionCode ?? '';
-
-      const json = await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify({
-          // Edit must omit identity fields (name/phone/email) or forbidNonWhitelisted 400s.
-          ...(isEdit
-            ? {}
-            : this.contactSelection.contactId
-              ? {
-                  contactId: this.contactSelection.contactId,
-                  ...this.contactSelection.verifyPhoneField(
-                    'contactVerifyPhone',
-                  ),
-                }
-              : this.contactSelection.cleanIdentity),
-          status: this.formStatus,
-          temperature: this.formTemperature,
-          source: this.formSource,
-          ...(isEdit
-            ? {
-                ...(this.formLocalityId !== originalLocalityId
-                  ? { localityId: this.formLocalityId || null }
-                  : {}),
-                ...(this.formUnitId !== originalUnitId
-                  ? { unitId: this.formUnitId || null }
-                  : {}),
-                ...(this.formRegionCode !== originalRegionCode
-                  ? { regionCode: this.formRegionCode }
-                  : {}),
-              }
-            : {
-                ...(this.formLocalityId
-                  ? { localityId: this.formLocalityId }
-                  : {}),
-                ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-                ...(this.formRegionCode
-                  ? { regionCode: this.formRegionCode }
-                  : {}),
-              }),
-        }),
-      });
-
-      this.notifications.success(isEdit ? 'Lead updated' : 'Lead created');
-      if (!isEdit && json?.data?.contactAccess === 'PENDING') {
-        this.notifications.info('Access pending: an approver has been asked');
-      }
-      this.closeModal();
-      this.router.refresh('leads');
-    } catch (e) {
-      this.errorMsg = this.contactSelection.takeConflict(e)
-        ? 'Contact already added'
-        : e.message;
-    } finally {
-      this.isSaving = false;
     }
   }
 }

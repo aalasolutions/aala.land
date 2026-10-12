@@ -46,14 +46,13 @@ module('Integration | Component | maintenance/summary', function (hooks) {
     this.assignee = { id: 'user-9', name: 'Test User' };
   });
 
-  test('it renders every work-order field', async function (assert) {
+  test('it renders the description, assignment, schedule and cost', async function (assert) {
     this.workOrder = ORDER;
     await render(
       hbs`<Maintenance::Summary @workOrder={{this.workOrder}} @unit={{this.unit}} @vendor={{this.vendor}} @assignee={{this.assignee}} />`,
     );
 
     assert.dom('[data-test-work-order-summary]').exists();
-    assert.dom('[data-test-work-order-title]').hasText('Fix AC');
     assert
       .dom('[data-test-work-order-description]')
       .hasText('Unit is too warm');
@@ -61,10 +60,6 @@ module('Integration | Component | maintenance/summary', function (hooks) {
     assert
       .dom('[data-test-work-order-unit-link]')
       .hasAttribute('href', /\/properties\/area-1\/unit\/unit-1$/);
-    assert.dom('[data-test-work-order-region]').hasText('dxb');
-    assert.dom('[data-test-work-order-status]').hasText('IN_PROGRESS');
-    assert.dom('[data-test-work-order-priority]').hasText('HIGH');
-    assert.dom('[data-test-work-order-category]').hasText('HVAC');
     assert.dom('[data-test-work-order-vendor]').hasText('Cool Air');
     assert.dom('[data-test-work-order-assignee]').hasText('Test User');
     assert
@@ -75,9 +70,11 @@ module('Integration | Component | maintenance/summary', function (hooks) {
       .hasText(formatDate('2026-09-12T10:00:00.000Z'));
     assert.dom('[data-test-work-order-estimated]').hasText(money(500));
     assert.dom('[data-test-work-order-actual]').hasText(money(450));
-    assert.dom('[data-test-work-order-currency]').hasText('AED');
     assert.dom('[data-test-work-order-cost-notes]').hasText('Parts included');
     assert.dom('[data-test-work-order-notes]').hasText('Call before visiting');
+    assert
+      .dom('[data-test-work-order-status]')
+      .doesNotExist('status, priority and category live in the page header');
   });
 
   test('ids without a resolved name still read as assigned', async function (assert) {
@@ -101,6 +98,7 @@ module('Integration | Component | maintenance/summary', function (hooks) {
       scheduledDate: null,
       completedAt: null,
       costNotes: null,
+      description: null,
       notes: null,
     };
     await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
@@ -115,5 +113,62 @@ module('Integration | Component | maintenance/summary', function (hooks) {
     assert.dom('[data-test-work-order-completed]').hasText('-');
     assert.dom('[data-test-work-order-cost-notes]').hasText('-');
     assert.dom('[data-test-work-order-notes]').hasText('-');
+    assert.dom('[data-test-work-order-description]').hasText('-');
+  });
+
+  test('the statement and steps say where the job stands', async function (assert) {
+    this.workOrder = {
+      ...ORDER,
+      status: 'OPEN',
+      vendorId: null,
+      assignedTo: null,
+      reportedBy: 'Test User',
+      createdAt: '2026-09-01T09:00:00.000Z',
+      completedAt: null,
+    };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-next-step]')
+      .hasText('Nobody is on this yet. Assign a vendor or a team member.');
+    assert.dom('[data-test-work-order-stage="current"]').hasText('Reported');
+    assert.dom('[data-test-work-order-stage="todo"]').exists({ count: 3 });
+    assert
+      .dom('[data-test-work-order-reported]')
+      .includesText('Reported by Test User');
+  });
+
+  test('a completed order shows every step done', async function (assert) {
+    this.workOrder = { ...ORDER, status: 'COMPLETED' };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-next-step]')
+      .hasText('The work is done and closed.');
+    assert.dom('[data-test-work-order-stage="done"]').exists({ count: 3 });
+    assert.dom('[data-test-work-order-stage="current"]').hasText('Done');
+  });
+
+  test('a cancelled order hides the steps', async function (assert) {
+    this.workOrder = { ...ORDER, status: 'CANCELLED' };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-next-step]')
+      .hasText('This work order was cancelled.');
+    assert.dom('[data-test-work-order-stage]').doesNotExist();
+  });
+
+  test('pending approval means the work is done and waits for sign-off', async function (assert) {
+    this.workOrder = { ...ORDER, status: 'PENDING_APPROVAL' };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-next-step]')
+      .hasText(
+        'Work is done and waiting for owner or manager approval to close.',
+      );
+    assert.dom('[data-test-work-order-stage="current"]').hasText('Approval');
+    assert.dom('[data-test-work-order-stage="done"]').exists({ count: 2 });
   });
 });

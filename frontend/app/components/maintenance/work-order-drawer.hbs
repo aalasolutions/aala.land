@@ -1,0 +1,237 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Work Order" "New Work Order"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form
+      id="work-order-form"
+      class="flex col gap-4"
+      {{this.loadOnOpen}}
+      {{on "submit" this.save}}
+    >
+      <Nuvo::Field @label="Property" @required={{true}}>
+        <Nuvo::Dropdown
+          id="wo-unit"
+          @align="start"
+          @value={{this.form.unitId}}
+          @onSelect={{fn this.setField "unitId"}}
+          @options={{this.unitOptions}}
+          @placeholder="Select a property..."
+          data-test-wo-unit
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Title" @required={{true}}>
+        <Nuvo::Input
+          id="wo-title"
+          type="text"
+          placeholder="e.g. Fix leaking pipe in property 302"
+          @value={{this.form.title}}
+          @onInput={{fn this.setField "title"}}
+          required={{true}}
+          data-test-wo-title
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Description" @required={{true}}>
+        <Nuvo::Textarea
+          id="wo-desc"
+          placeholder="Describe the issue in detail..."
+          rows="3"
+          @value={{this.form.description}}
+          @onInput={{fn this.setField "description"}}
+          required={{true}}
+          data-test-wo-description
+        />
+      </Nuvo::Field>
+
+      <div class="flex gap-4">
+        <div class="grow">
+          <Nuvo::Field @label="Priority">
+            <Nuvo::Dropdown
+              id="wo-priority"
+              @align="start"
+              @value={{this.form.priority}}
+              @onSelect={{fn this.setField "priority"}}
+              @options={{this.priorityOptions}}
+              @placeholder="Select priority..."
+              data-test-wo-priority
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="grow">
+          <Nuvo::Field @label="Category">
+            <Nuvo::Dropdown
+              id="wo-category"
+              @align="start"
+              @value={{this.form.category}}
+              @onSelect={{fn this.setField "category"}}
+              @options={{this.categoryOptions}}
+              @placeholder="Select category..."
+              data-test-wo-category
+            />
+          </Nuvo::Field>
+        </div>
+      </div>
+
+      {{#if this.isEdit}}
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            id="wo-status"
+            @align="start"
+            @value={{this.form.status}}
+            @onSelect={{fn this.setField "status"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+            data-test-wo-status
+          />
+        </Nuvo::Field>
+        {{#if this.isCancelling}}
+          <Nuvo::Field
+            @label="Cancellation Reason"
+            @required={{true}}
+            @error={{this.reasonError}}
+          >
+            <Nuvo::Textarea
+              id="wo-cancel-reason"
+              rows="2"
+              maxlength="500"
+              placeholder="e.g. Tenant resolved the issue"
+              @value={{this.form.reason}}
+              @onInput={{fn this.setField "reason"}}
+              @invalid={{if this.reasonError true false}}
+              aria-label="Reason"
+              data-test-reason-input
+            />
+          </Nuvo::Field>
+        {{/if}}
+      {{/if}}
+
+      {{#if this.isEdit}}
+        <Nuvo::Field @label="Estimated Cost">
+          <Nuvo::Input
+            id="wo-est-cost"
+            type="number"
+            placeholder="e.g. 500"
+            @value={{this.form.estimatedCost}}
+            @onInput={{fn this.setField "estimatedCost"}}
+            min="0"
+            step="0.01"
+            data-test-wo-est-cost
+          />
+        </Nuvo::Field>
+      {{else}}
+        <div class="flex gap-4">
+          <div class="grow">
+            <Nuvo::Field @label="Reported By">
+              <Nuvo::Input
+                id="wo-reported-by"
+                type="text"
+                placeholder="Tenant or staff name"
+                @value={{this.form.reportedBy}}
+                @onInput={{fn this.setField "reportedBy"}}
+                data-test-wo-reported-by
+              />
+            </Nuvo::Field>
+          </div>
+          <div class="grow">
+            <Nuvo::Field @label="Estimated Cost">
+              <Nuvo::Input
+                id="wo-est-cost"
+                type="number"
+                placeholder="e.g. 500"
+                @value={{this.form.estimatedCost}}
+                @onInput={{fn this.setField "estimatedCost"}}
+                min="0"
+                step="0.01"
+                data-test-wo-est-cost
+              />
+            </Nuvo::Field>
+          </div>
+        </div>
+      {{/if}}
+
+      <div class="flex gap-4">
+        <div class="grow">
+          <Nuvo::Field @label="Actual Cost">
+            <Nuvo::Input
+              id="wo-act-cost"
+              type="number"
+              placeholder="e.g. 450"
+              @value={{this.form.actualCost}}
+              @onInput={{fn this.setField "actualCost"}}
+              min="0"
+              step="0.01"
+              data-test-wo-act-cost
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="grow">
+          <Nuvo::Field @label="Cost Notes">
+            <Nuvo::Input
+              id="wo-cost-notes"
+              type="text"
+              placeholder="e.g. Parts + labor"
+              @value={{this.form.costNotes}}
+              @onInput={{fn this.setField "costNotes"}}
+              data-test-wo-cost-notes
+            />
+          </Nuvo::Field>
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="grow">
+          <Nuvo::Field @label="Scheduled Date">
+            <Nuvo::Input
+              id="wo-scheduled"
+              type="date"
+              @value={{this.form.scheduledDate}}
+              @onInput={{fn this.setField "scheduledDate"}}
+              data-test-wo-scheduled
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="grow">
+          <Nuvo::Field @label="Vendor">
+            <Nuvo::Dropdown
+              id="wo-vendor"
+              @align="start"
+              @value={{this.form.vendorId}}
+              @onSelect={{fn this.setField "vendorId"}}
+              @options={{this.vendorOptions}}
+              @placeholder="No vendor assigned"
+              data-test-wo-vendor
+            />
+          </Nuvo::Field>
+        </div>
+      </div>
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-cancel-work-order
+      {{on "click" this.close}}
+    >
+      Cancel
+    </Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="work-order-form"
+      @loading={{this.isSaving}}
+      data-test-save-work-order
+    >
+      {{if this.isEdit "Update" "Create Work Order"}}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

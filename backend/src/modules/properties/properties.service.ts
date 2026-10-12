@@ -508,6 +508,12 @@ export class PropertiesService {
     sort?: { field?: string; direction?: string },
     viewer?: ContactViewer,
   ) {
+    // Record lists ignore the top-bar region.
+    const recordCodes = filters?.ownerId ? scopedRegionCodes(viewer) : null;
+    if (recordCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
     const qb = this.unitRepository
       .createQueryBuilder('u')
       .innerJoin('u.asset', 'a')
@@ -519,6 +525,8 @@ export class PropertiesService {
         'a.name',
         'loc.id',
         'loc.name',
+        'ci.id',
+        'ci.regionCode',
         'o.id',
         'o.firstName',
         'o.lastName',
@@ -556,7 +564,9 @@ export class PropertiesService {
     if (filters?.localityId) {
       qb.andWhere('loc.id = :localityId', { localityId: filters.localityId });
     }
-    if (filters?.regionCode) {
+    if (recordCodes) {
+      qb.andWhere('ci.regionCode IN (:...recordCodes)', { recordCodes });
+    } else if (filters?.regionCode && !filters.ownerId) {
       qb.andWhere('ci.regionCode = :regionCode', {
         regionCode: filters.regionCode,
       });
@@ -628,6 +638,7 @@ export class PropertiesService {
       assetName: u.asset?.name ?? '',
       areaId: u.asset?.locality?.id ?? '',
       areaName: u.asset?.locality?.name ?? '',
+      regionCode: u.asset?.locality?.city?.regionCode ?? null,
       ownerName:
         u.owner && ownerLevels.get(u.owner.id) === 'FULL'
           ? contactDisplayName(u.owner)

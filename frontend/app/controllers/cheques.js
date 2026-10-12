@@ -10,11 +10,7 @@ import {
 } from '../utils/delete-modal';
 import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
 import { formatDate } from '../helpers/format-date';
-import {
-  CHEQUE_TYPE_OPTIONS,
-  EMPTY_UNIT_OPTION,
-  MAX_BACKDATE_DAYS,
-} from 'land/constants';
+import { MAX_BACKDATE_DAYS } from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
   @service auth;
@@ -51,16 +47,6 @@ export default class ChequesController extends PaginatedController {
 
   @tracked showModal = false;
   @tracked editCheque = null;
-  @tracked formChequeNumber = '';
-  @tracked formBankName = '';
-  @tracked formAccountHolder = '';
-  @tracked formAmount = '';
-  @tracked formDueDate = '';
-  @tracked formType = 'RENT';
-  @tracked formLeaseId = '';
-  @tracked formUnitId = '';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
 
   @tracked activeTab = 'cheques';
 
@@ -80,7 +66,7 @@ export default class ChequesController extends PaginatedController {
     { name: 'Bank', valuePath: 'bankName', width: 180 },
     { name: 'Account Holder', valuePath: 'accountHolder', width: 200 },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Due Date', valuePath: 'dueDate', width: 140, numeric: true },
+    { name: 'Due Date', valuePath: 'dueDate', width: 140 },
     { name: 'Type', valuePath: 'type', width: 140 },
     { name: 'Status', valuePath: 'status', width: 140 },
     {
@@ -133,25 +119,7 @@ export default class ChequesController extends PaginatedController {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
-  get chequeTypeOptions() {
-    return CHEQUE_TYPE_OPTIONS;
-  }
-
-  get unitOptions() {
-    return [
-      EMPTY_UNIT_OPTION,
-      ...(this.model.units || []).map((unit) => ({
-        value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Property ${unit.unitNumber}`,
-      })),
-    ];
-  }
-
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
-  }
-
-  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
+  // Nuvo inputs call onInput/onChange as (value, event).
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }
@@ -161,30 +129,12 @@ export default class ChequesController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.formChequeNumber = '';
-    this.formBankName = '';
-    this.formAccountHolder = '';
-    this.formAmount = '';
-    this.formDueDate = '';
-    this.formType = 'RENT';
-    this.formLeaseId = '';
-    this.formUnitId = '';
     this.editCheque = null;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
   @action openEdit(cheque) {
-    this.formChequeNumber = cheque.chequeNumber;
-    this.formBankName = cheque.bankName;
-    this.formAccountHolder = cheque.accountHolder;
-    this.formAmount = String(cheque.amount);
-    this.formDueDate = toDateOnly(cheque.dueDate);
-    this.formType = cheque.type ?? 'RENT';
-    this.formLeaseId = cheque.leaseId ?? '';
-    this.formUnitId = cheque.unitId ?? '';
     this.editCheque = cheque;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
@@ -194,51 +144,10 @@ export default class ChequesController extends PaginatedController {
 
   @action resetDrawer() {
     this.editCheque = null;
-    this.errorMsg = '';
   }
 
-  @action async saveCheque(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editCheque;
-    const path = isEdit ? `/cheques/${this.editCheque.id}` : '/cheques';
-
-    const body = isEdit
-      ? {
-          chequeNumber: this.formChequeNumber,
-          bankName: this.formBankName,
-          amount: parseFloat(this.formAmount),
-          type: this.formType,
-          dueDate: this.formDueDate,
-          ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-        }
-      : {
-          chequeNumber: this.formChequeNumber,
-          bankName: this.formBankName,
-          accountHolder: this.formAccountHolder,
-          amount: parseFloat(this.formAmount),
-          dueDate: this.formDueDate,
-          type: this.formType,
-          ...(this.formLeaseId ? { leaseId: this.formLeaseId } : {}),
-          ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-        };
-
-    try {
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success(isEdit ? 'Cheque updated' : 'Cheque created');
-      this.closeModal();
-      this.router.refresh('cheques');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('cheques');
   }
 
   @action openBounceModal(cheque) {

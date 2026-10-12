@@ -2,7 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { FILTER_STATUS_OPTIONS, COMMISSION_TYPE_OPTIONS } from 'land/constants';
+import { FILTER_STATUS_OPTIONS } from 'land/constants';
 
 export default class CommissionsController extends PaginatedController {
   @service auth;
@@ -12,15 +12,6 @@ export default class CommissionsController extends PaginatedController {
   queryParams = ['page', 'limit', 'filterStatus'];
   @tracked filterStatus = '';
   @tracked showModal = false;
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
-  @tracked formAgentId = '';
-  @tracked formType = 'SALE';
-  @tracked formGrossAmount = '';
-  @tracked formCommissionRate = '';
-  @tracked formLeadId = '';
-  @tracked formTransactionId = '';
-  @tracked formNotes = '';
   @tracked showCancelModal = false;
   @tracked commissionToCancel = null;
   @tracked cancelReason = '';
@@ -28,8 +19,6 @@ export default class CommissionsController extends PaginatedController {
   @tracked reasonError = '';
 
   filterStatusOptions = FILTER_STATUS_OPTIONS;
-
-  commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
 
   columns = [
     { name: 'Agent', valuePath: 'agentId', width: 200, isFixed: 'left' },
@@ -52,13 +41,6 @@ export default class CommissionsController extends PaginatedController {
       isResizable: false,
     },
   ];
-
-  get agentOptions() {
-    return (this.model.agents || []).map((agent) => ({
-      value: agent.id,
-      label: agent.name,
-    }));
-  }
 
   // The agents list holds active assignable users only; anyone else falls back to the id.
   @action agentName(agentId) {
@@ -86,53 +68,15 @@ export default class CommissionsController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.formAgentId = '';
-    this.formType = 'SALE';
-    this.formGrossAmount = '';
-    this.formCommissionRate = '';
-    this.formLeadId = '';
-    this.formTransactionId = '';
-    this.formNotes = '';
-    this.errorMsg = '';
     this.showModal = true;
   }
 
   @action closeModal() {
     this.showModal = false;
-    this.errorMsg = '';
   }
 
-  @action async saveCommission(event) {
-    event.preventDefault();
-    if (!this.formAgentId) {
-      this.errorMsg = 'Please select an agent';
-      return;
-    }
-    this.isSaving = true;
-    this.errorMsg = '';
-    try {
-      const body = {
-        agentId: this.formAgentId,
-        type: this.formType,
-        grossAmount: parseFloat(this.formGrossAmount),
-        commissionRate: parseFloat(this.formCommissionRate),
-      };
-      if (this.formLeadId) body.leadId = this.formLeadId;
-      if (this.formTransactionId) body.transactionId = this.formTransactionId;
-      if (this.formNotes) body.notes = this.formNotes;
-
-      await this.auth.fetchJson('/commissions', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success('Commission created');
-      this.showModal = false;
-      this.router.refresh('commissions');
-    } catch (e) {
-      this.errorMsg = e.message || 'Failed to create commission';
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('commissions');
   }
 
   @action async approveCommission(commission) {

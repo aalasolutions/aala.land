@@ -2,13 +2,10 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { ROLE_HIERARCHY, seesAllRegions } from '../utils/roles';
-import { ALL_ROLES } from 'land/constants';
 import { toSeatInfo } from '../utils/seat-info';
 
 export default class TeamController extends PaginatedController {
   @service auth;
-  @service region;
   @service notifications;
   @service router;
 
@@ -16,23 +13,7 @@ export default class TeamController extends PaginatedController {
   @tracked showModal = false;
   @tracked showInviteModal = false;
   @tracked editUser = null;
-  @tracked formName = '';
-  @tracked formEmail = '';
-  @tracked formPassword = '';
-  @tracked formRole = 'agent';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
-
-  @tracked inviteFirstName = '';
-  @tracked inviteLastName = '';
-  @tracked inviteEmail = '';
-  @tracked inviteRole = 'agent';
-  @tracked isInviting = false;
-  @tracked inviteErrorMsg = '';
-  @tracked inviteExistingUser = null;
   @tracked impersonatingUserId = null;
-
-  @tracked selectedRegionCodes = [];
 
   @tracked showRemoveModal = false;
   @tracked removeStep = 1;
@@ -66,10 +47,6 @@ export default class TeamController extends PaginatedController {
     return this.auth.currentUser?.role === 'super_admin';
   }
 
-  get isEditingSelf() {
-    return !!this.editUser && this.editUser.id === this.auth.currentUser?.id;
-  }
-
   // The Company column only exists for super admins.
   get columns() {
     return [
@@ -99,13 +76,6 @@ export default class TeamController extends PaginatedController {
   // Blocks concurrent reactivations; all Reactivate buttons disable while one is running.
   get isReactivating() {
     return !!this.reactivatingUserId;
-  }
-
-  get roles() {
-    const myRole = this.auth.currentUser?.role;
-    const myLevel = ROLE_HIERARCHY.indexOf(myRole);
-    if (myLevel === -1) return [];
-    return ALL_ROLES.filter((r) => ROLE_HIERARCHY.indexOf(r.value) > myLevel);
   }
 
   // Latest value fetched on open; falls back to the route's initial load.
@@ -203,58 +173,13 @@ export default class TeamController extends PaginatedController {
   }
 
   @action openCreate() {
-    this.formName = '';
-    this.formEmail = '';
-    this.formPassword = '';
-    this.formRole = 'agent';
-    // Seeded with the active region so a new member is never created unscoped.
-    this.selectedRegionCodes = this.region.regionCode
-      ? [this.region.regionCode]
-      : [];
     this.editUser = null;
-    this.errorMsg = '';
     this.showModal = true;
     this.refreshSeatInfo();
   }
 
-  // Only admins reach this page, and an admin bootstrap carries every company region.
-  get assignableRegions() {
-    return this.region.regions;
-  }
-
-  get hasAllRegions() {
-    return seesAllRegions(this.formRole);
-  }
-
-  get allRegionsNote() {
-    return this.isEditingSelf
-      ? 'You are a company admin. You have access to all regions.'
-      : 'Company admins have access to all regions.';
-  }
-
-  get hasNoRegionsSelected() {
-    return !this.hasAllRegions && this.selectedRegionCodes.length === 0;
-  }
-
-  @action toggleRegion(code) {
-    const next = [...this.selectedRegionCodes];
-    const idx = next.indexOf(code);
-    if (idx === -1) {
-      next.push(code);
-    } else {
-      next.splice(idx, 1);
-    }
-    this.selectedRegionCodes = next;
-  }
-
   @action openEdit(user) {
-    this.formName = user.name ?? '';
-    this.formEmail = user.email ?? '';
-    this.formPassword = '';
-    this.formRole = user.role ?? 'agent';
-    this.selectedRegionCodes = [...(user.regionCodes ?? [])];
     this.editUser = user;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
@@ -264,107 +189,19 @@ export default class TeamController extends PaginatedController {
 
   @action resetDrawer() {
     this.editUser = null;
-    this.errorMsg = '';
   }
 
   @action openInvite() {
-    this.inviteFirstName = '';
-    this.inviteLastName = '';
-    this.inviteEmail = '';
-    this.inviteRole = 'agent';
-    this.inviteErrorMsg = '';
-    this.inviteExistingUser = null;
     this.showInviteModal = true;
     this.refreshSeatInfo();
   }
 
   @action closeInvite() {
     this.showInviteModal = false;
-    this.inviteErrorMsg = '';
-    this.inviteExistingUser = null;
   }
 
-  @action async sendInvite(event) {
-    event.preventDefault();
-    if (this.isInviting || this.isReactivating) return;
-    this.isInviting = true;
-    this.inviteErrorMsg = '';
-    this.inviteExistingUser = null;
-
-    try {
-      await this.auth.fetchJson('/users/invite', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: this.inviteEmail,
-          firstName: this.inviteFirstName,
-          lastName: this.inviteLastName,
-          role: this.inviteRole,
-        }),
-      });
-      this.notifications.success('Invitation sent successfully');
-      this.closeInvite();
-      this.router.refresh('team');
-    } catch (e) {
-      this.inviteErrorMsg = e.message;
-      this.inviteExistingUser =
-        e.body?.code === 'EMAIL_INACTIVE_USER'
-          ? { id: e.body.existingUserId, name: e.body.existingUserName }
-          : null;
-    } finally {
-      this.isInviting = false;
-    }
-  }
-
-  @action async reactivateFromInvite() {
-    if (!this.inviteExistingUser || this.reactivatingUserId) return;
-    const reactivated = await this.reactivateUser(this.inviteExistingUser);
-    if (reactivated) this.closeInvite();
-  }
-
-  @action async saveUser(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editUser;
-    const path = isEdit ? `/users/${this.editUser.id}` : '/users';
-
-    try {
-      const body = { name: this.formName };
-      if (!this.isEditingSelf) body.role = this.formRole;
-      if (!isEdit) {
-        body.email = this.formEmail;
-        if (this.formPassword) body.password = this.formPassword;
-      }
-
-      if (!isEdit) {
-        body.regionCodes = this.selectedRegionCodes;
-      }
-
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-
-      // PATCH does not touch assignments, so an edit sends them separately.
-      if (isEdit && !this.hasAllRegions) {
-        await this.auth.fetchJson(`/users/${this.editUser.id}/regions`, {
-          method: 'PUT',
-          body: JSON.stringify({ regionCodes: this.selectedRegionCodes }),
-        });
-      }
-
-      this.notifications.success(
-        isEdit ? 'Team member updated' : 'Team member created',
-      );
-      this.closeModal();
-      this.router.refresh('team');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('team');
   }
 
   @action async openRemove(user) {

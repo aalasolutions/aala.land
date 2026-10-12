@@ -34,14 +34,14 @@ export default class LeasesRoute extends AuthenticatedRoute {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
 
-    const [leasesJson, unitsJson] = await Promise.all([
-      safeJson(this.auth, `/leases?${params.toString()}`, 'LEASES'),
-      safeJson(this.auth, '/properties/units?page=1&limit=100', 'LEASES'),
-    ]);
+    const leasesJson = await safeJson(
+      this.auth,
+      `/leases?${params.toString()}`,
+      'LEASES',
+    );
 
     return {
       leases: leasesJson?.data?.data ?? [],
-      units: unitsJson?.data?.data ?? [],
       total: leasesJson?.data?.total ?? 0,
       page: leasesJson?.data?.page ?? page,
       limit: leasesJson?.data?.limit ?? limit,

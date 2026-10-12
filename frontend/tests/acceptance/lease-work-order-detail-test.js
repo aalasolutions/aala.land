@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'land/tests/helpers';
-import { click, currentURL, visit, waitFor } from '@ember/test-helpers';
+import { click, currentURL, fillIn, visit, waitFor } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Controller from '@ember/controller';
 import Route from '@ember/routing/route';
@@ -198,6 +198,43 @@ module('Acceptance | leases/detail', function (hooks) {
     );
   });
 
+  test('the header offers Edit, Renew and Terminate on an active lease', async function (assert) {
+    await visit('/leases/lease-1');
+
+    assert.dom('[data-test-edit-lease]').exists();
+    assert.dom('[data-test-renew-lease]').exists();
+    assert.dom('[data-test-terminate-lease]').exists();
+
+    await click('[data-test-edit-lease]');
+    await waitFor('#lease-rent');
+    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Lease');
+    assert.dom('#lease-rent').hasValue('5000.00');
+  });
+
+  test('terminating asks for a reason, then posts it', async function (assert) {
+    await visit('/leases/lease-1');
+    await click('[data-test-terminate-lease]');
+    await waitFor('[data-test-reason-input]');
+    await fillIn('[data-test-reason-input]', 'Tenant moved out');
+    await click('[data-test-confirm-modal-confirm]');
+
+    const call = this.calls.find((c) => c.path === '/leases/lease-1/terminate');
+    assert.ok(call, 'terminate sent');
+    assert.deepEqual(JSON.parse(call.options.body), {
+      reason: 'Tenant moved out',
+    });
+  });
+
+  test('an accountant gets no lease actions', async function (assert) {
+    this.currentUser = { id: 'user-1', role: 'accountant' };
+    await visit('/leases/lease-1');
+
+    assert.dom('[data-test-lease-summary]').exists();
+    assert.dom('[data-test-edit-lease]').doesNotExist();
+    assert.dom('[data-test-renew-lease]').doesNotExist();
+    assert.dom('[data-test-terminate-lease]').doesNotExist();
+  });
+
   test('an accountant sees no lease history', async function (assert) {
     this.currentUser = { id: 'user-1', role: 'accountant' };
     await visit('/leases/lease-1');
@@ -259,5 +296,55 @@ module('Acceptance | maintenance/detail', function (hooks) {
     );
 
     assert.dom('[data-test-work-order-documents-upload]').doesNotExist();
+  });
+
+  test('the header carries the tags and Edit opens the drawer prefilled', async function (assert) {
+    await visit('/maintenance/wo-1');
+
+    assert.dom('[data-test-work-order-status]').hasText('OPEN');
+    assert.dom('[data-test-work-order-priority]').hasText('HIGH');
+    assert.dom('[data-test-work-order-category]').hasText('HVAC');
+
+    await click('[data-test-edit-work-order]');
+    await waitFor('#wo-title');
+    assert.dom('#wo-title').hasValue('Fix AC');
+    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Work Order');
+  });
+
+  test('saving the drawer patches the work order', async function (assert) {
+    await visit('/maintenance/wo-1');
+    await click('[data-test-edit-work-order]');
+    await waitFor('#wo-title');
+    await fillIn('#wo-title', 'Fix AC now');
+    await click('[data-test-save-work-order]');
+
+    const patch = this.calls.find(
+      (c) => c.path === '/maintenance/wo-1' && c.options.method === 'PATCH',
+    );
+    assert.ok(patch, 'PATCH sent');
+    const body = JSON.parse(patch.options.body);
+    assert.strictEqual(body.title, 'Fix AC now');
+    assert.strictEqual(body.unitId, 'unit-1');
+    assert.strictEqual(body.status, 'OPEN');
+  });
+
+  test('a company admin sees the work order history', async function (assert) {
+    await visit('/maintenance/wo-1');
+
+    assert.dom('[data-test-work-order-history-card]').exists();
+    assert.ok(
+      this.calls.some((c) =>
+        c.path.startsWith('/record-history?entityType=WorkOrder&entityId=wo-1'),
+      ),
+    );
+  });
+
+  test('an accountant gets no Edit and no history', async function (assert) {
+    this.currentUser = { id: 'user-1', role: 'accountant' };
+    await visit('/maintenance/wo-1');
+
+    assert.dom('[data-test-work-order-summary]').exists();
+    assert.dom('[data-test-edit-work-order]').doesNotExist();
+    assert.dom('[data-test-work-order-history-card]').doesNotExist();
   });
 });

@@ -9,6 +9,7 @@
       <Nuvo::Button
         @variant="primary"
         @icon="plus"
+        data-test-new-transaction
         {{on "click" this.openCreate}}
       >
         New Transaction
@@ -364,131 +365,10 @@
   </Nuvo::Card>
 </div>
 
-<Nuvo::Drawer
+<Financials::TransactionDrawer
   @open={{this.showModal}}
-  @title={{if this.editTransaction "Edit Transaction" "New Transaction"}}
-  @placement="end"
-  @size="lg"
+  @transaction={{this.editTransaction}}
   @onClose={{this.closeModal}}
   @onClosed={{this.resetDrawer}}
->
-  <:body>
-    <form
-      id="transaction-form"
-      class="flex col gap-4"
-      {{on "submit" this.saveTx}}
-    >
-      <div class="flex gap-4">
-        <Nuvo::Field
-          @label="Payment Method"
-          @required={{true}}
-          @tooltip="A cheque here is one you paid out. Cheques you receive are recorded on the Cheques Received page."
-          class="grow"
-        >
-          <Nuvo::Dropdown
-            id="tx-payment"
-            @align="start"
-            @value={{this.formPaymentMethod}}
-            @onSelect={{this.setPaymentMethod}}
-            @options={{this.paymentMethodOptions}}
-            @placeholder="Select payment method..."
-            data-test-tx-payment
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Category" @required={{true}} class="grow">
-          <Nuvo::Dropdown
-            id="tx-category"
-            @align="start"
-            @value={{this.formCategory}}
-            @onSelect={{this.setCategory}}
-            @options={{this.categoryOptions}}
-            @placeholder="Select category..."
-            data-test-tx-category
-          />
-        </Nuvo::Field>
-      </div>
-      <div class="flex gap-4">
-        <Nuvo::Field @label="Payment Type" @required={{true}} class="grow">
-          {{! Readonly when the category or the payment method already decides it. }}
-          <Nuvo::Dropdown
-            id="tx-type"
-            @align="start"
-            @value={{this.formType}}
-            @onSelect={{fn this.setFieldValue "formType"}}
-            @options={{this.transactionTypeOptions}}
-            @placeholder="Select type..."
-            @disabled={{this.typeLocked}}
-            data-test-tx-type
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Amount" @required={{true}} class="grow">
-          <Nuvo::Input
-            id="tx-amount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="e.g. 15000"
-            @value={{this.formAmount}}
-            @onInput={{fn this.setFieldValue "formAmount"}}
-            required={{true}}
-            data-test-tx-amount
-          />
-        </Nuvo::Field>
-      </div>
-      <Nuvo::Field @label="Description">
-        <Nuvo::Input
-          id="tx-desc"
-          type="text"
-          placeholder="e.g. Monthly rent payment"
-          @value={{this.formDescription}}
-          @onInput={{fn this.setFieldValue "formDescription"}}
-        />
-      </Nuvo::Field>
-      <div class="flex gap-4">
-        <Nuvo::Field
-          @label={{this.dateLabel}}
-          @required={{this.dateRequired}}
-          class="grow"
-        >
-          <Nuvo::Input
-            id="tx-date"
-            type="date"
-            min={{this.dateWindow.earliest}}
-            max={{this.dateWindow.latest}}
-            @value={{this.formDate}}
-            @onInput={{fn this.setFieldValue "formDate"}}
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Status" @required={{true}} class="grow">
-          <Nuvo::Dropdown
-            id="tx-status"
-            @align="start"
-            @value={{this.formStatus}}
-            @onSelect={{fn this.setFieldValue "formStatus"}}
-            @options={{this.statusOptions}}
-            @placeholder="Select status..."
-          />
-        </Nuvo::Field>
-      </div>
-      {{#if this.errorMsg}}
-        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-      {{/if}}
-    </form>
-  </:body>
-  <:footer>
-    <Nuvo::Button
-      @variant="secondary"
-      @onClick={{this.closeModal}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
-      @variant="primary"
-      @type="submit"
-      form="transaction-form"
-      @loading={{this.isSaving}}
-    >{{if
-        this.isSaving
-        "Saving..."
-        (if this.editTransaction "Update" "Create")
-      }}</Nuvo::Button>
-  </:footer>
-</Nuvo::Drawer>
+  @onSaved={{this.retryLoad}}
+/>

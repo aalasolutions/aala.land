@@ -285,7 +285,6 @@ export default class CompanyController extends Controller {
       valuePath: 'occurredAt',
       width: 140,
       isFixed: 'left',
-      numeric: true,
     },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
     { name: 'Credit', valuePath: 'creditAmount', width: 180, numeric: true },

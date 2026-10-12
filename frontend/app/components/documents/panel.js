@@ -47,7 +47,7 @@ const COLUMNS = [
   { name: 'Related', valuePath: 'link.label', width: 260 },
   { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
   { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
-  { name: 'Uploaded', valuePath: 'createdAt', width: 140, numeric: true },
+  { name: 'Uploaded', valuePath: 'createdAt', width: 140 },
   {
     name: 'Actions',
     valuePath: 'id',
