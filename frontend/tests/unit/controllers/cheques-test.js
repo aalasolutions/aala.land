@@ -27,6 +27,25 @@ module('Unit | Controller | cheques', function (hooks) {
     return calls;
   }
 
+  test('the drawer opens on a cheque, refreshes the route and forgets it once closed', function (assert) {
+    const controller = makeController(this);
+    const refreshed = [];
+    controller.router = { refresh: (name) => refreshed.push(name) };
+    const cheque = { id: 'chq-1' };
+
+    controller.openEdit(cheque);
+    assert.true(controller.showModal);
+    assert.strictEqual(controller.editCheque, cheque);
+
+    controller.refresh();
+    assert.deepEqual(refreshed, ['cheques']);
+
+    controller.closeModal();
+    controller.resetDrawer();
+    assert.false(controller.showModal);
+    assert.strictEqual(controller.editCheque, null);
+  });
+
   module('clear window', function () {
     test('floors at the backdating limit for an old cheque', function (assert) {
       const controller = makeController(this);

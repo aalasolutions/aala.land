@@ -1,0 +1,129 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Transaction" "New Transaction"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form
+      id="transaction-form"
+      class="flex col gap-4"
+      {{on "submit" this.save}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field
+          @label="Payment Method"
+          @required={{true}}
+          @tooltip="A cheque here is one you paid out. Cheques you receive are recorded on the Cheques Received page."
+          class="grow"
+        >
+          <Nuvo::Dropdown
+            id="tx-payment"
+            @align="start"
+            @value={{this.form.paymentMethod}}
+            @onSelect={{this.setPaymentMethod}}
+            @options={{this.paymentMethodOptions}}
+            @placeholder="Select payment method..."
+            data-test-tx-payment
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Category" @required={{true}} class="grow">
+          <Nuvo::Dropdown
+            id="tx-category"
+            @align="start"
+            @value={{this.form.category}}
+            @onSelect={{this.setCategory}}
+            @options={{this.categoryOptions}}
+            @placeholder="Select category..."
+            data-test-tx-category
+          />
+        </Nuvo::Field>
+      </div>
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Payment Type" @required={{true}} class="grow">
+          {{! Readonly when the category or the payment method already decides it. }}
+          <Nuvo::Dropdown
+            id="tx-type"
+            @align="start"
+            @value={{this.form.type}}
+            @onSelect={{fn this.setField "type"}}
+            @options={{this.transactionTypeOptions}}
+            @placeholder="Select type..."
+            @disabled={{this.typeLocked}}
+            data-test-tx-type
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+          <Nuvo::Input
+            id="tx-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="e.g. 15000"
+            @value={{this.form.amount}}
+            @onInput={{fn this.setField "amount"}}
+            required={{true}}
+            data-test-tx-amount
+          />
+        </Nuvo::Field>
+      </div>
+      <Nuvo::Field @label="Description">
+        <Nuvo::Input
+          id="tx-desc"
+          type="text"
+          placeholder="e.g. Monthly rent payment"
+          @value={{this.form.description}}
+          @onInput={{fn this.setField "description"}}
+          data-test-tx-desc
+        />
+      </Nuvo::Field>
+      <div class="flex gap-4">
+        <Nuvo::Field
+          @label={{this.dateLabel}}
+          @required={{this.dateRequired}}
+          class="grow"
+        >
+          <Nuvo::Input
+            id="tx-date"
+            type="date"
+            min={{this.dateWindow.earliest}}
+            max={{this.dateWindow.latest}}
+            @value={{this.form.date}}
+            @onInput={{fn this.setField "date"}}
+            data-test-tx-date
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Status" @required={{true}} class="grow">
+          <Nuvo::Dropdown
+            id="tx-status"
+            @align="start"
+            @value={{this.form.status}}
+            @onSelect={{fn this.setField "status"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+            data-test-tx-status
+          />
+        </Nuvo::Field>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.close}}
+      data-test-cancel-transaction
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="transaction-form"
+      @loading={{this.isSaving}}
+      data-test-save-transaction
+    >{{this.submitLabel}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

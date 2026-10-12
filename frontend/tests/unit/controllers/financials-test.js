@@ -17,32 +17,6 @@ function zoneAheadOfBrowser() {
 module('Unit | Controller | financials', function (hooks) {
   setupTest(hooks);
 
-  // Samples the expected date on both sides of the call so a midnight rollover cannot flake.
-  function assertToday(assert, controller, expectedFn) {
-    const before = expectedFn();
-    controller.openCreate();
-    const after = expectedFn();
-    assert.true(
-      [before, after].includes(controller.formDate),
-      `formDate ${controller.formDate} is ${before} or ${after}`,
-    );
-  }
-
-  test('openCreate defaults the date to today in the active region zone', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    const zone = zoneAheadOfBrowser();
-    controller.region.activeRegion = { code: 'far', timezone: zone };
-    assertToday(assert, controller, () => todayInZone(zone));
-    assert.notStrictEqual(controller.formDate, localDateString());
-  });
-
-  test('openCreate falls back to the browser-local date without an active region', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.region.activeRegion = null;
-    assertToday(assert, controller, () => localDateString());
-  });
-
-  // A bad pair is rejected here because the server rejects it too.
   module('date range', function () {
     const BOUNDS = { from: '2026-09-01', to: '2026-09-30' };
 
@@ -353,54 +327,22 @@ module('Unit | Controller | financials', function (hooks) {
     });
   });
 
-  module('transaction date rules', function () {
-    function makeController(ctx, timezone = 'Asia/Dubai') {
-      const controller = ctx.owner.lookup('controller:financials');
-      controller.region.activeRegion = { code: 'dxb', timezone };
-      return controller;
-    }
+  test('the drawer opens on a transaction and forgets it once closed', function (assert) {
+    const controller = this.owner.lookup('controller:financials');
+    const tx = { id: 'tx-1' };
 
-    test('the picker closes today and opens 30 days back', function (assert) {
-      const controller = makeController(this);
-      const { earliest, latest } = controller.dateWindow;
+    controller.openEdit(tx);
+    assert.true(controller.showModal);
+    assert.strictEqual(controller.editTransaction, tx);
 
-      const days = (Date.parse(latest) - Date.parse(earliest)) / 86400000;
-      assert.strictEqual(days, 30, 'exactly 30 days of window');
-      assert.strictEqual(
-        latest,
-        new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dubai' }),
-        'the latest day is today in the active region',
-      );
-    });
+    controller.closeModal();
+    controller.resetDrawer();
+    assert.false(controller.showModal);
+    assert.strictEqual(controller.editTransaction, null);
 
-    test('a date is required only once the row is completed', function (assert) {
-      const controller = makeController(this);
-
-      controller.formStatus = 'PENDING';
-      assert.false(controller.dateRequired);
-
-      controller.formStatus = 'COMPLETED';
-      assert.true(controller.dateRequired);
-    });
-
-    test('completing with no date is refused before any request', async function (assert) {
-      const controller = makeController(this);
-      controller.auth = {
-        fetchJson() {
-          throw new Error('no request expected');
-        },
-      };
-      controller.formStatus = 'COMPLETED';
-      controller.formDate = '';
-
-      await controller.saveTx({ preventDefault() {} });
-
-      assert.strictEqual(
-        controller.errorMsg,
-        'Enter the date the money arrived.',
-      );
-      assert.false(controller.isSaving);
-    });
+    controller.openCreate();
+    assert.true(controller.showModal);
+    assert.strictEqual(controller.editTransaction, null);
   });
 
   test('retryLoad re-runs the financials model hook', function (assert) {
@@ -437,139 +379,6 @@ module('Unit | Controller | financials', function (hooks) {
     assert.strictEqual(controller.getRowClass({ status: 'COMPLETED' }), '');
     assert.strictEqual(controller.getRowClass({ status: 'PENDING' }), '');
     assert.strictEqual(controller.getRowClass(undefined), '');
-  });
-
-  test('a cheque payment forces the type to expense and locks it', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    controller.setPaymentMethod('CHEQUE');
-
-    assert.strictEqual(controller.formType, 'EXPENSE');
-    assert.true(controller.typeLocked);
-  });
-
-  test('rental income and sale categories force income and lock it', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    controller.setCategory('RENT');
-    assert.strictEqual(controller.formType, 'INCOME');
-    assert.true(controller.typeLocked);
-
-    controller.setCategory('SALE');
-    assert.strictEqual(controller.formType, 'INCOME');
-    assert.true(controller.typeLocked);
-  });
-
-  test('payment method outranks category: rent paid by cheque is an expense', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    controller.setCategory('RENT');
-    controller.setPaymentMethod('CHEQUE');
-
-    assert.strictEqual(controller.formType, 'EXPENSE');
-    assert.true(controller.typeLocked);
-  });
-
-  test('two-way categories leave the type editable', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    for (const category of ['DEPOSIT', 'MAINTENANCE', 'COMMISSION', 'OTHER']) {
-      controller.setCategory(category);
-      assert.false(controller.typeLocked, `${category} leaves type unlocked`);
-    }
-
-    controller.formType = 'EXPENSE';
-    assert.strictEqual(controller.formType, 'EXPENSE');
-  });
-
-  test('the date label follows the direction of the money', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    controller.setCategory('RENT');
-    assert.strictEqual(controller.dateLabel, 'Date money arrived');
-
-    controller.setPaymentMethod('CHEQUE');
-    assert.strictEqual(controller.dateLabel, 'Date money was paid');
-  });
-
-  test('a cheque payment hides the incoming-only categories', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    const all = controller.categoryOptions.map((o) => o.value);
-    assert.true(all.includes('RENT'), 'rent is offered by default');
-    assert.true(all.includes('SALE'), 'sale is offered by default');
-
-    controller.setPaymentMethod('CHEQUE');
-
-    const offered = controller.categoryOptions.map((o) => o.value);
-    assert.deepEqual(offered, [
-      'DEPOSIT',
-      'MAINTENANCE',
-      'COMMISSION',
-      'OTHER',
-    ]);
-  });
-
-  test('switching to cheque clears a category it no longer offers', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-
-    controller.setCategory('RENT');
-    controller.setPaymentMethod('CHEQUE');
-    assert.strictEqual(controller.formCategory, '', 're-pick is forced');
-
-    controller.setCategory('MAINTENANCE');
-    controller.setPaymentMethod('CASH');
-    assert.strictEqual(
-      controller.formCategory,
-      'MAINTENANCE',
-      'a still-valid category survives the switch',
-    );
-  });
-
-  test('unlocking gives back the type the user had chosen', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-    assert.strictEqual(controller.formType, 'INCOME', 'starts on income');
-
-    controller.setPaymentMethod('CHEQUE');
-    assert.strictEqual(controller.formType, 'EXPENSE');
-    assert.true(controller.typeLocked);
-
-    controller.setPaymentMethod('CASH');
-    assert.false(controller.typeLocked, 'the control unlocks');
-    assert.strictEqual(
-      controller.formType,
-      'INCOME',
-      'and the old choice returns',
-    );
-  });
-
-  test('a second lock does not overwrite the remembered choice', function (assert) {
-    const controller = this.owner.lookup('controller:financials');
-    controller.openCreate();
-    controller.formType = 'EXPENSE';
-
-    controller.setCategory('RENT');
-    assert.strictEqual(controller.formType, 'INCOME', 'rent pins income');
-
-    controller.setPaymentMethod('CHEQUE');
-    assert.strictEqual(controller.formType, 'EXPENSE', 'cheque outranks it');
-
-    controller.setPaymentMethod('CASH');
-    controller.setCategory('OTHER');
-    assert.false(controller.typeLocked);
-    assert.strictEqual(
-      controller.formType,
-      'EXPENSE',
-      'the original choice survives',
-    );
   });
 
   module('work queue', function () {

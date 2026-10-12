@@ -1,3 +1,5 @@
+import { ALL_ROLES } from 'land/constants';
+
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   COMPANY_ADMIN: 'company_admin',
@@ -154,4 +156,11 @@ export function getVisibleGroups(role) {
     groups[group] = allowedRoles.includes(role);
   }
   return groups;
+}
+
+// Roles strictly below the given role; empty for an unknown role.
+export function assignableRoles(myRole) {
+  const myLevel = ROLE_HIERARCHY.indexOf(myRole);
+  if (myLevel === -1) return [];
+  return ALL_ROLES.filter((r) => ROLE_HIERARCHY.indexOf(r.value) > myLevel);
 }

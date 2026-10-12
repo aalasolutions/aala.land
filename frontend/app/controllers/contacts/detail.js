@@ -43,8 +43,8 @@ export default class ContactsDetailController extends Controller {
       isFixed: 'left',
     },
     { name: 'Status', valuePath: 'status', width: 160 },
-    { name: 'Start', valuePath: 'startDate', width: 140, numeric: true },
-    { name: 'End', valuePath: 'endDate', width: 140, numeric: true },
+    { name: 'Start', valuePath: 'startDate', width: 140 },
+    { name: 'End', valuePath: 'endDate', width: 140 },
     { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
   ];
 

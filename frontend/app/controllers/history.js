@@ -28,7 +28,6 @@ export default class HistoryController extends PaginatedController {
       valuePath: 'createdAt',
       width: 140,
       isFixed: 'left',
-      numeric: true,
     },
     { name: 'Action', valuePath: 'actionLabel', width: 160 },
     { name: 'Type', valuePath: 'entityTypeLabel', width: 160 },

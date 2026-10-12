@@ -1,0 +1,104 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Template" "New Template"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form
+      id="email-template-form"
+      class="flex col gap-4"
+      {{on "submit" this.save}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Template Name" @required={{true}}>
+          <Nuvo::Input
+            id="t-name"
+            type="text"
+            placeholder="Welcome New Tenant"
+            @value={{this.form.formName}}
+            @onInput={{fn this.setField "formName"}}
+            required={{true}}
+            data-test-input-name
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Category">
+          <Nuvo::Dropdown
+            id="t-category"
+            @align="start"
+            @value={{this.form.formCategory}}
+            @onSelect={{fn this.setField "formCategory"}}
+            @options={{this.categories}}
+            @placeholder="Select category..."
+            data-test-input-category
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Subject" @required={{true}}>
+        <Nuvo::Input
+          id="t-subject"
+          type="text"
+          placeholder="Welcome to your new home!"
+          @value={{this.form.formSubject}}
+          @onInput={{fn this.setField "formSubject"}}
+          required={{true}}
+          data-test-input-subject
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Body (HTML)" @required={{true}}>
+        <Nuvo::Textarea
+          id="t-body"
+          placeholder="Use curly braces for variables, e.g. first name"
+          rows="8"
+          @value={{this.form.formBody}}
+          @onInput={{fn this.setField "formBody"}}
+          required={{true}}
+          data-test-input-body
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field
+        @label="Variables (comma-separated)"
+        @hint="Use double curly braces in subject/body to reference variables."
+      >
+        <Nuvo::Input
+          id="t-vars"
+          type="text"
+          placeholder="firstName, lastName, propertyName"
+          @value={{this.form.formVariables}}
+          @onInput={{fn this.setField "formVariables"}}
+          data-test-input-variables
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Checkbox
+        @checked={{this.form.formIsActive}}
+        @label="Active"
+        @onChange={{fn this.setField "formIsActive"}}
+        data-test-input-active
+      />
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.close}}
+      data-test-cancel-template-form
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="email-template-form"
+      @loading={{this.isSaving}}
+      data-test-save-template
+    >{{this.submitLabel}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

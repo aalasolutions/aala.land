@@ -11,21 +11,13 @@ export default class ChequesRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 50 }) {
-    const [chequesJson, unitsJson, scheduleJson] = await Promise.all([
+    const [chequesJson, scheduleJson] = await Promise.all([
       safeJson(this.auth, `/cheques?page=${page}&limit=${limit}`, 'CHEQUES'),
-      safeJson(this.auth, '/properties/units?page=1&limit=100', 'CHEQUES'),
       safeJson(this.auth, '/cheques/collection-schedule', 'CHEQUES'),
     ]);
 
     const schedule = scheduleJson?.data ?? {};
-    const toGroup = (period, cheques) => ({
-      period,
-      cheques: cheques ?? [],
-      totalAmount: (cheques ?? []).reduce(
-        (sum, c) => sum + Number(c.amount),
-        0,
-      ),
-    });
+    const toGroup = (period, cheques) => ({ period, cheques: cheques ?? [] });
     const collectionSchedule = [
       toGroup('Overdue', schedule.overdue),
       toGroup('This Week', schedule.thisWeek),
@@ -35,7 +27,6 @@ export default class ChequesRoute extends AuthenticatedRoute {
 
     return {
       cheques: chequesJson?.data?.data ?? [],
-      units: unitsJson?.data?.data ?? [],
       collectionSchedule,
       total: chequesJson?.data?.total ?? 0,
       page,

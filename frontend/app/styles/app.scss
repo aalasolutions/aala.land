@@ -8,6 +8,7 @@
 
 // Shared Chart.js shell: frame, tooltip, screen-reader table.
 @use "./pages/charts";
+@use "./pages/cheques";
 
 // Shared DataTable row states, used by any page that passes @getRowClass.
 @use "./pages/data-table";

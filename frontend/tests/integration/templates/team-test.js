@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { click, find, settled } from '@ember/test-helpers';
+import { click, fillIn, find, settled } from '@ember/test-helpers';
 import { setupRenderingTest } from 'land/tests/helpers';
 import template from 'land/templates/team';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
@@ -82,6 +82,58 @@ module('Integration | Template | team', function (hooks) {
     });
     const label = find('[data-test-remove-mode-deactivate]').closest('label');
     assert.ok(label.textContent.includes('and frees the seat'));
+  });
+
+  test('the invite drawer reactivates an inactive user through the page', async function (assert) {
+    const calls = stubAuth(this.owner, {
+      role: 'company_admin',
+      respond: (path) =>
+        path === '/users/invite'
+          ? httpError(409, {
+              message: 'Inactive user',
+              code: 'EMAIL_INACTIVE_USER',
+              existingUserId: 'user-9',
+              existingUserName: 'Old Member',
+            })
+          : { data: {} },
+    });
+    const controller = this.owner.lookup('controller:team');
+    await renderRouteTemplate(this, template, {
+      name: 'team',
+      controller,
+      model: { users: [MEMBER], total: 2, page: 1, seatInfo: null },
+    });
+    await click('[data-test-invite-member]');
+    await fillIn('#i-fname', 'Old');
+    await fillIn('#i-lname', 'Member');
+    await fillIn('#i-email', 'old@example.com');
+    await click('[data-test-send-invite]');
+    await click('[data-test-invite-reactivate]');
+
+    assert.ok(
+      calls.some(
+        (c) => c.path === '/users/user-9/reactivate' && c.method === 'POST',
+      ),
+      'reactivation goes through the page controller',
+    );
+  });
+
+  test('editing a member opens the drawer prefilled', async function (assert) {
+    const controller = this.owner.lookup('controller:team');
+    await renderRouteTemplate(this, template, {
+      name: 'team',
+      controller,
+      model: {
+        users: [{ ...MEMBER, email: 'member@example.com', role: 'agent' }],
+        total: 2,
+        page: 1,
+        seatInfo: null,
+      },
+    });
+    await click('[data-test-edit-user]');
+    assert.dom('#t-name').hasValue('Test Member');
+    assert.dom('#t-email').hasValue('member@example.com');
+    assert.dom('[data-test-input-password]').doesNotExist();
   });
 
   module('seat note refresh on open', function () {

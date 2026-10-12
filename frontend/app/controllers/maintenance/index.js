@@ -47,7 +47,6 @@ export default class MaintenanceController extends PaginatedController {
       name: 'Scheduled',
       valuePath: 'scheduledDate',
       width: 140,
-      numeric: true,
     },
     { name: 'Status', valuePath: 'status', width: 140 },
     {

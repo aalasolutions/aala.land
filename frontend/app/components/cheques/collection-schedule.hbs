@@ -1,0 +1,66 @@
+<div data-test-collection-schedule ...attributes>
+  <Nuvo::Card @title="Collection schedule">
+    {{#if this.groups.length}}
+      <div class="cheque-schedule">
+        <table class="cheque-schedule__table">
+          <thead>
+            <tr>
+              <th>Cheque</th>
+              <th>Bank</th>
+              <th>Account holder</th>
+              <th>Due</th>
+              <th>When</th>
+              <th class="is-num">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.groups as |group|}}
+              <tr
+                class="cheque-schedule__group
+                  {{if group.isOverdue 'is-overdue'}}"
+                data-test-schedule-group={{group.period}}
+              >
+                <td colspan="5">{{group.period}}<span
+                    class="cheque-schedule__count"
+                  >{{group.cheques.length}}</span></td>
+                <td class="is-num" data-test-schedule-total>
+                  {{#each group.totals as |total index|}}
+                    {{if index " · "}}<Money
+                      @amount={{total.amount}}
+                      @currency={{total.currency}}
+                    />
+                  {{/each}}
+                </td>
+              </tr>
+              {{#each group.cheques as |cheque|}}
+                <tr
+                  class={{if group.isOverdue "is-overdue"}}
+                  data-test-schedule-row
+                >
+                  <td class="font-bold">{{cheque.chequeNumber}}</td>
+                  <td class="cheque-schedule__muted">{{cheque.bankName}}</td>
+                  <td
+                    class="cheque-schedule__muted"
+                  >{{cheque.accountHolder}}</td>
+                  <td>{{format-date cheque.dueDate}}</td>
+                  <td
+                    class="cheque-schedule__when"
+                    data-test-schedule-when
+                  >{{cheque.when}}</td>
+                  <td class="is-num"><Money
+                      @amount={{cheque.amount}}
+                      @currency={{cheque.currency}}
+                    /></td>
+                </tr>
+              {{/each}}
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <Nuvo::EmptyState
+        @description="No upcoming cheques in the collection schedule."
+      />
+    {{/if}}
+  </Nuvo::Card>
+</div>

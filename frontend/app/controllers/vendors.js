@@ -7,44 +7,19 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../utils/delete-modal';
-import { SPECIALTY_OPTIONS } from 'land/constants';
-import { toggleArrayItem } from '../utils/toggle-array-item';
 
 export default class VendorsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
-  @service region;
 
   queryParams = ['page', 'limit'];
 
   @tracked showModal = false;
   @tracked editVendor = null;
-  @tracked formName = '';
-  @tracked formEmail = '';
-  @tracked formPhone = '';
-  @tracked formSpecialties = [];
-  @tracked formCompanyName = '';
-  @tracked formAddress = '';
-  @tracked formHourlyRate = '';
-  @tracked formRating = '';
-  @tracked formNotes = '';
-  @tracked formRegionCode = '';
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
   @tracked showDeleteModal = false;
   @tracked vendorToDelete = null;
   @tracked isDeleting = false;
-
-  get showRegionField() {
-    return this.region.regions.length > 1;
-  }
-
-  get regionOptions() {
-    return this.region.regionOptions;
-  }
-
-  specialtyOptions = SPECIALTY_OPTIONS;
 
   columns = [
     { name: 'Name', valuePath: 'name', width: 220, isFixed: 'left' },
@@ -64,45 +39,13 @@ export default class VendorsController extends PaginatedController {
     },
   ];
 
-  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
-  @action setFieldValue(fieldName, value) {
-    this[fieldName] = value;
-  }
-
-  @action toggleSpecialty(value) {
-    this.formSpecialties = toggleArrayItem(this.formSpecialties, value);
-  }
-
   @action openCreate() {
-    this.formName = '';
-    this.formEmail = '';
-    this.formPhone = '';
-    this.formSpecialties = [];
-    this.formCompanyName = '';
-    this.formAddress = '';
-    this.formHourlyRate = '';
-    this.formRating = '';
-    this.formNotes = '';
-    this.formRegionCode = this.region.regionCode;
     this.editVendor = null;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
   @action openEdit(vendor) {
-    this.formName = vendor.name ?? '';
-    this.formEmail = vendor.email ?? '';
-    this.formPhone = vendor.phone ?? '';
-    this.formSpecialties = Array.isArray(vendor.specialties)
-      ? [...vendor.specialties]
-      : [];
-    this.formCompanyName = vendor.companyName ?? '';
-    this.formAddress = vendor.address ?? '';
-    this.formHourlyRate = vendor.hourlyRate ? String(vendor.hourlyRate) : '';
-    this.formRating = vendor.rating ? String(vendor.rating) : '';
-    this.formNotes = vendor.notes ?? '';
     this.editVendor = vendor;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
@@ -112,52 +55,10 @@ export default class VendorsController extends PaginatedController {
 
   @action resetDrawer() {
     this.editVendor = null;
-    this.errorMsg = '';
   }
 
-  @action async saveVendor(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    if (!this.formSpecialties.length) {
-      this.errorMsg = 'Select at least one specialty.';
-      return;
-    }
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editVendor;
-    const path = isEdit ? `/vendors/${this.editVendor.id}` : '/vendors';
-
-    const body = {
-      name: this.formName,
-      specialties: this.formSpecialties,
-      ...(this.formEmail ? { email: this.formEmail } : {}),
-      ...(this.formPhone ? { phone: this.formPhone } : {}),
-      ...(this.formCompanyName ? { companyName: this.formCompanyName } : {}),
-      ...(this.formAddress ? { address: this.formAddress } : {}),
-      ...(this.formHourlyRate
-        ? { hourlyRate: parseFloat(this.formHourlyRate) }
-        : {}),
-      ...(this.formRating ? { rating: parseInt(this.formRating, 10) } : {}),
-      ...(this.formNotes ? { notes: this.formNotes } : {}),
-      ...(!isEdit && this.formRegionCode
-        ? { regionCode: this.formRegionCode }
-        : {}),
-    };
-
-    try {
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success(isEdit ? 'Vendor updated' : 'Vendor created');
-      this.closeModal();
-      this.router.refresh('vendors');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('vendors');
   }
 
   @action openDelete(vendor) {

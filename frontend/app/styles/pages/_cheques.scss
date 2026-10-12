@@ -1,0 +1,58 @@
+// Collection schedule: one table, grouped by due period.
+@use "@nuvoui/ember/styles/common/var" as *;
+
+.cheque-schedule {
+  overflow-x: auto;
+}
+
+.cheque-schedule__table {
+  inline-size: 100%;
+  font-size: nu-font-size(sm);
+  border-collapse: collapse;
+
+  th {
+    padding: nu-space(2) nu-space(3);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    text-align: start;
+    color: var(--text-muted);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  td {
+    padding: 0.375rem nu-space(3);
+    color: var(--text-color);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  .is-num {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+}
+
+.cheque-schedule__group td {
+  padding-block-start: nu-space(5);
+  font-weight: nu-font-weight(semibold);
+  border-block-end-width: 2px;
+}
+
+.cheque-schedule__group.is-overdue td {
+  color: var(--danger);
+  border-block-end-color: nu-tint(danger, 40%);
+}
+
+.cheque-schedule__count {
+  margin-inline-start: nu-space(2);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-muted);
+}
+
+.cheque-schedule__muted {
+  color: var(--text-muted);
+}
+
+.is-overdue .cheque-schedule__when {
+  font-weight: nu-font-weight(semibold);
+  color: var(--danger);
+}

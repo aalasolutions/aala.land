@@ -1,4 +1,4 @@
-const COMPACT_FROM = 1_000_000;
+const COMPACT_FROM = 1_000;
 const cache = new Map();
 
 function cachedFormatter(locale, currency, options) {

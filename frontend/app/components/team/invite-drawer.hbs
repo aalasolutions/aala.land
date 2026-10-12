@@ -1,0 +1,108 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title="Invite Team Member"
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <p class="text-muted text-sm">Send an invitation with a temporary password.
+      The new member will receive login credentials.</p>
+    <SeatNote @seatInfo={{@seatInfo}} />
+    <form
+      id="team-invite-form"
+      class="flex col gap-4"
+      {{on "submit" this.send}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+          <Nuvo::Input
+            id="i-fname"
+            type="text"
+            placeholder="e.g. Jane"
+            @value={{this.form.inviteFirstName}}
+            @onInput={{fn this.setField "inviteFirstName"}}
+            required={{true}}
+            data-test-invite-first
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Last Name" @required={{true}}>
+          <Nuvo::Input
+            id="i-lname"
+            type="text"
+            placeholder="e.g. Smith"
+            @value={{this.form.inviteLastName}}
+            @onInput={{fn this.setField "inviteLastName"}}
+            required={{true}}
+            data-test-invite-last
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Email" @required={{true}}>
+        <Nuvo::Input
+          id="i-email"
+          type="email"
+          placeholder="e.g. jane@company.com"
+          @value={{this.form.inviteEmail}}
+          @onInput={{fn this.setField "inviteEmail"}}
+          required={{true}}
+          data-test-invite-email
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field
+        @label="Role"
+        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+      >
+        <Nuvo::Dropdown
+          id="i-role"
+          @align="start"
+          @value={{this.form.inviteRole}}
+          @onSelect={{fn this.setField "inviteRole"}}
+          @options={{this.roles}}
+          @placeholder="Select role..."
+          data-test-invite-role
+        />
+      </Nuvo::Field>
+
+      {{#if this.errorMsg}}
+        <p
+          class="text-sm text-danger"
+          data-test-invite-error
+        >{{this.errorMsg}}</p>
+        {{#if this.existingUser}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @disabled={{@isReactivating}}
+            data-test-invite-reactivate
+            {{on "click" this.reactivateExisting}}
+          >
+            {{if
+              @isReactivating
+              "Reactivating..."
+              "Reactivate this user instead"
+            }}
+          </Nuvo::Button>
+        {{/if}}
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-cancel-invite
+      {{on "click" this.close}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="team-invite-form"
+      @disabled={{or this.isInviting @isReactivating}}
+      @loading={{this.isInviting}}
+      data-test-send-invite
+    >{{if this.isInviting "Sending..." "Send Invitation"}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

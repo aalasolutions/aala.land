@@ -1,0 +1,145 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Team Member" "Add Team Member"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    {{#unless this.isEdit}}
+      <SeatNote @seatInfo={{@seatInfo}} />
+    {{/unless}}
+    <form
+      id="team-member-form"
+      class="flex col gap-4"
+      {{on "submit" this.save}}
+    >
+      <Nuvo::Field @label="Name" @required={{true}}>
+        <Nuvo::Input
+          id="t-name"
+          type="text"
+          @value={{this.form.formName}}
+          @onInput={{fn this.setField "formName"}}
+          required={{true}}
+          data-test-input-name
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Email" @required={{true}}>
+        <Nuvo::Input
+          id="t-email"
+          type="email"
+          @value={{this.form.formEmail}}
+          @onInput={{fn this.setField "formEmail"}}
+          required={{true}}
+          data-test-input-email
+        />
+      </Nuvo::Field>
+
+      {{#unless this.isEdit}}
+        <Nuvo::Field @label="Password" @required={{true}}>
+          <Nuvo::Input
+            id="t-password"
+            type="password"
+            @value={{this.form.formPassword}}
+            @onInput={{fn this.setField "formPassword"}}
+            required={{true}}
+            data-test-input-password
+          />
+        </Nuvo::Field>
+      {{/unless}}
+
+      {{#unless this.isEditingSelf}}
+        <Nuvo::Field
+          @label="Role"
+          @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+        >
+          <Nuvo::Dropdown
+            id="t-role"
+            @align="start"
+            @value={{this.form.formRole}}
+            @onSelect={{fn this.setField "formRole"}}
+            @options={{this.roles}}
+            @placeholder="Select role..."
+            data-test-input-role
+          />
+        </Nuvo::Field>
+      {{/unless}}
+
+      <div class="nu-field">
+        <span id="team-regions-label" class="nu-field__label">Regions</span>
+        <div
+          class="flex gap-2 wrap"
+          role="group"
+          aria-labelledby="team-regions-label"
+          data-test-region-picker
+        >
+          {{#each this.assignableRegions as |r|}}
+            <button
+              type="button"
+              class="nu-tag m-pill m-selectable
+                {{if
+                  (or
+                    this.hasAllRegions
+                    (includes this.form.selectedRegionCodes r.code)
+                  )
+                  'is-selected'
+                }}"
+              data-test-region-choice={{r.code}}
+              aria-pressed={{if
+                (or
+                  this.hasAllRegions
+                  (includes this.form.selectedRegionCodes r.code)
+                )
+                "true"
+                "false"
+              }}
+              disabled={{this.hasAllRegions}}
+              {{on "click" (fn this.toggleRegion r.code)}}
+            >
+              <Ui::Ph @icon="map-pin" />
+              {{r.name}}
+            </button>
+          {{/each}}
+        </div>
+        {{#if this.hasAllRegions}}
+          <span
+            class="nu-field__hint"
+            data-test-all-regions-note
+          >{{this.allRegionsNote}}</span>
+        {{else}}
+          <span class="nu-field__hint">Which regions this member can work in.
+            Selecting more than one lets them switch.</span>
+        {{/if}}
+      </div>
+
+      {{#if this.hasNoRegionsSelected}}
+        <Nuvo::Alert
+          @variant="warning"
+          @title="No regions selected"
+          @description="This member will fall back to the company default region rather than one you picked. Select at least one to control what they can read."
+          data-test-regions-empty-warning
+        />
+      {{/if}}
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.close}}
+      data-test-cancel-member-form
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="team-member-form"
+      @loading={{this.isSaving}}
+      data-test-save-member
+    >{{this.submitLabel}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

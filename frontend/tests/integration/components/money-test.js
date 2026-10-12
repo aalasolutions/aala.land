@@ -27,8 +27,8 @@ module('Integration | Component | money', function (hooks) {
   });
 
   test('the row currency wins over the region', async function (assert) {
-    await render(hbs`<Money @amount={{5000}} @currency="AED" />`);
-    assert.strictEqual(shown('[data-test-money]'), 'AED 5,000.00');
+    await render(hbs`<Money @amount={{500}} @currency="AED" />`);
+    assert.strictEqual(shown('[data-test-money]'), 'AED 500.00');
   });
 
   test('compact can be switched off', async function (assert) {

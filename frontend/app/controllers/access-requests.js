@@ -56,9 +56,9 @@ export default class AccessRequestsController extends PaginatedController {
     { name: 'Region', valuePath: 'regionCode', width: 110 },
     { name: 'Source', valuePath: 'sourceType', width: 130 },
     { name: 'Note', valuePath: 'note', width: 220 },
-    { name: 'Requested', valuePath: 'createdAt', width: 130, numeric: true },
+    { name: 'Requested', valuePath: 'createdAt', width: 130 },
     { name: 'Decided by', valuePath: 'decidedBy.name', width: 170 },
-    { name: 'Expires', valuePath: 'expiresAt', width: 140, numeric: true },
+    { name: 'Expires', valuePath: 'expiresAt', width: 140 },
     {
       name: 'Actions',
       valuePath: 'id',

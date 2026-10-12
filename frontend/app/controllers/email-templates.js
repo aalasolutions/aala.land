@@ -7,7 +7,7 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../utils/delete-modal';
-import { EMAIL_CATEGORIES, EMAIL_FILTER_CATEGORIES } from 'land/constants';
+import { EMAIL_FILTER_CATEGORIES } from 'land/constants';
 
 export default class EmailTemplatesController extends Controller {
   @service auth;
@@ -21,14 +21,6 @@ export default class EmailTemplatesController extends Controller {
 
   @tracked showModal = false;
   @tracked editTemplate = null;
-  @tracked formName = '';
-  @tracked formSubject = '';
-  @tracked formBody = '';
-  @tracked formCategory = 'CUSTOM';
-  @tracked formVariables = '';
-  @tracked formIsActive = true;
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
 
   @tracked showPreview = false;
   @tracked previewSubject = '';
@@ -38,17 +30,8 @@ export default class EmailTemplatesController extends Controller {
   @tracked templateToDelete = null;
   @tracked isDeleting = false;
 
-  get categories() {
-    return EMAIL_CATEGORIES;
-  }
-
   get filterCategories() {
     return EMAIL_FILTER_CATEGORIES;
-  }
-
-  // Nuvo inputs call onInput/onChange as (value, event), not a raw DOM event.
-  @action setFieldValue(fieldName, value) {
-    this[fieldName] = value;
   }
 
   @action filterCategory(value) {
@@ -57,28 +40,12 @@ export default class EmailTemplatesController extends Controller {
   }
 
   @action openCreate() {
-    this.formName = '';
-    this.formSubject = '';
-    this.formBody = '';
-    this.formCategory = 'CUSTOM';
-    this.formVariables = '';
-    this.formIsActive = true;
     this.editTemplate = null;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
   @action openEdit(template) {
-    this.formName = template.name ?? '';
-    this.formSubject = template.subject ?? '';
-    this.formBody = template.body ?? '';
-    this.formCategory = template.category ?? 'CUSTOM';
-    this.formVariables = Array.isArray(template.variables)
-      ? template.variables.join(', ')
-      : '';
-    this.formIsActive = template.isActive !== false;
     this.editTemplate = template;
-    this.errorMsg = '';
     this.showModal = true;
   }
 
@@ -88,51 +55,10 @@ export default class EmailTemplatesController extends Controller {
 
   @action resetDrawer() {
     this.editTemplate = null;
-    this.errorMsg = '';
   }
 
-  @action async saveTemplate(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const isEdit = !!this.editTemplate;
-    const path = isEdit
-      ? `/email-templates/${this.editTemplate.id}`
-      : '/email-templates';
-
-    const variables = this.formVariables
-      ? this.formVariables
-          .split(',')
-          .map((v) => v.trim())
-          .filter(Boolean)
-      : [];
-
-    const body = {
-      name: this.formName,
-      subject: this.formSubject,
-      body: this.formBody,
-      category: this.formCategory,
-      variables,
-      isActive: this.formIsActive,
-    };
-
-    try {
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success(
-        isEdit ? 'Template updated' : 'Template created',
-      );
-      this.closeModal();
-      this.router.refresh('email-templates');
-    } catch (e) {
-      this.errorMsg = e.message;
-    } finally {
-      this.isSaving = false;
-    }
+  @action refresh() {
+    this.router.refresh('email-templates');
   }
 
   @action openDelete(template) {

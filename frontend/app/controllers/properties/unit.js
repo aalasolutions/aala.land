@@ -1,7 +1,4 @@
 import Controller from '@ember/controller';
-import ContactSelection, {
-  OWNER_REQUIRED_ERROR,
-} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -10,15 +7,7 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../../utils/delete-modal';
-import { toggleArrayItem } from '../../utils/toggle-array-item';
 import { ROLES } from '../../utils/roles';
-import {
-  PROPERTY_STATUS_OPTIONS,
-  PROPERTY_TYPE_OPTIONS,
-  PROPERTY_SUB_TYPES,
-  UNIT_KIND_REQUIRED_ERROR,
-  AMENITY_OPTIONS,
-} from 'land/constants';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -64,8 +53,6 @@ export default class PropertiesUnitController extends Controller {
   @service router;
 
   @tracked showEditModal = false;
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
 
   leaseColumns = [
     {
@@ -74,8 +61,8 @@ export default class PropertiesUnitController extends Controller {
       width: 220,
       isFixed: 'left',
     },
-    { name: 'Start', valuePath: 'startDate', width: 140, numeric: true },
-    { name: 'End', valuePath: 'endDate', width: 140, numeric: true },
+    { name: 'Start', valuePath: 'startDate', width: 140 },
+    { name: 'End', valuePath: 'endDate', width: 140 },
     { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
     { name: 'Status', valuePath: 'status', width: 160 },
   ];
@@ -94,27 +81,6 @@ export default class PropertiesUnitController extends Controller {
   @tracked reasonError = '';
   @tracked isSubmittingUnitAction = false;
 
-  @tracked formUnitNumber = '';
-  @tracked formStatus = 'available';
-  @tracked formPropertyType = '';
-  @tracked formSubType = '';
-  @tracked formPrice = '';
-  @tracked formSqFt = '';
-  @tracked formBedrooms = '';
-  @tracked formBathrooms = '';
-  @tracked formFloor = '';
-  @tracked formDescription = '';
-  @tracked formAmenities = [];
-
-  statusOptions = PROPERTY_STATUS_OPTIONS;
-
-  propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
-  subTypeOptions = PROPERTY_SUB_TYPES;
-
-  amenityOptions = AMENITY_OPTIONS;
-
-  ownerSelection = new ContactSelection();
-
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
@@ -124,35 +90,17 @@ export default class PropertiesUnitController extends Controller {
     this[fieldName] = value;
   }
 
-  @action toggleAmenity(key) {
-    this.formAmenities = toggleArrayItem(this.formAmenities, key);
-  }
-
   @action openEdit() {
-    const unit = this.model?.unit;
-    if (!unit) return;
-
-    this.formUnitNumber = unit.unitNumber ?? '';
-    this.formStatus = unit.status ?? 'available';
-    this.formPropertyType = unit.propertyType ?? '';
-    this.formSubType = unit.subType ?? '';
-    this.formPrice = unit.price ? String(unit.price) : '';
-    this.formSqFt = unit.sqFt ? String(unit.sqFt) : '';
-    this.formBedrooms = unit.bedrooms != null ? String(unit.bedrooms) : '';
-    this.formBathrooms = unit.bathrooms != null ? String(unit.bathrooms) : '';
-    this.formFloor = unit.floor != null ? String(unit.floor) : '';
-    this.formDescription = unit.description ?? '';
-    this.ownerSelection.attach(unit.owner ?? null);
-    this.formAmenities = Array.isArray(unit.amenities)
-      ? [...unit.amenities]
-      : [];
-    this.errorMsg = '';
+    if (!this.model?.unit) return;
     this.showEditModal = true;
   }
 
   @action closeEdit() {
     this.showEditModal = false;
-    this.errorMsg = '';
+  }
+
+  @action refresh() {
+    this.router.refresh('properties.unit');
   }
 
   @action async uploadPhoto(e) {
@@ -258,66 +206,6 @@ export default class PropertiesUnitController extends Controller {
       this.router.refresh('properties.unit');
     } catch (err) {
       this.notifications.error(err.message || 'Failed to set primary');
-    }
-  }
-
-  @action async save(event) {
-    event.preventDefault();
-    if (this.isSaving) return;
-    if (!this.formSubType) {
-      this.errorMsg = UNIT_KIND_REQUIRED_ERROR;
-      return;
-    }
-    if (!this.ownerSelection.isPresent) {
-      this.errorMsg = OWNER_REQUIRED_ERROR;
-      return;
-    }
-    this.isSaving = true;
-    this.errorMsg = '';
-
-    const unit = this.model?.unit;
-    if (!unit) return;
-
-    const body = {
-      unitNumber: this.formUnitNumber,
-      status: this.formStatus,
-      subType: this.formSubType,
-      ...(this.formPropertyType
-        ? { propertyType: this.formPropertyType }
-        : { propertyType: null }),
-      ...(this.formPrice ? { price: parseFloat(this.formPrice) } : {}),
-      ...(this.formSqFt ? { sqFt: parseFloat(this.formSqFt) } : {}),
-      ...(this.formBedrooms
-        ? { bedrooms: parseInt(this.formBedrooms, 10) }
-        : {}),
-      ...(this.formBathrooms
-        ? { bathrooms: Number(this.formBathrooms) }
-        : {}),
-      ...(this.formFloor ? { floor: this.formFloor } : {}),
-      ...(this.formDescription ? { description: this.formDescription } : {}),
-      ...(this.ownerSelection.contactId
-        ? {
-            ownerId: this.ownerSelection.contactId,
-            ...this.ownerSelection.verifyPhoneField('ownerVerifyPhone'),
-          }
-        : { owner: this.ownerSelection.cleanIdentity }),
-      amenities: this.formAmenities,
-    };
-
-    try {
-      await this.auth.fetchJson(`/properties/units/${unit.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
-      this.notifications.success('Property updated');
-      this.closeEdit();
-      this.router.refresh('properties.unit');
-    } catch (e) {
-      this.errorMsg = this.ownerSelection.takeConflict(e)
-        ? 'Contact already added'
-        : e.message;
-    } finally {
-      this.isSaving = false;
     }
   }
 

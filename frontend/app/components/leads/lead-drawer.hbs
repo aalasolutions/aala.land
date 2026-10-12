@@ -1,0 +1,147 @@
+<Nuvo::Drawer
+  @open={{@open}}
+  @title={{if this.isEdit "Edit Lead" "New Lead"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.close}}
+  @onClosed={{this.reset}}
+>
+  <:body>
+    <form
+      id="lead-form"
+      class="flex col gap-4"
+      {{this.loadOnOpen}}
+      {{on "submit" this.save}}
+    >
+      {{#if this.showRegionField}}
+        <Nuvo::Field
+          @label="Region"
+          @tooltip="The region that owns this record. Staff who work in other regions will not see it."
+        >
+          <Nuvo::Dropdown
+            id="lead-region"
+            @align="start"
+            @value={{this.form.regionCode}}
+            @onSelect={{this.setRegionCode}}
+            @options={{this.regionOptions}}
+            @placeholder="Select region..."
+            data-test-region-select
+          />
+        </Nuvo::Field>
+      {{/if}}
+      {{#if this.isEdit}}
+        {{! Identity lives on the contact; edit it on the Contacts page. }}
+        <Nuvo::Field @label="Contact">
+          <p class="text-sm flex gap-2 x-center wrap">
+            {{contact-name @lead.contact}}
+            {{#if (is-limited-contact @lead.contact)}}
+              <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
+            {{/if}}
+            {{#if (contact-email @lead.contact)}}
+              <span class="text-muted">-
+                {{contact-email @lead.contact}}</span>
+            {{/if}}
+            {{#if (contact-phone @lead.contact)}}
+              <span class="text-muted">-
+                <bdi dir="ltr">{{contact-phone @lead.contact}}</bdi></span>
+            {{/if}}
+          </p>
+        </Nuvo::Field>
+      {{else}}
+        <Contact::Picker
+          @label="Contact"
+          @required={{true}}
+          @contact={{this.contactSelection.contact}}
+          @identity={{this.contactSelection.identity}}
+          @onSelectContact={{this.contactSelection.attach}}
+          @onClear={{this.contactSelection.clear}}
+          @onIdentityChange={{this.contactSelection.setField}}
+          @conflict={{this.contactSelection.conflict}}
+          @verifyPhone={{this.contactSelection.verifyPhone}}
+          @onVerifyPhoneChange={{this.contactSelection.setVerifyPhone}}
+        />
+      {{/if}}
+      <div class="flex gap-4">
+        <div class="grow">
+          <Nuvo::Field @label="Status">
+            <Nuvo::Dropdown
+              id="lead-status"
+              @align="start"
+              @value={{this.form.status}}
+              @onSelect={{fn this.setField "status"}}
+              @options={{this.statusOptions}}
+              @placeholder="Select status..."
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="grow">
+          <Nuvo::Field
+            @label="Temperature"
+            @tooltip="How close this lead is to buying or renting. Hot is ready now, warm is still looking, cold is months away, dead has gone quiet."
+          >
+            <Nuvo::Dropdown
+              id="lead-temp"
+              @align="start"
+              @value={{this.form.temperature}}
+              @onSelect={{fn this.setField "temperature"}}
+              @options={{this.temperatureOptions}}
+              @placeholder="Select temperature..."
+            />
+          </Nuvo::Field>
+        </div>
+      </div>
+      <Nuvo::Field
+        @label="Source"
+        @tooltip="Where this lead came from. It shows you which channels bring in the most business."
+      >
+        <Nuvo::Dropdown
+          id="lead-source"
+          @align="start"
+          @value={{this.form.source}}
+          @onSelect={{fn this.setField "source"}}
+          @options={{this.sourceOptions}}
+          @placeholder="Select source..."
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Location / Area">
+        <Nuvo::Dropdown
+          id="lead-locality"
+          @align="start"
+          @value={{this.form.localityId}}
+          @onSelect={{this.setLocalityId}}
+          @options={{this.localityOptions}}
+        />
+      </Nuvo::Field>
+      {{#if this.form.localityId}}
+        <Nuvo::Field @label="Property">
+          <Nuvo::Dropdown
+            id="lead-unit"
+            @align="start"
+            @value={{this.form.unitId}}
+            @onSelect={{fn this.setField "unitId"}}
+            @options={{this.unitOptions}}
+          />
+        </Nuvo::Field>
+      {{/if}}
+      {{#if this.errorMsg}}
+        <p class="text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @text="Cancel"
+      @onClick={{this.close}}
+      data-test-cancel-lead
+    />
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="lead-form"
+      @text={{this.submitLabel}}
+      @loading={{this.isSaving}}
+      data-test-save-lead
+    />
+  </:footer>
+</Nuvo::Drawer>

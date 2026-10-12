@@ -114,4 +114,21 @@ module('Integration | Template | leads', function (hooks) {
     assert.dom('[data-test-nu-modal] [data-test-wa-link]').doesNotExist();
     assert.dom('[data-test-nu-modal]').doesNotContainText('Email');
   });
+
+  test('New Lead opens the lead drawer in create mode', async function (assert) {
+    await renderLeads(this, 'list');
+    await click('[data-test-add-lead]');
+
+    assert.dom('[data-test-nu-drawer-title]').hasText('New Lead');
+    assert.dom('#lead-form [data-test-contact-picker]').exists();
+  });
+
+  test('the row edit button opens the lead drawer for that lead', async function (assert) {
+    await renderLeads(this, 'list');
+    await click('[data-test-data-table-row="lead-full"] [data-test-edit-lead]');
+
+    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Lead');
+    assert.dom('#lead-form').containsText('Sara Khan');
+    assert.dom('#lead-form [data-test-contact-picker]').doesNotExist();
+  });
 });
