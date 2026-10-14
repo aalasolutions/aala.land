@@ -22,7 +22,7 @@
       "Width": nu-var("kanban", "ColumnWidth"),
       "Gap": nu-space(3),
       "Padding": nu-space(3),
-      "BackgroundColor": var(--bg-alternate),
+      "BackgroundColor": var(--nu-bg-alternate),
       "BorderWidth": 1px,
       "BorderStyle": dashed,
       "BorderColor": transparent,
@@ -49,7 +49,7 @@
 
   @include e(column-header) {
     @include nu-root-el("kanban", "column-header", (
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "focus--BoxShadow": nu-focus-ring(),
     ));
 
     display: flex;
@@ -66,7 +66,7 @@
     cursor: pointer;
 
     &:hover .nu-kanban__column-toggle {
-      color: var(--primary);
+      color: var(--nu-brand);
     }
 
     &:focus-visible {
@@ -77,7 +77,7 @@
 
   @include e(column-toggle) {
     flex-shrink: 0;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     transition: color nu-duration(fast) $nu-ease;
 
     @include reduced-motion {
@@ -94,13 +94,13 @@
     margin: 0;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(column-accent) {
     @include nu-root-el("kanban", "column-accent", (
       "Size": 0.5rem,
-      "Color": var(--border-base),
+      "Color": var(--nu-border-regular),
     ));
 
     flex-shrink: 0;
@@ -112,8 +112,8 @@
 
   @include e(column-count) {
     @include nu-root-el("kanban", "column-count", (
-      "Color": var(--text-muted),
-      "BackgroundColor": var(--bg-surface),
+      "Color": var(--nu-text-muted),
+      "BackgroundColor": var(--nu-bg-surface),
     ));
 
     display: inline-flex;
@@ -148,14 +148,14 @@
     @include nu-root-el("kanban", "card", (
       "Padding": nu-space(3),
       "Gap": nu-space(2),
-      "BackgroundColor": var(--bg-surface),
+      "BackgroundColor": var(--nu-bg-surface),
       "BorderWidth": 1px,
-      "BorderColor": var(--border-base),
+      "BorderColor": var(--nu-border-regular),
       "BorderRadius": nu-radius(lg),
       "BoxShadow": nu-shadow(sm),
       "TransitionDuration": nu-duration(fast),
       "hover--BoxShadow": nu-shadow(md),
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "focus--BoxShadow": nu-focus-ring(),
     ));
 
     display: flex;
@@ -193,7 +193,7 @@
     margin: 0;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(card-meta) {
@@ -202,7 +202,7 @@
     flex-wrap: wrap;
     gap: nu-space(2);
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(card-footer) {
@@ -212,7 +212,7 @@
     gap: nu-space(2);
     margin-block-start: nu-space(1);
     padding-block-start: nu-space(2);
-    border-block-start: 1px solid var(--border-base);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 }
 
@@ -220,17 +220,17 @@
 
 @each $variant in $nu-variants {
   .nu-kanban__column.m-#{$variant} {
-    --nu-kanban__column--BorderColor: var(--#{$variant}-200);
-    --nu-kanban__column--BackgroundColor: var(--#{$variant}-50);
+    --nu-kanban__column--BorderColor: var(--nu-#{nu-role($variant)}-200);
+    --nu-kanban__column--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
 
     // Accent/count re-declare these; an inherited value from the column would lose.
     .nu-kanban__column-accent {
-      --nu-kanban__column-accent--Color: var(--#{$variant});
+      --nu-kanban__column-accent--Color: var(--nu-#{nu-role($variant)});
     }
 
     .nu-kanban__column-count {
-      --nu-kanban__column-count--Color: var(--#{$variant}-700);
-      --nu-kanban__column-count--BackgroundColor: var(--#{$variant}-100);
+      --nu-kanban__column-count--Color: var(--nu-#{nu-role($variant)}-700);
+      --nu-kanban__column-count--BackgroundColor: var(--nu-#{nu-role($variant)}-100);
     }
   }
 }
@@ -300,17 +300,17 @@
 
 // Targets the column, not the board: element vars set on an ancestor lose.
 .nu-kanban.is-dragging .nu-kanban__column {
-  --nu-kanban__column--BorderColor: #{nu-tint(primary, 45%)};
+  --nu-kanban__column--BorderColor: #{nu-tint(brand, 45%)};
 }
 
 .nu-kanban__column.is-drag-over {
-  --nu-kanban__column--BorderColor: var(--primary);
-  --nu-kanban__column--BackgroundColor: #{nu-tint(primary, 8%)};
+  --nu-kanban__column--BorderColor: var(--nu-brand);
+  --nu-kanban__column--BackgroundColor: #{nu-tint(brand, 8%)};
 }
 
 // Later than the rule above at equal specificity, so hover stays strongest.
 .nu-kanban.is-dragging .nu-kanban__column.is-drag-over {
-  --nu-kanban__column--BorderColor: var(--primary);
+  --nu-kanban__column--BorderColor: var(--nu-brand);
 }
 
 // `--kanban-drag-height` is the dragged card's height, set on the board at dragstart.
@@ -336,7 +336,7 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "
 .nu-kanban__column [draggable="true"].is-drag-source {
   background-color: transparent;
   border-style: dashed;
-  border-color: #{nu-tint(primary, 45%)};
+  border-color: #{nu-tint(brand, 45%)};
   box-shadow: none;
   transform: none;
 
@@ -376,7 +376,7 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "
 .nu-kanban.is-hover-suppressed {
   .nu-panel.m-interactive:hover {
     --nu-panel--BoxShadow: #{nu-shadow(none)};
-    --nu-panel--BorderColor: var(--border-base);
+    --nu-panel--BorderColor: var(--nu-border-regular);
 
     transform: none;
   }
@@ -387,7 +387,7 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-subtle);
+    color: var(--nu-text-subtle);
     font-size: nu-font-size(xs);
   }
 }

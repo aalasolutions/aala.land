@@ -31,7 +31,7 @@ $cashflow-chart-height: 260px;
 
 .finance-filters__to {
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 // Height only: the card-edge bleed is the kit's `nu-stat__content.m-bleed`.
@@ -55,7 +55,7 @@ $cashflow-chart-height: 260px;
   gap: nu-space(4);
   align-items: center;
   padding-block: nu-space(2);
-  border-block-end: 1px solid var(--border-base);
+  border-block-end: 1px solid var(--nu-border-regular);
 
   &:last-child {
     border-block-end: 0;

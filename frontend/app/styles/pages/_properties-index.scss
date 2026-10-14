@@ -65,7 +65,7 @@
   border-radius: nu-radius(2xl);
 
   &:focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--nu-brand);
     outline-offset: nu-space(1);
   }
 
@@ -82,7 +82,7 @@
   margin-block-end: nu-space(2);
   overflow: hidden;
   background: vars.$empty-photo-tint;
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(2xl);
   box-shadow: nu-shadow(sm);
   transition:
@@ -111,7 +111,7 @@
   font-weight: nu-font-weight(bold);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--primary-200);
+  color: var(--nu-brand-200);
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
@@ -133,7 +133,7 @@
   margin: 0;
   font-size: nu-font-size(md);
   font-weight: nu-font-weight(bold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .unit-browse-card__price {
@@ -142,14 +142,14 @@
   font-size: nu-font-size(md);
   font-weight: nu-font-weight(bold);
   font-variant-numeric: tabular-nums;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .unit-browse-card__place {
   grid-area: place;
   margin: 0;
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .unit-browse-card__meta {
@@ -159,7 +159,7 @@
   gap: nu-space(1) nu-space(3);
   margin-block-start: nu-space(1);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .unit-browse-card__stats {
@@ -176,8 +176,8 @@
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(2xl);
 
   .unit-browse-card {
@@ -190,7 +190,7 @@
     gap: 0 nu-space(4);
     align-items: center;
     padding: nu-space(3) nu-space(4);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
     border-radius: 0;
     transition: background-color nu-duration(fast) $nu-ease;
 
@@ -203,7 +203,7 @@
     }
 
     &:hover {
-      background: var(--bg-alternate);
+      background: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
@@ -218,7 +218,7 @@
 
   .unit-browse-card__photo {
     margin-block-end: 0;
-    border: 1px solid var(--border-base);
+    border: 1px solid var(--nu-border-regular);
     border-radius: nu-radius(md);
     box-shadow: none;
   }
@@ -227,7 +227,7 @@
     padding: 0;
     font-size: nu-font-size(lg);
     font-weight: nu-font-weight(normal);
-    color: var(--primary-600);
+    color: var(--nu-brand-600);
   }
 
   .unit-browse-card__state {
@@ -250,7 +250,7 @@
   .unit-browse-card__price {
     align-self: center;
     font-size: nu-font-size(sm);
-    color: var(--success-700);
+    color: var(--nu-success-700);
     text-align: end;
   }
 
@@ -273,7 +273,7 @@
     margin: 0;
     overflow: hidden;
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
   }

@@ -12,8 +12,8 @@
     "FontSize": nu-font-size(xs),
     "FontWeight": nu-font-weight(medium),
     "LineHeight": 1.4,
-    "Color": var(--text-inverted),
-    "BackgroundColor": var(--text-color),
+    "Color": var(--nu-text-inverted),
+    "BackgroundColor": var(--nu-text-regular),
     "BorderRadius": nu-radius(md),
     "Shadow": #{nu-shadow(md)},
     "ArrowSize": 8px,
@@ -142,8 +142,8 @@
   }
 
   @include m(light) {
-    --nu-tooltip--Color: var(--text-color);
-    --nu-tooltip--BackgroundColor: var(--bg-surface);
+    --nu-tooltip--Color: var(--nu-text-regular);
+    --nu-tooltip--BackgroundColor: var(--nu-bg-surface);
   }
 }
 

@@ -12,12 +12,12 @@
     "PaddingInline": nu-space(4),
     "BorderRadius": nu-radius(lg),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
-    "Color": var(--text-color),
-    "BackgroundColor": var(--bg-surface),
-    "IconColor": var(--text-muted),
+    "BorderColor": var(--nu-border-regular),
+    "Color": var(--nu-text-regular),
+    "BackgroundColor": var(--nu-bg-surface),
+    "IconColor": var(--nu-text-muted),
     "TitleFontWeight": nu-font-weight(semibold),
-    "DescriptionColor": var(--text-muted),
+    "DescriptionColor": var(--nu-text-muted),
   ));
 
   display: nu-var("alert", "Display");
@@ -54,6 +54,7 @@
   }
 
   @include e(title) {
+    font-size: nu-font-size(sm);
     font-weight: nu-var("alert", "TitleFontWeight");
     line-height: 1.4;
   }
@@ -105,12 +106,12 @@
 
     &:hover {
       color: nu-var("alert", "Color");
-      background-color: var(--bg-alternate);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -118,11 +119,11 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-alert--Color: var(--#{$variant}-700);
-      --nu-alert--BackgroundColor: var(--#{$variant}-50);
-      --nu-alert--BorderColor: var(--#{$variant}-200);
-      --nu-alert--IconColor: var(--#{$variant});
-      --nu-alert--DescriptionColor: var(--#{$variant}-700);
+      --nu-alert--Color: var(--nu-#{nu-role($variant)}-700);
+      --nu-alert--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+      --nu-alert--BorderColor: var(--nu-#{nu-role($variant)}-200);
+      --nu-alert--IconColor: var(--nu-#{nu-role($variant)});
+      --nu-alert--DescriptionColor: var(--nu-#{nu-role($variant)}-700);
     }
   }
 

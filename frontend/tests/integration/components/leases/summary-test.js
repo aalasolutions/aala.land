@@ -1,7 +1,8 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { render } from '@ember/test-helpers';
+import { render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
+import { addCalendarDays, daysUntil, todayInZone } from 'land/utils/local-date';
 
 // Shape of GET /leases/:id: the lease row plus its contact relation with displayName.
 const LEASE = {
@@ -30,11 +31,10 @@ const LEASE = {
 
 const UNIT = { id: 'unit-1', areaId: 'area-1', label: 'Bay Tower - 101' };
 
-function dayOffset(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const ZONE = 'Asia/Dubai';
+
+function dayOffset(days, zone = ZONE) {
+  return addCalendarDays(todayInZone(zone), days);
 }
 
 module('Integration | Component | leases/summary', function (hooks) {
@@ -45,6 +45,7 @@ module('Integration | Component | leases/summary', function (hooks) {
     this.owner.lookup('service:region').activeRegion = {
       code: 'dxb',
       currency: 'AED',
+      timezone: ZONE,
     };
     this.unit = UNIT;
   });
@@ -157,6 +158,25 @@ module('Integration | Component | leases/summary', function (hooks) {
 
     this.set('lease', { ...LEASE, endDate: dayOffset(-3) });
     assert.dom('[data-test-lease-countdown]').hasText('Ended 3 days ago');
+  });
+
+  test('the countdown follows the selected region day', async function (assert) {
+    const ahead = 'Pacific/Kiritimati';
+    const behind = 'Pacific/Pago_Pago';
+    const region = this.owner.lookup('service:region');
+    region.activeRegion = { code: 'ahead', currency: 'AED', timezone: ahead };
+    const endDate = dayOffset(100, ahead);
+    this.lease = { ...LEASE, startDate: dayOffset(-30, ahead), endDate };
+    await render(
+      hbs`<Leases::Summary @lease={{this.lease}} @unit={{this.unit}} />`,
+    );
+    assert.dom('[data-test-lease-countdown]').hasText('100 days left');
+
+    region.activeRegion = { code: 'behind', currency: 'AED', timezone: behind };
+    await settled();
+    const left = daysUntil(endDate, todayInZone(behind));
+    assert.true(left > 100, 'the zone behind is still on an earlier day');
+    assert.dom('[data-test-lease-countdown]').hasText(`${left} days left`);
   });
 
   test('a draft shows no countdown', async function (assert) {

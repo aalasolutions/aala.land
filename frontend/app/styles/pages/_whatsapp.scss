@@ -18,17 +18,17 @@ $wa-tray-max-height: 16rem;
 }
 
 .wa-shell {
-  --wa-bar-bg: var(--bg-alternate);
-  --wa-row-hover: var(--bg-base);
-  --wa-row-active: color-mix(in srgb, var(--primary) 8%, var(--bg-alternate));
-  --wa-thread-bg: color-mix(in srgb, var(--primary) 6%, var(--border-base));
-  --wa-thread-dot: #{nu-tint(primary, 14%)};
-  --wa-bubble-in: var(--bg-surface);
-  --wa-bubble-out: var(--primary-50);
-  --wa-bubble-ai: var(--info-100);
-  --wa-meta: color-mix(in srgb, var(--text-muted) 70%, var(--text-color));
-  --wa-accent: var(--primary);
-  --wa-accent-text: var(--primary-800);
+  --wa-bar-bg: var(--nu-bg-alternate);
+  --wa-row-hover: var(--nu-bg-base);
+  --wa-row-active: color-mix(in srgb, var(--nu-brand) 8%, var(--nu-bg-alternate));
+  --wa-thread-bg: color-mix(in srgb, var(--nu-brand) 6%, var(--nu-border-regular));
+  --wa-thread-dot: #{nu-tint(brand, 14%)};
+  --wa-bubble-in: var(--nu-bg-surface);
+  --wa-bubble-out: var(--nu-brand-50);
+  --wa-bubble-ai: var(--nu-info-100);
+  --wa-meta: color-mix(in srgb, var(--nu-text-muted) 70%, var(--nu-text-regular));
+  --wa-accent: var(--nu-brand);
+  --wa-accent-text: var(--nu-brand-800);
 
   display: flex;
   flex-direction: column;
@@ -40,7 +40,7 @@ $wa-tray-max-height: 16rem;
 .wa-shell__header {
   flex-shrink: 0;
   padding: nu-space(4) nu-space(6);
-  border-block-end: 1px solid var(--border-base);
+  border-block-end: 1px solid var(--nu-border-regular);
 }
 
 // A strip, not a sidebar card: must read on a page with no connection and no chats.
@@ -50,8 +50,8 @@ $wa-tray-max-height: 16rem;
   align-items: center;
   gap: nu-space(2);
   padding: nu-space(2) nu-space(6);
-  background: var(--bg-surface);
-  border-block-end: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border-block-end: 1px solid var(--nu-border-regular);
 }
 
 .wa-connection__text {
@@ -66,12 +66,12 @@ $wa-tray-max-height: 16rem;
 .wa-connection__label {
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(medium);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .wa-connection__detail {
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .wa-connection__cta {
@@ -83,7 +83,7 @@ $wa-tray-max-height: 16rem;
   flex: 1;
   min-block-size: 0;
   overflow: hidden;
-  background: var(--bg-base);
+  background: var(--nu-bg-base);
 }
 
 .wa-sidebar {
@@ -91,8 +91,8 @@ $wa-tray-max-height: 16rem;
   flex-direction: column;
   inline-size: $wa-sidebar-width;
   flex-shrink: 0;
-  background: var(--bg-surface);
-  border-inline-end: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border-inline-end: 1px solid var(--nu-border-regular);
 }
 
 .wa-sidebar-header {
@@ -103,10 +103,10 @@ $wa-tray-max-height: 16rem;
   min-block-size: 3.75rem;
   padding: nu-space(2) nu-space(4);
   background: var(--wa-bar-bg);
-  border-block-end: 1px solid var(--border-base);
+  border-block-end: 1px solid var(--nu-border-regular);
   font-size: nu-font-size(md);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .wa-sidebar-actions {
@@ -117,10 +117,10 @@ $wa-tray-max-height: 16rem;
 
 .wa-credit-usage {
   padding: nu-space(1) nu-space(4) nu-space(2);
-  background: var(--bg-surface);
-  border-block-end: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border-block-end: 1px solid var(--nu-border-regular);
   font-size: nu-font-size(2xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .wa-chat-list {
@@ -153,13 +153,13 @@ $wa-tray-max-height: 16rem;
 
   &.is-active {
     background: var(--wa-row-active);
-    border-inline-start-color: var(--primary);
+    border-inline-start-color: var(--nu-brand);
   }
 
   // Inset, because the list clips anything drawn outside a full-width row.
   &:focus-visible {
     outline: none;
-    box-shadow: inset 0 0 0 3px nu-tint(primary, 35%);
+    box-shadow: inset 0 0 0 3px nu-tint(brand, 35%);
   }
 }
 
@@ -167,8 +167,8 @@ $wa-tray-max-height: 16rem;
 .wa-shell .nu-avatar {
   --nu-avatar--BackgroundColor: color-mix(
     in srgb,
-    var(--text-muted) 25%,
-    var(--bg-surface)
+    var(--nu-text-muted) 25%,
+    var(--nu-bg-surface)
   );
   --nu-avatar--Color: var(--wa-meta);
 }
@@ -178,7 +178,7 @@ $wa-tray-max-height: 16rem;
   flex: 1;
   min-inline-size: 0;
   padding-block: nu-space(3);
-  border-block-end: 1px solid var(--border-base);
+  border-block-end: 1px solid var(--nu-border-regular);
 
   .wa-chat-item:hover &,
   .wa-chat-item.is-active & {
@@ -192,7 +192,7 @@ $wa-tray-max-height: 16rem;
   white-space: nowrap;
   font-size: nu-font-size(md);
   font-weight: nu-font-weight(normal);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .wa-chat-time {
@@ -207,11 +207,11 @@ $wa-tray-max-height: 16rem;
   vertical-align: middle;
 
   &.is-open {
-    color: var(--success);
+    color: var(--nu-success);
   }
 
   &.is-closed {
-    color: var(--warning-600);
+    color: var(--nu-warning-600);
   }
 }
 
@@ -242,7 +242,7 @@ $wa-tray-max-height: 16rem;
   }
 
   .wa-chat-preview {
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 }
 
@@ -252,7 +252,7 @@ $wa-tray-max-height: 16rem;
   flex-direction: column;
   min-inline-size: 0;
   overflow: hidden;
-  background: var(--bg-base);
+  background: var(--nu-bg-base);
 }
 
 // No chat selected: the pane reads as one placeholder panel, not a card on the page.
@@ -271,7 +271,7 @@ $wa-tray-max-height: 16rem;
   min-block-size: 3.75rem;
   padding: nu-space(2) nu-space(4);
   background: var(--wa-bar-bg);
-  border-block-end: 1px solid var(--border-base);
+  border-block-end: 1px solid var(--nu-border-regular);
 }
 
 .wa-chat-header-text {
@@ -287,7 +287,7 @@ $wa-tray-max-height: 16rem;
   white-space: nowrap;
   font-size: nu-font-size(md);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .wa-chat-header-id {
@@ -396,12 +396,12 @@ $wa-tray-max-height: 16rem;
   }
 
   &.m-notice {
-    --wa-fill: var(--bg-alternate);
+    --wa-fill: var(--nu-bg-alternate);
 
     align-self: center;
     align-items: center;
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
 
     &::before {
       content: none;
@@ -430,7 +430,7 @@ $wa-tray-max-height: 16rem;
   &.m-ai {
     --wa-fill: var(--wa-bubble-ai);
 
-    border-inline-start: 2px solid var(--info);
+    border-inline-start: 2px solid var(--nu-info);
   }
 }
 
@@ -439,7 +439,7 @@ $wa-tray-max-height: 16rem;
   min-inline-size: 0;
   font-size: nu-font-size(sm);
   line-height: 1.4;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   overflow-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -518,17 +518,17 @@ $wa-tray-max-height: 16rem;
   border: 0;
   border-radius: nu-radius(md);
   overflow: hidden;
-  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+  background: color-mix(in srgb, var(--nu-text-regular) 8%, transparent);
   cursor: pointer;
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    box-shadow: nu-focus-ring();
   }
 
   &.m-video {
     aspect-ratio: 16 / 9;
-    background: var(--black);
+    background: var(--nu-black);
   }
 
   &.is-static {
@@ -556,7 +556,7 @@ $wa-tray-max-height: 16rem;
   margin: auto;
   border-radius: nu-radius(full);
   background: nu-scrim(55%);
-  color: var(--white);
+  color: var(--nu-white);
   font-size: nu-font-size(xl);
   pointer-events: none;
 }
@@ -564,7 +564,7 @@ $wa-tray-max-height: 16rem;
 // Placement and poster contrast only; the chip itself is Nuvo::Badge.
 .nu-badge.wa-media__badge {
   --nu-badge--BackgroundColor: #{nu-scrim(55%)};
-  --nu-badge--Color: var(--white);
+  --nu-badge--Color: var(--nu-white);
 
   position: absolute;
   inset-block-end: nu-space(1);
@@ -605,7 +605,7 @@ $wa-tray-max-height: 16rem;
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    box-shadow: nu-focus-ring();
     border-radius: nu-radius(full);
   }
 
@@ -623,7 +623,7 @@ $wa-tray-max-height: 16rem;
   position: absolute;
   inset-block-start: nu-space(1);
   inset-inline-end: nu-space(1);
-  background: var(--bg-surface);
+  background: var(--nu-bg-surface);
   opacity: 0;
   transition: opacity nu-duration(fast) $nu-ease;
 
@@ -650,11 +650,11 @@ $wa-tray-max-height: 16rem;
   --nu-modal--BoxShadow: none;
   --nu-modal--Padding: #{nu-space(4)};
   --nu-modal--Gap: #{nu-space(2)};
-  --bg-alternate: #{nu-tint(white, 15%)};
-  --border-base: #{nu-tint(white, 15%)};
-  --text-color: var(--white);
-  --text-muted: #{nu-tint(white, 75%)};
-  --wa-accent: var(--white);
+  --nu-bg-alternate: #{nu-tint(white, 15%)};
+  --nu-border-regular: #{nu-tint(white, 15%)};
+  --nu-text-regular: var(--nu-white);
+  --nu-text-muted: #{nu-tint(white, 75%)};
+  --wa-accent: var(--nu-white);
   --wa-meta: #{nu-tint(white, 75%)};
 }
 
@@ -677,11 +677,11 @@ $wa-tray-max-height: 16rem;
   line-height: 1;
 
   &.is-read {
-    color: var(--info);
+    color: var(--nu-info);
   }
 
   &.is-failed {
-    color: var(--danger);
+    color: var(--nu-danger);
   }
 }
 
@@ -704,7 +704,7 @@ $wa-tray-max-height: 16rem;
 
   // The kit's -50 chip fill matches the tinted bubbles, so the author chips sit on white.
   .nu-tag {
-    --nu-tag--BackgroundColor: var(--bg-surface);
+    --nu-tag--BackgroundColor: var(--nu-bg-surface);
   }
 }
 
@@ -740,7 +740,7 @@ $wa-tray-max-height: 16rem;
   --nu-list-item--PaddingInline: #{nu-space(3)};
 
   &.is-error {
-    --nu-list-item--BorderColor: var(--danger-600);
+    --nu-list-item--BorderColor: var(--nu-danger-600);
   }
 }
 
@@ -751,13 +751,13 @@ $wa-tray-max-height: 16rem;
   block-size: $wa-tray-thumb-size;
   border-radius: nu-radius(md);
   object-fit: cover;
-  background: color-mix(in srgb, var(--text-color) 8%, transparent);
+  background: color-mix(in srgb, var(--nu-text-regular) 8%, transparent);
 
   &.m-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 }
 
@@ -788,14 +788,14 @@ $wa-tray-max-height: 16rem;
   gap: nu-space(1);
   margin-block-end: nu-space(2);
   font-size: nu-font-size(2xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 
   &.is-open {
-    color: var(--success-700);
+    color: var(--nu-success-700);
   }
 
   &.is-closed {
-    color: var(--warning-700);
+    color: var(--nu-warning-700);
   }
 }
 
@@ -811,7 +811,7 @@ $wa-tray-max-height: 16rem;
 
 // Kit textarea defaults to form-field size; composer needs one line that grows to a few.
 .wa-input-row .nu-textarea {
-  --nu-input--BackgroundColor: var(--bg-surface);
+  --nu-input--BackgroundColor: var(--nu-bg-surface);
   --nu-input--BorderColor: transparent;
   --nu-input--BorderRadius: #{nu-radius(lg)};
 
@@ -822,6 +822,6 @@ $wa-tray-max-height: 16rem;
 
   // The kit's disabled fill matches the bar, so the field would vanish.
   &:disabled {
-    background-color: var(--bg-surface);
+    background-color: var(--nu-bg-surface);
   }
 }

@@ -1,7 +1,8 @@
 import Component from '@glimmer/component';
+import { service } from '@ember/service';
 import { LEASE_TYPE_OPTIONS, optionLabelFor } from 'land/constants';
 import { contactName } from 'land/utils/contact-display';
-import { daysUntil, toEpochMs } from 'land/utils/local-date';
+import { daysUntil, toEpochMs, todayInZone } from 'land/utils/local-date';
 import { plural } from 'land/utils/plural';
 
 const DAY_MS = 86400000;
@@ -10,6 +11,8 @@ const WARN_DAYS = 60;
 const DANGER_DAYS = 30;
 
 export default class LeasesSummaryComponent extends Component {
+  @service region;
+
   get tenantName() {
     return contactName(this.args.lease?.contact, 'Unknown tenant');
   }
@@ -41,7 +44,10 @@ export default class LeasesSummaryComponent extends Component {
   }
 
   get daysLeft() {
-    return daysUntil(this.args.lease?.endDate);
+    return daysUntil(
+      this.args.lease?.endDate,
+      todayInZone(this.region.activeRegion?.timezone),
+    );
   }
 
   get percent() {

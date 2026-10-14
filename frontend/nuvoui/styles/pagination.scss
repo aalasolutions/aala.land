@@ -31,21 +31,21 @@
 
   @include e(link) {
     @include nu-root-el("pagination", "link", (
-      "MinInlineSize": 2.5rem,
-      "MinBlockSize": 2.5rem,
+      "MinInlineSize": 2.25rem,
+      "MinBlockSize": 2.25rem,
       "PaddingInline": nu-space(2),
       "FontSize": nu-font-size(sm),
       "FontWeight": nu-font-weight(medium),
-      "Color": var(--text-color),
+      "Color": var(--nu-text-regular),
       "BackgroundColor": transparent,
       "BorderColor": transparent,
       "BorderRadius": nu-radius(full),
       "TransitionDuration": nu-duration(fast),
-      "hover--BackgroundColor": #{nu-tint(primary, 6%)},
+      "hover--BackgroundColor": #{nu-tint(brand, 6%)},
       "hover--BorderColor": transparent,
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
-      "active--Color": var(--primary),
-      "active--BackgroundColor": #{nu-tint(primary, 12%)},
+      "focus--BoxShadow": nu-focus-ring(),
+      "active--Color": var(--nu-brand-800),
+      "active--BackgroundColor": #{nu-tint(brand, 12%)},
       "disabled--Opacity": 0.5,
     ));
 
@@ -55,6 +55,7 @@
     min-inline-size: nu-var-el("pagination", "link", "MinInlineSize");
     min-block-size: nu-var-el("pagination", "link", "MinBlockSize");
     padding-inline: nu-var-el("pagination", "link", "PaddingInline");
+    padding-block: 0;
     font-family: inherit;
     font-size: nu-var-el("pagination", "link", "FontSize");
     font-weight: nu-var-el("pagination", "link", "FontWeight");
@@ -101,14 +102,14 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-inline-size: 2.5rem;
-    min-block-size: 2.5rem;
-    color: var(--text-subtle);
+    min-inline-size: 2.25rem;
+    min-block-size: 2.25rem;
+    color: var(--nu-text-subtle);
   }
 
   @include e(status) {
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     white-space: nowrap;
   }
 
@@ -119,18 +120,18 @@
     gap: nu-space(2);
     white-space: nowrap;
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(select) {
     @include nu-root-el("pagination", "select", (
       "PaddingBlock": nu-space(1),
       "PaddingInline": nu-space(2),
-      "Color": var(--text-color),
-      "BackgroundColor": var(--bg-surface),
-      "BorderColor": var(--border-base),
+      "Color": var(--nu-text-regular),
+      "BackgroundColor": var(--nu-bg-surface),
+      "BorderColor": var(--nu-border-regular),
       "BorderRadius": nu-radius(md),
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "focus--BoxShadow": nu-focus-ring(),
     ));
 
     padding-block: nu-var-el("pagination", "select", "PaddingBlock");
@@ -179,6 +180,11 @@
       --nu-pagination__link--MinInlineSize: 2rem;
       --nu-pagination__link--MinBlockSize: 2rem;
       --nu-pagination__link--FontSize: #{nu-font-size(xs)};
+    }
+
+    .nu-pagination__ellipsis {
+      min-inline-size: 2rem;
+      min-block-size: 2rem;
     }
   }
 

@@ -13,7 +13,7 @@
 .auth-brand-title {
   font-size: nu-font-size(xl);
   font-weight: nu-font-weight(bold);
-  color: var(--primary);
+  color: var(--nu-brand);
   margin: 0;
 }
 
@@ -40,9 +40,9 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.4rem 0.7rem;
-  color: var(--primary-700);
-  background: var(--primary-50);
-  border: 1px solid var(--primary-200);
+  color: var(--nu-brand-700);
+  background: var(--nu-brand-50);
+  border: 1px solid var(--nu-brand-200);
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: nu-font-weight(semibold);
@@ -50,13 +50,13 @@
 
   svg {
     flex: 0 0 auto;
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 }
 
 .signup-invite-note {
   margin: 0.55rem auto 0;
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   font-size: 0.82rem;
   line-height: 1.35;
 }
@@ -108,9 +108,9 @@ $google-neutral-border-hover: #c6cbd1;
   align-items: center;
   width: 100%;
   min-height: 52px;
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: 0.875rem;
-  background: var(--bg-surface);
+  background: var(--nu-bg-surface);
   color: $google-text-color;
   cursor: pointer;
   overflow: hidden;
@@ -126,12 +126,12 @@ $google-neutral-border-hover: #c6cbd1;
     width: 30px;
     height: 30px;
     border-radius: 0.625rem;
-    background-color: var(--bg-base);
+    background-color: var(--nu-bg-base);
     background-image: url($google-logo-svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 18px 18px;
-    border: 1px solid var(--border-base);
+    border: 1px solid var(--nu-border-regular);
     transform: translateY(-50%);
     z-index: 2;
     pointer-events: none;
@@ -149,13 +149,17 @@ $google-neutral-border-hover: #c6cbd1;
   }
 
   &:hover {
-    background: var(--bg-base);
-    border-color: var(--border-base);
+    background: var(--nu-bg-base);
+    border-color: var(--nu-border-regular);
   }
 
   &:focus-within {
-    border-color: var(--primary-300);
-    box-shadow: 0 0 0 3px var(--primary-100);
+    border-color: var(--nu-brand-300);
+    box-shadow: nu-focus-ring();
+  }
+
+  &:focus-visible {
+    outline: none;
   }
 
   .google-button-host {
@@ -183,8 +187,8 @@ $google-neutral-border-hover: #c6cbd1;
   width: 100%;
   min-height: 44px;
   padding: 0.75rem 1rem;
-  background: var(--bg-surface);
-  color: var(--text-color);
+  background: var(--nu-bg-surface);
+  color: var(--nu-text-regular);
   border: 1px solid $google-neutral-border;
   border-radius: 4px;
   font-size: 0.9375rem;
@@ -196,12 +200,12 @@ $google-neutral-border-hover: #c6cbd1;
     border-color 0.16s ease;
 
   &:hover {
-    background: var(--bg-base);
+    background: var(--nu-bg-base);
     border-color: $google-neutral-border-hover;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--primary-200);
+    outline: 2px solid var(--nu-brand-200);
     outline-offset: 2px;
   }
 
@@ -221,20 +225,20 @@ $google-neutral-border-hover: #c6cbd1;
     content: "Continue with Google";
     font-weight: nu-font-weight(normal);
     font-size: 0.9375rem;
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     z-index: 2;
   }
 }
 
 .btn--google--blocked {
   border-color: $google-neutral-border;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .btn--google--loading {
   pointer-events: none;
   cursor: wait;
-  background: var(--bg-base);
+  background: var(--nu-bg-base);
   border-color: $google-neutral-border;
 
   &::before {
@@ -249,8 +253,8 @@ $google-neutral-border-hover: #c6cbd1;
     display: inline-block;
     width: 18px;
     height: 18px;
-    border: 2px solid var(--border-base);
-    border-top-color: var(--primary);
+    border: 2px solid var(--nu-border-regular);
+    border-top-color: var(--nu-brand);
     border-radius: 50%;
     animation: auth-google-spin 0.8s linear infinite;
     margin-right: 0.5rem;
@@ -277,9 +281,9 @@ $google-neutral-border-hover: #c6cbd1;
   width: 100%;
   min-height: 46px;
   padding: 0.75rem 1rem;
-  color: var(--success-700);
-  background: var(--success-50);
-  border: 1px solid var(--success-200);
+  color: var(--nu-success-700);
+  background: var(--nu-success-50);
+  border: 1px solid var(--nu-success-200);
   border-radius: 0.5rem;
   font-weight: nu-font-weight(semibold);
 }
@@ -291,8 +295,8 @@ $google-neutral-border-hover: #c6cbd1;
   padding: 0.95rem;
   margin-top: 0.25rem;
   margin-bottom: 1rem;
-  background: var(--bg-base);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: 0.75rem;
 }
 
@@ -309,12 +313,12 @@ $google-neutral-border-hover: #c6cbd1;
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background-color: var(--bg-surface);
+  background-color: var(--nu-bg-surface);
   background-image: url($google-logo-svg);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 18px 18px;
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
 }
 
 .profile-connection-text {
@@ -322,7 +326,7 @@ $google-neutral-border-hover: #c6cbd1;
 }
 
 .profile-connection-title {
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   font-weight: nu-font-weight(semibold);
   font-size: 0.95rem;
   line-height: 1.3;
@@ -330,7 +334,7 @@ $google-neutral-border-hover: #c6cbd1;
 }
 
 .profile-connection-copy {
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   font-size: 0.835rem;
   line-height: 1.35;
   margin: 0.15rem 0 0;
@@ -351,8 +355,8 @@ $google-neutral-border-hover: #c6cbd1;
   min-height: 38px;
   padding: 0 1rem;
   color: $google-text-color;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border: 1px solid var(--nu-border-regular);
   border-radius: 0.55rem;
   font-size: 0.875rem;
   font-weight: nu-font-weight(semibold);
@@ -365,13 +369,17 @@ $google-neutral-border-hover: #c6cbd1;
   }
 
   &:hover {
-    background: var(--bg-base);
-    border-color: var(--border-base);
+    background: var(--nu-bg-base);
+    border-color: var(--nu-border-regular);
   }
 
   &:focus-within {
-    border-color: var(--primary-300);
-    box-shadow: 0 0 0 3px var(--primary-100);
+    border-color: var(--nu-brand-300);
+    box-shadow: nu-focus-ring();
+  }
+
+  &:focus-visible {
+    outline: none;
   }
 
   .google-button-host {

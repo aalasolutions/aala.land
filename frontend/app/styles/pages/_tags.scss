@@ -243,14 +243,14 @@ $tag-domains: (
   @each $value, $intent in $values {
     .tag-#{$domain}-#{$value} {
       @if $intent == "neutral" {
-        --nu-tag--Color: var(--text-muted);
-        --nu-tag--BackgroundColor: var(--bg-alternate);
-        --nu-tag--BorderColor: var(--border-base);
+        --nu-tag--Color: var(--nu-text-muted);
+        --nu-tag--BackgroundColor: var(--nu-bg-alternate);
+        --nu-tag--BorderColor: var(--nu-border-regular);
       } @else {
         $scale: map.get($tag-intents, $intent);
-        --nu-tag--Color: var(--#{$scale}-700);
-        --nu-tag--BackgroundColor: var(--#{$scale}-50);
-        --nu-tag--BorderColor: var(--#{$scale}-200);
+        --nu-tag--Color: var(--nu-#{nu-role($scale)}-700);
+        --nu-tag--BackgroundColor: var(--nu-#{nu-role($scale)}-50);
+        --nu-tag--BorderColor: var(--nu-#{nu-role($scale)}-200);
       }
     }
   }

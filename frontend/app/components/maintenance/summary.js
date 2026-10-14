@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
-import { daysUntil } from 'land/utils/local-date';
+import { service } from '@ember/service';
+import { daysUntil, formatInstant, todayInZone } from 'land/utils/local-date';
 import { plural } from 'land/utils/plural';
-import { formatDate } from 'land/helpers/format-date';
 
 const STAGES = [
   { key: 'OPEN', label: 'Reported' },
@@ -11,6 +11,12 @@ const STAGES = [
 ];
 
 export default class MaintenanceSummaryComponent extends Component {
+  @service region;
+
+  get today() {
+    return todayInZone(this.region.activeRegion?.timezone);
+  }
+
   // The vendor read can fail while the id is still set, so say it is assigned rather than none.
   get vendorName() {
     if (this.args.vendor?.name) return this.args.vendor.name;
@@ -42,14 +48,15 @@ export default class MaintenanceSummaryComponent extends Component {
   get daysOpen() {
     const wo = this.args.workOrder;
     if (!wo?.createdAt || wo.completedAt || this.isCancelled) return null;
-    const since = daysUntil(wo.createdAt);
+    const zone = this.region.activeRegion?.timezone;
+    const since = daysUntil(todayInZone(zone, wo.createdAt), this.today);
     return since === null ? null : Math.max(0, -since);
   }
 
   get scheduledIn() {
     const wo = this.args.workOrder;
     if (!wo?.scheduledDate || wo.completedAt) return null;
-    return daysUntil(wo.scheduledDate);
+    return daysUntil(wo.scheduledDate, this.today);
   }
 
   get nextStep() {
@@ -74,7 +81,16 @@ export default class MaintenanceSummaryComponent extends Component {
     if (!wo) return '';
     const parts = [];
     if (wo.reportedBy) parts.push(`Reported by ${wo.reportedBy}`);
-    if (wo.createdAt) parts.push(formatDate(wo.createdAt));
+    if (wo.createdAt) {
+      parts.push(
+        formatInstant(
+          wo.createdAt,
+          'en-US',
+          { year: 'numeric', month: 'short', day: 'numeric' },
+          this.region.activeRegion?.timezone,
+        ),
+      );
+    }
     if (this.daysOpen) {
       parts.push(`open ${plural(this.daysOpen, 'day')}`);
     }

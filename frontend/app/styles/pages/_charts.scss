@@ -27,10 +27,10 @@ $chart-tip-layer: 2;
   padding: nu-space(1) nu-space(2);
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(medium);
-  color: var(--text-inverted);
+  color: var(--nu-text-inverted);
   white-space: pre;
   pointer-events: none;
-  background-color: var(--text-color);
+  background-color: var(--nu-text-regular);
   border-radius: nu-radius(md);
 }
 

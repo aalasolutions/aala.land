@@ -6,7 +6,7 @@
 @include b(dot) {
   @include nu-root("dot", (
     "Size": 0.5rem,
-    "Color": var(--text-muted),
+    "Color": var(--nu-text-muted),
     "RingColor": transparent,
     "RingWidth": 3px,
   ));
@@ -23,7 +23,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-dot--Color: var(--#{$variant});
+      --nu-dot--Color: var(--nu-#{nu-role($variant)});
     }
   }
 
@@ -48,12 +48,12 @@
   // ---- halo ring ----
 
   @include m(ring) {
-    --nu-dot--RingColor: #{nu-tint(primary, 25%)};
+    --nu-dot--RingColor: #{nu-tint(brand, 25%)};
   }
 
   @each $variant in $nu-variants {
     &.m-ring.m-#{$variant} {
-      --nu-dot--RingColor: #{nu-tint($variant, 25%)};
+      --nu-dot--RingColor: #{nu-tint(nu-role($variant), 25%)};
     }
   }
 

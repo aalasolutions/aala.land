@@ -21,32 +21,32 @@
   }
 
   &__limits {
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     font-size: nu-font-size(sm);
   }
 
   &__expiry {
     text-align: end;
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 }
 
 .billing-plan-card {
   padding: nu-space(5);
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(md);
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
 }
 
 .region-country-group {
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(sm);
   overflow: hidden;
 
   &.is-readonly {
-    border-color: color-mix(in srgb, var(--border-base) 75%, transparent);
-    background: color-mix(in srgb, var(--bg-alternate) 35%, transparent);
+    border-color: color-mix(in srgb, var(--nu-border-regular) 75%, transparent);
+    background: color-mix(in srgb, var(--nu-bg-alternate) 35%, transparent);
   }
 }
 
@@ -56,15 +56,15 @@
   gap: nu-space(2);
   inline-size: 100%;
   padding: nu-space(3) nu-space(4);
-  background: var(--bg-surface);
+  background: var(--nu-bg-surface);
   border: none;
   cursor: pointer;
   text-align: start;
   font-size: nu-font-size(sm);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 
   &:hover {
-    background: var(--bg-alternate);
+    background: var(--nu-bg-alternate);
   }
 }
 
@@ -81,7 +81,7 @@
 
 .region-total {
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .region-selected-badge {
@@ -89,29 +89,29 @@
   font-weight: nu-font-weight(semibold);
   padding: 2px nu-space(2);
   border-radius: nu-radius(full);
-  background: var(--primary-100);
-  color: var(--primary);
+  background: var(--nu-brand-100);
+  color: var(--nu-brand);
 }
 
 .region-settings-readonly {
   .region-country-header {
-    background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-alternate));
-    color: color-mix(in srgb, var(--text-color) 78%, white);
+    background: color-mix(in srgb, var(--nu-bg-surface) 82%, var(--nu-bg-alternate));
+    color: color-mix(in srgb, var(--nu-text-regular) 78%, white);
 
     &:hover {
-      background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-alternate));
+      background: color-mix(in srgb, var(--nu-bg-surface) 82%, var(--nu-bg-alternate));
     }
   }
 
   .region-total,
   .region-check-label,
   .text-muted {
-    color: color-mix(in srgb, var(--text-muted) 78%, white);
+    color: color-mix(in srgb, var(--nu-text-muted) 78%, white);
   }
 
   .region-selected-badge {
-    background: color-mix(in srgb, var(--primary-100) 55%, white);
-    color: color-mix(in srgb, var(--primary) 70%, white);
+    background: color-mix(in srgb, var(--nu-brand-100) 55%, white);
+    color: color-mix(in srgb, var(--nu-brand) 70%, white);
   }
 }
 
@@ -127,12 +127,12 @@
   align-items: center;
   gap: nu-space(2);
   padding: nu-space(2) nu-space(3);
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(sm);
 
   &.is-readonly {
-    background: color-mix(in srgb, var(--bg-alternate) 45%, transparent);
-    border-color: color-mix(in srgb, var(--border-base) 72%, transparent);
+    background: color-mix(in srgb, var(--nu-bg-alternate) 45%, transparent);
+    border-color: color-mix(in srgb, var(--nu-border-regular) 72%, transparent);
     opacity: 0.78;
   }
 }

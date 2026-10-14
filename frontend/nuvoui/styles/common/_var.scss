@@ -77,6 +77,22 @@ $nu-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
 $nu-variants: (primary, secondary, success, warning, danger, info);
 
+$nu-variant-roles: (
+  primary: brand,
+  secondary: info,
+  success: success,
+  warning: warning,
+  danger: danger,
+  info: info,
+);
+
+@function nu-role($variant) {
+  @if not map.has-key($nu-variant-roles, $variant) {
+    @error "nu-role: unknown variant `#{$variant}`.";
+  }
+  @return map.get($nu-variant-roles, $variant);
+}
+
 @function nu-space($key) {
   @if not map.has-key($nu-space, $key) {
     @error "nu-space: unknown key `#{$key}`.";
@@ -133,14 +149,19 @@ $nu-variants: (primary, secondary, success, warning, danger, info);
 
 // Translucent tint of a core color token, without hardcoding rgba.
 @function nu-tint($color-token, $percent) {
-  @return color-mix(in srgb, var(--#{$color-token}) $percent, transparent);
+  @return color-mix(in srgb, var(--nu-#{$color-token}) $percent, transparent);
 }
 
-// Neutral scrim for overlays. Anchored to --black in BOTH themes: a scrim is a
-// dimming layer, not a themed surface. Deriving it from --text-color inverted it
+// Shared focus ring: a surface-coloured gap, then a solid 2px ring in the role colour.
+@function nu-focus-ring($role: brand) {
+  @return 0 0 0 2px var(--nu-bg-surface), 0 0 0 4px var(--nu-#{$role});
+}
+
+// Neutral scrim for overlays. Anchored to --nu-black in BOTH themes: a scrim is a
+// dimming layer, not a themed surface. Deriving it from --nu-text-regular inverted it
 // to a white wash under a dark theme, because core's dark theme sets
-// --text-color to near-white. Never use a brand color for a scrim either: brand
+// --nu-text-regular to near-white. Never use a brand color for a scrim either: brand
 // hues tint the whole screen.
 @function nu-scrim($percent: 50%) {
-  @return color-mix(in srgb, var(--black) $percent, transparent);
+  @return color-mix(in srgb, var(--nu-black) $percent, transparent);
 }

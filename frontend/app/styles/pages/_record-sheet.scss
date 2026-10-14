@@ -4,8 +4,8 @@
 
 .record-sheet {
   overflow: hidden;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(xl);
   box-shadow: nu-shadow(sm);
 }
@@ -23,7 +23,7 @@
   margin: 0;
   font-size: nu-font-size(lg);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   text-wrap: balance;
 }
 
@@ -32,15 +32,15 @@
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(semibold);
   white-space: nowrap;
-  color: var(--primary);
-  background: nu-tint(primary, 12%);
+  color: var(--nu-brand);
+  background: nu-tint(brand, 12%);
   border-radius: nu-radius(full);
 }
 
 .record-sheet__trio {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-block-start: 1px solid var(--border-base);
+  border-block-start: 1px solid var(--nu-border-regular);
 
   @include media-down(lg) {
     grid-template-columns: minmax(0, 1fr);
@@ -55,11 +55,11 @@
   padding: nu-space(4);
 
   & + & {
-    border-inline-start: 1px solid var(--border-base);
+    border-inline-start: 1px solid var(--nu-border-regular);
 
     @include media-down(lg) {
       border-inline-start: 0;
-      border-block-start: 1px solid var(--border-base);
+      border-block-start: 1px solid var(--nu-border-regular);
     }
   }
 }
@@ -70,12 +70,12 @@
   align-items: center;
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(medium);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .record-sheet__value {
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   overflow-wrap: anywhere;
 }
 
@@ -83,12 +83,12 @@
   font-size: nu-font-size(xl);
   font-weight: nu-font-weight(semibold);
   font-variant-numeric: tabular-nums;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .record-sheet__sub {
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   overflow-wrap: anywhere;
 }
 
@@ -100,13 +100,13 @@
   padding: nu-space(4);
   font-size: nu-font-size(sm);
   font-variant-numeric: tabular-nums;
-  color: var(--text-muted);
-  background: color-mix(in srgb, var(--border-base) 35%, var(--bg-surface));
-  border-block-start: 1px solid var(--border-base);
+  color: var(--nu-text-muted);
+  background: color-mix(in srgb, var(--nu-border-regular) 35%, var(--nu-bg-surface));
+  border-block-start: 1px solid var(--nu-border-regular);
 
   .nu-progress {
     --nu-progress--Height: 0.375rem;
-    --nu-progress--TrackColor: var(--border-base);
+    --nu-progress--TrackColor: var(--nu-border-regular);
   }
 }
 
@@ -116,12 +116,12 @@
   gap: nu-space(2) nu-space(8);
   padding: nu-space(4);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
-  border-block-start: 1px solid var(--border-base);
+  color: var(--nu-text-muted);
+  border-block-start: 1px solid var(--nu-border-regular);
 
   b {
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 }
 
@@ -138,7 +138,7 @@
 .record-sheet__also {
   margin: nu-space(1) 0 0;
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .record-sheet__actions {

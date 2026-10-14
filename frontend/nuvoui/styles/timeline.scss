@@ -23,9 +23,9 @@
   @include e(item) {
     @include nu-root-el("timeline", "item", (
       "MarkerSize": 0.75rem,
-      "MarkerColor": var(--primary),
+      "MarkerColor": var(--nu-brand),
       "ConnectorWidth": 2px,
-      "ConnectorColor": var(--border-base),
+      "ConnectorColor": var(--nu-border-regular),
     ));
 
     position: relative;
@@ -86,32 +86,32 @@
     align-items: center;
     flex-shrink: 0;
     line-height: 1;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(title) {
     margin: 0;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(timestamp) {
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(description) {
     font-size: nu-font-size(sm);
     line-height: 1.5;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // Secondary attribution ("by Sara"), below the description. Quieter than
   // __timestamp, which sits in the title row.
   @include e(meta) {
     font-size: nu-font-size(xs);
-    color: var(--text-subtle);
+    color: var(--nu-text-subtle);
   }
 }
 
@@ -119,7 +119,7 @@
 
 @each $variant in $nu-variants {
   .nu-timeline__item.m-#{$variant} {
-    --nu-timeline__item--MarkerColor: var(--#{$variant});
+    --nu-timeline__item--MarkerColor: var(--nu-#{nu-role($variant)});
   }
 }
 
@@ -171,14 +171,14 @@
   --nu-timeline__item--MarkerSize: 0.875rem;
 
   .nu-timeline__marker {
-    box-shadow: 0 0 0 3px #{nu-tint(primary, 25%)};
+    box-shadow: nu-focus-ring();
   }
 
   .nu-timeline__title {
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 }
 
 .nu-timeline__item.is-complete {
-  --nu-timeline__item--MarkerColor: var(--success);
+  --nu-timeline__item--MarkerColor: var(--nu-success);
 }

@@ -12,20 +12,20 @@
   // Pinned cells need a solid fill.
   td.is-fixed-left,
   td.is-fixed-right {
-    background-color: var(--bg-surface);
+    background-color: var(--nu-bg-surface);
   }
 
   th.is-fixed-left,
   th.is-fixed-right {
-    background-color: var(--bg-alternate);
+    background-color: var(--nu-bg-surface);
   }
 
   .is-fixed-left {
-    box-shadow: inset -1px 0 0 var(--border-base);
+    box-shadow: inset -1px 0 0 var(--nu-border-regular);
   }
 
   .is-fixed-right {
-    box-shadow: inset 1px 0 0 var(--border-base);
+    box-shadow: inset 1px 0 0 var(--nu-border-regular);
   }
 }
 
@@ -87,7 +87,7 @@
     block-size: 1rem;
     margin: 0;
     cursor: pointer;
-    background-color: var(--text-muted);
+    background-color: var(--nu-text-muted);
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
       center / 1rem no-repeat;
     transform: scaleX(var(--data-table--Dir)) rotate(90deg);
@@ -112,12 +112,13 @@
 }
 
 .data-table--tree tbody tr.is-child td {
-  background-color: var(--bg-base);
+  background-color: var(--nu-bg-base);
 }
 
 // Checkbox column.
 .data-table td:has(.data-table__select),
 .data-table th:has(.data-table__select) {
+  padding-block: nu-space(1);
   padding-inline: 0;
 }
 
@@ -136,8 +137,8 @@
   inset-block-end: 0;
   z-index: 7;
   pointer-events: none;
-  background-color: color-mix(in srgb, var(--primary) 6%, transparent);
-  border: 1px solid var(--primary);
+  background-color: color-mix(in srgb, var(--nu-brand) 6%, transparent);
+  border: 1px solid var(--nu-brand);
   border-radius: nu-radius(sm);
   box-shadow: nu-shadow(md);
 
@@ -148,11 +149,11 @@
     padding-inline: nu-space(4);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     text-align: start;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    background-color: var(--bg-alternate);
+    background-color: var(--nu-bg-alternate);
   }
 }
 
@@ -163,11 +164,11 @@
   pointer-events: none;
 
   &.et-reorder-direction-left {
-    border-left: 3px solid var(--primary);
+    border-left: 3px solid var(--nu-brand);
   }
 
   &.et-reorder-direction-right {
-    border-right: 3px solid var(--primary);
+    border-right: 3px solid var(--nu-brand);
   }
 }
 
@@ -182,12 +183,12 @@
 // Resize handle.
 .data-table .et-header-resize-area {
   width: 2px;
-  background-color: var(--border-base);
+  background-color: var(--nu-border-regular);
   transition: background-color nu-duration(fast) $nu-ease;
 
   &:hover,
   &:active {
-    background-color: var(--primary);
+    background-color: var(--nu-brand);
   }
 
   @include reduced-motion {
@@ -242,7 +243,10 @@
   min-inline-size: 0;
 }
 
-.data-table td:has(.data-table__editor) {
+// Editors and row action buttons are taller than a text line; trim the cell so the row stays at the text height.
+.data-table td:has(.data-table__editor),
+.data-table td:has(.nu-btn),
+.data-table td:has(.nu-badge) {
   padding-block: nu-space(1);
 }
 
@@ -288,10 +292,10 @@
 .data-table__sort {
   display: inline-flex;
   margin-inline-start: nu-space(1);
-  color: var(--text-subtle);
+  color: var(--nu-text-subtle);
   vertical-align: middle;
 
   &.is-active {
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 }

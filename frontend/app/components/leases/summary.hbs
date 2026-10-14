@@ -20,7 +20,7 @@
           <LinkTo
             @route="contacts.detail"
             @model={{this.tenantId}}
-            class="text-primary"
+            class="text-brand"
             data-test-lease-tenant-link
           >{{this.tenantName}}</LinkTo>
         {{else}}
@@ -53,7 +53,7 @@
           <LinkTo
             @route="properties.unit"
             @models={{array @unit.areaId @unit.id}}
-            class="text-primary"
+            class="text-brand"
             data-test-lease-unit-link
           >{{@unit.label}}</LinkTo>
         {{else}}

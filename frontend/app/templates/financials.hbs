@@ -72,7 +72,7 @@
                   {{#if (eq row.kind "cheque")}}
                     <LinkTo
                       @route="cheques"
-                      class="text-primary"
+                      class="text-brand"
                       data-test-queue-cheque-link={{row.id}}
                     >Open in Cheques</LinkTo>
                   {{else}}
@@ -80,7 +80,7 @@
                       <LinkTo
                         @route="properties.unit"
                         @models={{array row.areaId row.unitId}}
-                        class="text-primary"
+                        class="text-brand"
                         data-test-reminder-unit-link={{row.unitId}}
                       >Unit {{row.unitNumber}}</LinkTo>
                     {{/if}}
@@ -88,7 +88,7 @@
                       <LinkTo
                         @route="contacts.detail"
                         @model={{row.tenantContactId}}
-                        class="text-primary"
+                        class="text-brand"
                         data-test-reminder-tenant-link={{row.tenantContactId}}
                       >{{or row.tenantName "Tenant"}}</LinkTo>
                     {{/if}}
@@ -104,7 +104,7 @@
           {{#if this.queue.hiddenCount}}
             <LinkTo
               @route="cheques"
-              class="text-primary text-sm"
+              class="text-brand text-sm"
               data-test-queue-view-all
             >View all in Cheques ({{format-number this.queue.hiddenCount}}
               more)</LinkTo>

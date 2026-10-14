@@ -15,14 +15,14 @@
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
     text-align: start;
-    color: var(--text-muted);
-    border-block-end: 1px solid var(--border-base);
+    color: var(--nu-text-muted);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   td {
     padding: 0.375rem nu-space(3);
-    color: var(--text-color);
-    border-block-end: 1px solid var(--border-base);
+    color: var(--nu-text-regular);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   .is-num {
@@ -38,21 +38,21 @@
 }
 
 .cheque-schedule__group.is-overdue td {
-  color: var(--danger);
+  color: var(--nu-danger);
   border-block-end-color: nu-tint(danger, 40%);
 }
 
 .cheque-schedule__count {
   margin-inline-start: nu-space(2);
   font-weight: nu-font-weight(medium);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .cheque-schedule__muted {
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .is-overdue .cheque-schedule__when {
   font-weight: nu-font-weight(semibold);
-  color: var(--danger);
+  color: var(--nu-danger);
 }

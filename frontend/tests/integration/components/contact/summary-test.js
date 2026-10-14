@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
+import { addCalendarDays, todayInZone } from 'land/utils/local-date';
 import { formatMoney } from 'land/utils/money';
 import { localeForRegion } from 'land/utils/locale';
 
@@ -21,11 +22,10 @@ const CONTACT = {
   createdByName: 'Test User',
 };
 
-function dayOffset(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const ZONE = 'Asia/Dubai';
+
+function dayOffset(days, zone = ZONE) {
+  return addCalendarDays(todayInZone(zone), days);
 }
 
 module('Integration | Component | contact/summary', function (hooks) {
@@ -35,6 +35,7 @@ module('Integration | Component | contact/summary', function (hooks) {
     this.owner.lookup('service:region').activeRegion = {
       code: 'dxb',
       currency: 'AED',
+      timezone: ZONE,
     };
     this.contact = CONTACT;
     this.totals = {};

@@ -1,6 +1,6 @@
 {
   "name": "@nuvoui/ember",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "NuvoUI Glimmer component kit and SCSS layer for Ember.",
   "keywords": [
     "ember-addon"

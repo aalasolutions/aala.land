@@ -5,9 +5,9 @@
 
 @include b(topbar) {
   @include nu-root("topbar", (
-    "Height": 4rem,
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
+    "Height": 3.5rem,
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
     "PaddingInline": nu-space(8),
     "Gap": nu-space(4),
   ));
@@ -32,9 +32,9 @@
 
   @include e(toggle) {
     @include nu-root-el("topbar", "toggle", (
-      "Color": var(--text-muted),
-      "hover--Color": var(--text-color),
-      "hover--BackgroundColor": var(--bg-alternate),
+      "Color": var(--nu-text-muted),
+      "hover--Color": var(--nu-text-regular),
+      "hover--BackgroundColor": var(--nu-bg-alternate),
     ));
 
     // Hidden on desktop, where the sidebar rail is always on screen. Shown at
@@ -50,6 +50,8 @@
     justify-content: center;
     inline-size: 2.25rem;
     block-size: 2.25rem;
+    flex-shrink: 0;
+    padding: 0;
     border: none;
     border-radius: nu-radius(md);
     color: nu-var-el("topbar", "toggle", "Color");
@@ -69,7 +71,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -79,7 +81,7 @@
     gap: nu-space(2);
     font-size: nu-font-size(md);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(search) {
@@ -92,11 +94,11 @@
     inline-size: 100%;
     padding-block: nu-space(2);
     padding-inline: nu-space(4);
-    background-color: var(--bg-base);
-    border: 1px solid var(--border-base);
+    background-color: var(--nu-bg-base);
+    border: 1px solid var(--nu-border-regular);
     border-radius: nu-radius(lg);
     font-size: nu-font-size(sm);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     transition: border-color nu-duration(fast) $nu-ease;
 
     @include reduced-motion {
@@ -104,13 +106,13 @@
     }
 
     &::placeholder {
-      color: var(--text-muted);
+      color: var(--nu-text-muted);
     }
 
     &:focus-visible {
       outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      border-color: var(--nu-brand);
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -123,10 +125,10 @@
 
   @include e(icon-btn) {
     @include nu-root-el("topbar", "icon-btn", (
-      "Color": var(--text-muted),
+      "Color": var(--nu-text-muted),
       "BackgroundColor": transparent,
-      "hover--Color": var(--text-color),
-      "hover--BackgroundColor": var(--bg-alternate),
+      "hover--Color": var(--nu-text-regular),
+      "hover--BackgroundColor": var(--nu-bg-alternate),
     ));
 
     position: relative;
@@ -154,7 +156,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -166,8 +168,8 @@
     block-size: 1.125rem;
     padding-inline: nu-space(1);
     border-radius: nu-radius(full);
-    background-color: var(--danger);
-    color: var(--text-inverted);
+    background-color: var(--nu-danger);
+    color: var(--nu-text-inverted);
     // deliberately a step above 2xs, pending an xs- scale alias
     font-size: 0.6875rem;
     font-weight: nu-font-weight(bold);
@@ -178,12 +180,12 @@
   @include e(divider) {
     inline-size: 1px;
     block-size: 1.5rem;
-    background-color: var(--border-base);
+    background-color: var(--nu-border-regular);
   }
 
   @include e(user) {
     @include nu-root-el("topbar", "user", (
-      "hover--BackgroundColor": var(--bg-alternate),
+      "hover--BackgroundColor": var(--nu-bg-alternate),
     ));
 
     display: flex;
@@ -207,7 +209,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -218,8 +220,8 @@
     inline-size: 2.25rem;
     block-size: 2.25rem;
     border-radius: nu-radius(full);
-    background-color: var(--primary);
-    color: var(--text-inverted);
+    background-color: var(--nu-brand);
+    color: var(--nu-text-inverted);
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
     flex-shrink: 0;
@@ -234,7 +236,7 @@
   @include e(user-name) {
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -243,7 +245,7 @@
   @include e(user-role) {
     // deliberately a step above 2xs, pending an xs- scale alias
     font-size: 0.6875rem;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // ---- modifiers ----
@@ -258,8 +260,8 @@
 // Dropdown surface anchored under topbar triggers (notifications, region, search, user menu)
 @include b(topbar-menu) {
   @include nu-root("topbar-menu", (
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
     "BorderRadius": nu-radius(xl),
     "BoxShadow": nu-shadow(lg),
   ));
@@ -288,13 +290,13 @@
     align-items: center;
     justify-content: space-between;
     padding: nu-space(4);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   @include e(divider) {
     block-size: 1px;
     margin-block: nu-space(1);
-    background-color: var(--border-base);
+    background-color: var(--nu-border-regular);
   }
 
   @include e(item) {
@@ -306,7 +308,7 @@
     padding-inline: nu-space(4);
     border: none;
     background-color: transparent;
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     font-size: nu-font-size(sm);
     text-align: start;
     text-decoration: none;
@@ -318,16 +320,16 @@
     }
 
     &:hover {
-      background-color: var(--bg-alternate);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: inset 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: inset 0 0 0 2px var(--nu-brand);
     }
 
     &.is-active {
-      color: var(--primary);
+      color: var(--nu-brand);
       font-weight: nu-font-weight(semibold);
     }
   }
@@ -335,7 +337,7 @@
   @include e(empty) {
     padding: nu-space(8);
     text-align: center;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     font-size: nu-font-size(sm);
   }
 }

@@ -131,15 +131,15 @@
     "MaxHeight": 20rem,
     "PaddingBlock": nu-space(2),
     "PaddingInline": nu-space(2),
-    "Gap": nu-space(1),
-    "BackgroundColor": var(--bg-surface),
+    "Gap": 0,
+    "BackgroundColor": var(--nu-bg-surface),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-regular),
     "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(lg),
     "ZIndex": nu-z(dropdown),
     "TransitionDuration": nu-duration(fast),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "focus--BoxShadow": nu-focus-ring(),
   ));
 
   // Inline fallback position; the anchor modifier overrides it with fixed
@@ -182,12 +182,12 @@
       "PaddingBlock": nu-space(2),
       "PaddingInline": nu-space(3),
       "FontSize": nu-font-size(sm),
-      "Color": var(--text-color),
+      "Color": var(--nu-text-regular),
       "BackgroundColor": transparent,
       "BorderRadius": nu-radius(md),
-      "hover--BackgroundColor": var(--bg-alternate),
-      "active--BackgroundColor": var(--primary-50),
-      "active--Color": var(--primary-700),
+      "hover--BackgroundColor": var(--nu-bg-alternate),
+      "active--BackgroundColor": var(--nu-brand-50),
+      "active--Color": var(--nu-brand-700),
     ));
 
     display: flex;
@@ -228,7 +228,7 @@
     flex-shrink: 0;
     font-size: 1em;
     line-height: 1;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(item-label) {
@@ -245,7 +245,7 @@
     padding-inline: nu-space(3);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-subtle);
+    color: var(--nu-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 
@@ -268,21 +268,21 @@
     block-size: 1px;
     margin-block: nu-space(1);
     margin-inline: nu-space(1);
-    background-color: var(--border-base);
+    background-color: var(--nu-border-regular);
   }
 
   @include e(search) {
     padding-block: nu-space(1);
     padding-inline: nu-space(1);
     margin-block-end: nu-space(1);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   @include e(empty) {
     padding-block: nu-space(4);
     padding-inline: nu-space(3);
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     text-align: center;
   }
 
@@ -294,7 +294,7 @@
   }
 
   .nu-menu__item.is-highlighted {
-    --nu-menu__item--BackgroundColor: var(--bg-alternate);
+    --nu-menu__item--BackgroundColor: var(--nu-bg-alternate);
   }
 
   .nu-menu__item.is-disabled {
@@ -304,17 +304,17 @@
   }
 
   .nu-menu__item.m-danger {
-    --nu-menu__item--Color: var(--danger);
-    --nu-menu__item--hover--BackgroundColor: var(--danger-50);
-    --nu-menu__item--active--BackgroundColor: var(--danger-50);
-    --nu-menu__item--active--Color: var(--danger-700);
+    --nu-menu__item--Color: var(--nu-danger);
+    --nu-menu__item--hover--BackgroundColor: var(--nu-danger-50);
+    --nu-menu__item--active--BackgroundColor: var(--nu-danger-50);
+    --nu-menu__item--active--Color: var(--nu-danger-700);
   }
 
   .nu-menu__item.m-create {
-    --nu-menu__item--Color: var(--primary);
-    --nu-menu__item--hover--BackgroundColor: var(--primary-50);
+    --nu-menu__item--Color: var(--nu-brand);
+    --nu-menu__item--hover--BackgroundColor: var(--nu-brand-50);
     font-weight: nu-font-weight(medium);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   // ---- option alignment, on the menu itself (it may be hosted away from its

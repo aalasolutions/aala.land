@@ -45,3 +45,11 @@
 // Logical-direction utilities filling a gap in core. Last, so they win over a
 // component's own alignment when applied directly to it.
 @use "./utilities";
+
+// Box-shadow focus rings vanish in forced colours; fall back to a system outline.
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+}

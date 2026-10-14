@@ -20,7 +20,7 @@
   font-size: nu-font-size(lg);
   font-weight: nu-font-weight(semibold);
   line-height: 1.45;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   text-wrap: balance;
 }
 
@@ -43,7 +43,7 @@
   flex-direction: column;
   gap: nu-space(2);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 
   &::before {
     position: absolute;
@@ -51,7 +51,7 @@
     inset-inline: nu-space(2) (-1 * nu-space(2));
     block-size: 2px;
     content: "";
-    background: var(--border-base);
+    background: var(--nu-border-regular);
   }
 
   // Dot-wide so the previous segment ends on its centre.
@@ -67,7 +67,7 @@
   }
 
   &.is-done::before {
-    background: var(--primary);
+    background: var(--nu-brand);
   }
 }
 
@@ -76,24 +76,24 @@
   z-index: 1;
   inline-size: nu-space(4);
   block-size: nu-space(4);
-  background: var(--bg-surface);
-  border: 2px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border: 2px solid var(--nu-border-regular);
   border-radius: nu-radius(full);
 
   .is-done > & {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: var(--nu-brand);
+    border-color: var(--nu-brand);
   }
 
   .is-current > & {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px nu-tint(primary, 18%);
+    border-color: var(--nu-brand);
+    box-shadow: nu-focus-ring();
   }
 }
 
 .is-current > .wo-story__label {
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .wo-story__timeline {
@@ -104,15 +104,15 @@
   }
 
   .nu-timeline__item.is-done {
-    --nu-timeline__item--ConnectorColor: var(--primary);
+    --nu-timeline__item--ConnectorColor: var(--nu-brand);
   }
 
   .nu-timeline__item.is-todo {
-    --nu-timeline__item--MarkerColor: var(--border-base);
+    --nu-timeline__item--MarkerColor: var(--nu-border-regular);
 
     .nu-timeline__title {
       font-weight: nu-font-weight(medium);
-      color: var(--text-muted);
+      color: var(--nu-text-muted);
     }
   }
 }
@@ -121,31 +121,31 @@
   max-inline-size: 70ch;
   margin: 0;
   line-height: 1.6;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   white-space: pre-line;
 }
 
 .wo-story__meta {
   margin: nu-space(3) 0 0;
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .wo-story__notes {
   margin-block-start: nu-space(5);
   padding-block-start: nu-space(4);
-  border-block-start: 1px solid var(--border-base);
+  border-block-start: 1px solid var(--nu-border-regular);
 }
 
 .wo-story__notes-label {
   margin: 0 0 nu-space(1);
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(medium);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .wo-story__notes-text {
   margin: 0;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   white-space: pre-line;
 }

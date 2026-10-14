@@ -6,16 +6,6 @@
 // library. A consuming app that themes core itself should not @use this.
 @use "./common/var" as *;
 
-// Core's [data-tooltip] and the kit's .nu-tooltip cover different needs and both
-// ship deliberately. This keeps them visually identical.
-:root {
-  --tooltip-bg: var(--text-color);
-  --tooltip-text-color: var(--text-inverted);
-  --tooltip-font-size: #{nu-font-size(xs)};
-  --tooltip-border-radius: #{nu-radius(md)};
-  --tooltip-transition-duration: #{nu-duration(fast)};
-}
-
 // Core's base layer hardcodes 700 on headings, and browsers default b/strong/th
 // to bold. All follow the kit's weight scale instead.
 h1,
@@ -28,4 +18,18 @@ b,
 strong,
 th {
   font-weight: nu-font-weight(bold);
+}
+
+// Core's base layer sizes raw controls; kit components size themselves.
+:where(
+  button,
+  input[type="submit"],
+  input[type="button"],
+  input[type="reset"]
+) {
+  min-height: auto;
+}
+
+:where(input, select) {
+  height: auto;
 }

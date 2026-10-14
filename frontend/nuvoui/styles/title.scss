@@ -8,7 +8,7 @@
     "FontSize": nu-font-size(2xl),
     "FontWeight": nu-font-weight(bold),
     "LineHeight": 1.25,
-    "Color": var(--text-color),
+    "Color": var(--nu-text-regular),
   ));
 
   display: block;
@@ -49,7 +49,7 @@
     "FontSize": nu-font-size(md),
     "FontWeight": nu-font-weight(normal),
     "LineHeight": 1.5,
-    "Color": var(--text-color),
+    "Color": var(--nu-text-regular),
   ));
 
   display: block;
@@ -79,16 +79,16 @@
 
   @each $variant in $nu-variants {
     @include m(#{$variant}) {
-      --nu-text--Color: var(--#{$variant});
+      --nu-text--Color: var(--nu-#{nu-role($variant)});
     }
   }
 
   @include m(muted) {
-    --nu-text--Color: var(--text-muted);
+    --nu-text--Color: var(--nu-text-muted);
   }
 
   @include m(subtle) {
-    --nu-text--Color: var(--text-subtle);
+    --nu-text--Color: var(--nu-text-subtle);
   }
 
   @include m(truncate) {

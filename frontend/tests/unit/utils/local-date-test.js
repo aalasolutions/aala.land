@@ -162,15 +162,46 @@ module('Unit | Utility | local-date', function () {
     ]);
   });
 
-  test('daysUntil rounds partial days up', function (assert) {
-    const now = Date.UTC(2026, 8, 16, 12);
-    assert.strictEqual(daysUntil('2026-09-16T12:00:00Z', now), 0);
-    assert.strictEqual(daysUntil('2026-09-16T12:00:01Z', now), 1);
-    assert.strictEqual(daysUntil('2026-09-18T12:00:00Z', now), 2);
-    assert.strictEqual(daysUntil('2026-09-18T13:00:00Z', now), 3);
-    assert.strictEqual(daysUntil('2026-09-15T00:00:00Z', now), -1);
-    assert.strictEqual(daysUntil(null, now), null);
-    assert.strictEqual(daysUntil('bad', now), null);
+  test('daysUntil counts whole calendar days between two dates', function (assert) {
+    assert.strictEqual(daysUntil('2026-09-16', '2026-09-16'), 0);
+    assert.strictEqual(daysUntil('2026-09-18', '2026-09-16'), 2);
+    assert.strictEqual(daysUntil('2026-09-15', '2026-09-16'), -1);
+    assert.strictEqual(daysUntil('2026-11-01', '2026-10-31'), 1);
+    assert.strictEqual(daysUntil('2027-01-01', '2026-12-31'), 1);
+    assert.strictEqual(daysUntil('2026-09-18', '2026-09-16T23:00:00Z'), null);
+    assert.strictEqual(daysUntil('2026-09-18T01:00:00Z', '2026-09-16'), null);
+    assert.strictEqual(daysUntil(null, '2026-09-16'), null);
+    assert.strictEqual(daysUntil('bad', '2026-09-16'), null);
+    assert.strictEqual(daysUntil('2026-09-16', null), null);
+    assert.strictEqual(daysUntil('2026-02-31', '2026-02-01'), null);
+  });
+
+  test('daysUntil uses the region day late at night in UTC+4', function (assert) {
+    const at = new Date('2026-09-16T21:30:00Z');
+    const today = todayInZone('Asia/Dubai', at);
+    assert.strictEqual(daysUntil('2026-09-17', today), 0);
+    assert.strictEqual(daysUntil('2026-09-18', today), 1);
+    assert.strictEqual(daysUntil('2026-09-16', today), -1);
+  });
+
+  test('daysUntil uses the region day in a negative-offset zone', function (assert) {
+    const at = new Date('2026-09-17T02:00:00Z');
+    const today = todayInZone('America/Los_Angeles', at);
+    assert.strictEqual(today, '2026-09-16');
+    assert.strictEqual(daysUntil('2026-09-17', today), 1);
+    assert.strictEqual(daysUntil('2026-09-16', today), 0);
+  });
+
+  test('daysUntil follows a region switch at the same instant', function (assert) {
+    const at = new Date('2026-09-16T21:30:00Z');
+    assert.strictEqual(
+      daysUntil('2026-09-20', todayInZone('Asia/Dubai', at)),
+      3,
+    );
+    assert.strictEqual(
+      daysUntil('2026-09-20', todayInZone('America/Los_Angeles', at)),
+      4,
+    );
   });
 
   test('timeAgo returns short relative strings', function (assert) {

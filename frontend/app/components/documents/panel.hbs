@@ -89,7 +89,7 @@
               <LinkTo
                 @route="properties.unit"
                 @models={{array cell.row.unit.areaId cell.row.unit.id}}
-                class="text-primary"
+                class="text-brand"
                 data-test-document-property-link
               >{{cell.row.unit.assetName}}
                 -
@@ -112,7 +112,7 @@
                 <LinkTo
                   @route={{cell.row.relatedRoute.name}}
                   @models={{cell.row.relatedRoute.models}}
-                  class="text-sm text-primary"
+                  class="text-sm text-brand"
                   data-test-document-related-link
                 >{{cell.row.relatedLabel}}</LinkTo>
               {{else}}
@@ -190,7 +190,7 @@
       />
     {{else}}
       <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
-        <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
+        <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--nu-text-muted)" />
         <p class="text-muted">{{if
             @filtered
             "No documents match these filters."

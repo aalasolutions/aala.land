@@ -1,22 +1,24 @@
 @forward "@nuvoui/core/src/styles/index" with (
-  $primary: #1ab5a5,
-  $secondary: #0284c7,
+  $brand: #1ab5a5,
   $success: #059669,
   $danger: #dc2626,
   $warning: #d97706,
   $info: #0284c7,
 
   $enable-dark-mode: false,
+  $feature-flags: (
+    "tooltips": false,
+  ),
 
   $light-theme: (
     "bg-base": #f8fafc,
     "bg-surface": #ffffff,
     "bg-alternate": #f1f5f9,
-    "text-color": #0f172a,
+    "text-regular": #0f172a,
     "text-muted": #64748b,
     "text-subtle": #94a3b8,
     "text-inverted": #ffffff,
-    "border-base": #e2e8f0,
+    "border-regular": #e2e8f0,
   ),
 
   $font-family: (

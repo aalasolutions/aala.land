@@ -7,10 +7,10 @@
   @include nu-root("list", (
     "Gap": nu-space(2),
     "PaddingInlineStart": nu-space(6),
-    "MarkerColor": var(--text-muted),
+    "MarkerColor": var(--nu-text-muted),
     "FontSize": nu-font-size(md),
-    "Color": var(--text-color),
-    "DividerColor": var(--border-base),
+    "Color": var(--nu-text-regular),
+    "DividerColor": var(--nu-border-regular),
   ));
 
   display: flex;
@@ -40,7 +40,7 @@
     margin-block-start: 0.125rem;
     font-size: 1em;
     line-height: 1;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // ---- modifiers ----
@@ -96,9 +96,9 @@
     "PaddingBlock": nu-space(3),
     "PaddingInline": nu-space(4),
     "BorderRadius": nu-radius(lg),
-    "BorderColor": var(--border-base),
-    "BackgroundColor": var(--bg-surface),
-    "hover--BorderColor": var(--primary-300),
+    "BorderColor": var(--nu-border-regular),
+    "BackgroundColor": var(--nu-bg-surface),
+    "hover--BorderColor": var(--nu-brand-300),
     "hover--BoxShadow": nu-shadow(md),
   ));
 
@@ -165,11 +165,11 @@
     "Gap": nu-space(3),
     "PaddingBlock": nu-space(2),
     "FontSize": nu-font-size(sm),
-    "LabelColor": var(--text-muted),
+    "LabelColor": var(--nu-text-muted),
     "LabelFontWeight": nu-font-weight(medium),
     "LabelMinInlineSize": 7.5rem,
-    "ValueColor": var(--text-color),
-    "BorderColor": var(--border-base),
+    "ValueColor": var(--nu-text-regular),
+    "BorderColor": var(--nu-border-regular),
   ));
 
   display: flex;
@@ -223,9 +223,9 @@
 @include b(desc-list) {
   @include nu-root("desc-list", (
     "Gap": nu-space(3),
-    "TermColor": var(--text-muted),
+    "TermColor": var(--nu-text-muted),
     "TermFontWeight": nu-font-weight(medium),
-    "DescriptionColor": var(--text-color),
+    "DescriptionColor": var(--nu-text-regular),
     "FontSize": nu-font-size(sm),
   ));
 

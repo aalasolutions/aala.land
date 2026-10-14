@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
 import { contactName } from 'land/utils/contact-display';
-import { daysUntil } from 'land/utils/local-date';
+import { daysUntil, todayInZone } from 'land/utils/local-date';
 import { formatMoney } from 'land/utils/money';
 import { localeForRegion } from 'land/utils/locale';
 import { plural } from 'land/utils/plural';
@@ -56,7 +56,10 @@ export default class ContactSummaryComponent extends Component {
     const rent = lease.monthlyRent
       ? `, ${this.money(lease.monthlyRent, lease.currency)} a month`
       : '';
-    const left = daysUntil(lease.endDate);
+    const left = daysUntil(
+      lease.endDate,
+      todayInZone(this.region.activeRegion?.timezone),
+    );
     let ends = '';
     if (left === 0) {
       ends = ', ends today';

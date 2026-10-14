@@ -9,6 +9,7 @@ import {
   daysUntil,
   formatInstant,
   formatLongInstant,
+  todayInZone,
 } from '../utils/local-date';
 import { creditDisplayAmount } from '../utils/billing-credit';
 import { regionNameFor } from '../utils/region-name';
@@ -247,14 +248,20 @@ export default class CompanyController extends Controller {
     if (this.creditsLimit === null) return null;
     const used = this.creditsUsed ?? 0;
     let suffix = '';
-    const daysToReset = daysUntil(this.creditsResetsAt);
+    const zone = this.region.activeRegion?.timezone;
+    const daysToReset = daysUntil(
+      todayInZone(zone, this.creditsResetsAt),
+      todayInZone(zone),
+    );
     // The page can outlive the period it loaded, so never render a negative countdown.
     if (daysToReset !== null) {
       const daysLeft = Math.max(0, daysToReset);
-      const date = formatInstant(this.creditsResetsAt, 'en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
+      const date = formatInstant(
+        this.creditsResetsAt,
+        'en-US',
+        { month: 'short', day: 'numeric' },
+        zone,
+      );
       suffix = ` - resets in ${daysLeft}d (${date})`;
     }
     return `You've used ${used}/${this.creditsLimit} AI credits this period${suffix}`;

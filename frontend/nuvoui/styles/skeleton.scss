@@ -19,8 +19,8 @@
     "BlockSize": 1rem,
     "InlineSize": 100%,
     "BorderRadius": nu-radius(md),
-    "BaseColor": var(--bg-alternate),
-    "HighlightColor": var(--bg-surface),
+    "BaseColor": var(--nu-bg-alternate),
+    "HighlightColor": var(--nu-bg-surface),
     // 1.6s, not the shared `slow` (400ms). A shimmer that fast reads as a
     // strobe. Industry practice is 1.5-2s: long enough to feel like ambient
     // progress rather than a flicker.

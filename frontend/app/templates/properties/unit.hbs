@@ -25,7 +25,7 @@
       >{{@model.unit.asset.name}}</LinkTo>
       <span>/</span>
     {{/if}}
-    <span class="font-bold text-primary">Property
+    <span class="font-bold text-brand">Property
       {{@model.unit.unitNumber}}</span>
   </div>
 
@@ -303,7 +303,7 @@
                   data-test-owner-link
                   @route="contacts.detail"
                   @model={{@model.unit.owner.id}}
-                  class="text-primary owner-link"
+                  class="text-brand owner-link"
                 >
                   {{contact-name @model.unit.owner}}
                 </LinkTo>

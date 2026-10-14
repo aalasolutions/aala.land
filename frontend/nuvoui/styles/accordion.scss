@@ -5,7 +5,7 @@
 
 @include b(accordion) {
   @include nu-root("accordion", (
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-regular),
     "BorderRadius": nu-radius(lg),
   ));
 
@@ -28,7 +28,7 @@
     box-shadow: nu-shadow(sm);
     &:hover {
       box-shadow: nu-shadow(md);
-      border-color: var(--border-base);
+      border-color: var(--nu-border-regular);
     }
 
     @include reduced-motion {
@@ -40,7 +40,7 @@
 
   @include e(item) {
     @include nu-root-el("accordion", "item", (
-      "BorderColor": var(--border-base),
+      "BorderColor": var(--nu-border-regular),
     ));
 
     border-block-end: 1px solid nu-var-el("accordion", "item", "BorderColor");
@@ -58,11 +58,11 @@
       "Gap": nu-space(3),
       "FontSize": nu-font-size(sm),
       "FontWeight": nu-font-weight(semibold),
-      "Color": var(--text-color),
+      "Color": var(--nu-text-regular),
       "BackgroundColor": transparent,
       "TransitionDuration": nu-duration(fast),
-      "hover--BackgroundColor": var(--bg-alternate),
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "hover--BackgroundColor": var(--nu-bg-alternate),
+      "focus--BoxShadow": nu-focus-ring(),
       "disabled--Opacity": 0.55,
     ));
 
@@ -109,7 +109,7 @@
   @include e(icon) {
     @include nu-root-el("accordion", "icon", (
       "TransitionDuration": nu-duration(fast),
-      "Color": var(--text-muted),
+      "Color": var(--nu-text-muted),
     ));
 
     display: inline-flex;
@@ -164,7 +164,7 @@
     padding-block: nu-space(4);
     padding-inline: nu-space(4);
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // ---- item states ----
@@ -206,7 +206,7 @@
 
   @include m(bordered) {
     .nu-accordion__item {
-      --nu-accordion__item--BorderColor: var(--border-base);
+      --nu-accordion__item--BorderColor: var(--nu-border-regular);
       border: 1px solid nu-var-el("accordion", "item", "BorderColor");
       border-radius: nu-radius(md);
       margin-block-end: nu-space(2);

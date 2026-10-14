@@ -7,8 +7,8 @@
 @use "../common/var" as *;
 
 // Declare a component's full token surface.
-//   @include nu-root("btn", ("BackgroundColor": var(--primary), ...));
-// emits --nu-btn--BackgroundColor: var(--primary);
+//   @include nu-root("btn", ("BackgroundColor": var(--nu-brand), ...));
+// emits --nu-btn--BackgroundColor: var(--nu-brand);
 @mixin nu-root($block, $tokens) {
   @each $name, $value in $tokens {
     --#{$nu-prefix}-#{$block}--#{$name}: #{$value};

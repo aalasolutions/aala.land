@@ -13,11 +13,11 @@
 
 .funnel-stage {
   padding: nu-space(4);
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
   border-radius: nu-radius(lg);
 }
 
 .red-flag-row {
-  background: var(--bg-alternate);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-alternate);
+  border: 1px solid var(--nu-border-regular);
 }

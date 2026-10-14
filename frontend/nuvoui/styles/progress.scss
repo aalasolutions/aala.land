@@ -7,9 +7,9 @@
   @include nu-root("progress", (
     "Height": 0.5rem,
     "BorderRadius": nu-radius(full),
-    "TrackColor": var(--bg-alternate),
-    "BarColor": var(--primary),
-    "LabelColor": var(--text-muted),
+    "TrackColor": var(--nu-bg-alternate),
+    "BarColor": var(--nu-brand),
+    "LabelColor": var(--nu-text-muted),
     "LabelFontSize": nu-font-size(xs),
   ));
 
@@ -56,7 +56,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-progress--BarColor: var(--#{$variant});
+      --nu-progress--BarColor: var(--nu-#{nu-role($variant)});
     }
   }
 
@@ -142,9 +142,9 @@
 @include b(progress-circle) {
   @include nu-root("progress-circle", (
     "Size": 7.5rem,
-    "TrackColor": var(--bg-alternate),
-    "BarColor": var(--primary),
-    "LabelColor": var(--text-color),
+    "TrackColor": var(--nu-bg-alternate),
+    "BarColor": var(--nu-brand),
+    "LabelColor": var(--nu-text-regular),
     "LabelFontSize": nu-font-size(xl),
     "TransitionDuration": nu-duration(slow),
   ));
@@ -188,7 +188,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-progress-circle--BarColor: var(--#{$variant});
+      --nu-progress-circle--BarColor: var(--nu-#{nu-role($variant)});
     }
   }
 
@@ -207,8 +207,8 @@
   @include nu-root("spinner", (
     "Size": 1.5rem,
     "BorderWidth": 2px,
-    "TrackColor": var(--bg-alternate),
-    "SpinColor": var(--primary),
+    "TrackColor": var(--nu-bg-alternate),
+    "SpinColor": var(--nu-brand),
     "Duration": nu-duration(slow) * 2,
   ));
 
@@ -228,7 +228,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-spinner--SpinColor: var(--#{$variant});
+      --nu-spinner--SpinColor: var(--nu-#{nu-role($variant)});
     }
   }
 

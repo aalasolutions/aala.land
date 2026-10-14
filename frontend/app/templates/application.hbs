@@ -571,6 +571,8 @@
       <button
         type="button"
         class="nu-sidebar-backdrop"
+        tabindex="-1"
+        aria-hidden="true"
         aria-label="Close menu"
         data-test-sidebar-backdrop
         {{on "click" this.closeMobileSidebar}}
@@ -642,6 +644,8 @@
           <button
             type="button"
             class="search-overlay"
+            tabindex="-1"
+            aria-hidden="true"
             aria-label="Close search"
             data-test-search-overlay
             {{on "click" this.closeSearch}}
@@ -667,6 +671,8 @@
                 <button
                   type="button"
                   class="region-overlay"
+                  tabindex="-1"
+                  aria-hidden="true"
                   aria-label="Close region menu"
                   data-test-region-overlay
                   {{on "click" this.closeRegionDropdown}}
@@ -742,6 +748,8 @@
                 data-test-notifications-overlay
                 type="button"
                 class="notification-overlay"
+                tabindex="-1"
+                aria-hidden="true"
                 aria-label="Close notifications"
                 {{on "click" this.closeNotifications}}
               ></button>
@@ -794,7 +802,7 @@
                       <Ui::Ph
                         @icon="bell-slash"
                         @size="24px"
-                        @color="var(--text-muted)"
+                        @color="var(--nu-text-muted)"
                       />
                       <p class="text-xs text-muted mt-2">No notifications</p>
                     </div>

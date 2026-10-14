@@ -35,11 +35,11 @@ module('Unit | Utility | chart-style', function (hooks) {
   test('token never hands Chart.js an empty colour', function (assert) {
     assert.strictEqual(token('--not-a-defined-token'), '#000000');
     for (const name of [
-      '--primary',
-      '--success',
-      '--danger',
-      '--text-muted',
-      '--border-base',
+      '--nu-brand',
+      '--nu-success',
+      '--nu-danger',
+      '--nu-text-muted',
+      '--nu-border-regular',
     ]) {
       assert.true(
         token(name).length > 0,

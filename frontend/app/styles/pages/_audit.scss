@@ -9,8 +9,8 @@
 }
 
 .audit-item {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-base);
+  background: var(--nu-bg-surface);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(lg);
   overflow: hidden;
 }
@@ -24,31 +24,31 @@
   transition: background nu-duration(fast);
 
   &:hover {
-    background: var(--bg-alternate);
+    background: var(--nu-bg-alternate);
   }
 }
 
 .audit-entity {
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .audit-entity-id {
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
 }
 
 .audit-user {
   margin-inline-start: auto;
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .audit-date {
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .audit-summary .chevron {
@@ -63,8 +63,8 @@
 .audit-details {
   padding-block: nu-space(4);
   padding-inline: nu-space(5);
-  border-block-start: 1px solid var(--border-base);
-  background: var(--bg-alternate);
+  border-block-start: 1px solid var(--nu-border-regular);
+  background: var(--nu-bg-alternate);
 }
 
 .audit-detail-section {

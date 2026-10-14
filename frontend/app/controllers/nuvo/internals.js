@@ -93,7 +93,7 @@ this.notifications.remove(id);`,
     clear: `this.notifications.clear();`,
     iconFlip: `<Nuvo::Icon @icon="arrow-right" />`,
     iconNoFlip: `<Nuvo::Icon @icon="arrow-right" @flip={{false}} />`,
-    iconSize: `<Nuvo::Icon @icon="house" @size="24px" @color="var(--primary)" />`,
+    iconSize: `<Nuvo::Icon @icon="house" @size="24px" @color="var(--nu-brand)" />`,
   };
 
   hostRows = [

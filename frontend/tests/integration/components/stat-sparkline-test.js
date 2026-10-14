@@ -160,13 +160,20 @@ module('Integration | Component | stat-sparkline', function (hooks) {
     await render(hbs`<StatSparkline @points={{this.points}} />`);
     let dataset = Chart.getChart(find('[data-test-chart-canvas-el]')).data
       .datasets[0];
-    assert.strictEqual(dataset.borderColor, token('--primary'));
+    assert.strictEqual(dataset.borderColor, token('--nu-brand'));
 
     await render(
       hbs`<StatSparkline @points={{this.points}} @variant="danger" />`,
     );
     dataset = Chart.getChart(find('[data-test-chart-canvas-el]')).data
       .datasets[0];
-    assert.strictEqual(dataset.borderColor, token('--danger'));
+    assert.strictEqual(dataset.borderColor, token('--nu-danger'));
+
+    await render(
+      hbs`<StatSparkline @points={{this.points}} @variant="secondary" />`,
+    );
+    dataset = Chart.getChart(find('[data-test-chart-canvas-el]')).data
+      .datasets[0];
+    assert.strictEqual(dataset.borderColor, token('--nu-info'));
   });
 });

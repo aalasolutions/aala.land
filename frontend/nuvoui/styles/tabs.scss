@@ -11,8 +11,8 @@
     "PaddingBlock": 0,
     "PaddingInline": 0,
     "BorderRadius": nu-radius(none),
-    "BorderWidth": 0,
-    "BorderColor": transparent,
+    "BorderWidth": 1px,
+    "BorderColor": var(--nu-border-regular),
   ));
 
   display: nu-var("tabs", "Display");
@@ -35,17 +35,18 @@
       "Gap": nu-space(2),
       "PaddingBlock": nu-space(2),
       "PaddingInline": nu-space(4),
-      "MinHeight": 2.5rem,
+      "MinHeight": 2.25rem,
       "FontSize": nu-font-size(sm),
       "FontWeight": nu-font-weight(semibold),
-      "Color": var(--text-muted),
+      "Color": var(--nu-text-muted),
       "BackgroundColor": transparent,
       "BorderRadius": nu-radius(none),
       "BorderWidth": 2px,
       "BorderColor": transparent,
       "TransitionDuration": nu-duration(fast),
-      "hover--Color": var(--text-color),
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "hover--Color": var(--nu-text-regular),
+      // Inset: the strip scrolls horizontally, which clips an outer ring.
+      "focus--BoxShadow": inset 0 0 0 2px var(--nu-brand),
     ));
 
     display: nu-var-el("tabs", "trigger", "Display");
@@ -85,8 +86,8 @@
     }
 
     &.is-active {
-      --nu-tabs__trigger--Color: var(--text-color);
-      --nu-tabs__trigger--BorderColor: var(--primary);
+      --nu-tabs__trigger--Color: var(--nu-text-regular);
+      --nu-tabs__trigger--BorderColor: var(--nu-brand);
     }
 
     &:disabled,
@@ -112,8 +113,8 @@
 
   @include e(count) {
     @include nu-root-el("tabs", "count", (
-      "Color": var(--text-muted),
-      "BackgroundColor": var(--bg-alternate),
+      "Color": var(--nu-text-muted),
+      "BackgroundColor": var(--nu-bg-alternate),
     ));
 
     display: inline-flex;
@@ -147,7 +148,7 @@
   // Not emitted by tabs.hbs today; wiring it up needs a positioned ancestor.
   @include e(indicator) {
     @include nu-root-el("tabs", "indicator", (
-      "BackgroundColor": var(--primary),
+      "BackgroundColor": var(--nu-brand),
       "BorderRadius": nu-radius(full),
     ));
 
@@ -166,12 +167,12 @@
   @include m(underline) {
     --nu-tabs--Gap: #{nu-space(1)};
     --nu-tabs--BorderWidth: 1px;
-    --nu-tabs--BorderColor: var(--border-base);
+    --nu-tabs--BorderColor: var(--nu-border-regular);
   }
 
   @include m(pills) {
     --nu-tabs--Gap: #{nu-space(1)};
-    --nu-tabs--BackgroundColor: var(--bg-alternate);
+    --nu-tabs--BackgroundColor: var(--nu-bg-alternate);
     --nu-tabs--PaddingBlock: #{nu-space(1)};
     --nu-tabs--PaddingInline: #{nu-space(1)};
     --nu-tabs--BorderRadius: #{nu-radius(lg)};
@@ -182,15 +183,15 @@
     }
 
     .nu-tabs__trigger.is-active {
-      --nu-tabs__trigger--Color: var(--text-color);
-      --nu-tabs__trigger--BackgroundColor: var(--bg-surface);
+      --nu-tabs__trigger--Color: var(--nu-text-regular);
+      --nu-tabs__trigger--BackgroundColor: var(--nu-bg-surface);
     }
   }
 
   @include m(enclosed) {
     --nu-tabs--Gap: 0;
     --nu-tabs--BorderWidth: 1px;
-    --nu-tabs--BorderColor: var(--border-base);
+    --nu-tabs--BorderColor: var(--nu-border-regular);
 
     .nu-tabs__trigger {
       --nu-tabs__trigger--BorderWidth: 1px;
@@ -203,9 +204,9 @@
     }
 
     .nu-tabs__trigger.is-active {
-      --nu-tabs__trigger--Color: var(--text-color);
-      --nu-tabs__trigger--BackgroundColor: var(--bg-surface);
-      --nu-tabs__trigger--BorderColor: var(--border-base);
+      --nu-tabs__trigger--Color: var(--nu-text-regular);
+      --nu-tabs__trigger--BackgroundColor: var(--nu-bg-surface);
+      --nu-tabs__trigger--BorderColor: var(--nu-border-regular);
     }
   }
 

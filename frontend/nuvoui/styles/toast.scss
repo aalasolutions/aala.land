@@ -79,15 +79,15 @@
     "PaddingInline": nu-space(4),
     "BorderRadius": nu-radius(lg),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
-    "Color": var(--text-color),
-    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--nu-border-regular),
+    "Color": var(--nu-text-regular),
+    "BackgroundColor": var(--nu-bg-surface),
     "BoxShadow": #{nu-shadow(lg)},
-    "IconColor": var(--text-muted),
-    "TitleFontSize": nu-font-size(xs),
-    "ContentColor": var(--text-muted),
+    "IconColor": var(--nu-text-muted),
+    "TitleFontSize": nu-font-size(sm),
+    "ContentColor": var(--nu-text-muted),
     "AnimationDuration": nu-duration(normal),
-    "ProgressColor": var(--primary),
+    "ProgressColor": var(--nu-brand),
   ));
 
   position: relative;
@@ -127,6 +127,7 @@
 
   @include e(title) {
     font-size: nu-var("toast", "TitleFontSize");
+    font-weight: nu-font-weight(semibold);
     line-height: 1.4;
   }
 
@@ -170,12 +171,12 @@
 
     &:hover {
       color: nu-var("toast", "Color");
-      background-color: var(--bg-alternate);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -185,7 +186,7 @@
     inset-inline-start: 0;
     inline-size: 100%;
     block-size: 3px;
-    background-color: nu-tint(primary, 15%);
+    background-color: nu-tint(brand, 15%);
 
     &::after {
       content: "";
@@ -199,12 +200,12 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-toast--Color: var(--#{$variant}-700);
-      --nu-toast--BackgroundColor: var(--#{$variant}-50);
-      --nu-toast--BorderColor: var(--#{$variant}-200);
-      --nu-toast--IconColor: var(--#{$variant});
-      --nu-toast--ContentColor: var(--#{$variant}-700);
-      --nu-toast--ProgressColor: var(--#{$variant});
+      --nu-toast--Color: var(--nu-#{nu-role($variant)}-700);
+      --nu-toast--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+      --nu-toast--BorderColor: var(--nu-#{nu-role($variant)}-200);
+      --nu-toast--IconColor: var(--nu-#{nu-role($variant)});
+      --nu-toast--ContentColor: var(--nu-#{nu-role($variant)}-700);
+      --nu-toast--ProgressColor: var(--nu-#{nu-role($variant)});
     }
   }
 }

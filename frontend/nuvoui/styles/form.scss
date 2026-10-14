@@ -7,19 +7,19 @@
 
 @include b(input) {
   @include nu-root("input", (
-    "PaddingBlock": nu-space(2),
+    "PaddingBlock": nu-space(1),
     "PaddingInline": nu-space(3),
-    "MinHeight": 2.5rem,
+    "MinHeight": 2.25rem,
     "FontSize": nu-font-size(sm),
-    "Color": var(--text-color),
-    "BackgroundColor": var(--bg-surface),
+    "Color": var(--nu-text-regular),
+    "BackgroundColor": var(--nu-bg-surface),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-strong),
     "BorderRadius": nu-radius(md),
-    "PlaceholderColor": var(--text-subtle),
+    "PlaceholderColor": var(--nu-text-muted),
     "TransitionDuration": nu-duration(fast),
-    "focus--BorderColor": var(--primary),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 25%)},
+    "focus--BorderColor": var(--nu-brand),
+    "focus--BoxShadow": nu-focus-ring(),
     "disabled--Opacity": 0.6,
   ));
 
@@ -56,7 +56,7 @@
 
   &:disabled,
   &[readonly] {
-    background-color: var(--bg-alternate);
+    background-color: var(--nu-bg-alternate);
   }
 
   &:disabled {
@@ -83,15 +83,15 @@
   }
 
   @include when(invalid) {
-    --nu-input--BorderColor: var(--danger);
-    --nu-input--focus--BorderColor: var(--danger);
-    --nu-input--focus--BoxShadow: 0 0 0 3px #{nu-tint(danger, 25%)};
+    --nu-input--BorderColor: var(--nu-danger);
+    --nu-input--focus--BorderColor: var(--nu-danger);
+    --nu-input--focus--BoxShadow: #{nu-focus-ring(danger)};
   }
 
   @include when(valid) {
-    --nu-input--BorderColor: var(--success);
-    --nu-input--focus--BorderColor: var(--success);
-    --nu-input--focus--BoxShadow: 0 0 0 3px #{nu-tint(success, 25%)};
+    --nu-input--BorderColor: var(--nu-success);
+    --nu-input--focus--BorderColor: var(--nu-success);
+    --nu-input--focus--BoxShadow: #{nu-focus-ring(success)};
   }
 }
 
@@ -104,12 +104,12 @@
     // Affixes are often text ("AED", "%"), not glyphs, so they track the
     // input's own size rather than the icon box.
     "AffixFontSize": nu-font-size(sm),
-    "AffixColor": var(--text-subtle),
+    "AffixColor": var(--nu-text-muted),
     // Room for the affix. Fits an icon or a short code like "AED" with
     // clearance; widen it per instance for anything longer.
     "AffixGutter": nu-space(12),
     "clear--HitArea": 2rem,
-    "clear--hover--Color": var(--text-color),
+    "clear--hover--Color": var(--nu-text-regular),
   ));
 
   position: relative;
@@ -198,7 +198,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 25%);
+      box-shadow: nu-focus-ring();
     }
   }
 
@@ -278,12 +278,12 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
   @include e(label) {
     @extend %nu-field-label-layout;
     font-size: nu-font-size(sm);
-    font-weight: nu-font-weight(medium);
-    color: var(--text-color);
+    font-weight: nu-font-weight(semibold);
+    color: var(--nu-text-regular);
   }
 
   @include e(required) {
-    color: var(--danger);
+    color: var(--nu-danger);
     line-height: 1;
   }
 
@@ -302,19 +302,19 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
     padding: 0;
     border: 0;
     background: none;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     cursor: help;
     line-height: 1;
 
     &:hover,
     &:focus-visible {
-      color: var(--primary);
+      color: var(--nu-brand);
     }
   }
 
   @include e(hint) {
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(error) {
@@ -322,7 +322,7 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
     align-items: center;
     gap: nu-space(1);
     font-size: nu-font-size(xs);
-    color: var(--danger);
+    color: var(--nu-danger);
   }
 
   @include m(horizontal) {
@@ -333,7 +333,8 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
     > .nu-field__label-row,
     > .nu-field__label {
       flex-shrink: 0;
-      min-inline-size: 8rem;
+      min-inline-size: min(8rem, 40%);
+      max-inline-size: 40%;
     }
   }
 
@@ -430,12 +431,12 @@ $nu-row-min-column-width: 10rem;
   @include nu-root("check", (
     "Size": 1.125rem,
     "BorderWidth": 2px,
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-strong),
     "BorderRadius": nu-radius(sm),
-    "BackgroundColor": var(--bg-surface),
-    "checked--BackgroundColor": var(--primary),
-    "checked--BorderColor": var(--primary),
-    "MarkColor": var(--text-inverted),
+    "BackgroundColor": var(--nu-bg-surface),
+    "checked--BackgroundColor": var(--nu-brand),
+    "checked--BorderColor": var(--nu-brand),
+    "MarkColor": var(--nu-text-inverted),
   ));
 
   appearance: none;
@@ -456,12 +457,12 @@ $nu-row-min-column-width: 10rem;
   }
 
   &:hover:not(:disabled) {
-    border-color: var(--primary);
+    border-color: var(--nu-brand);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px nu-tint(primary, 25%);
+    box-shadow: nu-focus-ring();
   }
 
   &:checked {
@@ -523,7 +524,7 @@ $nu-row-min-column-width: 10rem;
   align-items: center;
   gap: nu-space(2);
   font-size: nu-font-size(sm);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   cursor: pointer;
 
   @include when(disabled) {
@@ -558,8 +559,8 @@ $nu-row-min-column-width: 10rem;
 @include b(input-group) {
   @include nu-root("input-group", (
     "BorderRadius": nu-radius(md),
-    "focus--BorderColor": var(--primary),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 25%)},
+    "focus--BorderColor": var(--nu-brand),
+    "focus--BoxShadow": nu-focus-ring(),
   ));
 
   display: flex;
@@ -572,9 +573,9 @@ $nu-row-min-column-width: 10rem;
     align-items: center;
     padding-inline: nu-space(3);
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
-    background-color: var(--bg-alternate);
-    border: 1px solid var(--border-base);
+    color: var(--nu-text-muted);
+    background-color: var(--nu-bg-alternate);
+    border: 1px solid var(--nu-border-strong);
     border-radius: inherit;
     white-space: nowrap;
     transition: border-color nu-duration(fast) $nu-ease;

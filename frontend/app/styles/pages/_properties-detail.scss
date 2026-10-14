@@ -18,8 +18,8 @@
 
 // No kit component covers this compound tile, so it stays bespoke, built from card tokens.
 .unit-card-premium {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-base);
+  background-color: var(--nu-bg-surface);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(xl);
   padding: nu-space(4);
   box-shadow: nu-shadow(sm);
@@ -31,8 +31,8 @@
 }
 
 .unit-card-icon-box {
-  background-color: var(--bg-alternate);
-  color: var(--primary);
+  background-color: var(--nu-bg-alternate);
+  color: var(--nu-brand);
   padding: nu-space(2);
   border-radius: nu-radius(lg);
   display: flex;
@@ -41,12 +41,12 @@
 }
 
 .unit-amenities-strip {
-  background-color: var(--bg-alternate);
+  background-color: var(--nu-bg-alternate);
   padding: nu-space(2);
   border-radius: nu-radius(lg);
   display: flex;
   justify-content: space-around;
   gap: nu-space(4);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }

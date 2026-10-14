@@ -27,7 +27,7 @@
     @include nu-root-el("breadcrumb", "item", (
       "Gap": nu-space(1),
       "SeparatorContent": '"/"',
-      "SeparatorColor": var(--text-subtle),
+      "SeparatorColor": var(--nu-text-subtle),
     ));
 
     display: flex;
@@ -45,21 +45,26 @@
   @include e(separator) {
     display: inline-flex;
     align-items: center;
-    color: var(--text-subtle);
+    color: var(--nu-text-subtle);
   }
 
   @include e(link) {
     @include nu-root-el("breadcrumb", "link", (
-      "Color": var(--text-muted),
+      "Color": var(--nu-text-muted),
       "TransitionDuration": nu-duration(fast),
-      "hover--Color": var(--primary),
-      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "hover--Color": var(--nu-brand),
+      "focus--BoxShadow": nu-focus-ring(),
     ));
 
     display: inline-flex;
     align-items: center;
+    min-block-size: 0;
+    padding: 0;
     color: nu-var-el("breadcrumb", "link", "Color");
+    font: inherit;
     text-decoration: none;
+    background: none;
+    border: 0;
     border-radius: nu-radius(sm);
     transition: color nu-var-el("breadcrumb", "link", "TransitionDuration") $nu-ease;
 
@@ -80,7 +85,7 @@
   }
 
   @include e(current) {
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     font-weight: nu-font-weight(medium);
   }
 
@@ -89,7 +94,7 @@
   @include e(item) {
     &.is-current {
       .nu-breadcrumb__link {
-        --nu-breadcrumb__link--Color: var(--text-color);
+        --nu-breadcrumb__link--Color: var(--nu-text-regular);
         font-weight: nu-font-weight(medium);
         pointer-events: none;
       }

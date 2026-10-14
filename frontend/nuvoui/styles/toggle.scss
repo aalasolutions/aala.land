@@ -10,15 +10,15 @@
     "Gap": nu-space(3),
     "TrackInlineSize": 2.75rem,
     "TrackBlockSize": 1.5rem,
-    "TrackColor": var(--border-base),
-    "TrackCheckedColor": var(--primary),
+    "TrackColor": var(--nu-border-strong),
+    "TrackCheckedColor": var(--nu-brand),
     "KnobSize": 1.125rem,
     "KnobInset": 0.1875rem,
     "KnobTravel": calc(#{nu-var("toggle", "TrackInlineSize")} - #{nu-var("toggle", "KnobSize")} - (2 * #{nu-var("toggle", "KnobInset")})),
-    "KnobColor": var(--bg-surface),
+    "KnobColor": var(--nu-bg-surface),
     "LabelFontSize": nu-font-size(sm),
-    "LabelColor": var(--text-color),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "LabelColor": var(--nu-text-regular),
+    "focus--BoxShadow": nu-focus-ring(),
     "disabled--Opacity": 0.55,
   ));
 
@@ -85,7 +85,7 @@
     font-size: nu-font-size(2xs);
     font-weight: nu-font-weight(semibold);
     line-height: 1;
-    color: var(--text-inverted);
+    color: var(--nu-text-inverted);
     white-space: nowrap;
     opacity: 0;
     transition: opacity nu-duration(fast) $nu-ease;
@@ -101,7 +101,7 @@
 
   @include e(inactive-text) {
     inset-inline-end: nu-space(2);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     opacity: 1;
   }
 
@@ -139,7 +139,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-toggle--TrackCheckedColor: var(--#{$variant});
+      --nu-toggle--TrackCheckedColor: var(--nu-#{nu-role($variant)});
     }
   }
 

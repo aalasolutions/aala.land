@@ -16,12 +16,12 @@
     "BorderColor": transparent,
     "BackgroundColor": transparent,
     "IconFontSize": nu-font-size(3xl),
-    "IconColor": var(--text-subtle),
+    "IconColor": var(--nu-text-subtle),
     "TitleFontSize": nu-font-size(lg),
     "TitleFontWeight": nu-font-weight(semibold),
-    "TitleColor": var(--text-color),
+    "TitleColor": var(--nu-text-regular),
     "DescriptionFontSize": nu-font-size(sm),
-    "DescriptionColor": var(--text-muted),
+    "DescriptionColor": var(--nu-text-muted),
   ));
 
   display: nu-var("empty-state", "Display");
@@ -103,6 +103,6 @@
   @include m(bordered) {
     --nu-empty-state--BorderWidth: 1px;
     --nu-empty-state--BorderStyle: dashed;
-    --nu-empty-state--BorderColor: var(--border-base);
+    --nu-empty-state--BorderColor: var(--nu-border-regular);
   }
 }

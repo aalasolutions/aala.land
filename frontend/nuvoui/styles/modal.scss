@@ -71,15 +71,15 @@
     "Display": flex,
     "MaxWidth": 32rem,
     "MaxHeight": 90vh,
-    "BackgroundColor": var(--bg-surface),
+    "BackgroundColor": var(--nu-bg-surface),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-regular),
     "BorderRadius": nu-radius(xl),
     "BoxShadow": nu-shadow(xl),
     "Padding": nu-space(6),
     "Gap": nu-space(4),
     "TransitionDuration": nu-duration(fast),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "focus--BoxShadow": nu-focus-ring(),
   ));
 
   position: relative;
@@ -121,20 +121,20 @@
     flex-shrink: 0;
     gap: nu-space(3);
     padding-block-end: nu-space(3);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   @include e(title) {
     margin: 0;
-    font-size: nu-font-size(xl);
-    font-weight: nu-font-weight(bold);
-    color: var(--text-color);
+    font-size: nu-font-size(lg);
+    font-weight: nu-font-weight(semibold);
+    color: var(--nu-text-regular);
   }
 
   @include e(subtitle) {
     margin: 0;
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(close) {
@@ -145,7 +145,7 @@
     inline-size: 2rem;
     block-size: 2rem;
     padding: 0;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     background-color: transparent;
     border: none;
     border-radius: nu-radius(md);
@@ -157,8 +157,8 @@
     }
 
     &:hover {
-      color: var(--text-color);
-      background-color: var(--bg-alternate);
+      color: var(--nu-text-regular);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
@@ -175,7 +175,7 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     font-size: nu-font-size(sm);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(footer) {
@@ -185,7 +185,7 @@
     flex-shrink: 0;
     gap: nu-space(2);
     padding-block-start: nu-space(3);
-    border-block-start: 1px solid var(--border-base);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 
   // ---- size modifiers ----

@@ -36,6 +36,7 @@
 }
 
 .nuvo-page {
+  inline-size: 100%;
   max-inline-size: 72rem;
   margin-inline: auto;
   padding: nu-space(8) nu-space(6);
@@ -52,7 +53,7 @@
     margin-block: 0 nu-space(8);
     font-size: nu-font-size(md);
     line-height: 1.6;
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // Reference tables wrap their description column instead of scrolling.
@@ -83,10 +84,10 @@
     padding-block-end: nu-space(2);
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 }
 
@@ -96,8 +97,8 @@
 
   &__preview {
     padding: nu-space(5);
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-base);
+    background-color: var(--nu-bg-surface);
+    border: 1px solid var(--nu-border-regular);
     border-radius: nu-radius(lg);
 
     &.has-code {
@@ -147,20 +148,20 @@
   &__link {
     display: block;
     padding: nu-space(2) nu-space(3);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
     text-decoration: none;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-base);
+    background-color: var(--nu-bg-surface);
+    border: 1px solid var(--nu-border-regular);
     border-radius: nu-radius(md);
 
     &:hover {
-      color: var(--primary);
-      border-color: var(--primary);
+      color: var(--nu-brand);
+      border-color: var(--nu-brand);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px var(--primary-200);
+      box-shadow: nu-focus-ring();
     }
   }
 }
@@ -186,13 +187,13 @@
 
 .nuvo-note {
   margin-block: 0 nu-space(2);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   font-size: nu-font-size(sm);
 
   code {
     padding-inline: nu-space(1);
     border-radius: nu-radius(sm);
-    background: var(--bg-alternate);
+    background: var(--nu-bg-alternate);
     font-size: 0.9em;
   }
 }
@@ -201,7 +202,7 @@
   margin-block: nu-space(6) nu-space(2);
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -222,6 +223,6 @@
 .nuvo-scroll-box {
   max-block-size: 14rem;
   overflow: auto;
-  border: 1px solid var(--border-base);
+  border: 1px solid var(--nu-border-regular);
   border-radius: nu-radius(lg);
 }

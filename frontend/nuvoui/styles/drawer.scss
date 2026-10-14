@@ -8,13 +8,13 @@
     "ZIndex": nu-z(modal),
     "Width": 24rem,
     "Height": 24rem,
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
     "BoxShadow": nu-shadow(xl),
     "TransitionDuration": nu-duration(normal),
     "TranslateX": 100%,
     "TranslateY": 100%,
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "focus--BoxShadow": nu-focus-ring(),
   ));
 
   position: fixed;
@@ -49,18 +49,19 @@
 
   @include e(header) {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: nu-space(3);
-    padding: nu-space(5);
-    border-block-end: 1px solid var(--border-base);
+    padding-block: nu-space(3);
+    padding-inline: nu-space(5);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   @include e(title) {
     margin: 0;
     font-size: nu-font-size(lg);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(close) {
@@ -70,15 +71,16 @@
     inline-size: 2rem;
     block-size: 2rem;
     flex-shrink: 0;
-    color: var(--text-muted);
+    padding: 0;
+    color: var(--nu-text-muted);
     background-color: transparent;
     border: none;
     border-radius: nu-radius(md);
     cursor: pointer;
 
     &:hover {
-      color: var(--text-color);
-      background-color: var(--bg-alternate);
+      color: var(--nu-text-regular);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
@@ -98,8 +100,9 @@
     align-items: center;
     justify-content: flex-end;
     gap: nu-space(2);
-    padding: nu-space(5);
-    border-block-start: 1px solid var(--border-base);
+    padding-block: nu-space(3);
+    padding-inline: nu-space(5);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 
   // ---- placement modifiers ----
@@ -107,7 +110,7 @@
   @include m(start) {
     inset-inline-end: auto;
     inset-inline-start: 0;
-    border-inline-end: 1px solid var(--border-base);
+    border-inline-end: 1px solid var(--nu-border-regular);
     border-inline-start: none;
     --nu-drawer--TranslateX: -100%;
   }
@@ -118,7 +121,7 @@
     inline-size: 100%;
     block-size: nu-var("drawer", "Height");
     max-block-size: 100vh;
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
     border-inline-start: none;
     --nu-drawer--TranslateY: -100%;
 
@@ -131,7 +134,7 @@
     inline-size: 100%;
     block-size: nu-var("drawer", "Height");
     max-block-size: 100vh;
-    border-block-start: 1px solid var(--border-base);
+    border-block-start: 1px solid var(--nu-border-regular);
     border-inline-start: none;
     --nu-drawer--TranslateY: 100%;
 

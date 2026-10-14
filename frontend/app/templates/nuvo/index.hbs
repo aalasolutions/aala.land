@@ -59,14 +59,14 @@
 
   <NuvoDocs::Section @title="Theming" @id="theming">
     <NuvoDocs::Example
-      @note="Modifiers reassign CSS variables; the base rule is the only consumer. Change --primary and every m-primary surface follows. Retheme one instance by overriding its own --nu-{block}--{Property} token from outside."
+      @note="Modifiers reassign CSS variables; the base rule is the only consumer. Change --nu-brand and every m-primary surface follows. Retheme one instance by overriding its own --nu-{block}--{Property} token from outside."
       @layout="block"
       @code={{this.code.theme}}
     >
       <Nuvo::Text
         @size="sm"
         @muted={{true}}
-        @text="The Theme switch in the topbar sets --primary on the html element. Try it: every primary button, badge, toggle and focus ring on this site follows."
+        @text="The Theme switch in the topbar sets --nu-brand on the html element. Try it: every primary button, badge, toggle and focus ring on this site follows."
       />
     </NuvoDocs::Example>
   </NuvoDocs::Section>

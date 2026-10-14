@@ -5,10 +5,10 @@
 
 @include b(table-wrapper) {
   @include nu-root("table-wrapper", (
-    "BackgroundColor": var(--bg-surface),
+    "BackgroundColor": var(--nu-bg-surface),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
-    "BorderRadius": nu-radius(xl),
+    "BorderColor": var(--nu-border-regular),
+    "BorderRadius": nu-radius(lg),
   ));
 
   display: block;
@@ -34,13 +34,13 @@
     gap: nu-space(4);
     padding-block: nu-space(3);
     padding-inline: nu-space(4);
-    background-color: var(--bg-surface);
-    border-block-start: 1px solid var(--border-base);
+    background-color: var(--nu-bg-surface);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 
   @include e(footer-status) {
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(footer-controls) {
@@ -54,18 +54,18 @@
 @include b(table) {
   @include nu-root("table", (
     "FontSize": nu-font-size(sm),
-    "Color": var(--text-color),
-    "BorderColor": var(--border-base),
-    "HeadBackgroundColor": var(--bg-alternate),
-    "HeadColor": var(--text-muted),
-    "CellPaddingBlock": nu-space(3),
+    "Color": var(--nu-text-regular),
+    "BorderColor": var(--nu-border-regular),
+    "HeadBackgroundColor": var(--nu-bg-surface),
+    "HeadColor": var(--nu-text-muted),
+    "CellPaddingBlock": nu-space(2),
     "CellPaddingInline": nu-space(4),
-    "RowBorderColor": var(--border-base),
-    "hover--RowBackgroundColor": var(--bg-alternate),
-    "selected--RowBackgroundColor": #{nu-tint(primary, 8%)},
-    "selected--RowBorderColor": var(--primary),
-    "sort--Color": var(--text-color),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "RowBorderColor": var(--nu-border-regular),
+    "hover--RowBackgroundColor": var(--nu-bg-alternate),
+    "selected--RowBackgroundColor": #{nu-tint(brand, 8%)},
+    "selected--RowBorderColor": var(--nu-brand),
+    "sort--Color": var(--nu-text-regular),
+    "focus--BoxShadow": inset 0 0 0 2px var(--nu-brand),
     "TransitionDuration": nu-duration(fast),
   ));
 
@@ -111,7 +111,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: inset nu-var("table", "focus--BoxShadow");
+      box-shadow: nu-var("table", "focus--BoxShadow");
     }
   }
 
@@ -132,10 +132,6 @@
     &:last-child {
       border-block-end: none;
     }
-  }
-
-  tbody tr.is-hoverable:hover {
-    background-color: nu-var("table", "hover--RowBackgroundColor");
   }
 
   tbody tr.is-clickable {
@@ -172,7 +168,7 @@
 
   tbody tr.nu-table__empty-row td {
     padding-block: nu-space(10);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
     text-align: center;
   }
 
@@ -216,8 +212,20 @@
 
   @include m(striped) {
     tbody tr:nth-child(even) {
-      background-color: nu-var("table", "hover--RowBackgroundColor");
+      background-color: color-mix(
+        in srgb,
+        var(--nu-bg-alternate) 50%,
+        transparent
+      );
     }
+
+    tbody tr.is-selected {
+      background-color: nu-var("table", "selected--RowBackgroundColor");
+    }
+  }
+
+  tbody tr.is-hoverable:hover {
+    background-color: nu-var("table", "hover--RowBackgroundColor");
   }
 
   // ---- bordered ----

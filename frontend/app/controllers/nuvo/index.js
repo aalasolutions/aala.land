@@ -16,11 +16,11 @@ export default class NuvoIndexController extends Controller {
 <Nuvo::TooltipHost />
 <Nuvo::DialogHost />`,
     theme: `:root {
-  --primary: #1ab5a5; /* every m-primary surface follows */
+  --nu-brand: #1ab5a5; /* every m-primary surface follows */
 }
 
 .checkout .nu-btn {
-  --nu-btn--BackgroundColor: var(--success); /* one instance, no SCSS */
+  --nu-btn--BackgroundColor: var(--nu-success); /* one instance, no SCSS */
 }`,
     rtl: `<html dir="rtl">`,
   };

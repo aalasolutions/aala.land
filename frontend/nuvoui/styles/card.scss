@@ -7,14 +7,14 @@
 @include b(card) {
   @include nu-root("card", (
     "Padding": nu-space(6),
-    "BackgroundColor": var(--bg-surface),
+    "BackgroundColor": var(--nu-bg-surface),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
-    "BorderRadius": nu-radius(xl),
+    "BorderColor": var(--nu-border-regular),
+    "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(sm),
     "TransitionDuration": nu-duration(fast),
     "hover--BoxShadow": nu-shadow(md),
-    "hover--BorderColor": var(--border-base),
+    "hover--BorderColor": var(--nu-border-regular),
   ));
 
   display: block;
@@ -38,7 +38,7 @@
   @include e(subtitle) {
     margin: 0;
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   // ---- modifiers ----
@@ -66,21 +66,21 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
   }
 
   // Accent-tinted surfaces
   @each $variant in $nu-variants {
     &.m-accent.m-#{$variant} {
-      --nu-card--BackgroundColor: var(--#{$variant}-50);
-      --nu-card--BorderColor: var(--#{$variant}-200);
+      --nu-card--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+      --nu-card--BorderColor: var(--nu-#{nu-role($variant)}-200);
     }
   }
 
   @include when(selected) {
-    --nu-card--BorderColor: var(--primary);
-    box-shadow: 0 0 0 1px var(--primary);
+    --nu-card--BorderColor: var(--nu-brand);
+    box-shadow: 0 0 0 1px var(--nu-brand);
   }
 }
 
@@ -91,15 +91,15 @@
 @include b(stat) {
   @include nu-root("stat", (
     "Padding": nu-space(5),
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
-    "BorderRadius": nu-radius(xl),
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
+    "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(sm),
-    "ValueColor": var(--text-color),
+    "ValueColor": var(--nu-text-regular),
     "ValueFontSize": nu-font-size(3xl),
-    "LabelColor": var(--text-muted),
-    "IconColor": var(--primary),
-    "IconBackgroundColor": #{nu-tint(primary, 10%)},
+    "LabelColor": var(--nu-text-muted),
+    "IconColor": var(--nu-brand),
+    "IconBackgroundColor": #{nu-tint(brand, 10%)},
   ));
 
   padding: nu-var("stat", "Padding");
@@ -107,6 +107,32 @@
   border: 1px solid nu-var("stat", "BorderColor");
   border-radius: nu-var("stat", "BorderRadius");
   box-shadow: nu-var("stat", "BoxShadow");
+
+  // Icon and label share the first row, so the icon adds no row of its own.
+  &:not(.m-row):has(> .nu-stat__icon) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: nu-space(2);
+
+    > * {
+      grid-column: 1 / -1;
+    }
+
+    > .nu-stat__icon {
+      grid-column: 1;
+      margin-block-end: 0;
+    }
+
+    > .nu-stat__label {
+      grid-column: 2;
+      margin-block-end: 0;
+    }
+
+    > .nu-stat__value {
+      margin-block-start: nu-space(2);
+    }
+  }
 
   @include e(icon) {
     display: flex;
@@ -144,7 +170,7 @@
     margin-block-start: nu-space(1);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(medium);
-    color: var(--text-muted);
+    color: nu-var("stat", "LabelColor");
   }
 
   @include e(content) {
@@ -167,14 +193,20 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-stat--BackgroundColor: var(--#{$variant}-50);
-      --nu-stat--BorderColor: var(--#{$variant}-200);
-      --nu-stat--ValueColor: var(--#{$variant}-700);
-      // The tinted surface drops --text-muted under 4.5:1; the 700 shade clears it.
-      --nu-stat--LabelColor: var(--#{$variant}-700);
-      --nu-stat--IconColor: var(--#{$variant});
-      --nu-stat--IconBackgroundColor: #{nu-tint(#{$variant}, 12%)};
+      --nu-stat--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+      --nu-stat--BorderColor: var(--nu-#{nu-role($variant)}-200);
+      --nu-stat--ValueColor: var(--nu-#{nu-role($variant)}-700);
+      // The tinted surface drops --nu-text-muted under 4.5:1; the 700 shade clears it.
+      --nu-stat--LabelColor: var(--nu-#{nu-role($variant)}-700);
+      --nu-stat--IconColor: var(--nu-#{nu-role($variant)});
+      --nu-stat--IconBackgroundColor: #{nu-tint(nu-role($variant), 12%)};
     }
+  }
+
+  // Brand 700 on its 50 tint is 4.39:1; 800 clears 4.5:1.
+  @include m(primary) {
+    --nu-stat--ValueColor: var(--nu-brand-800);
+    --nu-stat--LabelColor: var(--nu-brand-800);
   }
 
   @include m(lg) {
@@ -216,7 +248,7 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+      box-shadow: nu-focus-ring();
     }
 
     @include reduced-motion {

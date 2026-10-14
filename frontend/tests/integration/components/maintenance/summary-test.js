@@ -3,6 +3,7 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { formatDate } from 'land/helpers/format-date';
+import { addCalendarDays, todayInZone } from 'land/utils/local-date';
 
 // Shape of GET /maintenance/:id: the bare work-order row, ids only for unit, vendor and assignee.
 const ORDER = {
@@ -136,6 +137,32 @@ module('Integration | Component | maintenance/summary', function (hooks) {
     assert
       .dom('[data-test-work-order-reported]')
       .includesText('Reported by Test User');
+  });
+
+  test('days open and the reported date follow the region day, not elapsed hours', async function (assert) {
+    const zone = 'Pacific/Pago_Pago';
+    this.owner.lookup('service:region').activeRegion = {
+      code: 'behind',
+      currency: 'AED',
+      timezone: zone,
+    };
+    const today = todayInZone(zone);
+    // 23:59:59.999 at UTC-11 on the region day two days back, already the next day in UTC.
+    const createdAt = `${addCalendarDays(today, -1)}T10:59:59.999Z`;
+    this.workOrder = {
+      ...ORDER,
+      status: 'OPEN',
+      reportedBy: 'Test User',
+      createdAt,
+      completedAt: null,
+    };
+    await render(hbs`<Maintenance::Summary @workOrder={{this.workOrder}} />`);
+
+    assert
+      .dom('[data-test-work-order-reported]')
+      .hasText(
+        `Reported by Test User · ${formatDate(addCalendarDays(today, -2))} · open 2 days`,
+      );
   });
 
   test('a completed order shows every step done', async function (assert) {

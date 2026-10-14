@@ -27,10 +27,10 @@ export default class CashflowChartComponent extends ChartBase {
   }
 
   get config() {
-    const income = token('--primary');
-    const expense = token('--danger');
-    const muted = token('--text-muted');
-    const border = token('--border-base');
+    const income = token('--nu-brand');
+    const expense = token('--nu-danger');
+    const muted = token('--nu-text-muted');
+    const border = token('--nu-border-regular');
     const compact = this.compact;
 
     const series = (label, color, key) => ({

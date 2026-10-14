@@ -94,7 +94,24 @@ export default class NuvoController extends Controller {
   @action
   setTheme(name) {
     this.activeTheme = name;
-    document.documentElement.style.setProperty('--primary', THEMES[name]);
+    // Teal is the compiled default, so drop the override instead of pinning the seed hex.
+    const { style } = document.documentElement;
+    if (name === 'teal') {
+      style.removeProperty('--nu-brand');
+      style.removeProperty('--nu-brand-hover');
+      style.removeProperty('--nu-brand-active');
+    } else {
+      style.setProperty('--nu-brand', THEMES[name]);
+      // Approximates the core 800 and 900 stops so hover and active follow the demo colour.
+      style.setProperty(
+        '--nu-brand-hover',
+        `color-mix(in oklch, ${THEMES[name]}, black 20%)`,
+      );
+      style.setProperty(
+        '--nu-brand-active',
+        `color-mix(in oklch, ${THEMES[name]}, black 35%)`,
+      );
+    }
   }
 
   @action

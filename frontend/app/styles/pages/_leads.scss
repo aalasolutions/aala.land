@@ -4,10 +4,10 @@
 
 // Temperature accents match the `temp` domain in _tags.scss so column colour matches the badge.
 $lead-temps: (
-  "hot": var(--danger),
-  "warm": var(--warning),
-  "cold": var(--info),
-  "dead": var(--text-subtle),
+  "hot": var(--nu-danger),
+  "warm": var(--nu-warning),
+  "cold": var(--nu-info),
+  "dead": var(--nu-text-subtle),
 );
 
 // Kit re-declares this on the accent element; an inherited value from the column would lose.
@@ -25,10 +25,10 @@ $lead-temps: (
   gap: nu-space(1);
   padding-block: nu-space(1);
   padding-inline: nu-space(2);
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
   border-radius: nu-radius(full);
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 
   &.m-sm {
     font-size: 0.6875rem;
@@ -39,11 +39,11 @@ $lead-temps: (
 .wa-link {
   display: inline-flex;
   align-items: center;
-  color: var(--success);
+  color: var(--nu-success);
   line-height: 1;
 
   &:hover {
-    color: var(--success-600);
+    color: var(--nu-success-hover);
   }
 }
 
@@ -54,7 +54,7 @@ $lead-temps: (
 
 .lead-detail__info {
   flex: 0 0 20rem;
-  border-inline-end: 1px solid var(--border-base);
+  border-inline-end: 1px solid var(--nu-border-regular);
   padding-inline-end: 1.5rem;
   overflow-y: auto;
 }
@@ -83,7 +83,7 @@ $lead-temps: (
   .lead-detail__info {
     flex: 1 1 auto;
     border-inline-end: none;
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
     padding-inline-end: 0;
     padding-block-end: 1rem;
     overflow-y: visible;
@@ -92,7 +92,7 @@ $lead-temps: (
 
 .agent-load-bar {
   block-size: 0.25rem;
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
   border-radius: nu-radius(full);
   overflow: hidden;
 }
@@ -108,16 +108,16 @@ $lead-temps: (
 
   &.load-low {
     inline-size: 25%;
-    background: var(--success);
+    background: var(--nu-success);
   }
 
   &.load-medium {
     inline-size: 60%;
-    background: var(--warning);
+    background: var(--nu-warning);
   }
 
   &.load-high {
     inline-size: 100%;
-    background: var(--danger);
+    background: var(--nu-danger);
   }
 }

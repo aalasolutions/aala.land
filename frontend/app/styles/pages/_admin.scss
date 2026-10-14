@@ -18,7 +18,7 @@
 .console-hero__label {
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -26,14 +26,14 @@
 .console-hero__value {
   font-size: 2rem;
   font-weight: nu-font-weight(bold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   line-height: 1.1;
 }
 
 .console-hero__unit {
   font-size: 1rem;
   font-weight: nu-font-weight(medium);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .console-hero__chips,
@@ -54,15 +54,15 @@
   padding-block: nu-space(1);
   padding-inline: nu-space(3);
   border-radius: nu-radius(full);
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .console-chip__code {
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .console-tiles {
@@ -90,14 +90,14 @@
 .console-region-row__name {
   inline-size: 5.625rem;
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .console-region-bar {
   flex: 1;
   block-size: 8px;
   border-radius: nu-radius(full);
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
   overflow: hidden;
 }
 
@@ -105,7 +105,7 @@
   display: block;
   block-size: 100%;
   border-radius: nu-radius(full);
-  background: var(--primary);
+  background: var(--nu-brand);
 }
 
 .console-region-row__count {
@@ -135,7 +135,7 @@
   cursor: pointer;
 
   &:hover {
-    background: var(--bg-alternate);
+    background: var(--nu-bg-alternate);
   }
 }
 
@@ -144,12 +144,12 @@
   text-decoration: none;
 
   &:hover {
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 }
 
 .console-expand-row td {
-  background: var(--bg-alternate);
+  background: var(--nu-bg-alternate);
 }
 
 .console-expand {

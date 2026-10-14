@@ -8,14 +8,14 @@
   @include nu-root("avatar", (
     "Size": 2.5rem,
     "FontSize": nu-font-size(sm),
-    "Color": var(--text-inverted),
-    "BackgroundColor": var(--secondary),
+    "Color": var(--nu-text-inverted),
+    "BackgroundColor": var(--nu-info),
     "BorderRadius": nu-radius(full),
     "BorderWidth": 1px,
-    "BorderColor": var(--border-base),
+    "BorderColor": var(--nu-border-regular),
     "StatusSize": 0.625rem,
-    "StatusBorderColor": var(--bg-surface),
-    "StatusColor": var(--success),
+    "StatusBorderColor": var(--nu-bg-surface),
+    "StatusColor": var(--nu-success),
   ));
 
   position: relative;
@@ -113,7 +113,7 @@
 
   @each $variant in $nu-variants {
     &.m-status-#{$variant} {
-      --nu-avatar--StatusColor: var(--#{$variant});
+      --nu-avatar--StatusColor: var(--nu-#{nu-role($variant)});
     }
   }
 }
@@ -122,7 +122,7 @@
 @include b(avatar-group) {
   @include nu-root("avatar-group", (
     "Overlap": -0.625rem,
-    "BorderColor": var(--bg-surface),
+    "BorderColor": var(--nu-bg-surface),
   ));
 
   display: inline-flex;

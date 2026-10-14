@@ -5,12 +5,12 @@
 
 @include b(divider) {
   @include nu-root("divider", (
-    "Color": var(--border-base),
+    "Color": var(--nu-border-regular),
     "Thickness": 1px,
     "Style": solid,
     "MarginBlock": nu-space(4),
     "Gap": nu-space(3),
-    "LabelColor": var(--text-muted),
+    "LabelColor": var(--nu-text-muted),
     "LabelFontSize": nu-font-size(xs),
     "LabelFontWeight": nu-font-weight(medium),
   ));

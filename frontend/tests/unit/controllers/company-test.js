@@ -1,5 +1,10 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  todayInZone,
+} from 'land/utils/local-date';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -29,6 +34,30 @@ module('Unit | Controller | company', function (hooks) {
       ),
     );
     assert.true(controller.creditUsageLabel.includes('resets in 3d'));
+  });
+
+  test('counts the reset in region calendar days and shows the region date', function (assert) {
+    const zone = 'Pacific/Pago_Pago';
+    this.owner.lookup('service:region').activeRegion = {
+      code: 'behind',
+      currency: 'AED',
+      timezone: zone,
+    };
+    const today = todayInZone(zone);
+    // 23:59:59.999 at UTC-11 on the region day two days ahead, already the next day in UTC.
+    const controller = controllerWith.call(this, {
+      creditsLimit: 50,
+      creditsUsed: 1,
+      creditsResetsAt: `${addCalendarDays(today, 3)}T10:59:59.999Z`,
+    });
+    const date = formatCalendarDate(addCalendarDays(today, 2), 'en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+    assert.strictEqual(
+      controller.creditUsageLabel,
+      `You've used 1/50 AI credits this period - resets in 2d (${date})`,
+    );
   });
 
   test('clamps an elapsed period to 0d instead of counting backwards', function (assert) {

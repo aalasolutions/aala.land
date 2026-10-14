@@ -14,8 +14,8 @@
     "BorderRadius": nu-radius(sm),
     "BorderWidth": 1px,
     "BorderColor": transparent,
-    "Color": var(--text-muted),
-    "BackgroundColor": var(--bg-alternate),
+    "Color": var(--nu-text-regular),
+    "BackgroundColor": var(--nu-bg-alternate),
     "DotSize": 0.5rem,
     "DotColor": currentcolor,
   ));
@@ -55,19 +55,24 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-badge--Color: var(--#{$variant}-700);
-      --nu-badge--BackgroundColor: var(--#{$variant}-50);
-      --nu-badge--BorderColor: var(--#{$variant}-200);
-      --nu-badge--DotColor: var(--#{$variant});
+      --nu-badge--Color: var(--nu-#{nu-role($variant)}-700);
+      --nu-badge--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+      --nu-badge--BorderColor: var(--nu-#{nu-role($variant)}-200);
+      --nu-badge--DotColor: var(--nu-#{nu-role($variant)});
     }
+  }
+
+  // Brand 700 on its 50 tint is 4.39:1; 800 clears 4.5:1.
+  @include m(primary) {
+    --nu-badge--Color: var(--nu-brand-800);
   }
 
   // ---- solid variants ----
 
   @each $variant in $nu-variants {
     &.m-solid.m-#{$variant} {
-      --nu-badge--Color: var(--text-inverted);
-      --nu-badge--BackgroundColor: var(--#{$variant});
+      --nu-badge--Color: var(--nu-text-inverted);
+      --nu-badge--BackgroundColor: var(--nu-#{nu-role($variant)});
       --nu-badge--BorderColor: transparent;
       --nu-badge--DotColor: currentcolor;
     }
@@ -77,9 +82,9 @@
 
   @each $variant in $nu-variants {
     &.m-outline.m-#{$variant} {
-      --nu-badge--Color: var(--#{$variant}-700);
+      --nu-badge--Color: var(--nu-#{nu-role($variant)}-700);
       --nu-badge--BackgroundColor: transparent;
-      --nu-badge--BorderColor: var(--#{$variant}-300);
+      --nu-badge--BorderColor: var(--nu-#{nu-role($variant)}-300);
     }
   }
 
@@ -106,7 +111,7 @@
   @include m(quiet) {
     --nu-badge--BackgroundColor: transparent;
     --nu-badge--BorderColor: transparent;
-    --nu-badge--Color: var(--text-muted);
+    --nu-badge--Color: var(--nu-text-muted);
     --nu-badge--PaddingInline: 0;
   }
 }
@@ -124,9 +129,9 @@
   @include nu-root("badge-count", (
     "Size": 1.25rem,
     "FontSize": nu-font-size(2xs),
-    "Color": var(--text-inverted),
-    "BackgroundColor": var(--danger),
-    "RingColor": var(--bg-surface),
+    "Color": var(--nu-text-inverted),
+    "BackgroundColor": var(--nu-danger),
+    "RingColor": var(--nu-bg-surface),
     "RingWidth": 2px,
   ));
 
@@ -145,7 +150,7 @@
 
   @each $variant in $nu-variants {
     @include m($variant) {
-      --nu-badge-count--BackgroundColor: var(--#{$variant});
+      --nu-badge-count--BackgroundColor: var(--nu-#{nu-role($variant)});
     }
   }
 

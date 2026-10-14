@@ -13,8 +13,8 @@ $dashboard-bar-size: 10px;
 }
 
 .dashboard-region-badge {
-  --nu-tag--Color: var(--primary);
-  --nu-tag--BackgroundColor: var(--primary-50);
+  --nu-tag--Color: var(--nu-brand);
+  --nu-tag--BackgroundColor: var(--nu-brand-50);
   --nu-tag--BorderColor: transparent;
   display: inline-flex;
   align-items: center;
@@ -87,7 +87,7 @@ $dashboard-bar-size: 10px;
 .ownership-caption {
   margin: 0;
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .ownership-rows {
@@ -106,7 +106,7 @@ $dashboard-bar-size: 10px;
 
   &:hover,
   &:focus-visible {
-    background: var(--bg-alternate);
+    background: var(--nu-bg-alternate);
   }
 }
 
@@ -132,7 +132,7 @@ $dashboard-bar-size: 10px;
 .closed-counts {
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
+  color: var(--nu-text-regular);
   white-space: nowrap;
 }
 
@@ -141,8 +141,8 @@ $dashboard-bar-size: 10px;
   block-size: $dashboard-bar-size;
   margin-block-start: nu-space(1);
   border-radius: nu-radius(full);
-  background: var(--bg-alternate);
-  box-shadow: inset 0 0 0 1px var(--border-base);
+  background: var(--nu-bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--nu-border-regular);
   overflow: hidden;
 }
 
@@ -157,13 +157,13 @@ $dashboard-bar-size: 10px;
   margin: 0;
   padding-inline: nu-space(3);
   font-size: nu-font-size(xs);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .idle-overflow {
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
 }
 
 .closed-block {
@@ -171,7 +171,7 @@ $dashboard-bar-size: 10px;
   flex-direction: column;
   gap: nu-space(1);
   padding-block-start: nu-space(3);
-  border-block-start: 1px solid var(--border-base);
+  border-block-start: 1px solid var(--nu-border-regular);
 }
 
 .closed-head {
@@ -183,7 +183,7 @@ $dashboard-bar-size: 10px;
 }
 
 .closed-label {
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 .dashboard-panel-strip {
@@ -192,13 +192,13 @@ $dashboard-bar-size: 10px;
   justify-content: space-between;
   gap: nu-space(3);
   padding-block-start: nu-space(3);
-  border-block-start: 1px solid var(--border-base);
+  border-block-start: 1px solid var(--nu-border-regular);
   color: inherit;
   text-decoration: none;
 
   &:hover .dashboard-strip-action,
   &:focus-visible .dashboard-strip-action {
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 }
 
@@ -207,14 +207,14 @@ $dashboard-bar-size: 10px;
   align-items: center;
   gap: nu-space(2);
   font-size: nu-font-size(sm);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   min-inline-size: 0;
 }
 
 .dashboard-strip-action {
   font-size: nu-font-size(xs);
   font-weight: nu-font-weight(semibold);
-  color: var(--text-muted);
+  color: var(--nu-text-muted);
   white-space: nowrap;
   transition: color nu-duration(fast);
 }
@@ -234,15 +234,15 @@ $dashboard-bar-size: 10px;
 }
 
 .pipeline-stage-name {
-  color: var(--text-color);
+  color: var(--nu-text-regular);
 }
 
 // Inset hairline, not a border: gives the bar an edge without changing its height.
 .pipeline-bar-track {
   block-size: $dashboard-bar-size;
   border-radius: nu-radius(full);
-  background: var(--bg-alternate);
-  box-shadow: inset 0 0 0 1px var(--border-base);
+  background: var(--nu-bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--nu-border-regular);
   overflow: hidden;
 }
 
@@ -255,7 +255,7 @@ $dashboard-bar-size: 10px;
 
 @each $variant in $nu-variants {
   .pipeline-bar-#{$variant} {
-    background: var(--#{$variant});
+    background: var(--nu-#{nu-role($variant)});
   }
 }
 
@@ -269,6 +269,6 @@ $nu-stage-steps: (
 
 @each $stage, $step in $nu-stage-steps {
   .pipeline-bar-stage-#{$stage} {
-    background: var(--secondary-#{$step});
+    background: var(--nu-info-#{$step});
   }
 }

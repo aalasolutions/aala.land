@@ -9,23 +9,23 @@
     "AlignItems": center,
     "JustifyContent": center,
     "Gap": nu-space(2),
-    "PaddingBlock": nu-space(2),
+    "PaddingBlock": nu-space(1),
     "PaddingInline": nu-space(4),
-    "MinHeight": 2.5rem,
+    "MinHeight": 2.25rem,
     "FontSize": nu-font-size(sm),
     "FontWeight": nu-font-weight(semibold),
     "LineHeight": 1.25,
-    "BorderRadius": nu-radius(lg),
+    "BorderRadius": nu-radius(md),
     "BorderWidth": 1px,
     "BorderStyle": solid,
     "BorderColor": transparent,
-    "Color": var(--text-color),
+    "Color": var(--nu-text-regular),
     "BackgroundColor": transparent,
     "TransitionDuration": nu-duration(fast),
-    "hover--BackgroundColor": var(--bg-alternate),
-    "hover--BorderColor": var(--border-base),
-    "hover--Color": var(--text-color),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "hover--BackgroundColor": var(--nu-bg-alternate),
+    "hover--BorderColor": var(--nu-border-regular),
+    "hover--Color": var(--nu-text-regular),
+    "focus--BoxShadow": nu-focus-ring(),
     "disabled--Opacity": 0.55,
   ));
 
@@ -95,73 +95,73 @@
   // ---- variants: shape differs, so enumerated ----
 
   @include m(primary) {
-    --nu-btn--Color: var(--text-inverted);
-    --nu-btn--BackgroundColor: var(--primary);
-    --nu-btn--hover--Color: var(--text-inverted);
-    --nu-btn--hover--BackgroundColor: var(--primary-600);
+    --nu-btn--Color: var(--nu-text-inverted);
+    --nu-btn--BackgroundColor: var(--nu-brand);
+    --nu-btn--hover--Color: var(--nu-text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--nu-brand-hover);
     --nu-btn--hover--BorderColor: transparent;
   }
 
   @include m(secondary) {
-    --nu-btn--Color: var(--text-color);
-    --nu-btn--BackgroundColor: var(--bg-surface);
-    --nu-btn--BorderColor: var(--border-base);
-    --nu-btn--hover--BackgroundColor: var(--bg-alternate);
-    --nu-btn--hover--BorderColor: var(--border-base);
+    --nu-btn--Color: var(--nu-text-regular);
+    --nu-btn--BackgroundColor: var(--nu-bg-surface);
+    --nu-btn--BorderColor: var(--nu-border-regular);
+    --nu-btn--hover--BackgroundColor: var(--nu-bg-alternate);
+    --nu-btn--hover--BorderColor: var(--nu-border-regular);
   }
 
   @include m(danger) {
-    --nu-btn--Color: var(--text-inverted);
-    --nu-btn--BackgroundColor: var(--danger);
-    --nu-btn--hover--Color: var(--text-inverted);
-    --nu-btn--hover--BackgroundColor: var(--danger-600);
+    --nu-btn--Color: var(--nu-text-inverted);
+    --nu-btn--BackgroundColor: var(--nu-danger);
+    --nu-btn--hover--Color: var(--nu-text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--nu-danger-hover);
     --nu-btn--hover--BorderColor: transparent;
-    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(danger, 35%)};
+    --nu-btn--focus--BoxShadow: #{nu-focus-ring(danger)};
   }
 
   @include m(success) {
-    --nu-btn--Color: var(--text-inverted);
-    --nu-btn--BackgroundColor: var(--success);
-    --nu-btn--hover--Color: var(--text-inverted);
-    --nu-btn--hover--BackgroundColor: var(--success-600);
+    --nu-btn--Color: var(--nu-text-inverted);
+    --nu-btn--BackgroundColor: var(--nu-success);
+    --nu-btn--hover--Color: var(--nu-text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--nu-success-hover);
     --nu-btn--hover--BorderColor: transparent;
-    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(success, 35%)};
+    --nu-btn--focus--BoxShadow: #{nu-focus-ring(success)};
   }
 
   @include m(warning) {
-    --nu-btn--Color: var(--text-inverted);
-    --nu-btn--BackgroundColor: var(--warning);
-    --nu-btn--hover--Color: var(--text-inverted);
-    --nu-btn--hover--BackgroundColor: var(--warning-600);
+    --nu-btn--Color: var(--nu-text-regular);
+    --nu-btn--BackgroundColor: var(--nu-warning);
+    --nu-btn--hover--Color: var(--nu-text-regular);
+    --nu-btn--hover--BackgroundColor: var(--nu-warning-hover);
     --nu-btn--hover--BorderColor: transparent;
-    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(warning, 35%)};
+    --nu-btn--focus--BoxShadow: #{nu-focus-ring(warning)};
   }
 
   @include m(info) {
-    --nu-btn--Color: var(--text-inverted);
-    --nu-btn--BackgroundColor: var(--info);
-    --nu-btn--hover--Color: var(--text-inverted);
-    --nu-btn--hover--BackgroundColor: var(--info-600);
+    --nu-btn--Color: var(--nu-text-inverted);
+    --nu-btn--BackgroundColor: var(--nu-info);
+    --nu-btn--hover--Color: var(--nu-text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--nu-info-hover);
     --nu-btn--hover--BorderColor: transparent;
-    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(info, 35%)};
+    --nu-btn--focus--BoxShadow: #{nu-focus-ring(info)};
   }
 
   @include m(ghost) {
-    --nu-btn--Color: var(--text-muted);
+    --nu-btn--Color: var(--nu-text-muted);
     --nu-btn--BackgroundColor: transparent;
     --nu-btn--BorderColor: transparent;
-    --nu-btn--hover--Color: var(--text-color);
-    --nu-btn--hover--BackgroundColor: var(--bg-alternate);
+    --nu-btn--hover--Color: var(--nu-text-regular);
+    --nu-btn--hover--BackgroundColor: var(--nu-bg-alternate);
     --nu-btn--hover--BorderColor: transparent;
   }
 
   @include m(link) {
-    --nu-btn--Color: var(--primary);
+    --nu-btn--Color: var(--nu-brand);
     --nu-btn--BackgroundColor: transparent;
     --nu-btn--BorderColor: transparent;
     --nu-btn--PaddingInline: 0;
     --nu-btn--MinHeight: auto;
-    --nu-btn--hover--Color: var(--primary-600);
+    --nu-btn--hover--Color: var(--nu-brand-hover);
     --nu-btn--hover--BackgroundColor: transparent;
     --nu-btn--hover--BorderColor: transparent;
 
@@ -173,24 +173,31 @@
 
   @each $variant in $nu-variants {
     &.m-outline.m-#{$variant} {
-      --nu-btn--Color: var(--#{$variant});
+      --nu-btn--Color: var(--nu-#{nu-role($variant)});
       --nu-btn--BackgroundColor: transparent;
-      --nu-btn--BorderColor: var(--#{$variant});
-      --nu-btn--hover--Color: var(--text-inverted);
-      --nu-btn--hover--BackgroundColor: var(--#{$variant});
-      --nu-btn--hover--BorderColor: var(--#{$variant});
+      --nu-btn--BorderColor: var(--nu-#{nu-role($variant)});
+      --nu-btn--hover--Color: var(--nu-text-inverted);
+      --nu-btn--hover--BackgroundColor: var(--nu-#{nu-role($variant)});
+      --nu-btn--hover--BorderColor: var(--nu-#{nu-role($variant)});
     }
+  }
+
+  // The base warning tone fails 4.5:1 as text and under white text; the 700 stop passes, as in badges.
+  &.m-outline.m-warning {
+    --nu-btn--Color: var(--nu-warning-700);
+    --nu-btn--hover--BackgroundColor: var(--nu-warning-700);
+    --nu-btn--hover--BorderColor: var(--nu-warning-700);
   }
 
   // ---- subtle variants: borderless and muted, the variant colour shows on hover ----
 
   @each $variant in $nu-variants {
     &.m-subtle.m-#{$variant} {
-      --nu-btn--Color: var(--text-muted);
+      --nu-btn--Color: var(--nu-text-muted);
       --nu-btn--BackgroundColor: transparent;
       --nu-btn--BorderColor: transparent;
-      --nu-btn--hover--Color: var(--#{$variant});
-      --nu-btn--hover--BackgroundColor: #{nu-tint($variant, 12%)};
+      --nu-btn--hover--Color: var(--nu-#{nu-role($variant)});
+      --nu-btn--hover--BackgroundColor: #{nu-tint(nu-role($variant), 12%)};
       --nu-btn--hover--BorderColor: transparent;
     }
   }
@@ -240,8 +247,8 @@
   }
 
   @include when(active) {
-    --nu-btn--BackgroundColor: var(--bg-alternate);
-    --nu-btn--BorderColor: var(--border-base);
+    --nu-btn--BackgroundColor: var(--nu-bg-alternate);
+    --nu-btn--BorderColor: var(--nu-border-regular);
   }
 
   &:disabled,

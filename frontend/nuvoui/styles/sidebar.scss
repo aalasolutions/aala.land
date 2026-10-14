@@ -8,8 +8,8 @@
   @include nu-root("sidebar", (
     "Width": 15rem,
     "CollapsedWidth": 3.75rem,
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
     "PaddingBlock": nu-space(4),
     "PaddingInline": nu-space(3),
     "TransitionDuration": nu-duration(normal),
@@ -17,15 +17,15 @@
 
   // ---- variables: link ----
   @include nu-root-el("sidebar", "link", (
-    "Color": #b5b5b5,
+    "Color": var(--nu-text-muted),
     "BackgroundColor": transparent,
-    "hover--Color": var(--text-color),
-    "hover--BackgroundColor": var(--bg-alternate),
+    "hover--Color": var(--nu-text-regular),
+    "hover--BackgroundColor": var(--nu-bg-alternate),
   ));
 
   // ---- variables: group toggle ----
   @include nu-root-el("sidebar", "group-toggle", (
-    "Color":  #b5b5b5,
+    "Color": var(--nu-text-muted),
     "BackgroundColor": transparent,
   ));
 
@@ -70,13 +70,13 @@
     margin: 0;
     font-size: nu-font-size(xl);
     font-weight: nu-font-weight(bold);
-    color: var(--primary);
+    color: var(--nu-brand);
   }
 
   @include e(brand-subtitle) {
     margin: 0;
     font-size: nu-font-size(xs);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(nav) {
@@ -92,7 +92,7 @@
     margin-block: nu-space(2) nu-space(1);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-subtle);
+    color: var(--nu-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
@@ -126,24 +126,24 @@
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
 
     // `active` is what Ember's <LinkTo> emits; `is-active` is the kit's own
     // state class. Both paint the same so a route link needs no extra binding.
     &.is-active,
     &.active {
-      --nu-sidebar__link--Color: var(--text-inverted);
-      --nu-sidebar__link--BackgroundColor: var(--primary);
+      --nu-sidebar__link--Color: var(--nu-text-inverted);
+      --nu-sidebar__link--BackgroundColor: var(--nu-brand);
     }
 
     // No pointer-events:none here: the tooltip still must fire on hover, no href to suppress.
     &.is-disabled {
-      --nu-sidebar__link--Color: var(--text-subtle);
+      --nu-sidebar__link--Color: var(--nu-text-subtle);
       cursor: not-allowed;
 
       &:hover {
-        --nu-sidebar__link--Color: var(--text-subtle);
+        --nu-sidebar__link--Color: var(--nu-text-subtle);
         --nu-sidebar__link--BackgroundColor: transparent;
       }
     }
@@ -196,18 +196,18 @@
     }
 
     &:hover {
-      --nu-sidebar__group-toggle--Color: var(--text-color);
-      --nu-sidebar__group-toggle--BackgroundColor: var(--bg-alternate);
+      --nu-sidebar__group-toggle--Color: var(--nu-text-regular);
+      --nu-sidebar__group-toggle--BackgroundColor: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
 
     &.is-active {
-      --nu-sidebar__group-toggle--Color: var(--primary);
-      --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
+      --nu-sidebar__group-toggle--Color: var(--nu-brand);
+      --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(brand, 12%)};
       border-end-start-radius: 0;
       border-end-end-radius: 0;
     }
@@ -245,7 +245,7 @@
       padding-block: 0;
       border-end-start-radius: nu-radius(md);
       border-end-end-radius: nu-radius(md);
-      background-color: nu-tint(primary, 6%);
+      background-color: nu-tint(brand, 6%);
       transition: padding-block nu-var("sidebar", "TransitionDuration") $nu-ease;
 
       @include reduced-motion {
@@ -264,7 +264,7 @@
     padding-inline: nu-space(3) nu-space(3);
     margin-inline: nu-space(2);
     border-radius: nu-radius(md);
-    color: var(--text-subtle);
+    color: var(--nu-text-muted);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
     text-decoration: none;
@@ -276,26 +276,26 @@
     }
 
     &:hover {
-      color: var(--text-color);
-      background-color: var(--bg-alternate);
+      color: var(--nu-text-regular);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+      box-shadow: nu-focus-ring();
     }
 
     &.is-active,
     &.active {
-      color: var(--text-inverted);
-      background-color: var(--primary);
+      color: var(--nu-text-inverted);
+      background-color: var(--nu-brand);
     }
   }
 
   @include e(footer) {
     margin-block-start: auto;
     padding-block-start: nu-space(4);
-    border-block-start: 1px solid var(--border-base);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 
   // ---- states ----
@@ -352,8 +352,8 @@
     }
 
     .nu-sidebar__group-toggle.is-active {
-      --nu-sidebar__group-toggle--Color: var(--text-inverted);
-      --nu-sidebar__group-toggle--BackgroundColor: var(--primary);
+      --nu-sidebar__group-toggle--Color: var(--nu-text-inverted);
+      --nu-sidebar__group-toggle--BackgroundColor: var(--nu-brand);
     }
 
     .nu-sidebar__group-items {
@@ -364,8 +364,8 @@
       grid-template-rows: 1fr;
       min-inline-size: 11rem;
       padding: nu-space(2);
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-base);
+      background-color: var(--nu-bg-surface);
+      border: 1px solid var(--nu-border-regular);
       border-radius: nu-radius(md);
       box-shadow: nu-shadow(lg);
       z-index: nu-z(dropdown);
@@ -400,7 +400,7 @@
         margin: 0;
         font-size: nu-font-size(2xs);
         font-weight: nu-font-weight(semibold);
-        color: var(--text-muted);
+        color: var(--nu-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.04em;
       }
@@ -417,8 +417,8 @@
 
     .nu-sidebar__group.is-active-group {
       > .nu-sidebar__group-toggle.is-active {
-        --nu-sidebar__group-toggle--Color: var(--primary);
-        --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
+        --nu-sidebar__group-toggle--Color: var(--nu-brand);
+        --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(brand, 12%)};
       }
 
       > .nu-sidebar__group-items {
@@ -435,7 +435,7 @@
 
         > * {
           padding-block: nu-space(1);
-          background-color: nu-tint(primary, 6%);
+          background-color: nu-tint(brand, 6%);
         }
 
         .nu-sidebar__group-title,

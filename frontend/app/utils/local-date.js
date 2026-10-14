@@ -3,7 +3,6 @@ import { DateTime } from 'luxon';
 // The only frontend file allowed to import luxon; only plain values leave it.
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // Rejects impossible days such as 2026-02-31 instead of rolling them over.
 function parseDateOnly(value, zone) {
@@ -149,13 +148,12 @@ export function toEpochMs(value) {
   return toDateTime(value)?.toMillis() ?? NaN;
 }
 
-// Whole days until an instant, rounded up; null when the instant is missing or invalid.
-export function daysUntil(instant, now = Date.now()) {
-  if (!instant) return null;
-  const target = toDateTime(instant);
-  const from = toDateTime(now);
+// Whole calendar days from today to date, both YYYY-MM-DD only (null otherwise); convert instants with todayInZone first.
+export function daysUntil(date, today) {
+  const target = parseDateOnly(date, 'utc');
+  const from = parseDateOnly(today, 'utc');
   if (!target || !from) return null;
-  return Math.ceil((target.toMillis() - from.toMillis()) / MS_PER_DAY);
+  return Math.round(target.diff(from, 'days').days);
 }
 
 // Short relative age such as "5m ago"; empty for a missing or invalid instant.

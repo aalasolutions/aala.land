@@ -7,12 +7,12 @@
   @include nu-root("popover", (
     "ZIndex": nu-z(dropdown),
     "Width": 18rem,
-    "BackgroundColor": var(--bg-surface),
-    "BorderColor": var(--border-base),
+    "BackgroundColor": var(--nu-bg-surface),
+    "BorderColor": var(--nu-border-regular),
     "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(lg),
     "TransitionDuration": nu-duration(fast),
-    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "focus--BoxShadow": nu-focus-ring(),
     "ArrowSize": 8px,
     "ArrowOffset": -4px,
   ));
@@ -65,14 +65,14 @@
     justify-content: space-between;
     gap: nu-space(2);
     padding: nu-space(3) nu-space(4);
-    border-block-end: 1px solid var(--border-base);
+    border-block-end: 1px solid var(--nu-border-regular);
   }
 
   @include e(title) {
     margin: 0;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-color);
+    color: var(--nu-text-regular);
   }
 
   @include e(close) {
@@ -83,7 +83,8 @@
     inline-size: 1.5rem;
     block-size: 1.5rem;
     flex-shrink: 0;
-    color: var(--text-muted);
+    padding: 0;
+    color: var(--nu-text-muted);
     background-color: transparent;
     border: none;
     border-radius: nu-radius(sm);
@@ -101,8 +102,8 @@
     }
 
     &:hover {
-      color: var(--text-color);
-      background-color: var(--bg-alternate);
+      color: var(--nu-text-regular);
+      background-color: var(--nu-bg-alternate);
     }
 
     &:focus-visible {
@@ -114,7 +115,7 @@
   @include e(body) {
     padding: nu-space(4);
     font-size: nu-font-size(sm);
-    color: var(--text-muted);
+    color: var(--nu-text-muted);
   }
 
   @include e(footer) {
@@ -123,7 +124,7 @@
     justify-content: flex-end;
     gap: nu-space(2);
     padding: nu-space(3) nu-space(4);
-    border-block-start: 1px solid var(--border-base);
+    border-block-start: 1px solid var(--nu-border-regular);
   }
 
   // ---- placement modifiers: position body + arrow ----
