@@ -6,4 +6,4 @@ allowBuilds:
   core-js: false
 
 minimumReleaseAgeExclude:
-  - '@nuvoui/core@2.0.1'
+  - '@nuvoui/core@2.1.1'

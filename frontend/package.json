@@ -50,7 +50,7 @@
     "@embroider/vite": "^1.7.13",
     "@eslint/js": "^9.39.5",
     "@glimmer/component": "^2.0.0",
-    "@nuvoui/core": "^2.0.1",
+    "@nuvoui/core": "^2.1.1",
     "@rollup/plugin-babel": "^7.1.0",
     "babel-plugin-ember-template-compilation": "^3.1.0",
     "concurrently": "^9.2.1",
