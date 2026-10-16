@@ -641,6 +641,19 @@ describe('ReportsService', () => {
       expect(havingSql).toContain('< :days30Ago');
     });
 
+    it('starts a lease end date at midnight in the lease region zone', async () => {
+      const unitQb = seedEmpty();
+
+      await service.getRedFlags(companyId);
+
+      const [havingSql] = unitQb.having.mock.calls[0];
+      const endedOn = `(le.end_date::timestamp AT TIME ZONE ${regionTimezoneSql('le.region_code')})`;
+      expect(havingSql).toContain(`LEAST(${endedOn},`);
+      expect(havingSql).toContain(`ELSE ${endedOn} END`);
+      expect(havingSql).toContain("'America/Chicago'");
+      expect(havingSql).not.toContain('le.end_date::timestamptz');
+    });
+
     it('confines region-scoped vacant units through the city region', async () => {
       const unitQb = seedEmpty();
 

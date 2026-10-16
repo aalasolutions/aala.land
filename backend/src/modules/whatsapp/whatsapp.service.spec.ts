@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   BadRequestException,
   ConflictException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappSendError } from './whatsapp-cloud-api.service';
@@ -288,6 +289,36 @@ describe('WhatsappService', () => {
       expect(err.message).toBe(
         'WhatsApp could not be reached; the message was not sent',
       );
+    });
+
+    it('maps a send error flagged needsReconnect to a 503 and stores nothing', async () => {
+      cloud.sendText.mockRejectedValue(
+        new WhatsappSendError('Token unusable', undefined, undefined, true),
+      );
+
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
+
+      expect(err).toBeInstanceOf(ServiceUnavailableException);
+      expect(err.message).toBe(
+        'This WhatsApp connection needs reconnecting; the message was not sent',
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
+    it('does not map a send error without needsReconnect to a 503', async () => {
+      cloud.sendText.mockRejectedValue(
+        new WhatsappSendError('Cloud API send failed 401', 401, 190, false),
+      );
+
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
+
+      expect(err).toBeInstanceOf(BadGatewayException);
+      expect(err).not.toBeInstanceOf(ServiceUnavailableException);
     });
 
     it("checks the reply window on the caller's own chat row before sending", async () => {

@@ -801,10 +801,12 @@ export class ReportsService {
         AND rh.entity_id = le.id
         AND (rh.action = :terminateAction OR (rh.action = :statusChangeAction
           AND rh.metadata->>'to' = le.status::text)))`;
+    // A date-only end date starts at midnight in the lease region's zone.
+    const endedOnSql = `(le.end_date::timestamp AT TIME ZONE ${regionTimezoneSql('le.region_code')})`;
     const vacantSinceSql = `COALESCE(MAX(CASE le.status
       WHEN :terminatedLease THEN COALESCE(${endedAtSql}, le.updated_at)
-      WHEN :expiredLease THEN LEAST(le.end_date::timestamptz, ${endedAtSql})
-      ELSE le.end_date::timestamptz END), u.created_at)`;
+      WHEN :expiredLease THEN LEAST(${endedOnSql}, ${endedAtSql})
+      ELSE ${endedOnSql} END), u.created_at)`;
 
     const vacantQb = this.unitRepository
       .createQueryBuilder('u')
