@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
+import { addMonthsToInstant } from '@shared/utils/region-time.util';
 import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.entity';
 
 const RETENTION_MONTHS = 13;
@@ -19,8 +20,7 @@ export class AiConversationRetentionCron {
 
   @Cron('0 3 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
-    const cutoff = new Date();
-    cutoff.setUTCMonth(cutoff.getUTCMonth() - RETENTION_MONTHS);
+    const cutoff = addMonthsToInstant(new Date(), -RETENTION_MONTHS);
 
     let total = 0;
     for (;;) {

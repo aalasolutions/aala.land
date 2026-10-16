@@ -11,6 +11,8 @@ const AUDIT_ACTIONS = [
   { value: 'LOGOUT', label: 'Logout' },
   { value: 'IMPORT', label: 'Import' },
   { value: 'EXPORT', label: 'Export' },
+  { value: 'VIEW', label: 'View' },
+  { value: 'ACCESS_VERIFY_FAILED', label: 'Access Verify Failed' },
 ];
 
 const ENTITY_TYPES = [

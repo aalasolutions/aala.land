@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Company } from '../../companies/entities/company.entity';
 
 // No user_id: a per-agent split would turn the locked allowance check into an unlockable SUM
 @Entity('ai_credit_usage')
@@ -18,6 +21,13 @@ export class AiCreditUsage {
 
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
+
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_ai_credit_usage_company',
+  })
+  company: Company;
 
   @Column({ name: 'period_start', type: 'timestamptz' })
   periodStart: Date;
