@@ -27,6 +27,24 @@
   .is-fixed-right {
     box-shadow: inset 1px 0 0 var(--nu-border-regular);
   }
+
+  // Sticky pinned cells paint over collapsed borders, so header cells draw their own rule.
+  thead th {
+    border-block-end: 0;
+    box-shadow: inset 0 -1px 0 var(--nu-border-regular);
+  }
+
+  th.is-fixed-left {
+    box-shadow:
+      inset -1px 0 0 var(--nu-border-regular),
+      inset 0 -1px 0 var(--nu-border-regular);
+  }
+
+  th.is-fixed-right {
+    box-shadow:
+      inset 1px 0 0 var(--nu-border-regular),
+      inset 0 -1px 0 var(--nu-border-regular);
+  }
 }
 
 // RTL: table stays LTR (columns are mirrored), cell content reads RTL.
@@ -148,7 +166,7 @@
     padding-block: nu-space(3);
     padding-inline: nu-space(4);
     font-size: nu-font-size(xs);
-    font-weight: nu-font-weight(semibold);
+    font-weight: nu-font-weight(normal);
     color: var(--nu-text-muted);
     text-align: start;
     text-transform: uppercase;

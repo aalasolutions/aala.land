@@ -2,11 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import {
-  localDateString,
-  localEndOfDayIso,
-  timeAgo,
-} from '../utils/local-date';
+import { localEndOfDayIso, timeAgo, todayInZone } from '../utils/local-date';
 import {
   ACCESS_STATUS_OPTIONS,
   ACCESS_STATUS_VARIANTS,
@@ -18,11 +14,11 @@ export const EXPIRY_DEFAULT = 'default';
 export const EXPIRY_DATE = 'date';
 export const EXPIRY_FOREVER = 'forever';
 
-// Approve sends nothing for the default 90 days, an end-of-day instant for a date, or forever.
-export function approvalBody(choice, date) {
+// Approve sends nothing for the default 90 days, an end-of-day instant in timeZone for a date, or forever.
+export function approvalBody(choice, date, timeZone = null) {
   if (choice === EXPIRY_FOREVER) return { forever: true };
   if (choice === EXPIRY_DATE) {
-    const expiresAt = localEndOfDayIso(date);
+    const expiresAt = localEndOfDayIso(date, timeZone);
     return expiresAt ? { expiresAt } : null;
   }
   return {};
@@ -33,6 +29,7 @@ export default class AccessRequestsController extends PaginatedController {
   @service notifications;
   @service router;
   @service accessRequests;
+  @service region;
 
   queryParams = ['page', 'limit', 'status'];
   @tracked status = 'PENDING';
@@ -92,7 +89,7 @@ export default class AccessRequestsController extends PaginatedController {
   }
 
   get minExpiryDate() {
-    return localDateString();
+    return todayInZone(this.region.activeRegion?.timezone);
   }
 
   get showApproveModal() {
@@ -147,7 +144,11 @@ export default class AccessRequestsController extends PaginatedController {
   @action async confirmApprove(event) {
     event?.preventDefault();
     if (!this.approving || this.isApproving) return;
-    const body = approvalBody(this.expiryChoice, this.expiryDate);
+    const body = approvalBody(
+      this.expiryChoice,
+      this.expiryDate,
+      this.region.activeRegion?.timezone,
+    );
     if (!body) {
       this.approveError = 'Pick the date the access ends.';
       return;

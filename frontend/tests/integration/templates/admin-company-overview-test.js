@@ -3,7 +3,7 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import template from 'land/templates/admin/companies/company';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
-import { formatLongInstant } from 'land/utils/local-date';
+import { formatShortDateTime } from 'land/utils/local-date';
 
 const squash = (text) => text.replaceAll(' ', ' ').replace(/\s+/g, ' ');
 
@@ -46,7 +46,7 @@ module('Integration | Template | admin company overview', function (hooks) {
         document.querySelector('[data-test-company-downgrade-pending]')
           .textContent,
       ).trim(),
-      `Downgrade requested, plan ends ${formatLongInstant(effective)}`,
+      `Downgrade requested, plan ends ${formatShortDateTime(effective, { locale: 'en-US' })}`,
     );
   });
 

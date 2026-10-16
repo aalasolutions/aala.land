@@ -27,7 +27,7 @@
         as |cell|
       >
         {{#if (eq cell.key "name")}}
-          <span class="font-bold" data-test-vendor-row>{{cell.value}}</span>
+          <span data-test-vendor-row>{{cell.value}}</span>
         {{else if (eq cell.key "specialties")}}
           <div class="flex gap-2 wrap">
             {{#each cell.value as |sp|}}

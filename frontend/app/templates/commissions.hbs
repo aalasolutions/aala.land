@@ -63,7 +63,7 @@
             @text={{cell.value}}
           />
         {{else if (eq cell.key "commissionAmount")}}
-          <span class="font-bold"><Money
+          <span><Money
               @amount={{cell.value}}
               @currency={{cell.row.currency}}
             />
@@ -130,7 +130,7 @@
             <span class="text-xs text-muted">
               {{#if cell.row.paidAt}}
                 Paid
-                {{format-date cell.row.paidAt}}
+                {{format-date cell.row.paidAt zone="region"}}
               {{else}}
                 Paid
               {{/if}}

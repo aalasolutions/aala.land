@@ -94,8 +94,10 @@ module('Integration | Template | leads', function (hooks) {
     assert.dom(`${limited} [data-test-limited-badge]`).exists();
     assert.dom(`${limited} [data-test-lead-phone]`).hasText('+971 50 *** **67');
     assert.dom(`${limited} [data-test-wa-link]`).doesNotExist();
+    assert.dom(`${limited} [data-test-lead-email]`).doesNotExist();
     assert.dom(limited).doesNotContainText('undefined');
     assert.dom(`${full} [data-test-wa-link]`).exists();
+    assert.dom(`${full} [data-test-lead-email]`).hasText('sara@example.com');
   });
 
   test('the detail modal of a limited lead shows the masked phone, no email and no WhatsApp', async function (assert) {

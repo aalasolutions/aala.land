@@ -41,6 +41,7 @@ function qbMock(result: {
   getMany?: unknown[];
   getManyAndCount?: [unknown[], number];
   getRawMany?: unknown[];
+  getCount?: number;
 }) {
   const chain: Record<string, jest.Mock> = {};
   const mk = (key: string, returned?: unknown) => {
@@ -65,6 +66,7 @@ function qbMock(result: {
     .mockResolvedValue(result.getManyAndCount ?? [[], 0]);
   chain.getMany = jest.fn().mockResolvedValue(result.getMany ?? []);
   chain.getRawMany = jest.fn().mockResolvedValue(result.getRawMany ?? []);
+  chain.getCount = jest.fn().mockResolvedValue(result.getCount ?? 0);
   return chain;
 }
 
@@ -701,6 +703,26 @@ describe('ContactsService', () => {
       });
     });
 
+    it('scopes by company and region through one query builder before the company name clause', async () => {
+      const qb = arrangeCompanies();
+
+      await service.findCompanies(companyId, 1, 20, 'makkah', {
+        userId: 'manager-uuid-1',
+        role: Role.MANAGER,
+        regionCodes: ['makkah'],
+      });
+
+      expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(repo.createQueryBuilder).toHaveBeenCalledWith('c');
+      expect(qb.where).toHaveBeenCalledWith('c.company_id = :companyId', {
+        companyId,
+      });
+      expect(qb.andWhere.mock.calls.slice(0, 2)).toEqual([
+        ['c.region_code IN (:...regionCodes)', { regionCodes: ['makkah'] }],
+        ["TRIM(COALESCE(c.contact_company, '')) <> ''"],
+      ]);
+    });
+
     it('returns nothing for a region the caller does not hold', async () => {
       arrangeCompanies();
 
@@ -918,6 +940,165 @@ describe('ContactsService', () => {
       ]);
     });
 
+    it('counts scopeTotal over company and region only, ignoring search, filters and tag', async () => {
+      const listQb = stubQueryBuilders();
+      listQb.clone = jest.fn(() => {
+        const countQb = qbMock({});
+        countQb.getRawOne = jest.fn().mockResolvedValue({ total: '2' });
+        return countQb;
+      });
+      const scopeQb = qbMock({ getCount: 37 });
+      repo.createQueryBuilder
+        .mockReturnValueOnce(listQb as any)
+        .mockReturnValueOnce(scopeQb as any);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'sara',
+        'owner',
+        { isWhatsapp: true, tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+      );
+
+      expect(result.scopeTotal).toBe(37);
+      expect(result.tagCounts?.all).toBe(2);
+      expect(scopeQb.where).toHaveBeenCalledWith('c.company_id = :companyId', {
+        companyId,
+      });
+      expect(scopeQb.andWhere.mock.calls).toEqual([
+        ['c.region_code IN (:...regionCodes)', { regionCodes: ['makkah'] }],
+      ]);
+      expect(listQb.andWhere).not.toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        expect.anything(),
+      );
+    });
+
+    it('returns scopeTotal 0 when a search goes company-wide for a caller with no region', async () => {
+      const listQb = stubQueryBuilders();
+      listQb.clone = jest.fn(() => {
+        const countQb = qbMock({});
+        countQb.getRawOne = jest.fn().mockResolvedValue({ total: '3' });
+        return countQb;
+      });
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'sara',
+        undefined,
+        { tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: [] },
+      );
+
+      expect(result.scopeTotal).toBe(0);
+      expect(result.tagCounts?.all).toBe(3);
+      expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(listQb.getCount).not.toHaveBeenCalled();
+    });
+
+    it('builds the scope query without a region clause when all regions is on', async () => {
+      const listQb = stubQueryBuilders();
+      listQb.clone = jest.fn(() => {
+        const countQb = qbMock({});
+        countQb.getRawOne = jest.fn().mockResolvedValue({ total: '2' });
+        return countQb;
+      });
+      const scopeQb = qbMock({ getCount: 12 });
+      repo.createQueryBuilder
+        .mockReturnValueOnce(listQb as any)
+        .mockReturnValueOnce(scopeQb as any);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'sara',
+        undefined,
+        { allRegions: true, tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+      );
+
+      expect(result.scopeTotal).toBe(12);
+      expect(scopeQb.where).toHaveBeenCalledWith('c.company_id = :companyId', {
+        companyId,
+      });
+      expect(scopeQb.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('reuses the all tag count as scopeTotal without another count when nothing narrows the list', async () => {
+      const listQb = stubQueryBuilders();
+      const countQb = qbMock({});
+      countQb.getRawOne = jest.fn().mockResolvedValue({ total: '41' });
+      listQb.clone = jest.fn(() => countQb);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'owner',
+        { tagCounts: true },
+        { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+      );
+
+      expect(result.scopeTotal).toBe(41);
+      expect(result.tagCounts?.all).toBe(41);
+      expect(repo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(listQb.getCount).not.toHaveBeenCalled();
+      expect(countQb.getCount).not.toHaveBeenCalled();
+      expect(listQb.where).toHaveBeenCalledWith('c.company_id = :companyId', {
+        companyId,
+      });
+      expect(listQb.andWhere).toHaveBeenCalledWith(
+        'c.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
+    });
+
+    it.each<[string, string | undefined, Record<string, unknown>]>([
+      ['search', 'sara', {}],
+      ['agentId', undefined, { agentId: 'agent-uuid-2' }],
+      ['isWhatsapp true', undefined, { isWhatsapp: true }],
+      ['isWhatsapp false', undefined, { isWhatsapp: false }],
+      ['company', undefined, { company: 'Acme' }],
+      ['companyExact', undefined, { company: 'Acme', companyExact: true }],
+      ['nationality', undefined, { nationality: 'Emirati' }],
+      ['dateFrom', undefined, { dateFrom: '2026-01-01' }],
+      ['dateTo', undefined, { dateTo: '2026-01-31' }],
+    ])(
+      'runs a separate scope count for scopeTotal when %s narrows the list',
+      async (_label, search, filters) => {
+        const listQb = stubQueryBuilders();
+        listQb.clone = jest.fn(() => {
+          const countQb = qbMock({});
+          countQb.getRawOne = jest.fn().mockResolvedValue({ total: '5' });
+          return countQb;
+        });
+        const scopeQb = qbMock({ getCount: 23 });
+        repo.createQueryBuilder
+          .mockReturnValueOnce(listQb as any)
+          .mockReturnValueOnce(scopeQb as any);
+
+        const result = await service.findAll(
+          companyId,
+          1,
+          20,
+          search,
+          undefined,
+          { ...filters, tagCounts: true },
+          { userId: 'agent-uuid-1', role: Role.AGENT, regionCodes: ['makkah'] },
+        );
+
+        expect(result.tagCounts?.all).toBe(5);
+        expect(result.scopeTotal).toBe(23);
+        expect(scopeQb.getCount).toHaveBeenCalledTimes(1);
+      },
+    );
+
     it('leaves tagCounts out unless asked', async () => {
       const qb = stubQueryBuilders();
       qb.clone = jest.fn();
@@ -925,6 +1106,7 @@ describe('ContactsService', () => {
       const result = await service.findAll(companyId, 1, 20);
 
       expect(result).not.toHaveProperty('tagCounts');
+      expect(result).not.toHaveProperty('scopeTotal');
       expect(qb.clone).not.toHaveBeenCalled();
     });
 
@@ -946,6 +1128,7 @@ describe('ContactsService', () => {
         owner: 0,
         portfolio_owner: 0,
       });
+      expect(result.scopeTotal).toBe(0);
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });

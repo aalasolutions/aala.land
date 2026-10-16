@@ -5,6 +5,7 @@ import { service } from '@ember/service';
 import {
   DEFAULT_RANGE,
   formatCalendarDate,
+  formatShortDate,
   isDateOnly,
   resolveRange,
   toDateOnly,
@@ -215,22 +216,24 @@ export default class FinancialsController extends PaginatedController {
   // What the stat cards say they are counting.
   get rangeLabel() {
     if (this.range === 'thisMonth' || this.range === 'lastMonth') {
-      return this.dayLabel(this.bounds.from, {
-        month: 'long',
-        year: 'numeric',
-      });
+      return (
+        formatCalendarDate(this.bounds.from, navigator.language || 'en', {
+          month: 'long',
+          year: 'numeric',
+        }) ?? this.bounds.from
+      );
     }
     const preset = this.rangeOptions.find((o) => o.id === this.range);
     if (this.range !== 'custom') return preset?.label ?? '';
     return `${this.dayLabel(this.bounds.from)} to ${this.dayLabel(this.bounds.to)}`;
   }
 
-  dayLabel(
-    date,
-    options = { day: 'numeric', month: 'short', year: 'numeric' },
-  ) {
+  dayLabel(date) {
     return (
-      formatCalendarDate(date, navigator.language || 'en', options) ?? date
+      formatShortDate(date, {
+        locale: navigator.language || 'en',
+        todayZone: this.region.activeRegion?.timezone,
+      }) ?? date
     );
   }
 

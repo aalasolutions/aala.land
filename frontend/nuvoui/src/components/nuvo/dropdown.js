@@ -284,6 +284,15 @@ export default class NuDropdownComponent extends Component {
     return this.args.selectedLabel ?? '';
   }
 
+  // An empty-valued pick is a placeholder-like "All ..." option, so it gets no title.
+  get triggerTitle() {
+    const value = this.currentValue;
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    return this.selectedLabel || null;
+  }
+
   get triggerLabel() {
     return this.selectedLabel || (this.args.placeholder ?? 'Select...');
   }

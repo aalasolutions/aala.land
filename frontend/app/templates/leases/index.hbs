@@ -1,7 +1,7 @@
 {{page-title "Leases"}}
 
-<div data-test-leases-page class="flex col gap-6">
-  <Nuvo::PageHeader @icon="file-text" @title="Lease Agreements" @subtitle="Manage tenant lease contracts and renewals.">
+<div data-test-leases-page class="flex col gap-4">
+  <Nuvo::PageHeader @title="Lease Agreements" @subtitle="Manage tenant lease contracts and renewals.">
     <:meta>
       <p class="text-muted">{{format-number @model.total unit="lease"}}</p>
     </:meta>
@@ -16,94 +16,86 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Segmented
-    @options={{this.statusTabs}}
-    @value={{this.status}}
-    @onChange={{this.setStatusTab}}
-    data-test-lease-status-tabs
-  />
+  <div class="flex x-center gap-3 wrap" data-test-leases-toolbar>
+    <Nuvo::Segmented
+      @options={{this.statusTabs}}
+      @value={{this.status}}
+      @onChange={{this.setStatusTab}}
+      data-test-lease-status-tabs
+    />
+    <FiltersButton @count={{this.activeFilterCount}}>
+      <div class="flex col gap-4">
+        <div class="flex gap-3 wrap">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="Search tenant, unit number, registration ref..."
+            class="grow"
+            value={{this.search}}
+            {{on "input" (fn this.updateFilter "search")}}
+            data-test-leases-search
+          />
+        </div>
 
-  <Nuvo::Accordion
-    @items={{array
-      (hash
-        id="filters"
-        title=(if this.hasActiveFilters "Filters · active" "Filters")
-      )
-    }}
-    data-test-filters-accordion
-  >
-    <div class="flex col gap-4">
-      <div class="flex gap-3 wrap">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="Search tenant, unit number, registration ref..."
-          class="grow"
-          value={{this.search}}
-          {{on "input" (fn this.updateFilter "search")}}
-          data-test-leases-search
-        />
-      </div>
+        <div class="flex gap-3 wrap x-end">
+          <Nuvo::Field class="grow" @label="Type">
+            <Nuvo::Dropdown
+              id="leases-type-filter"
+              @align="start"
+              @value={{this.type}}
+              @onSelect={{this.setType}}
+              @options={{this.typeFilterOptions}}
+              data-test-type-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Visibility">
+            <Nuvo::Dropdown
+              @align="start"
+              @value={{this.archived}}
+              @onSelect={{this.setArchivedTab}}
+              @options={{this.archivedTabs}}
+              data-test-archived-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Start date from">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Start date from"
+              value={{this.dateFrom}}
+              {{on "change" this.setDateFrom}}
+              data-test-date-from-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Start date to">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Start date to"
+              value={{this.dateTo}}
+              {{on "change" this.setDateTo}}
+              data-test-date-to-filter
+            />
+          </Nuvo::Field>
+        </div>
 
-      <div class="flex gap-3 wrap x-end">
-        <Nuvo::Field class="grow" @label="Type">
-          <Nuvo::Dropdown
-            id="leases-type-filter"
-            @align="start"
-            @value={{this.type}}
-            @onSelect={{this.setType}}
-            @options={{this.typeFilterOptions}}
-            data-test-type-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Visibility">
-          <Nuvo::Dropdown
-            @align="start"
-            @value={{this.archived}}
-            @onSelect={{this.setArchivedTab}}
-            @options={{this.archivedTabs}}
-            data-test-archived-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Start date from">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Start date from"
-            value={{this.dateFrom}}
-            {{on "change" this.setDateFrom}}
-            data-test-date-from-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Start date to">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Start date to"
-            value={{this.dateTo}}
-            {{on "change" this.setDateTo}}
-            data-test-date-to-filter
-          />
-        </Nuvo::Field>
-      </div>
-
-      {{#if this.hasActiveFilters}}
         <div class="flex end">
           <Nuvo::Button
             @variant="danger"
             @size="sm"
             @icon="x"
+            @disabled={{not this.hasActiveFilters}}
             {{on "click" this.clearFilters}}
             data-test-clear-filters
           >
             Clear filters
           </Nuvo::Button>
         </div>
-      {{/if}}
-    </div>
-  </Nuvo::Accordion>
+      </div>
+    </FiltersButton>
+  </div>
 
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     {{#if @model.leases.length}}
       <Nuvo::DataTable
         @columns={{this.columns}}
@@ -119,7 +111,7 @@
           <LinkTo
             @route="leases.detail"
             @model={{cell.row.id}}
-            class="font-bold text-brand"
+            class="text-brand"
             data-test-lease-row
             data-test-lease-detail-link
           >{{or (contact-name cell.row.contact) "Unknown tenant"}}</LinkTo>

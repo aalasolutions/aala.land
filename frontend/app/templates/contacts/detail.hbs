@@ -6,13 +6,11 @@
     @subtitle="Contact record"
   >
     <:breadcrumb>
-      <Nuvo::Button
-        @variant="secondary"
-        @size="sm"
-        @icon="arrow-left"
-        @text="Back to Contacts"
-        data-test-back-to-contacts
-        {{on "click" this.goBack}}
+      <Nuvo::Breadcrumb
+        @items={{array (hash label="Contacts" route="contacts.index")}}
+        @compact={{true}}
+        @parentsOnly={{true}}
+        data-test-breadcrumb-contacts
       />
     </:breadcrumb>
     <:meta>
@@ -76,6 +74,7 @@
               <dt class="nu-desc-list__term">Created</dt>
               <dd class="nu-desc-list__description">{{format-date
                   @model.contact.createdAt
+                  zone="region"
                 }}</dd>
             </div>
           </Nuvo::DescList>
@@ -165,7 +164,8 @@
                               @currency={{region-currency lead.regionCode}}
                             />{{/if}}</span>
                       {{/if}}
-                      <span>Created {{format-date lead.createdAt}}</span>
+                      <span>Created
+                        {{format-date lead.createdAt zone="region"}}</span>
                     </div>
                     {{#if (eq this.expandedLeadId lead.id)}}
                       <div class="lead-detail__scroll">
@@ -235,7 +235,7 @@
                   <LinkTo
                     @route="leases.detail"
                     @model={{cell.row.id}}
-                    class="font-bold text-brand"
+                    class="text-brand"
                     data-test-lease-row
                   >{{cell.value}}</LinkTo>
                 {{else if (eq cell.key "status")}}
@@ -296,7 +296,6 @@
               >
                 {{#if (eq cell.key "unitNumber")}}
                   <span
-                    class="font-bold"
                     data-test-owned-unit-row
                   >{{cell.value}}</span>
                 {{else if (eq cell.key "areaName")}}

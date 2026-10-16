@@ -280,7 +280,7 @@
                   cell.value
                 }}</span>
             {{else if (eq cell.key "amount")}}
-              <span class="font-bold">{{format-money
+              <span>{{format-money
                   cell.value
                   currency=cell.row.currency
                   minor=true
@@ -289,7 +289,6 @@
               {{#let (billing-history-status cell.row) as |status|}}
                 {{#if status.creditAmount}}
                   <span
-                    class="font-bold"
                     data-test-history-credit
                   >{{format-money
                       status.creditAmount

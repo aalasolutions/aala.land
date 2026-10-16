@@ -4,6 +4,7 @@ import { guidFor } from '@ember/object/internals';
 import { validPage } from './-page-number';
 
 const DEFAULT_PER_PAGE_OPTIONS = [50, 100, 250];
+const SIZES = ['xs', 'sm', 'lg'];
 
 export default class NuPaginationComponent extends Component {
   // Per-instance so two paginations on one page do not emit duplicate ids and break their labels.
@@ -19,10 +20,23 @@ export default class NuPaginationComponent extends Component {
     return Boolean(this.args.onPerPageChange || this.args.onLimitChange);
   }
 
+  // @sm is the older spelling of @size="sm".
+  get size() {
+    if (SIZES.includes(this.args.size)) {
+      return this.args.size;
+    }
+    return this.args.sm ? 'sm' : null;
+  }
+
+  // The per-page trigger is sm at the default and sm sizes; xs and lg match the link size.
+  get perPageSize() {
+    return { xs: 'xs', lg: 'lg' }[this.size] ?? 'sm';
+  }
+
   get classes() {
     const parts = ['nu-pagination'];
-    if (this.args.sm) {
-      parts.push('m-sm');
+    if (this.size) {
+      parts.push(`m-${this.size}`);
     }
     if (this.args.compact) {
       parts.push('m-compact');

@@ -73,6 +73,7 @@
       "./components/nuvo/card.js": "./dist/_app_/components/nuvo/card.js",
       "./components/nuvo/checkbox.js": "./dist/_app_/components/nuvo/checkbox.js",
       "./components/nuvo/confirm-modal.js": "./dist/_app_/components/nuvo/confirm-modal.js",
+      "./components/nuvo/data-table-options.js": "./dist/_app_/components/nuvo/data-table-options.js",
       "./components/nuvo/data-table.js": "./dist/_app_/components/nuvo/data-table.js",
       "./components/nuvo/desc-list.js": "./dist/_app_/components/nuvo/desc-list.js",
       "./components/nuvo/dialog-host.js": "./dist/_app_/components/nuvo/dialog-host.js",

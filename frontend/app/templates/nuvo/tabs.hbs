@@ -112,6 +112,20 @@
     </NuvoDocs::Example>
   </NuvoDocs::Section>
 
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    <NuvoDocs::Example
+      @title="Sizes"
+      @note="xs, sm, md (default) and lg. Trigger height is 28, 32, 36 and 48px, matching buttons and inputs of the same size."
+      @layout="stack"
+      @code={{this.code.sizes}}
+    >
+      <Nuvo::Tabs @tabs={{this.plainTabs}} @size="xs" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-nuvo-tabs-size="xs" />
+      <Nuvo::Tabs @tabs={{this.plainTabs}} @size="sm" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-nuvo-tabs-size="sm" />
+      <Nuvo::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-nuvo-tabs-size="md" />
+      <Nuvo::Tabs @tabs={{this.plainTabs}} @size="lg" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-nuvo-tabs-size="lg" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
   <NuvoDocs::Section @title="Layouts" @id="layouts">
     <NuvoDocs::Example
       @title="Vertical"

@@ -376,33 +376,35 @@ export class ContactsService {
     page: number;
     limit: number;
     tagCounts?: ContactTagCounts;
+    scopeTotal?: number;
   }> {
     const take = contactListLimit(limit);
-    // Search and the all-regions view are company-wide; the presenter guards the personal fields.
-    const companyWide = Boolean(search?.trim()) || filters?.allRegions === true;
-    const regionCodes = companyWide
-      ? null
-      : effectiveRegionCodes(filters?.regionCode, caller);
+    // The page's region scope; search also goes company-wide, the presenter guards the personal fields.
+    const scopeRegionCodes =
+      filters?.allRegions === true
+        ? null
+        : effectiveRegionCodes(filters?.regionCode, caller);
+    const regionCodes = search?.trim() ? null : scopeRegionCodes;
     if (regionCodes?.length === 0) {
       return {
         data: [],
         total: 0,
         page,
         limit: take,
-        ...(filters?.tagCounts && { tagCounts: this.toTagCounts() }),
+        ...(filters?.tagCounts && {
+          tagCounts: this.toTagCounts(),
+          scopeTotal: 0,
+        }),
       };
     }
 
-    const qb = this.contactRepository
-      .createQueryBuilder('c')
-      .where('c.company_id = :companyId', { companyId });
-
-    if (regionCodes) {
-      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
-    }
+    const qb = this.scopedListQuery(companyId, regionCodes);
+    // Set by every filter that narrows qb before the tag-count clone; tag is applied after it.
+    let narrowed = false;
 
     if (search?.trim()) {
       qb.andWhere(this.searchSql(search.trim(), caller));
+      narrowed = true;
     }
 
     if (filters?.agentId) {
@@ -412,12 +414,14 @@ export class ContactsService {
           OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
         { agentId: filters.agentId },
       );
+      narrowed = true;
     }
 
     if (filters?.isWhatsapp !== undefined) {
       qb.andWhere('c.is_whatsapp = :isWhatsapp', {
         isWhatsapp: filters.isWhatsapp,
       });
+      narrowed = true;
     }
 
     if (filters?.company && filters.companyExact) {
@@ -425,22 +429,26 @@ export class ContactsService {
       qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
         company: filters.company,
       });
+      narrowed = true;
     } else if (filters?.company) {
       qb.andWhere('c.contact_company ILIKE :company', {
         company: `%${filters.company}%`,
       });
+      narrowed = true;
     }
 
     if (filters?.nationality) {
       qb.andWhere('c.nationality ILIKE :nationality', {
         nationality: `%${filters.nationality}%`,
       });
+      narrowed = true;
     }
 
     if (filters?.dateFrom) {
       qb.andWhere('c.created_at >= :dateFrom', {
         dateFrom: filters.dateFrom,
       });
+      narrowed = true;
     }
 
     if (filters?.dateTo) {
@@ -451,12 +459,27 @@ export class ContactsService {
       qb.andWhere(`c.created_at < ${upper}`, {
         dateTo: filters.dateTo,
       });
+      narrowed = true;
     }
 
     // Cloned before the tag filter so every total shares the list's scope and filters.
-    const tagCounts = filters?.tagCounts
-      ? await this.countByTag(qb.clone())
-      : undefined;
+    let tagCounts: ContactTagCounts | undefined;
+    // Every contact in the page's scope, ignoring search, filters and tag.
+    let scopeTotal: number | undefined;
+    if (filters?.tagCounts) {
+      if (!narrowed) {
+        // Unnarrowed qb is exactly the scope query, so its total is the scope total.
+        tagCounts = await this.countByTag(qb.clone());
+        scopeTotal = tagCounts.all;
+      } else {
+        [tagCounts, scopeTotal] = await Promise.all([
+          this.countByTag(qb.clone()),
+          scopeRegionCodes?.length === 0
+            ? Promise.resolve(0)
+            : this.scopedListQuery(companyId, scopeRegionCodes).getCount(),
+        ]);
+      }
+    }
 
     if (tag) {
       // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
@@ -477,7 +500,7 @@ export class ContactsService {
 
     return {
       data: await this.contactPrivacy.presentMany(companyId, caller, withTags),
-      ...(tagCounts && { tagCounts }),
+      ...(tagCounts && { tagCounts, scopeTotal }),
       total,
       page,
       limit: take,
@@ -506,13 +529,9 @@ export class ContactsService {
       return { data: [], total: 0, page, limit: take };
     }
 
-    const qb = this.contactRepository
-      .createQueryBuilder('c')
-      .where('c.company_id = :companyId', { companyId })
-      .andWhere("TRIM(COALESCE(c.contact_company, '')) <> ''");
-    if (regionCodes) {
-      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
-    }
+    const qb = this.scopedListQuery(companyId, regionCodes).andWhere(
+      "TRIM(COALESCE(c.contact_company, '')) <> ''",
+    );
 
     // One row per company per region; company names group case-insensitively.
     const [data, totalRow] = await Promise.all([
@@ -806,6 +825,19 @@ export class ContactsService {
       case 'portfolio_owner':
         return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
+  }
+
+  private scopedListQuery(
+    companyId: string,
+    regionCodes: string[] | null,
+  ): SelectQueryBuilder<Contact> {
+    const qb = this.contactRepository
+      .createQueryBuilder('c')
+      .where('c.company_id = :companyId', { companyId });
+    if (regionCodes) {
+      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
+    }
+    return qb;
   }
 
   private async countByTag(

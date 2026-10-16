@@ -44,7 +44,13 @@ module('Integration | Template | contacts/index', function (hooks) {
 
   async function renderList(
     ctx,
-    { role = 'agent', contacts = [FULL, LIMITED], respond, tagCounts } = {},
+    {
+      role = 'agent',
+      contacts = [FULL, LIMITED],
+      respond,
+      tagCounts,
+      scopeTotal,
+    } = {},
   ) {
     ctx.calls = stubAuth(ctx.owner, { role, respond });
     const controller = ctx.owner.lookup('controller:contacts/index');
@@ -58,6 +64,7 @@ module('Integration | Template | contacts/index', function (hooks) {
         page: 1,
         limit: 50,
         tagCounts,
+        scopeTotal,
         agents: [],
       },
     });
@@ -192,10 +199,34 @@ module('Integration | Template | contacts/index', function (hooks) {
     assert.dom(segment('portfolio_owner')).hasText('Portfolio Owner 0');
   });
 
+  test('the header shows the scope total, not the filtered list total', async function (assert) {
+    await renderList(this, {
+      scopeTotal: 37,
+      tagCounts: { all: 9, lead: 4, owner: 3, tenant: 2, portfolio_owner: 0 },
+    });
+
+    assert.dom('[data-test-contacts-total]').hasText('37 contacts');
+  });
+
   test('the role bar keeps plain labels when the list carries no totals', async function (assert) {
     await renderList(this);
 
     assert.dom('[data-test-nu-segmented-item="lead"]').hasText('Lead');
     assert.dom('[data-test-nu-segmented-item=""]').hasText('All');
+  });
+
+  test('search and the column Options sit in the toolbar, and the table has no outer card', async function (assert) {
+    await renderList(this);
+
+    assert
+      .dom('[data-test-contacts-toolbar] [data-test-contacts-search]')
+      .exists('search is visible without opening Filters');
+    assert
+      .dom(
+        '[data-test-contacts-toolbar] [data-test-contacts-table-options] [data-test-data-table-options]',
+      )
+      .exists('Options renders in the toolbar slot');
+    assert.dom('.data-table-shell__toolbar').doesNotExist();
+    assert.dom('[data-test-contacts-list] .nu-card').doesNotExist();
   });
 });

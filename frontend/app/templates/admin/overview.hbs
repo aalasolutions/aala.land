@@ -105,7 +105,7 @@
           {{#if (eq cell.key "companyName")}}
             <span data-test-overview-upcoming-row>{{cell.value}}</span>
           {{else if (eq cell.key "amount")}}
-            <span class="font-bold">{{format-money
+            <span>{{format-money
                 cell.value
                 currency=cell.row.currency
                 minor=true

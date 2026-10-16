@@ -1,6 +1,6 @@
 {{page-title "Team"}}
 
-<div data-test-team-page class="flex col gap-6">
+<div data-test-team-page class="flex col gap-4">
   <Nuvo::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
     <:actions>
       {{#unless this.isSuperAdmin}}
@@ -36,7 +36,7 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     {{#if this.model.users.length}}
       <Nuvo::DataTable
         @columns={{this.columns}}
@@ -49,7 +49,7 @@
         as |cell|
       >
         {{#if (eq cell.key "name")}}
-          <span class="font-bold" data-test-user-id={{cell.row.id}}>{{cell.value}}</span>
+          <span data-test-user-id={{cell.row.id}}>{{cell.value}}</span>
         {{else if (eq cell.key "email")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "role")}}

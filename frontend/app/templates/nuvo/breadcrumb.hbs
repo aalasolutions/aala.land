@@ -6,18 +6,21 @@
 >
   <NuvoDocs::Section @title="Overview" @id="overview">
     <p class="nuvo-doc__intro">
-      The last item is always the current page and renders as plain text
+      By default the last item is the current page and renders as plain text
       with
-      <code class="nu-code">aria-current="page"</code>. Earlier items render
-      as anchors when they carry an href, or as buttons when they carry an
-      onClick. Put it in the page header's breadcrumb slot on detail pages.
+      <code class="nu-code">aria-current="page"</code>. Other items render
+      as router links when they carry a route, anchors when they carry an
+      href, or buttons when they carry an onClick. In a page header, pass
+      <code class="nu-code">@parentsOnly</code>
+      so every item is a parent link and the header title names the current
+      page.
     </p>
   </NuvoDocs::Section>
 
   <NuvoDocs::Section @title="Features" @id="features">
     <ul class="nu-list">
-      <li class="nu-list__item">Anchor or button items from one items array.</li>
-      <li class="nu-list__item">Current page derived from position, not a flag.</li>
+      <li class="nu-list__item">Router link, anchor or button items from one items array.</li>
+      <li class="nu-list__item">Current page derived from position, or none with parentsOnly.</li>
       <li class="nu-list__item">Compact style.</li>
     </ul>
   </NuvoDocs::Section>
@@ -30,6 +33,15 @@
       @code={{this.code.basic}}
     >
       <Nuvo::Breadcrumb @items={{this.breadcrumbItems}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Routes, parents only"
+      @note="Items with route (plus model or models) render as router links, so navigation stays in the app. parentsOnly links every item and marks none current: the form a detail page header uses."
+      @layout="block"
+      @code={{this.code.routes}}
+    >
+      <Nuvo::Breadcrumb @items={{this.routeItems}} @compact={{true}} @parentsOnly={{true}} />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example

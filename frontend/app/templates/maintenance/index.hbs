@@ -78,7 +78,7 @@
           as |cell|
         >
           {{#if (eq cell.key "title")}}
-            <p class="text-sm font-bold" data-test-work-order><LinkTo
+            <p class="text-sm" data-test-work-order><LinkTo
                 @route="maintenance.detail"
                 @model={{cell.row.id}}
                 class="text-brand"

@@ -2,7 +2,6 @@
 
 <div data-test-access-requests-page class="flex col gap-6">
   <Nuvo::PageHeader
-    @icon="key"
     @title="Access Requests"
     @subtitle="Agents asking for full details of contacts they did not add."
   />
@@ -34,7 +33,6 @@
       >
         {{#if (eq cell.key "requester.name")}}
           <span
-            class="font-bold"
             data-test-access-request-row={{cell.row.id}}
           >{{cell.value}}</span>
         {{else if (eq cell.key "contact.displayName")}}
@@ -55,7 +53,7 @@
           <span class="text-muted">{{or cell.value "-"}}</span>
         {{else if (eq cell.key "expiresAt")}}
           {{#if cell.value}}
-            {{format-date cell.value}}
+            {{format-date cell.value zone="region"}}
           {{else}}
             <span class="text-muted">{{or cell.row.expiryLabel "-"}}</span>
           {{/if}}

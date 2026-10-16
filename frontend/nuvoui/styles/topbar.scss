@@ -106,7 +106,7 @@
     }
 
     &::placeholder {
-      color: var(--nu-text-muted);
+      color: $nu-placeholder-color;
     }
 
     &:focus-visible {

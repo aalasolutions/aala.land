@@ -4,6 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { modifier } from 'ember-modifier';
 import { cancelTask, runTask } from 'ember-lifeline';
+import DataTableOptions from './data-table-options';
 
 const SELECT_KEY = '__select__';
 
@@ -26,6 +27,8 @@ const ROW_CONTROLS =
 export default class DataTableComponent extends Component {
   @service nuvoStorage;
   @service layer;
+
+  Options = DataTableOptions;
 
   // ember-table math is LTR only; RTL mirrors columns instead. A getter, not a
   // field: as a field it froze at construction and stayed stale when the
@@ -102,6 +105,13 @@ export default class DataTableComponent extends Component {
         name: column.name,
         visible: !this.hidden.includes(column.valuePath),
       }));
+  }
+
+  // `@optionsTarget`: an element (tracked by the page, so a late host works) or the id of one rendered before the table.
+  get optionsHost() {
+    const target = this.args.optionsTarget;
+    if (target instanceof Element) return target;
+    return typeof target === 'string' ? document.getElementById(target) : null;
   }
 
   @action toggleColumn(key) {

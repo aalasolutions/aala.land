@@ -2,7 +2,7 @@ import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import {
   addCalendarDays,
-  formatCalendarDate,
+  formatShortDate,
   todayInZone,
 } from 'land/utils/local-date';
 
@@ -50,9 +50,9 @@ module('Unit | Controller | company', function (hooks) {
       creditsUsed: 1,
       creditsResetsAt: `${addCalendarDays(today, 3)}T10:59:59.999Z`,
     });
-    const date = formatCalendarDate(addCalendarDays(today, 2), 'en-US', {
-      month: 'short',
-      day: 'numeric',
+    const date = formatShortDate(addCalendarDays(today, 2), {
+      locale: 'en-US',
+      todayZone: zone,
     });
     assert.strictEqual(
       controller.creditUsageLabel,

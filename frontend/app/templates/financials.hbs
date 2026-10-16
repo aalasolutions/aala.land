@@ -294,8 +294,7 @@
           <span data-test-transaction>{{cell.value}}</span>
         {{else if (eq cell.key "amount")}}
           <span
-            class="font-bold
-              {{if (eq cell.row.type 'INCOME') 'text-success' 'text-danger'}}"
+            class="{{if (eq cell.row.type 'INCOME') 'text-success' 'text-danger'}}"
           >
             {{if (eq cell.row.type "INCOME") "+" "-"}}<Money
               @amount={{cell.value}}

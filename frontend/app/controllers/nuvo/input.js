@@ -88,6 +88,7 @@ export default class NuvoInputController extends Controller {
     clearable: `<Nuvo::Input @value={{this.clearableValue}} @clearable={{true}} @onInput={{this.updateClearable}} />`,
     prefix: `<Nuvo::Input @prefixIcon="⌕" @placeholder="Search units" />`,
     suffix: `<Nuvo::Input @suffixIcon="AED" @placeholder="Monthly rent" />`,
+    xs: `<Nuvo::Input @size="xs" @placeholder="Extra small" />`,
     sm: `<Nuvo::Input @size="sm" @placeholder="Small" />`,
     lg: `<Nuvo::Input @size="lg" @placeholder="Large" />`,
     invalid: `<Nuvo::Input @invalid={{true}} @value="-100" />`,
@@ -101,12 +102,17 @@ export default class NuvoInputController extends Controller {
     textareaDisabled: `<Nuvo::Textarea @disabled={{true}} @value="Disabled" @rows={{2}} />`,
     textareaReadonly: `<Nuvo::Textarea @readonly={{true}} @value="Read only" @rows={{2}} />`,
     textareaMaxlength: `<Nuvo::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />`,
+    textareaSizes: `<Nuvo::Textarea @size="xs" @rows={{2}} @placeholder="Extra small" />
+<Nuvo::Textarea @size="sm" @rows={{2}} @placeholder="Small" />
+<Nuvo::Textarea @rows={{2}} @placeholder="Default" />
+<Nuvo::Textarea @size="lg" @rows={{2}} @placeholder="Large" />`,
     selectBasic: `<Nuvo::Select @value={{this.selectValue}} @options={{this.regionOptions}} @onChange={{this.updateSelect}} />
 
 // regionOptions: [{ value: 'dubai-marina', label: 'Dubai Marina' }, ...]`,
     selectStrings: `<Nuvo::Select @options={{this.propertyTypeOptions}} @placeholder="Choose a property type" />
 
 // propertyTypeOptions: ['Villa', 'Apartment', 'Townhouse']`,
+    selectXs: `<Nuvo::Select @size="xs" @options={{this.propertyTypeOptions}} @placeholder="Extra small" />`,
     selectSm: `<Nuvo::Select @size="sm" @options={{this.propertyTypeOptions}} @placeholder="Small" />`,
     selectLg: `<Nuvo::Select @size="lg" @options={{this.propertyTypeOptions}} @placeholder="Large" />`,
     selectDisabled: `<Nuvo::Select @disabled={{true}} @options={{this.propertyTypeOptions}} @placeholder="Disabled" />`,
@@ -119,12 +125,24 @@ export default class NuvoInputController extends Controller {
     both: `<Nuvo::InputGroup @prepend="AED" @append=".00">
   <Nuvo::Input @value={{this.groupInputValue}} @onInput={{this.updateGroupInput}} />
 </Nuvo::InputGroup>`,
+    groupSizes: `<Nuvo::InputGroup @size="xs" @prepend="AED">
+  <Nuvo::Input @size="xs" @placeholder="Extra small" />
+</Nuvo::InputGroup>
+<Nuvo::InputGroup @size="sm" @prepend="AED">
+  <Nuvo::Input @size="sm" @placeholder="Small" />
+</Nuvo::InputGroup>
+<Nuvo::InputGroup @prepend="AED">
+  <Nuvo::Input @placeholder="Default" />
+</Nuvo::InputGroup>
+<Nuvo::InputGroup @size="lg" @prepend="AED">
+  <Nuvo::Input @size="lg" @placeholder="Large" />
+</Nuvo::InputGroup>`,
   };
 
   inputArgRows = [
     { name: '@value', type: 'string | number', default: '', description: 'Current value. The component is controlled; update it from @onInput.' },
     { name: '@type', type: 'string', default: '"text"', description: 'Native input type. tel, number, email and url are pinned to dir="ltr".' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Height step.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height step. Omit for the default size.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Native placeholder.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; hides the clear button.' },
     { name: '@readonly', type: 'boolean', default: 'false', description: 'Native readonly attribute; hides the clear button.' },
@@ -147,6 +165,7 @@ export default class NuvoInputController extends Controller {
   textareaArgRows = [
     { name: '@value', type: 'string', default: '', description: 'Current value; update it from @onInput.' },
     { name: '@rows', type: 'number', default: '3', description: 'Visible rows.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Font and padding step, matching Input. Omit for the default size.' },
     { name: '@resize', type: '"none" | "both" | "horizontal" | "vertical"', default: '', description: 'CSS resize behaviour. Unknown values leave the browser default.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Native placeholder.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute.' },
@@ -164,7 +183,7 @@ export default class NuvoInputController extends Controller {
     { name: '@value', type: 'string | number', default: '', description: 'Selected option value.' },
     { name: '@options', type: 'array', default: '[]', description: 'Strings, or objects with value and label.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Renders a disabled first option, selected while nothing matches @value.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Height step.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height step. Omit for the default size.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute.' },
   ];
 
@@ -175,6 +194,7 @@ export default class NuvoInputController extends Controller {
   groupArgRows = [
     { name: '@prepend', type: 'string', default: '', description: 'Addon text before the control.' },
     { name: '@append', type: 'string', default: '', description: 'Addon text after the control.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Addon text and padding step. Pass the same @size to the input inside.' },
   ];
 
   groupBlockRows = [

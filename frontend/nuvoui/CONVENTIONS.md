@@ -140,8 +140,6 @@ sites need no change.
 - `Nuvo::Button` forwards `:icon` through all three tag modes (button, anchor,
   `LinkTo`). `@loading` still wins over a supplied block, so the spinner is never
   replaced by a caller's icon.
-- `Nuvo::PageHeader` takes `:icon`; the slot content is wrapped in the element
-  carrying `nu-page-header__title-icon`.
 - `Nuvo::Tabs` and `Nuvo::Segmented` draw icons from a data array, so their block
   yields the item back: `<:icon as |tab|>` and `<:icon as |option|>`.
 

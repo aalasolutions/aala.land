@@ -11,10 +11,9 @@
     "BorderBlockEndWidth": 0,
     "BorderBlockEndColor": var(--nu-border-regular),
     "BackgroundColor": transparent,
-    "TitleFontSize": nu-font-size(2xl),
+    "TitleFontSize": nu-font-size(xl),
     "TitleFontWeight": nu-font-weight(bold),
     "TitleColor": var(--nu-text-regular),
-    "TitleIconColor": var(--nu-brand),
     "SubtitleFontSize": nu-font-size(sm),
     "SubtitleColor": var(--nu-text-muted),
     "StickyTop": 0,
@@ -35,8 +34,11 @@
   // Groups breadcrumb/title/subtitle/meta so `justify-content: space-between`
   // pushes actions to the far edge as one unit.
   @include e(main) {
+    flex: 1 1 20rem;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: nu-space(3);
     min-inline-size: 0;
   }
 
@@ -45,6 +47,7 @@
     align-items: center;
     gap: nu-space(1);
     font-size: nu-font-size(xs);
+    flex-basis: 100%;
     color: var(--nu-text-muted);
     margin-block-end: nu-space(1);
   }
@@ -59,12 +62,9 @@
     margin: 0;
   }
 
-  @include e(title-icon) {
-    flex-shrink: 0;
-    color: nu-var("page-header", "TitleIconColor");
-  }
-
   @include e(subtitle) {
+    order: 1;
+    flex-basis: 100%;
     font-size: nu-var("page-header", "SubtitleFontSize");
     color: nu-var("page-header", "SubtitleColor");
     margin: nu-space(1) 0 0;
@@ -74,9 +74,12 @@
     display: flex;
     align-items: center;
     gap: nu-space(2);
-    margin-block-start: nu-space(2);
     font-size: nu-font-size(xs);
     color: var(--nu-text-muted);
+
+    > * {
+      margin: 0;
+    }
   }
 
   @include e(actions) {

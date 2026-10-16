@@ -4,6 +4,7 @@ import { localMidnightIso } from 'land/utils/local-date';
 
 export default class TableOptionsRoute extends AuthenticatedRoute {
   @service auth;
+  @service region;
 
   queryParams = {
     page: { refreshModel: true },
@@ -37,8 +38,9 @@ export default class TableOptionsRoute extends AuthenticatedRoute {
     if (isWhatsapp) params.set('isWhatsapp', 'true');
     if (company) params.set('company', company);
     if (nationality) params.set('nationality', nationality);
-    const fromIso = localMidnightIso(dateFrom);
-    const toIso = localMidnightIso(dateTo, 1);
+    const zone = this.region.activeRegion?.timezone;
+    const fromIso = localMidnightIso(dateFrom, 0, zone);
+    const toIso = localMidnightIso(dateTo, 1, zone);
     if (fromIso) params.set('dateFrom', fromIso);
     if (toIso) params.set('dateTo', toIso);
 

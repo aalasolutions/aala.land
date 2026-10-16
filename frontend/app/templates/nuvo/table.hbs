@@ -61,7 +61,7 @@
     >
       <Nuvo::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-yield as |cell|>
         {{#if (eq cell.key "displayName")}}
-          <span class="text-brand font-bold">{{cell.value}}</span>
+          <span class="text-brand">{{cell.value}}</span>
         {{else if (eq cell.key "role")}}
           <div class="data-table__chips">
             {{#each cell.row.tags as |tag|}}

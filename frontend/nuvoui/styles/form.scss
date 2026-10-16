@@ -16,7 +16,7 @@
     "BorderWidth": 1px,
     "BorderColor": var(--nu-border-strong),
     "BorderRadius": nu-radius(md),
-    "PlaceholderColor": var(--nu-text-muted),
+    "PlaceholderColor": $nu-placeholder-color,
     "TransitionDuration": nu-duration(fast),
     "focus--BorderColor": var(--nu-brand),
     "focus--BoxShadow": nu-focus-ring(),
@@ -62,6 +62,13 @@
   &:disabled {
     opacity: nu-var("input", "disabled--Opacity");
     cursor: not-allowed;
+  }
+
+  @include m(xs) {
+    --nu-input--PaddingBlock: #{nu-space(1)};
+    --nu-input--PaddingInline: #{nu-space(2)};
+    --nu-input--MinHeight: 1.75rem;
+    --nu-input--FontSize: #{nu-font-size(xs)};
   }
 
   @include m(sm) {
@@ -437,6 +444,9 @@ $nu-row-min-column-width: 10rem;
     "checked--BackgroundColor": var(--nu-brand),
     "checked--BorderColor": var(--nu-brand),
     "MarkColor": var(--nu-text-inverted),
+    "MarkInlineSize": 5px,
+    "MarkBlockSize": 10px,
+    "DotSize": 0.5rem,
   ));
 
   appearance: none;
@@ -473,8 +483,8 @@ $nu-row-min-column-width: 10rem;
       content: "";
       position: absolute;
       inset: 0;
-      inline-size: 5px;
-      block-size: 10px;
+      inline-size: nu-var("check", "MarkInlineSize");
+      block-size: nu-var("check", "MarkBlockSize");
       margin: auto;
       border: solid nu-var("check", "MarkColor");
       border-width: 0 2px 2px 0;
@@ -508,8 +518,8 @@ $nu-row-min-column-width: 10rem;
 
     &:checked::after {
       inset: 0;
-      inline-size: 0.5rem;
-      block-size: 0.5rem;
+      inline-size: nu-var("check", "DotSize");
+      block-size: nu-var("check", "DotSize");
       margin: auto;
       border: none;
       border-radius: nu-radius(full);
@@ -517,19 +527,57 @@ $nu-row-min-column-width: 10rem;
       transform: none;
     }
   }
+
+  // ---- sizes: box 14 / 16 / 18 (default) / 20px ----
+
+  @include m(xs) {
+    --nu-check--Size: 0.875rem;
+    --nu-check--MarkInlineSize: 4px;
+    --nu-check--MarkBlockSize: 7px;
+    --nu-check--DotSize: 0.375rem;
+  }
+
+  @include m(sm) {
+    --nu-check--Size: 1rem;
+    --nu-check--MarkInlineSize: 4px;
+    --nu-check--MarkBlockSize: 9px;
+    --nu-check--DotSize: 0.4375rem;
+  }
+
+  @include m(lg) {
+    --nu-check--Size: 1.25rem;
+    --nu-check--MarkInlineSize: 6px;
+    --nu-check--MarkBlockSize: 11px;
+    --nu-check--DotSize: 0.625rem;
+  }
 }
 
 @include b(check-label) {
+  @include nu-root("check-label", (
+    "Gap": nu-space(2),
+    "FontSize": nu-font-size(sm),
+  ));
+
   display: inline-flex;
   align-items: center;
-  gap: nu-space(2);
-  font-size: nu-font-size(sm);
+  gap: nu-var("check-label", "Gap");
+  font-size: nu-var("check-label", "FontSize");
   color: var(--nu-text-regular);
   cursor: pointer;
 
   @include when(disabled) {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  @include m(xs) {
+    --nu-check-label--Gap: #{nu-space(1)};
+    --nu-check-label--FontSize: #{nu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --nu-check-label--Gap: #{nu-space(3)};
+    --nu-check-label--FontSize: #{nu-font-size(md)};
   }
 }
 
@@ -559,6 +607,8 @@ $nu-row-min-column-width: 10rem;
 @include b(input-group) {
   @include nu-root("input-group", (
     "BorderRadius": nu-radius(md),
+    "AddonPaddingInline": nu-space(3),
+    "AddonFontSize": nu-font-size(sm),
     "focus--BorderColor": var(--nu-brand),
     "focus--BoxShadow": nu-focus-ring(),
   ));
@@ -571,8 +621,8 @@ $nu-row-min-column-width: 10rem;
   @include e(addon) {
     display: inline-flex;
     align-items: center;
-    padding-inline: nu-space(3);
-    font-size: nu-font-size(sm);
+    padding-inline: nu-var("input-group", "AddonPaddingInline");
+    font-size: nu-var("input-group", "AddonFontSize");
     color: var(--nu-text-muted);
     background-color: var(--nu-bg-alternate);
     border: 1px solid var(--nu-border-strong);
@@ -583,6 +633,17 @@ $nu-row-min-column-width: 10rem;
     @include reduced-motion {
       transition: none;
     }
+  }
+
+  // Sizes match the input's own padding and font at each step.
+  @include m(xs, sm) {
+    --nu-input-group--AddonPaddingInline: #{nu-space(2)};
+    --nu-input-group--AddonFontSize: #{nu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --nu-input-group--AddonPaddingInline: #{nu-space(4)};
+    --nu-input-group--AddonFontSize: #{nu-font-size(md)};
   }
 
   // Only the outer edges stay round; interior edges square up so the parts

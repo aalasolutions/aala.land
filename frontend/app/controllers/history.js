@@ -38,7 +38,11 @@ export default class HistoryController extends PaginatedController {
   ];
 
   get hasActiveFilters() {
-    return Boolean(this.filterAction || this.filterEntityType);
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [this.filterAction, this.filterEntityType].filter(Boolean).length;
   }
 
   get rows() {

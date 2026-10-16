@@ -1,6 +1,6 @@
 <form
   data-test-signup-form
-  class="flex col gap-4 w-full"
+  class="flex col gap-5 w-full"
   {{on "submit" this.submit}}
 >
   <div class="grid col gap-4">
@@ -44,7 +44,7 @@
     />
   </Nuvo::Field>
 
-  <hr class="border-white@10 my-1" />
+  <Nuvo::Divider />
 
   <div class="grid cols-2 gap-4">
     <Nuvo::Field @label="Your Name" @required={{true}}>
@@ -101,33 +101,21 @@
   </div>
 
   {{#if this.errorMessage}}
-    <div
-      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center text-sm"
-    >
-      {{this.errorMessage}}
-    </div>
+    <Nuvo::Alert @variant="danger" @description={{this.errorMessage}} />
   {{/if}}
 
-  <button
+  <Nuvo::Button
+    @variant="primary"
+    @type="submit"
+    @loading={{this.isLoading}}
+    @disabled={{not this.canSubmit}}
     data-test-submit-button
-    type="submit"
-    class="btn btn-primary btn-lg w-full py-4 rounded-xl font-bold mt-2"
-    disabled={{or this.isLoading (not this.canSubmit)}}
   >
-    {{#if this.isLoading}}
-      <span class="flex x-center center gap-2">
-        <Ui::Ph @icon="circle-notch" class="animate-spin" />
-        Creating Account...
-      </span>
-    {{else}}
-      Create Workspace with Email
-    {{/if}}
-  </button>
+    {{if this.isLoading "Creating Account..." "Create Workspace with Email"}}
+  </Nuvo::Button>
 
   {{#if this.googleAuth.isConfigured}}
-    <div class="divider">
-      <span class="text-muted text-sm">OR</span>
-    </div>
+    <Nuvo::Divider @label="OR" />
 
     {{#if this.canGoogleSignup}}
       <div
@@ -137,7 +125,7 @@
         {{#if this.isGoogleLoading}}
           <button
             type="button"
-            class="btn btn--google btn--google--loading"
+            class="btn--google btn--google--loading"
             disabled
           >
             <span class="google-spinner"></span>

@@ -1,0 +1,33 @@
+{{! Toolbar button that opens a list page's filter fields in a drawer; @count shows how many are active. }}
+<Nuvo::Button
+  @variant="secondary"
+  @size="xs"
+  @icon="funnel"
+  @onClick={{this.open}}
+  aria-haspopup="dialog"
+  aria-expanded={{if this.isOpen "true" "false"}}
+  data-test-filters-button
+  ...attributes
+>
+  Filters
+  {{#if @count}}
+    <Nuvo::Badge
+      @count={{true}}
+      @value={{@count}}
+      @variant="primary"
+      data-test-filters-count
+    />
+  {{/if}}
+</Nuvo::Button>
+
+<Nuvo::Drawer
+  @open={{this.isOpen}}
+  @title="Filters"
+  @placement="end"
+  @size="md"
+  @onClose={{this.close}}
+  data-test-filters-drawer
+  {{on "click" this.keepFocusInDrawer}}
+>
+  <:body>{{yield}}</:body>
+</Nuvo::Drawer>

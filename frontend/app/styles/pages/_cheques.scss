@@ -13,7 +13,7 @@
   th {
     padding: nu-space(2) nu-space(3);
     font-size: nu-font-size(xs);
-    font-weight: nu-font-weight(semibold);
+    font-weight: nu-font-weight(normal);
     text-align: start;
     color: var(--nu-text-muted);
     border-block-end: 1px solid var(--nu-border-regular);
@@ -53,6 +53,5 @@
 }
 
 .is-overdue .cheque-schedule__when {
-  font-weight: nu-font-weight(semibold);
   color: var(--nu-danger);
 }

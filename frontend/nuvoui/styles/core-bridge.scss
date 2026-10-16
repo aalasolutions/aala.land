@@ -15,9 +15,12 @@ h4,
 h5,
 h6,
 b,
-strong,
-th {
+strong {
   font-weight: nu-font-weight(bold);
+}
+
+th {
+  font-weight: nu-font-weight(normal);
 }
 
 // Core's base layer sizes raw controls; kit components size themselves.

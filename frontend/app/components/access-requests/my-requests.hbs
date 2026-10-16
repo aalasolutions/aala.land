@@ -19,7 +19,7 @@
         <LinkTo
           @route="contacts.detail"
           @model={{cell.row.contact.id}}
-          class="text-brand font-bold whitespace-nowrap"
+          class="text-brand whitespace-nowrap"
           data-test-my-request-contact
         >{{cell.value}}</LinkTo>
       {{else if (eq cell.key "status")}}
@@ -29,16 +29,16 @@
           data-test-my-request-status={{cell.value}}
         />
       {{else if (eq cell.key "createdAt")}}
-        {{format-date cell.value}}
+        {{format-date cell.value zone="region"}}
       {{else if (eq cell.key "decidedBy.name")}}
         <span class="text-muted">{{or cell.value "-"}}</span>
       {{else if (eq cell.key "decidedAt")}}
-        {{#if cell.value}}{{format-date cell.value}}{{else}}<span
+        {{#if cell.value}}{{format-date cell.value zone="region"}}{{else}}<span
             class="text-muted"
           >-</span>{{/if}}
       {{else if (eq cell.key "expiresAt")}}
         <span data-test-my-request-expires>
-          {{#if cell.value}}{{format-date cell.value}}{{else}}{{or
+          {{#if cell.value}}{{format-date cell.value zone="region"}}{{else}}{{or
               cell.row.expiryLabel
               "-"
             }}{{/if}}

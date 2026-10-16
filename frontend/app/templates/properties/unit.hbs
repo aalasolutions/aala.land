@@ -3,31 +3,16 @@
 }}
 
 <div data-test-unit-detail class="flex col gap-6">
-  <div data-test-breadcrumb class="flex x-center gap-2 text-sm text-muted">
-    <LinkTo
-      @route="properties"
-      data-test-breadcrumb-properties
-    >Properties</LinkTo>
-    <span>/</span>
-    {{#if @model.unit.asset.locality}}
-      <LinkTo
-        @route="properties.detail"
-        @model={{@model.areaId}}
-        data-test-breadcrumb-area
-      >{{@model.unit.asset.locality.name}}</LinkTo>
-      <span>/</span>
-    {{/if}}
-    {{#if @model.unit.asset}}
-      <LinkTo
-        data-test-breadcrumb-location
-        @route="properties.detail"
-        @model={{@model.areaId}}
-      >{{@model.unit.asset.name}}</LinkTo>
-      <span>/</span>
-    {{/if}}
-    <span class="font-bold text-brand">Property
-      {{@model.unit.unitNumber}}</span>
-  </div>
+  <Nuvo::PageHeader>
+    <:breadcrumb>
+      <Nuvo::Breadcrumb
+        @items={{this.crumbs}}
+        @compact={{true}}
+        @parentsOnly={{true}}
+        data-test-breadcrumb
+      />
+    </:breadcrumb>
+  </Nuvo::PageHeader>
 
   {{#if @model.unit}}
     <RegionNotice @regionCode={{@model.unit.regionCode}} @noun="property" />

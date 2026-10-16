@@ -17,7 +17,7 @@
             "-"
           }}</span>{{#if @contact.createdAt}}
           on
-          {{format-date @contact.createdAt}}{{/if}}</p>
+          {{format-date @contact.createdAt zone="region"}}{{/if}}</p>
     </div>
     <div class="record-sheet__actions">
       {{#if @contact.phone}}

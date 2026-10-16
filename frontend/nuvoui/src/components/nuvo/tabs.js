@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
 const VARIANTS = ['underline', 'pills', 'enclosed'];
+const SIZES = ['xs', 'sm', 'lg'];
 
 export default class NuTabsComponent extends Component {
   @tracked internalActiveTab = undefined;
@@ -24,6 +25,9 @@ export default class NuTabsComponent extends Component {
     const parts = ['nu-tabs'];
     if (VARIANTS.includes(this.args.variant)) {
       parts.push(`m-${this.args.variant}`);
+    }
+    if (SIZES.includes(this.args.size)) {
+      parts.push(`m-${this.args.size}`);
     }
     if (this.args.vertical) {
       parts.push('m-vertical');

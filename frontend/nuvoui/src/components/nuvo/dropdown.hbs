@@ -32,9 +32,13 @@
       @onClick={{this.toggle}}
       aria-haspopup="listbox"
       aria-expanded={{if this.isOpen "true" "false"}}
+      title={{this.triggerTitle}}
       data-test-nu-dropdown-trigger
     >
-      {{this.triggerLabel}}
+      <span
+        class="nu-dropdown__value"
+        data-test-nu-dropdown-value
+      >{{this.triggerLabel}}</span>
       <span class="nu-dropdown__caret" aria-hidden="true">▾</span>
     </Nuvo::Button>
   {{/if}}
@@ -87,6 +91,7 @@
                 {{if row.option.isCreate 'm-create'}}"
               role="option"
               aria-selected={{if row.selected "true" "false"}}
+              title={{row.option.label}}
               disabled={{row.option.disabled}}
               data-test-nu-dropdown-item
               {{on "click" (fn this.select row.option)}}
@@ -119,6 +124,7 @@
               {{if row.option.isCreate 'm-create'}}"
             role="option"
             aria-selected={{if row.selected "true" "false"}}
+            title={{row.option.label}}
             disabled={{row.option.disabled}}
             data-test-nu-dropdown-item
             {{on "click" (fn this.select row.option)}}

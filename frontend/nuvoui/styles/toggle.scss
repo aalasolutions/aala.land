@@ -145,6 +145,15 @@
 
   // ---- sizes ----
 
+  @include m(xs) {
+    --nu-toggle--Gap: #{nu-space(2)};
+    --nu-toggle--TrackInlineSize: 1.75rem;
+    --nu-toggle--TrackBlockSize: 1rem;
+    --nu-toggle--KnobSize: 0.75rem;
+    --nu-toggle--KnobInset: 0.125rem;
+    --nu-toggle--LabelFontSize: #{nu-font-size(xs)};
+  }
+
   @include m(sm) {
     --nu-toggle--TrackInlineSize: 2.25rem;
     --nu-toggle--TrackBlockSize: 1.25rem;

@@ -310,4 +310,52 @@ module('Integration | Component | nuvo/dropdown', function (hooks) {
     await focus('[data-test-nu-dropdown-filter]');
     assert.dom(menu()).hasText('Type to search');
   });
+
+  test('a long selected label truncates inside its container and keeps the full text in title', async function (assert) {
+    const label = 'QA2 Vendor Plumbing (PLUMBING, STRUCTURAL, CLEANING)';
+    this.longOptions = [{ value: 'v', label }, ...OPTIONS];
+    await render(hbs`
+      <div style="inline-size: 160px" data-test-box>
+        <Nuvo::Dropdown @align="start" @options={{this.longOptions}} @value="v" />
+      </div>
+    `);
+
+    const trigger = document.querySelector('[data-test-nu-dropdown-trigger]');
+    const value = trigger.querySelector('[data-test-nu-dropdown-value]');
+    const caret = trigger.querySelector('.nu-dropdown__caret');
+    const box = document
+      .querySelector('[data-test-box]')
+      .getBoundingClientRect();
+
+    assert.dom(trigger).hasAttribute('title', label);
+    assert.dom(value).hasClass('nu-dropdown__value').hasText(label);
+    assert.strictEqual(getComputedStyle(value).textOverflow, 'ellipsis');
+    assert.ok(value.scrollWidth > value.clientWidth, 'label is clipped');
+    assert.ok(
+      trigger.getBoundingClientRect().right <= box.right + 0.5,
+      'trigger stays inside its container',
+    );
+    assert.ok(caret.getBoundingClientRect().width > 0, 'caret keeps its size');
+
+    await click(trigger);
+    assert
+      .dom(menu().querySelector('[data-test-nu-dropdown-item]'))
+      .hasAttribute('title', label);
+  });
+
+  test('the trigger has no title until something is selected', async function (assert) {
+    await render(
+      hbs`<Nuvo::Dropdown @options={{this.options}} @placeholder="Pick" />`,
+    );
+    assert.dom('[data-test-nu-dropdown-trigger]').doesNotHaveAttribute('title');
+  });
+
+  test('an empty-valued "All" option sets no trigger title', async function (assert) {
+    this.allOptions = [{ value: '', label: 'All Statuses' }, ...OPTIONS];
+    await render(
+      hbs`<Nuvo::Dropdown @options={{this.allOptions}} @value="" />`,
+    );
+    assert.dom('[data-test-nu-dropdown-value]').hasText('All Statuses');
+    assert.dom('[data-test-nu-dropdown-trigger]').doesNotHaveAttribute('title');
+  });
 });

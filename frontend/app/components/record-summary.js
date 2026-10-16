@@ -22,6 +22,10 @@ const join = (...parts) => parts.filter(Boolean).join(', ');
 export default class RecordSummaryComponent extends Component {
   @service region;
 
+  get todayZone() {
+    return this.region.activeRegion?.timezone;
+  }
+
   get isLimited() {
     return this.args.type === 'contact' && isLimited(this.args.record);
   }
@@ -75,7 +79,10 @@ export default class RecordSummaryComponent extends Component {
           { term: 'Ref', description: r.tenancyRegistrationRef },
           {
             term: 'Period',
-            description: [formatDate(r.startDate), formatDate(r.endDate)]
+            description: [
+              formatDate(r.startDate, this.todayZone),
+              formatDate(r.endDate, this.todayZone),
+            ]
               .filter(Boolean)
               .join(' to '),
           },

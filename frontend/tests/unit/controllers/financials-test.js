@@ -2,6 +2,7 @@ import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import {
   formatCalendarDate,
+  formatShortDate,
   localDateString,
   resolveRange,
   todayInZone,
@@ -254,11 +255,7 @@ module('Unit | Controller | financials', function (hooks) {
         range: 'custom',
       });
       const day = (date) =>
-        formatCalendarDate(date, navigator.language || 'en', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        });
+        formatShortDate(date, { locale: navigator.language || 'en' });
 
       assert.strictEqual(
         controller.rangeLabel,

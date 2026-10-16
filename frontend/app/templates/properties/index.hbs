@@ -1,19 +1,10 @@
 {{page-title "Properties"}}
 
-<div data-test-properties-page class="flex col gap-6">
+<div data-test-properties-page class="flex col gap-4">
   <Nuvo::PageHeader
     @title="Properties"
     @subtitle="Locations, assets, and properties."
   >
-    <:meta>
-      {{#if (eq this.currentView "browse")}}
-        <p class="text-muted" data-test-browse-count>{{format-number
-            this.browseTotal
-            unit="property"
-            plural="properties"
-          }}</p>
-      {{/if}}
-    </:meta>
     <:actions>
       <Nuvo::Button
         @variant="primary"
@@ -70,7 +61,7 @@
         as |cell|
       >
         {{#if (eq cell.key "name")}}
-          <span class="font-bold">{{cell.value}}</span>
+          <span>{{cell.value}}</span>
         {{else if (eq cell.key "cityName")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "id")}}
@@ -96,132 +87,124 @@
       />
     {{/if}}
   {{else}}
-    <Nuvo::Accordion
-      @items={{array
-        (hash
-          id="filters"
-          title=(if this.hasActiveFilters "Filters · active" "Filters")
-        )
-      }}
-      data-test-filters-accordion
-    >
-      <div class="flex col gap-4" data-test-browse-filters>
-        <div class="nu-filter-row">
-          <Nuvo::Field @label="Type">
-            <Nuvo::Dropdown
-              @align="start"
-              @value={{this.filterType}}
-              @onSelect={{this.setFilterType}}
-              @options={{this.filterTypeOptions}}
-              @placeholder="All"
-              data-test-filter-type
-            />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Status">
-            <Nuvo::Dropdown
-              @align="start"
-              @value={{this.filterStatus}}
-              @onSelect={{this.setFilterStatus}}
-              @options={{this.filterStatusOptions}}
-              @placeholder="All"
-              data-test-filter-status
-            />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Bedrooms">
-            <Nuvo::Dropdown
-              @align="start"
-              @value={{this.filterBeds}}
-              @onSelect={{this.setFilterBeds}}
-              @options={{this.filterBedsOptions}}
-              @placeholder="Any"
-              data-test-filter-beds
-            />
-          </Nuvo::Field>
-          <Nuvo::Field
-            @label="Visibility"
-            @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
-          >
-            <Nuvo::Dropdown
-              @align="start"
-              @value={{this.archivedFilterValue}}
-              @onSelect={{this.setArchivedFilter}}
-              @options={{this.archivedFilterOptions}}
-              data-test-archived-filter
-            />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Min Price">
-            <Nuvo::Input
-              type="number"
-              placeholder="Min"
-              @value={{this.filterMinPrice}}
-              @onInput={{fn this.setFieldValue "filterMinPrice"}}
-              data-test-filter-min-price
-              {{on "change" this.applyFilters}}
-            />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Max Price">
-            <Nuvo::Input
-              type="number"
-              placeholder="Max"
-              @value={{this.filterMaxPrice}}
-              @onInput={{fn this.setFieldValue "filterMaxPrice"}}
-              data-test-filter-max-price
-              {{on "change" this.applyFilters}}
-            />
-          </Nuvo::Field>
-        </div>
-
-        <div>
-          <span id="amenity-filter-label" class="text-xs text-muted mb-1">Amenities</span>
-          <div
-            class="flex gap-2 wrap"
-            role="group"
-            aria-labelledby="amenity-filter-label"
-          >
-            {{#each this.amenityOptions as |opt|}}
-              <button
-                type="button"
-                class="nu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
-                data-test-amenity-filter={{opt.key}}
-                aria-pressed={{if
-                  (includes this.filterAmenities opt.key)
-                  "true"
-                  "false"
-                }}
-                {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
-              >
-                <Ui::Ph @icon={{opt.icon}} />
-                {{opt.label}}
-              </button>
-            {{/each}}
-          </div>
-        </div>
-
-        {{#if this.hasActiveFilters}}
-          <div class="flex end">
-            <Nuvo::Button
-              @variant="danger"
-              @size="sm"
-              @icon="x"
-              {{on "click" this.clearFilters}}
-              data-test-clear-filters
-            >
-              Clear filters
-            </Nuvo::Button>
-          </div>
-        {{/if}}
-      </div>
-    </Nuvo::Accordion>
-
     <div class="browse-toolbar" data-test-browse-toolbar>
-      <p
-        class="text-sm text-muted"
-        data-test-browse-result-count
-      >{{format-number
-          this.browseTotal
-          unit="property"
-          plural="properties"
-        }}</p>
+      <div class="flex x-center gap-3">
+        <FiltersButton @count={{this.activeFilterCount}}>
+          <div class="flex col gap-4" data-test-browse-filters>
+            <div class="nu-filter-row">
+              <Nuvo::Field @label="Type">
+                <Nuvo::Dropdown
+                  @align="start"
+                  @value={{this.filterType}}
+                  @onSelect={{this.setFilterType}}
+                  @options={{this.filterTypeOptions}}
+                  @placeholder="All"
+                  data-test-filter-type
+                />
+              </Nuvo::Field>
+              <Nuvo::Field @label="Status">
+                <Nuvo::Dropdown
+                  @align="start"
+                  @value={{this.filterStatus}}
+                  @onSelect={{this.setFilterStatus}}
+                  @options={{this.filterStatusOptions}}
+                  @placeholder="All"
+                  data-test-filter-status
+                />
+              </Nuvo::Field>
+              <Nuvo::Field @label="Bedrooms">
+                <Nuvo::Dropdown
+                  @align="start"
+                  @value={{this.filterBeds}}
+                  @onSelect={{this.setFilterBeds}}
+                  @options={{this.filterBedsOptions}}
+                  @placeholder="Any"
+                  data-test-filter-beds
+                />
+              </Nuvo::Field>
+              <Nuvo::Field
+                @label="Visibility"
+                @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
+              >
+                <Nuvo::Dropdown
+                  @align="start"
+                  @value={{this.archivedFilterValue}}
+                  @onSelect={{this.setArchivedFilter}}
+                  @options={{this.archivedFilterOptions}}
+                  data-test-archived-filter
+                />
+              </Nuvo::Field>
+              <Nuvo::Field @label="Min Price">
+                <Nuvo::Input
+                  type="number"
+                  placeholder="Min"
+                  @value={{this.filterMinPrice}}
+                  @onInput={{fn this.setFieldValue "filterMinPrice"}}
+                  data-test-filter-min-price
+                  {{on "change" this.applyFilters}}
+                />
+              </Nuvo::Field>
+              <Nuvo::Field @label="Max Price">
+                <Nuvo::Input
+                  type="number"
+                  placeholder="Max"
+                  @value={{this.filterMaxPrice}}
+                  @onInput={{fn this.setFieldValue "filterMaxPrice"}}
+                  data-test-filter-max-price
+                  {{on "change" this.applyFilters}}
+                />
+              </Nuvo::Field>
+            </div>
+
+            <div>
+              <span id="amenity-filter-label" class="text-xs text-muted mb-1">Amenities</span>
+              <div
+                class="flex gap-2 wrap"
+                role="group"
+                aria-labelledby="amenity-filter-label"
+              >
+                {{#each this.amenityOptions as |opt|}}
+                  <button
+                    type="button"
+                    class="nu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
+                    data-test-amenity-filter={{opt.key}}
+                    aria-pressed={{if
+                      (includes this.filterAmenities opt.key)
+                      "true"
+                      "false"
+                    }}
+                    {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
+                  >
+                    <Ui::Ph @icon={{opt.icon}} />
+                    {{opt.label}}
+                  </button>
+                {{/each}}
+              </div>
+            </div>
+
+            <div class="flex end">
+              <Nuvo::Button
+                @variant="secondary"
+                @size="sm"
+                @icon="x"
+                @disabled={{not this.hasActiveFilters}}
+                {{on "click" this.clearFilters}}
+                data-test-clear-filters
+              >
+                Clear filters
+              </Nuvo::Button>
+            </div>
+          </div>
+        </FiltersButton>
+        <p
+          class="text-sm text-muted mb-0"
+          data-test-browse-result-count
+        >{{format-number
+            this.browseTotal
+            unit="property"
+            plural="properties"
+          }}</p>
+      </div>
       <div class="browse-toolbar__controls">
         <div class="browse-toolbar__sort">
           <Nuvo::BtnGroup @attached={{true}} role="group" aria-label="Sort by">

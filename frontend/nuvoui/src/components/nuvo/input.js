@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
-const SIZES = ['sm', 'lg'];
+const SIZES = ['xs', 'sm', 'lg'];
 const LTR_TYPES = ['tel', 'number', 'email', 'url'];
 
 export default class NuInputComponent extends Component {

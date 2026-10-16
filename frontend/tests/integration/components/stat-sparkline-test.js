@@ -3,7 +3,11 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import { find, findAll, render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import { Chart } from 'chart.js';
-import { formatCalendarDate, formatCalendarRange } from 'land/utils/local-date';
+import {
+  formatCalendarDate,
+  formatCalendarRange,
+  todayInZone,
+} from 'land/utils/local-date';
 import { token } from 'land/utils/chart-style';
 
 // Assertions check the ChartCanvas table, the only reader-accessible output.
@@ -112,41 +116,25 @@ module('Integration | Component | stat-sparkline', function (hooks) {
     ];
     await render(hbs`<StatSparkline @points={{this.points}} />`);
 
-    const span = (from, to) =>
-      formatCalendarRange(from, to, locale(), {
-        month: 'short',
-        day: 'numeric',
-      });
+    const span = (from, to) => formatCalendarRange(from, to, locale());
     assert.deepEqual(cells(), [
       { label: span('2026-09-08', '2026-09-14'), value: money(200, 'AED') },
       { label: span('2026-09-15', '2026-09-21'), value: money(300, 'AED') },
     ]);
   });
 
-  test('a series longer than a year names the year, so two buckets cannot read alike', async function (assert) {
-    // Six 90-day blocks span 540 days, so 'Jun 29 - Sep 26' would otherwise appear twice.
+  test('a span outside the current year names its year, a current-year span does not', async function (assert) {
+    const year = Number(todayInZone(null).slice(0, 4));
     this.points = [
-      { from: '2025-03-31', to: '2025-06-28', value: 1 },
-      { from: '2026-03-26', to: '2026-06-23', value: 2 },
+      { from: `${year - 1}-03-31`, to: `${year - 1}-06-28`, value: 1 },
+      { from: `${year}-01-05`, to: `${year}-01-11`, value: 2 },
     ];
     await render(hbs`<StatSparkline @points={{this.points}} />`);
 
     const labels = cells().map((cell) => cell.label);
-    assert.true(labels[0].includes('2025'), labels[0]);
-    assert.true(labels[1].includes('2026'), labels[1]);
-  });
-
-  test('a series inside one year keeps the short label', async function (assert) {
-    this.points = [
-      { from: '2026-09-08', to: '2026-09-14', value: 1 },
-      { from: '2026-09-15', to: '2026-09-21', value: 2 },
-    ];
-    await render(hbs`<StatSparkline @points={{this.points}} />`);
-
-    assert.false(
-      cells().some((cell) => cell.label.includes('2026')),
-      'no year on a short series',
-    );
+    assert.true(labels[0].includes(String(year - 1)), labels[0]);
+    assert.false(labels[1].includes(String(year)), labels[1]);
+    assert.true(labels[1].startsWith('5–11 Jan'), labels[1]);
   });
 
   test('renders with no points at all', async function (assert) {

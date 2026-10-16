@@ -47,6 +47,10 @@ export default class NuvoTabsController extends Controller {
     enclosed: `<Nuvo::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     vertical: `<Nuvo::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     fill: `<Nuvo::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
+    sizes: `<Nuvo::Tabs @tabs={{this.plainTabs}} @size="xs" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+<Nuvo::Tabs @tabs={{this.plainTabs}} @size="sm" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+<Nuvo::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+<Nuvo::Tabs @tabs={{this.plainTabs}} @size="lg" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
   };
 
   argRows = [
@@ -55,6 +59,7 @@ export default class NuvoTabsController extends Controller {
     { name: '@variant', type: '"underline" | "pills" | "enclosed"', default: '', description: 'Visual style of the tab list.' },
     { name: '@vertical', type: 'boolean', default: 'false', description: 'Stacks the tab list; arrow keys switch to up and down.' },
     { name: '@fill', type: 'boolean', default: 'false', description: 'Tabs share the full width equally.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Trigger height and type step. Omit for the default size.' },
   ];
 
   callbackRows = [

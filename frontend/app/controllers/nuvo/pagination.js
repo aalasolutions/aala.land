@@ -61,8 +61,12 @@ export default class NuvoPaginationController extends Controller {
   @perPageOptions={{array 10 20 30}}
   @onPageChange={{this.setSmallPage}}
   @onPerPageChange={{this.setSmallLimit}}
-  @sm={{true}}
+  @size="sm"
 />`,
+    sizes: `<Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="xs" />
+<Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="sm" />
+<Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} />
+<Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="lg" />`,
     compact: `<Nuvo::Pagination @page={{this.compactPage}} @perPage={{10}} @total={{240}} @onPageChange={{this.setCompactPage}} @compact={{true}} />`,
     steps: `<Nuvo::Pagination
   @page={{this.stepPage}}
@@ -81,7 +85,8 @@ export default class NuvoPaginationController extends Controller {
     { name: '@total', type: 'number', default: '0', description: 'Total row count; drives the page list and the status text.' },
     { name: '@perPageOptions', type: 'array', default: '[50, 100, 250]', description: 'Choices in the per-page select.' },
     { name: '@selectId', type: 'string', default: '', description: 'Id for the per-page select; generated per instance when omitted.' },
-    { name: '@sm', type: 'boolean', default: 'false', description: 'Smaller controls.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Page button and text step. Omit for the default size.' },
+    { name: '@sm', type: 'boolean', default: 'false', description: 'Older spelling of @size="sm"; @size wins when both are set.' },
     { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter spacing.' },
   ];
 

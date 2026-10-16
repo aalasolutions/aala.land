@@ -1,42 +1,43 @@
 {{page-title (if this.company this.company.name "Company")}}
 
 {{#if this.company}}
-  <div class="console-detail-header">
-    <button
-      type="button"
-      class="btn btn-secondary btn-back"
-      data-test-company-back
-      {{on "click" this.goBack}}
-    >
-      <Ui::Ph @icon="caret-left" @size="16px" />
-      Companies
-    </button>
-    <div class="console-detail-header__title">
-      <h1 class="page-title">{{this.company.name}}</h1>
-      <span class="plan-badge plan-badge--{{lowercase this.company.tier}}">
-        {{this.company.tier}}
-      </span>
+  <Nuvo::PageHeader @title={{this.company.name}} class="mb-6">
+    <:breadcrumb>
+      <Nuvo::Breadcrumb
+        @items={{array (hash label="Companies" route="admin.companies.index")}}
+        @compact={{true}}
+        @parentsOnly={{true}}
+        data-test-breadcrumb-companies
+      />
+    </:breadcrumb>
+    <:meta>
+      <Nuvo::Tag
+        class="tag-plan-{{lowercase this.company.tier}}"
+        @text={{this.company.tier}}
+        data-test-company-tier
+      />
       {{#if this.railLabel}}
-        <span class="console-rail-tag">{{this.railLabel}}</span>
+        <Nuvo::Tag @text={{this.railLabel}} data-test-company-rail />
       {{/if}}
-      <span class="status-badge {{this.statusView.cls}}">
-        {{this.statusView.text}}
-      </span>
-    </div>
-    <div class="console-detail-header__actions">
+      <Nuvo::Tag
+        class={{this.statusView.cls}}
+        @text={{this.statusView.text}}
+        data-test-company-status
+      />
+    </:meta>
+    <:actions>
       {{#if this.adminUser}}
-        <button
-          type="button"
-          class="btn btn-secondary"
+        <Nuvo::Button
+          @variant="secondary"
+          @icon="sign-in"
           data-test-company-login-as
           {{on "click" this.loginAs}}
         >
-          <Ui::Ph @icon="sign-in" @size="16px" />
           Login as admin
-        </button>
+        </Nuvo::Button>
       {{/if}}
-    </div>
-  </div>
+    </:actions>
+  </Nuvo::PageHeader>
 
   {{#if this.showLockCard}}
     {{#if this.isLocked}}
@@ -293,7 +294,7 @@
           {{#if (eq cell.key "date")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "amount")}}
-            <span class="font-bold">{{format-money
+            <span>{{format-money
                 cell.value
                 currency=cell.row.currency
                 minor=true
@@ -301,7 +302,7 @@
           {{else if (eq cell.key "creditAmount")}}
             {{#let (billing-history-status cell.row) as |status|}}
               {{#if status.creditAmount}}
-                <span class="font-bold" data-test-payment-credit>{{format-money
+                <span data-test-payment-credit>{{format-money
                     status.creditAmount
                     currency=cell.row.currency
                     minor=true

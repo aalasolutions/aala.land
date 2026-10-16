@@ -145,10 +145,6 @@ export default class ContactsDetailController extends Controller {
     this.router.refresh('contacts.detail');
   }
 
-  @action goBack() {
-    this.router.transitionTo('contacts.index');
-  }
-
   @action openEdit() {
     this.showEdit = true;
   }

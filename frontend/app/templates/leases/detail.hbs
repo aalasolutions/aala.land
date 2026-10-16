@@ -6,12 +6,12 @@
     @subtitle={{this.subtitle}}
   >
     <:breadcrumb>
-      <LinkTo
-        @route="leases.index"
-        class="text-muted text-sm"
+      <Nuvo::Breadcrumb
+        @items={{array (hash label="Lease Agreements" route="leases.index")}}
+        @compact={{true}}
+        @parentsOnly={{true}}
         data-test-breadcrumb-leases
-      >Leases</LinkTo>
-      <span class="text-muted">/</span>
+      />
     </:breadcrumb>
     <:meta>
       {{#if @model.lease}}

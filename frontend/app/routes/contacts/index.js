@@ -5,6 +5,7 @@ import { resolveAllRegions } from 'land/utils/roles';
 
 export default class ContactsIndexRoute extends AuthenticatedRoute {
   @service auth;
+  @service region;
 
   queryParams = {
     page: { refreshModel: true },
@@ -50,8 +51,12 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     // A company link names its region; fetchJson then leaves the active region off.
     if (region) params.set('regionCode', region);
     if (nationality) params.set('nationality', nationality);
-    const fromIso = localMidnightIso(dateFrom);
-    const toIso = localMidnightIso(dateTo, 1);
+    // Created-at days are the listed region's days; all-regions lists use the active region's day.
+    const zone =
+      this.region.regions?.find((r) => r.code === region)?.timezone ??
+      this.region.activeRegion?.timezone;
+    const fromIso = localMidnightIso(dateFrom, 0, zone);
+    const toIso = localMidnightIso(dateTo, 1, zone);
     if (fromIso) params.set('dateFrom', fromIso);
     if (toIso) params.set('dateTo', toIso);
 
@@ -66,6 +71,7 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
       page: contactsResult?.data?.page || 1,
       limit: contactsResult?.data?.limit || limit,
       tagCounts: contactsResult?.data?.tagCounts || null,
+      scopeTotal: contactsResult?.data?.scopeTotal ?? 0,
       agents: agentsResult?.data || [],
     };
   }

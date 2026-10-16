@@ -1,18 +1,9 @@
 import Component from '@glimmer/component';
 import { cached } from '@glimmer/tracking';
 import { service } from '@ember/service';
-import {
-  formatCalendarDate,
-  formatCalendarRange,
-  toEpochMs,
-} from '../utils/local-date';
+import { formatCalendarDate, formatCalendarRange } from '../utils/local-date';
 import { compactFormatter, moneyFormatter } from '../utils/chart-style';
 import { localeForRegion } from '../utils/locale';
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-// Past a year of series, two buckets can read alike unless the label names the year.
-const AMBIGUOUS_AFTER_DAYS = 365;
 
 // Shared by the chart components: locale, region currency formatter and bucket labels.
 export default class ChartBaseComponent extends Component {
@@ -37,17 +28,7 @@ export default class ChartBaseComponent extends Component {
   // A month point reads as its month name; a point holding bounds reads as the span it covers.
   pointLabels(points) {
     const locale = this.locale;
-    const spans = points.filter((point) => point.from && point.to);
-    const first = spans[0];
-    const last = spans[spans.length - 1];
-    const total = first
-      ? (toEpochMs(last.to) - toEpochMs(first.from)) / MS_PER_DAY
-      : 0;
-    const spanFormat = {
-      ...(total > AMBIGUOUS_AFTER_DAYS ? { year: 'numeric' } : {}),
-      month: 'short',
-      day: 'numeric',
-    };
+    const todayZone = this.region.activeRegion?.timezone;
     return points.map((point) => {
       if (point.month) {
         return (
@@ -57,7 +38,7 @@ export default class ChartBaseComponent extends Component {
         );
       }
       return (
-        formatCalendarRange(point.from, point.to, locale, spanFormat) ?? ''
+        formatCalendarRange(point.from, point.to, locale, { todayZone }) ?? ''
       );
     });
   }

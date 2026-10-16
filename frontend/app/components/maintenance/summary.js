@@ -1,6 +1,6 @@
 import Component from '@glimmer/component';
 import { service } from '@ember/service';
-import { daysUntil, formatInstant, todayInZone } from 'land/utils/local-date';
+import { daysUntil, formatShortDate, todayInZone } from 'land/utils/local-date';
 import { plural } from 'land/utils/plural';
 
 const STAGES = [
@@ -82,13 +82,13 @@ export default class MaintenanceSummaryComponent extends Component {
     const parts = [];
     if (wo.reportedBy) parts.push(`Reported by ${wo.reportedBy}`);
     if (wo.createdAt) {
+      const timeZone = this.region.activeRegion?.timezone;
       parts.push(
-        formatInstant(
-          wo.createdAt,
-          'en-US',
-          { year: 'numeric', month: 'short', day: 'numeric' },
-          this.region.activeRegion?.timezone,
-        ),
+        formatShortDate(wo.createdAt, {
+          locale: 'en-US',
+          timeZone,
+          todayZone: timeZone,
+        }),
       );
     }
     if (this.daysOpen) {

@@ -8,7 +8,6 @@
   gap: nu-space(4);
   align-items: flex-end;
   justify-content: space-between;
-  margin-block-end: nu-space(4);
 
   @include media-down(sm) {
     flex-direction: column;
@@ -47,7 +46,7 @@
       1fr
     )
   );
-  gap: nu-space(12) var(--browse-grid-gap);
+  gap: nu-space(8) var(--browse-grid-gap);
 }
 
 .unit-browse-card {
@@ -165,6 +164,7 @@
 .unit-browse-card__stats {
   display: flex;
   gap: nu-space(3);
+  white-space: nowrap;
 }
 
 .unit-browse-card__owner {
@@ -182,8 +182,8 @@
 
   .unit-browse-card {
     grid-template-columns:
-      4.5rem minmax(11rem, 2fr) minmax(12rem, 1.5fr) minmax(8rem, 1fr)
-      minmax(6rem, auto) minmax(8.5rem, auto);
+      4.5rem minmax(9rem, 2fr) minmax(15rem, 1.5fr) minmax(7rem, 1fr)
+      11rem 6rem;
     grid-template-areas:
       "photo title stats owner state price"
       "photo place stats owner state price";
@@ -250,7 +250,7 @@
   .unit-browse-card__price {
     align-self: center;
     font-size: nu-font-size(sm);
-    color: var(--nu-success-700);
+    color: var(--nu-text-regular);
     text-align: end;
   }
 

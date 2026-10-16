@@ -1,24 +1,22 @@
 import Helper from '@ember/component/helper';
 import { service } from '@ember/service';
-import { browserTimeZone, formatInstant } from '../utils/local-date';
+import {
+  browserTimeZone,
+  formatDualZoneDateTime,
+  formatShortDateTime,
+} from '../utils/local-date';
 
 export default class FormatDateTime extends Helper {
   @service region;
 
   compute([date], { withSeconds, region }) {
     const options = {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+      locale: 'en-US',
+      todayZone: this.region.activeRegion?.timezone,
+      withSeconds,
     };
 
-    if (withSeconds) {
-      options.second = '2-digit';
-    }
-
-    const local = formatInstant(date, 'en-US', options);
+    const local = formatShortDateTime(date, options);
     if (!local) return '';
     if (!region) return local;
 
@@ -26,9 +24,11 @@ export default class FormatDateTime extends Helper {
     const timeZone = record?.timezone;
     if (!timeZone || timeZone === browserTimeZone()) return local;
 
-    const regional = formatInstant(date, 'en-US', options, timeZone);
-    if (!regional || regional === local) return local;
-
-    return `${local} (${record.name || record.code}: ${regional})`;
+    return formatDualZoneDateTime(
+      date,
+      record.name || record.code,
+      timeZone,
+      options,
+    );
   }
 }

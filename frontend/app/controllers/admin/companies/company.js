@@ -7,11 +7,12 @@ import { formatMoney, toMajorUnits, toMinorUnits } from '../../../utils/money';
 import { localeForRegion } from '../../../utils/locale';
 import { creditDisplayAmount } from '../../../utils/billing-credit';
 import {
-  formatCalendarDate,
+  formatShortDate,
+  formatShortDateTime,
   localDateString,
-  formatLongInstant,
   localEndOfDayIso,
   toEpochMs,
+  todayInZone,
 } from 'land/utils/local-date';
 
 const TABS = [
@@ -184,7 +185,10 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   get downgradeDateLabel() {
-    return formatLongInstant(this.billing?.downgradeEffectiveAt);
+    return formatShortDateTime(this.billing?.downgradeEffectiveAt, {
+      locale: 'en-US',
+      todayZone: this.region.activeRegion?.timezone,
+    });
   }
 
   get lock() {
@@ -212,11 +216,11 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   get statusView() {
-    if (this.isLocked) return { text: 'LOCKED', cls: 'status-failed' };
-    if (this.isLifted) return { text: 'lifted', cls: 'status-pending' };
+    if (this.isLocked) return { text: 'LOCKED', cls: 'tag-account-locked' };
+    if (this.isLifted) return { text: 'lifted', cls: 'tag-account-lifted' };
     if (this.deal && !this.deal.expired)
-      return { text: 'on a deal', cls: 'status-pending' };
-    return { text: 'active', cls: 'status-paid' };
+      return { text: 'on a deal', cls: 'tag-account-on_deal' };
+    return { text: 'active', cls: 'tag-account-active' };
   }
 
   get dealPriceLabel() {
@@ -626,7 +630,8 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   @action
   openPaymentModal() {
-    const today = localDateString();
+    // A super admin has no active region, so this falls back to the browser day.
+    const today = todayInZone(this.region.activeRegion?.timezone);
     this.payAmount = '';
     this.payCurrency = this.deal?.currency || this.billing?.currency || 'usd';
     this.payReceivedAt = today;
@@ -887,10 +892,9 @@ export default class AdminCompaniesCompanyController extends Controller {
   formatDate(value) {
     if (!value) return '';
     return (
-      formatCalendarDate(value, navigator.language || 'en', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+      formatShortDate(value, {
+        locale: navigator.language || 'en',
+        todayZone: this.region.activeRegion?.timezone,
       }) ?? String(value)
     );
   }

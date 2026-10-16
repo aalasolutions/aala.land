@@ -4,14 +4,10 @@ export default class NuvoPageHeaderController extends Controller {
   code = {
     title: `<Nuvo::PageHeader @title="Properties" />`,
     subtitle: `<Nuvo::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina" />`,
-    icon: `<Nuvo::PageHeader @icon="buildings" @title="Properties" @subtitle="Every building in the active region" />`,
     bordered: `<Nuvo::PageHeader @title="Bordered" @subtitle="A rule under the header" @bordered={{true}} />`,
-    iconSlot: `<Nuvo::PageHeader @title="Properties">
-  <:icon><MyOwnIcon /></:icon>
-</Nuvo::PageHeader>`,
     breadcrumb: `<Nuvo::PageHeader @title="Marina Tower">
   <:breadcrumb>
-    <Nuvo::Breadcrumb @items={{this.crumbs}} @compact={{true}} />
+    <Nuvo::Breadcrumb @items={{this.crumbs}} @compact={{true}} @parentsOnly={{true}} />
   </:breadcrumb>
 </Nuvo::PageHeader>`,
     meta: `<Nuvo::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina">
@@ -32,15 +28,11 @@ export default class NuvoPageHeaderController extends Controller {
 </div>`,
   };
 
-  crumbs = [
-    { label: 'Properties', href: '#' },
-    { label: 'Marina Tower' },
-  ];
+  crumbs = [{ label: 'Properties', href: '#' }];
 
   argRows = [
     { name: '@title', type: 'string', default: '', description: 'Page title, rendered as the h1.' },
     { name: '@subtitle', type: 'string', default: '', description: 'Line under the title.' },
-    { name: '@icon', type: 'string', default: '', description: 'Phosphor icon name rendered before the title.' },
     { name: '@bordered', type: 'boolean', default: 'false', description: 'Bottom border.' },
     { name: '@sticky', type: 'boolean', default: 'false', description: 'Sticks to the top of its scroll container.' },
   ];

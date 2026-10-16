@@ -2,13 +2,12 @@
 
 <div data-test-reports-page class="flex col gap-6">
   <Nuvo::PageHeader
-    @icon="chart-bar"
     @title="Boss Dashboard"
     @subtitle="Real-time performance and business intelligence."
   />
 
   {{#if @model.kpis}}
-    <div class="grid cols-3 gap-4" data-test-reports-kpis>
+    <div class="reports-kpis grid cols-3 gap-4" data-test-reports-kpis>
       <Nuvo::Stat
         data-test-kpi="monthly-revenue"
         @route="financials"
@@ -111,7 +110,7 @@
                   <div class="flex x-center gap-3">
                     <span
                       class="text-xs text-muted whitespace-nowrap"
-                    >{{format-date flag.createdAt}}</span>
+                    >{{format-date flag.createdAt zone="region"}}</span>
                     {{#if flag.areaId}}
                       <Nuvo::Button
                         @variant="secondary"
@@ -208,24 +207,23 @@
             {{else if (eq cell.key "leadsAssigned")}}
               {{format-number cell.value}}
             {{else if (eq cell.key "leadsWon")}}
-              <span class="text-success font-bold">{{format-number
+              <span class="text-success">{{format-number
                   cell.value
                 }}</span>
             {{else if (eq cell.key "leadsLost")}}
               <span class="text-danger">{{format-number cell.value}}</span>
             {{else if (eq cell.key "conversionRate")}}
               <span
-                class="font-bold
-                  {{if
-                    (gt cell.value 50)
-                    'text-success'
-                    (if (gt cell.value 25) 'text-warning' 'text-danger')
-                  }}"
+                class={{if
+                  (gt cell.value 50)
+                  "text-success"
+                  (if (gt cell.value 25) "text-warning" "text-danger")
+                }}
               >
                 {{cell.value}}%
               </span>
             {{else if (eq cell.key "commissionsEarned")}}
-              <span class="font-bold"><Money @amount={{cell.value}} /></span>
+              <span><Money @amount={{cell.value}} /></span>
             {{else}}
               {{cell.value}}
             {{/if}}

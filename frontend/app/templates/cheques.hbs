@@ -1,6 +1,6 @@
 {{page-title "Cheques Received"}}
 
-<div data-test-cheques-page class="flex col gap-6">
+<div data-test-cheques-page class="flex col gap-4">
   <Nuvo::PageHeader
     @title="Cheques Received"
     @subtitle="Track incoming post-dated cheques and their collection schedule."
@@ -32,7 +32,7 @@
   />
 
   {{#if (eq this.activeTab "cheques")}}
-    <Nuvo::Card>
+    <Nuvo::Card @compact={{true}}>
       {{#if @model.cheques.length}}
         <Nuvo::DataTable
           @columns={{this.columns}}
@@ -46,7 +46,7 @@
           as |cell|
         >
           {{#if (eq cell.key "chequeNumber")}}
-            <span class="font-bold" data-test-cheque-row>{{cell.value}}</span>
+            <span data-test-cheque-row>{{cell.value}}</span>
           {{else if (eq cell.key "unit.unitNumber")}}
             <span data-test-cheque-unit>
               {{#if cell.row.unit}}
@@ -56,7 +56,7 @@
               {{/if}}
             </span>
           {{else if (eq cell.key "amount")}}
-            <span class="font-bold"><Money
+            <span><Money
                 @amount={{cell.value}}
                 @currency={{cell.row.currency}}
               /></span>

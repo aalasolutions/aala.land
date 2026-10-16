@@ -3,37 +3,68 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import { render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
-const VALUE = '2026-09-16T06:00:00Z';
-const OPTIONS = {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-};
-
-// Native Intl may emit U+202F before AM/PM; the helper renders plain spaces.
-function native(value, options) {
-  return new Date(value).toLocaleString('en-US', options).replace(/\s/g, ' ');
-}
+// A past year, so the year always shows whatever today is.
+const VALUE = '2025-09-16T06:00:09Z';
 
 function browserTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
+// Independent oracle: day, month and year parts plus the time, in timeZone (browser when undefined).
+function parts(value, timeZone, withSeconds = false) {
+  const date = new Date(value);
+  const get = (options) =>
+    Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', { ...options, timeZone })
+        .formatToParts(date)
+        .map((p) => [p.type, p.value]),
+    );
+  const { day, month, year } = get({
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const time = date
+    .toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      ...(withSeconds ? { second: '2-digit' } : {}),
+      timeZone,
+    })
+    .replace(/\s/g, ' ');
+  return {
+    day: `${day} ${month} ${year}`,
+    iso: `${year}-${month}-${day}`,
+    time,
+  };
+}
+
+function full(value, timeZone, withSeconds) {
+  const p = parts(value, timeZone, withSeconds);
+  return `${p.day}, ${p.time}`;
+}
+
 // Pick a zone far from the machine zone so the two renderings always differ.
 function otherTimeZone() {
-  const local = native(VALUE, OPTIONS);
+  const local = full(VALUE);
   return ['Pacific/Kiritimati', 'Pacific/Pago_Pago'].find(
-    (tz) => native(VALUE, { ...OPTIONS, timeZone: tz }) !== local,
+    (tz) => full(VALUE, tz) !== local,
   );
+}
+
+function regionPart(value, timeZone) {
+  const local = parts(value);
+  const regional = parts(value, timeZone);
+  return regional.iso === local.iso
+    ? regional.time
+    : `${regional.day}, ${regional.time}`;
 }
 
 module('Integration | Helper | format-date-time', function (hooks) {
   setupRenderingTest(hooks);
 
   hooks.beforeEach(function () {
-    this.local = native(VALUE, OPTIONS);
+    this.local = full(VALUE);
     this.otherZone = otherTimeZone();
     this.owner.lookup('service:region').regions = [
       { code: 'same', name: 'Home', timezone: browserTimeZone() },
@@ -43,32 +74,43 @@ module('Integration | Helper | format-date-time', function (hooks) {
     this.set('value', VALUE);
   });
 
-  test('without a region it renders browser-local time only', async function (assert) {
+  test('without a region it renders browser-local time only, day first', async function (assert) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value}}</span>`,
     );
     assert.dom('[data-test-out]').hasText(this.local);
+    assert
+      .dom('[data-test-out]')
+      .hasText(/^\d{1,2} Sep 2025, \d{1,2}:\d{2} [AP]M$/);
   });
 
-  test('a region in another timezone appends the region time', async function (assert) {
+  test('a current-year instant drops the year', async function (assert) {
+    this.set('value', new Date().toISOString());
+    await render(
+      hbs`<span data-test-out>{{format-date-time this.value}}</span>`,
+    );
+    assert
+      .dom('[data-test-out]')
+      .hasText(/^\d{1,2} [A-Z][a-z]{2}, \d{1,2}:\d{2} [AP]M$/);
+  });
+
+  test('a region in another timezone appends the region time without a colon', async function (assert) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value region="far"}}</span>`,
     );
-    const regional = native(VALUE, { ...OPTIONS, timeZone: this.otherZone });
     assert
       .dom('[data-test-out]')
-      .hasText(`${this.local} (Faraway: ${regional})`);
+      .hasText(`${this.local} (Faraway ${regionPart(VALUE, this.otherZone)})`);
   });
 
   test('a UTC region renders plain spaces and appends only when the time differs', async function (assert) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value region="utc"}}</span>`,
     );
-    const regional = native(VALUE, { ...OPTIONS, timeZone: 'UTC' });
     const expected =
-      regional === this.local
+      full(VALUE, 'UTC') === this.local
         ? this.local
-        : `${this.local} (Greenwich: ${regional})`;
+        : `${this.local} (Greenwich ${regionPart(VALUE, 'UTC')})`;
     assert.dom('[data-test-out]').hasText(expected);
     assert.false(/\u202f/.test(this.element.textContent));
   });
@@ -92,7 +134,6 @@ module('Integration | Helper | format-date-time', function (hooks) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value withSeconds=true}}</span>`,
     );
-    const expected = native(VALUE, { ...OPTIONS, second: '2-digit' });
-    assert.dom('[data-test-out]').hasText(expected);
+    assert.dom('[data-test-out]').hasText(full(VALUE, undefined, true));
   });
 });

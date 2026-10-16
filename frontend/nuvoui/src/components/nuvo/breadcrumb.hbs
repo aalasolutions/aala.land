@@ -7,6 +7,15 @@
           <span class="nu-breadcrumb__current" aria-current="page" data-test-nu-breadcrumb-current>
             {{crumb.label}}
           </span>
+        {{else if crumb.route}}
+          <LinkTo
+            @route={{crumb.route}}
+            @models={{crumb.linkModels}}
+            class="nu-breadcrumb__link"
+            data-test-nu-breadcrumb-link
+          >
+            {{crumb.label}}
+          </LinkTo>
         {{else if crumb.onClick}}
           <button
             type="button"

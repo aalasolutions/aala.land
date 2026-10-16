@@ -196,11 +196,15 @@ export default class ChequesController extends PaginatedController {
     return !earliest || !latest || earliest > latest;
   }
 
+  get todayZone() {
+    return this.region.activeRegion?.timezone;
+  }
+
   get clearBlockedMessage() {
     const dueDate = toDateOnly(this.clearChequeItem?.dueDate);
     const { latest } = this.clearDateWindow;
     if (dueDate && latest && dueDate > latest) {
-      return `This cheque is not due until ${formatDate(dueDate)}, so it cannot be cleared yet.`;
+      return `This cheque is not due until ${formatDate(dueDate, this.todayZone)}, so it cannot be cleared yet.`;
     }
     return 'This cheque has no date that can be recorded as its clearing day.';
   }
@@ -276,7 +280,7 @@ export default class ChequesController extends PaginatedController {
       return;
     }
     if (this.clearedDate < earliest || this.clearedDate > latest) {
-      this.clearError = `Pick a date between ${formatDate(earliest)} and ${formatDate(latest)}.`;
+      this.clearError = `Pick a date between ${formatDate(earliest, this.todayZone)} and ${formatDate(latest, this.todayZone)}.`;
       return;
     }
     // Optional, and range-checked here as well as on the server.
@@ -284,7 +288,7 @@ export default class ChequesController extends PaginatedController {
     if (depositDate) {
       const { earliest: depositFloor } = this.depositDateWindow;
       if (depositFloor && depositDate < depositFloor) {
-        this.clearError = `The deposit date cannot be before the cheque was added on ${formatDate(depositFloor)}.`;
+        this.clearError = `The deposit date cannot be before the cheque was added on ${formatDate(depositFloor, this.todayZone)}.`;
         return;
       }
       if (depositDate > this.clearedDate) {

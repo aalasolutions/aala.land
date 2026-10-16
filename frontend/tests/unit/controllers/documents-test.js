@@ -24,6 +24,38 @@ module('Unit | Controller | documents', function (hooks) {
     });
   });
 
+  test('created-at bounds are the region day and follow a region switch', function (assert) {
+    const controller = this.owner.lookup('controller:documents');
+    controller.dateFrom = '2026-09-16';
+    controller.dateTo = '2026-09-16';
+
+    controller.region.activeRegion = {
+      code: 'ahead',
+      timezone: 'Pacific/Kiritimati',
+    };
+    assert.strictEqual(
+      controller.panelFilters.dateFrom,
+      '2026-09-15T10:00:00.000Z',
+    );
+    assert.strictEqual(
+      controller.panelFilters.dateTo,
+      '2026-09-16T10:00:00.000Z',
+    );
+
+    controller.region.activeRegion = {
+      code: 'behind',
+      timezone: 'Pacific/Pago_Pago',
+    };
+    assert.strictEqual(
+      controller.panelFilters.dateFrom,
+      '2026-09-16T11:00:00.000Z',
+    );
+    assert.strictEqual(
+      controller.panelFilters.dateTo,
+      '2026-09-17T11:00:00.000Z',
+    );
+  });
+
   test('the category filter lists only categories the related type allows', function (assert) {
     const controller = this.owner.lookup('controller:documents');
     assert.strictEqual(controller.categories.length, 11, 'All plus ten');

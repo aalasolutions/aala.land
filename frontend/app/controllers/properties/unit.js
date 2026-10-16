@@ -213,6 +213,19 @@ export default class PropertiesUnitController extends Controller {
     return Boolean(this.model?.unit?.deletedAt);
   }
 
+  get crumbs() {
+    const crumbs = [{ label: 'Properties', route: 'properties' }];
+    const locality = this.model?.unit?.asset?.locality;
+    if (locality && this.model.areaId) {
+      crumbs.push({
+        label: locality.name,
+        route: 'properties.detail',
+        model: this.model.areaId,
+      });
+    }
+    return crumbs;
+  }
+
   // Matches the label the server returns for a unit link.
   get documentLinkLabel() {
     const unit = this.model?.unit;

@@ -1,9 +1,8 @@
 {{page-title "Table Options"}}
 
 {{! Development-only copy of the contacts list: every DataTable option in one place. }}
-<div data-test-table-options class="flex col gap-6">
+<div data-test-table-options class="flex col gap-4">
   <Nuvo::PageHeader
-    @icon="table"
     @title="Table Options"
     @subtitle="DataTable showcase on live contacts. A: all options on. B: defaults. C: RTL with fake rows and every editor type."
   >
@@ -23,112 +22,106 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Segmented
-    @options={{this.roleTabs}}
-    @value={{this.tag}}
-    @onChange={{this.setTag}}
-    data-test-role-tabs
-  />
+  <div class="flex x-center gap-3 wrap" data-test-table-options-toolbar>
+    <Nuvo::Segmented
+      @options={{this.roleTabs}}
+      @value={{this.tag}}
+      @onChange={{this.setTag}}
+      data-test-role-tabs
+    />
+    <FiltersButton @count={{this.activeFilterCount}}>
+      <div class="flex col gap-4">
+        <div class="flex gap-3 wrap">
+          <Nuvo::Field class="grow" @label="Search">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="Search name, email, phone..."
+              class="grow"
+              value={{this.search}}
+              {{on "input" (fn this.updateFilter "search")}}
+              data-test-contacts-search
+            />
+          </Nuvo::Field>
+        </div>
 
-  <Nuvo::Accordion
-    @items={{array
-      (hash
-        id="filters"
-        title=(if this.hasActiveFilters "Filters · active" "Filters")
-      )
-    }}
-    data-test-filters-accordion
-  >
-    <div class="flex col gap-4">
-      <div class="flex gap-3 wrap">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="Search name, email, phone..."
-          class="grow"
-          value={{this.search}}
-          {{on "input" (fn this.updateFilter "search")}}
-          data-test-contacts-search
-        />
-      </div>
+        <div class="flex gap-3 wrap x-end">
+          <Nuvo::Field class="grow" @label="Assigned agent">
+            <Nuvo::Dropdown
+              id="contacts-agent-filter"
+              @align="start"
+              @value={{this.agentId}}
+              @onSelect={{this.setAgentFilter}}
+              @options={{this.agentOptions}}
+              data-test-agent-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field class="grow" @label="Company">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Emaar Properties"
+              value={{this.company}}
+              {{on "input" (fn this.updateFilter "company")}}
+              data-test-company-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field class="grow" @label="Nationality">
+            <Nuvo::Input
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Emirati"
+              value={{this.nationality}}
+              {{on "input" (fn this.updateFilter "nationality")}}
+              data-test-nationality-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Added from">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Added from"
+              value={{this.dateFrom}}
+              {{on "change" this.setDateFrom}}
+              data-test-date-from-filter
+            />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Added to">
+            <input
+              type="date"
+              class="nu-input"
+              aria-label="Added to"
+              value={{this.dateTo}}
+              {{on "change" this.setDateTo}}
+              data-test-date-to-filter
+            />
+          </Nuvo::Field>
+        </div>
 
-      <div class="flex gap-3 wrap x-end">
-        <Nuvo::Field class="grow" @label="Assigned agent">
-          <Nuvo::Dropdown
-            id="contacts-agent-filter"
-            @align="start"
-            @value={{this.agentId}}
-            @onSelect={{this.setAgentFilter}}
-            @options={{this.agentOptions}}
-            data-test-agent-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Company">
-          <Nuvo::Input
-            type="text"
-            autocomplete="off"
-            placeholder="e.g. Emaar Properties"
-            value={{this.company}}
-            {{on "input" (fn this.updateFilter "company")}}
-            data-test-company-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Nationality">
-          <Nuvo::Input
-            type="text"
-            autocomplete="off"
-            placeholder="e.g. Emirati"
-            value={{this.nationality}}
-            {{on "input" (fn this.updateFilter "nationality")}}
-            data-test-nationality-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Added from">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Added from"
-            value={{this.dateFrom}}
-            {{on "change" this.setDateFrom}}
-            data-test-date-from-filter
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Added to">
-          <input
-            type="date"
-            class="nu-input"
-            aria-label="Added to"
-            value={{this.dateTo}}
-            {{on "change" this.setDateTo}}
-            data-test-date-to-filter
-          />
-        </Nuvo::Field>
-      </div>
-
-      <div class="flex gap-3 x-center between">
-        <Nuvo::Toggle
-          @checked={{this.isWhatsapp}}
-          @onChange={{this.toggleWhatsappFilter}}
-          data-test-whatsapp-filter
-        >
-          Has WhatsApp
-        </Nuvo::Toggle>
-        {{#if this.hasActiveFilters}}
+        <div class="flex gap-3 x-center between">
+          <Nuvo::Toggle
+            @checked={{this.isWhatsapp}}
+            @onChange={{this.toggleWhatsappFilter}}
+            data-test-whatsapp-filter
+          >
+            Has WhatsApp
+          </Nuvo::Toggle>
           <Nuvo::Button
-            @variant="danger"
+            @variant="secondary"
             @size="sm"
             @icon="x"
+            @disabled={{not this.hasActiveFilters}}
             {{on "click" this.clearFilters}}
             data-test-clear-filters
           >
             Clear filters
           </Nuvo::Button>
-        {{/if}}
+        </div>
       </div>
-    </div>
-  </Nuvo::Accordion>
+    </FiltersButton>
+  </div>
 
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     {{#if @model.contacts.length}}
       <Nuvo::DataTable
         @columns={{this.columns}}
@@ -148,7 +141,7 @@
           <LinkTo
             @route="contacts.detail"
             @model={{cell.row.id}}
-            class="text-brand font-bold whitespace-nowrap"
+            class="text-brand whitespace-nowrap"
             data-test-view-contact
           >{{cell.value}}</LinkTo>
         {{else if (eq cell.key "tags")}}
@@ -217,7 +210,7 @@
   </Nuvo::Card>
 
   {{! TEMP DataTable variation demo, remove after review. }}
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     <h3 class="nu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
     <Nuvo::DataTable
       @columns={{this.columns}}
@@ -232,7 +225,7 @@
           <LinkTo
             @route="contacts.detail"
             @model={{cell.row.id}}
-            class="text-brand font-bold whitespace-nowrap"
+            class="text-brand whitespace-nowrap"
             data-test-view-contact
           >{{cell.value}}</LinkTo>
         {{else if (eq cell.key "tags")}}
@@ -277,7 +270,7 @@
     <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
   </Nuvo::Card>
 
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     <h3 class="nu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
     <Nuvo::DataTable
       @columns={{this.demoColumns}}
@@ -299,7 +292,7 @@
           <LinkTo
             @route="contacts.detail"
             @model={{cell.row.id}}
-            class="text-brand font-bold whitespace-nowrap"
+            class="text-brand whitespace-nowrap"
             data-test-view-contact
           >{{cell.value}}</LinkTo>
         {{else if (eq cell.key "tags")}}

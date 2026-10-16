@@ -84,7 +84,7 @@
       padding-block: nu-var("table", "CellPaddingBlock");
       padding-inline: nu-var("table", "CellPaddingInline");
       font-size: nu-font-size(xs);
-      font-weight: nu-font-weight(semibold);
+      font-weight: nu-font-weight(normal);
       color: nu-var("table", "HeadColor");
       text-align: start;
       text-transform: uppercase;
@@ -152,6 +152,16 @@
     padding-inline: nu-var("table", "CellPaddingInline");
     color: nu-var("table", "Color");
     vertical-align: middle;
+
+    .nu-badge {
+      --nu-badge--FontWeight: #{nu-font-weight(normal)};
+    }
+
+    .nu-btn.m-secondary,
+    .nu-btn.m-ghost,
+    .nu-btn.m-link {
+      --nu-btn--FontWeight: #{nu-font-weight(normal)};
+    }
   }
 
   // ---- footer (tfoot) ----

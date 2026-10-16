@@ -116,16 +116,22 @@ export function resolveRange(
   );
 }
 
-// ISO instant of browser-local midnight of a YYYY-MM-DD date, shifted by dayOffset days.
-export function localMidnightIso(dateString, dayOffset = 0) {
-  const date = parseDateOnly(dateString, 'local');
+function zoneOrLocal(timeZone) {
+  return timeZone && DateTime.now().setZone(timeZone).isValid
+    ? timeZone
+    : 'local';
+}
+
+// ISO instant of midnight of a YYYY-MM-DD date in timeZone (browser-local without one), shifted by dayOffset days.
+export function localMidnightIso(dateString, dayOffset = 0, timeZone = null) {
+  const date = parseDateOnly(dateString, zoneOrLocal(timeZone));
   if (!date) return null;
   return date.plus({ days: dayOffset }).startOf('day').toUTC().toISO();
 }
 
-// ISO instant of 23:59:59.000 browser-local time on a YYYY-MM-DD date.
-export function localEndOfDayIso(dateString) {
-  const date = parseDateOnly(dateString, 'local');
+// ISO instant of 23:59:59.000 on a YYYY-MM-DD date in timeZone (browser-local without one).
+export function localEndOfDayIso(dateString, timeZone = null) {
+  const date = parseDateOnly(dateString, zoneOrLocal(timeZone));
   if (!date) return null;
   return date
     .set({ hour: 23, minute: 59, second: 59, millisecond: 0 })
@@ -181,22 +187,24 @@ export function formatCalendarDate(value, locale, options = {}) {
   return date ? withLocale(date, locale).toLocaleString(options) : null;
 }
 
-// A calendar range such as "Sep 14-20", rendered in UTC so neither end shifts a day.
-export function formatCalendarRange(from, to, locale, options = {}) {
+// A calendar range such as "14–20 Sep", rendered in UTC so neither end shifts a day.
+export function formatCalendarRange(from, to, locale, { todayZone, now } = {}) {
   const start = parseDateOnly(from, 'utc');
   const end = parseDateOnly(to, 'utc');
   if (!start || !end) return null;
-  const formatter = new Intl.DateTimeFormat(locale || undefined, {
-    ...options,
-    timeZone: 'UTC',
-  });
-  // Older engines without formatRange: match how ICU renders a range, including a single day.
-  if (typeof formatter.formatRange !== 'function') {
-    const head = formatter.format(start.toJSDate());
-    const tail = formatter.format(end.toJSDate());
-    return head === tail ? head : `${head} – ${tail}`;
+  const year = currentYear(todayZone, now);
+  const head = dayParts(start, locale);
+  const tail = dayParts(end, locale);
+  const showYear = start.year !== year || end.year !== year;
+  const suffix = showYear ? ` ${tail.year}` : '';
+  if (start.hasSame(end, 'day')) return `${tail.day} ${tail.month}${suffix}`;
+  if (start.hasSame(end, 'month')) {
+    return `${head.day}–${tail.day} ${tail.month}${suffix}`;
   }
-  return formatter.formatRange(start.toJSDate(), end.toJSDate());
+  if (start.hasSame(end, 'year')) {
+    return `${head.day} ${head.month} – ${tail.day} ${tail.month}${suffix}`;
+  }
+  return `${head.day} ${head.month} ${head.year} – ${tail.day} ${tail.month} ${tail.year}`;
 }
 
 // An instant in browser time, or in timeZone when given, with plain spaces; null if invalid.
@@ -208,13 +216,95 @@ export function formatInstant(value, locale, options = {}, timeZone = null) {
   return withLocale(date, locale).toLocaleString(options).replace(/\s/g, ' ');
 }
 
-// An instant as a long date with the time of day, in browser time; null if invalid.
-export function formatLongInstant(value) {
-  return formatInstant(value, 'en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+const DAY_PARTS = { day: 'numeric', month: 'short', year: 'numeric' };
+const TIME = { hour: 'numeric', minute: '2-digit' };
+const TIME_WITH_SECONDS = { ...TIME, second: '2-digit' };
+
+function currentYear(todayZone, now) {
+  return Number(todayInZone(todayZone, now)?.slice(0, 4));
+}
+
+function dayParts(date, locale) {
+  const parts = {};
+  for (const { type, value } of withLocale(date, locale).toLocaleParts(
+    DAY_PARTS,
+  )) {
+    parts[type] = value;
+  }
+  return parts;
+}
+
+// Day first with a short month; the year only when it is not the current year in todayZone.
+function compactDay(date, locale, todayZone, now) {
+  const { day, month, year } = dayParts(date, locale);
+  return date.year === currentYear(todayZone, now)
+    ? `${day} ${month}`
+    : `${day} ${month} ${year}`;
+}
+
+function compactTime(date, locale, withSeconds) {
+  return withLocale(date, locale)
+    .toLocaleString(withSeconds ? TIME_WITH_SECONDS : TIME)
+    .replace(/\s/g, ' ');
+}
+
+// A YYYY-MM-DD value stays on its own day; an instant moves to timeZone, else browser time.
+function displayDate(value, timeZone) {
+  if (!value) return null;
+  const date = toDateTime(value);
+  if (!date) return null;
+  if (typeof value === 'string' && DATE_ONLY.test(value)) return date;
+  const zoned = timeZone ? date.setZone(timeZone) : date;
+  return zoned.isValid ? zoned : null;
+}
+
+// Display date such as "22 Sep" or "22 Sep 2025"; null if invalid.
+export function formatShortDate(
+  value,
+  { locale, timeZone, todayZone, now } = {},
+) {
+  const date = displayDate(value, timeZone);
+  return date ? compactDay(date, locale, todayZone, now) : null;
+}
+
+// Display date and time such as "22 Sep, 7:05 PM"; null if invalid.
+export function formatShortDateTime(
+  value,
+  { locale, timeZone, todayZone, now, withSeconds } = {},
+) {
+  const date = displayDate(value, timeZone);
+  if (!date) return null;
+  return `${compactDay(date, locale, todayZone, now)}, ${compactTime(date, locale, withSeconds)}`;
+}
+
+// Display time such as "7:05 PM"; null if invalid.
+export function formatShortTime(value, { locale, timeZone, withSeconds } = {}) {
+  const date = displayDate(value, timeZone);
+  return date ? compactTime(date, locale, withSeconds) : null;
+}
+
+// Browser time (or timeZone) plus the region time, dated only when its day differs: "22 Sep, 7:05 PM (Makkah 6:05 PM)".
+export function formatDualZoneDateTime(
+  value,
+  regionName,
+  regionZone,
+  { locale, timeZone, todayZone, now, withSeconds } = {},
+) {
+  const local = displayDate(value, timeZone);
+  if (!local) return null;
+  const main = formatShortDateTime(value, {
+    locale,
+    timeZone,
+    todayZone,
+    now,
+    withSeconds,
   });
+  const regional = regionZone ? local.setZone(regionZone) : null;
+  if (!regional?.isValid) return main;
+  const time = compactTime(regional, locale, withSeconds);
+  if (regional.toISODate() !== local.toISODate()) {
+    return `${main} (${regionName} ${compactDay(regional, locale, todayZone, now)}, ${time})`;
+  }
+  if (time === compactTime(local, locale, withSeconds)) return main;
+  return `${main} (${regionName} ${time})`;
 }

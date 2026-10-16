@@ -100,7 +100,7 @@ export class ContactsController {
     required: false,
     type: Boolean,
     description:
-      'true adds tagCounts (all plus one total per tag) for the same filters, tag excluded',
+      'true adds tagCounts (all plus one total per tag) for the same filters, tag excluded, and scopeTotal (every contact in the region scope, ignoring search, filters and tag)',
   })
   @ApiQuery({
     name: 'agentId',

@@ -65,25 +65,6 @@ module('Integration | Component | nuvo/icon slots', function (hooks) {
       .hasClass('nu-btn__icon', 'icon sits after the label');
   });
 
-  test('PageHeader :icon replaces @icon and keeps the title class', async function (assert) {
-    await render(hbs`
-      <Nuvo::PageHeader @title="Reports">
-        <:icon><svg data-test-custom-icon></svg></:icon>
-      </Nuvo::PageHeader>
-    `);
-
-    assert
-      .dom('.nu-page-header__title-icon [data-test-custom-icon]')
-      .exists('slot content carries the title icon class');
-    assert.dom('.nu-page-header__title').hasText('Reports');
-  });
-
-  test('PageHeader without a block still renders @icon', async function (assert) {
-    await render(hbs`<Nuvo::PageHeader @title="Reports" @icon="chart-bar" />`);
-
-    assert.dom('i.nu-page-header__title-icon.ph-chart-bar').exists();
-  });
-
   test('Tabs :icon yields the tab', async function (assert) {
     this.tabs = [
       { id: 'a', label: 'First', icon: 'house' },

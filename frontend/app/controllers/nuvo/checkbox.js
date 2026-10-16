@@ -67,6 +67,10 @@ export default class NuvoCheckboxController extends Controller {
     disabledChecked: `<Nuvo::Checkbox @checked={{true}} @disabled={{true}} @label="Disabled checked" />`,
     disabledUnchecked: `<Nuvo::Checkbox @disabled={{true}} @label="Disabled unchecked" />`,
     unlabelled: `<Nuvo::Checkbox @checked={{true}} aria-label="Select row" />`,
+    checkboxSizes: `<Nuvo::Checkbox @size="xs" @checked={{true}} @label="Extra small" />
+<Nuvo::Checkbox @size="sm" @checked={{true}} @label="Small" />
+<Nuvo::Checkbox @checked={{true}} @label="Default" />
+<Nuvo::Checkbox @size="lg" @checked={{true}} @label="Large" />`,
     group: `<div class="nu-check-group">
   <Nuvo::Checkbox @label="Parking" />
   <Nuvo::Checkbox @label="Pool" />
@@ -77,13 +81,19 @@ export default class NuvoCheckboxController extends Controller {
   <Nuvo::Radio @name="property-type" @value="villa" @checked={{eq this.radioValue "villa"}} @label="Villa" @onChange={{this.updateRadio}} />
   <Nuvo::Radio @name="property-type" @value="townhouse" @checked={{eq this.radioValue "townhouse"}} @label="Townhouse" @onChange={{this.updateRadio}} />
 </div>`,
+    radioSizes: `<Nuvo::Radio @name="radio-size-xs" @size="xs" @checked={{true}} @label="Extra small" />
+<Nuvo::Radio @name="radio-size-sm" @size="sm" @checked={{true}} @label="Small" />
+<Nuvo::Radio @name="radio-size-md" @checked={{true}} @label="Default" />
+<Nuvo::Radio @name="radio-size-lg" @size="lg" @checked={{true}} @label="Large" />`,
     radioDisabled: `<Nuvo::Radio @name="property-type-disabled" @disabled={{true}} @label="Disabled" />`,
     radioBlock: `<Nuvo::Radio @name="plan" @value="growth" @checked={{true}}>
   <strong>Growth</strong> <span class="nu-text m-xs m-muted">multi-region</span>
 </Nuvo::Radio>`,
     toggle: `<Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} />`,
-    toggleSm: `<Nuvo::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} />`,
-    toggleLg: `<Nuvo::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} />`,
+    toggleSizes: `<Nuvo::Toggle @size="xs" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Extra small</Nuvo::Toggle>
+<Nuvo::Toggle @size="sm" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Small</Nuvo::Toggle>
+<Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Default</Nuvo::Toggle>
+<Nuvo::Toggle @size="lg" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Large</Nuvo::Toggle>`,
     toggleDisabled: `<Nuvo::Toggle @disabled={{true}} @checked={{true}} />`,
     toggleText: `<Nuvo::Toggle @checked={{this.toggleWithTextValue}} @activeText="ON" @inactiveText="OFF" @onChange={{this.updateToggleWithText}} />`,
     toggleLabel: `<Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>
@@ -97,6 +107,7 @@ export default class NuvoCheckboxController extends Controller {
     { name: '@value', type: 'string', default: '', description: 'Native value attribute.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the label gets is-disabled.' },
     { name: '@indeterminate', type: 'boolean', default: 'false', description: 'Sets the DOM indeterminate property on insert and on change.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Box and label size step. Omit for the default size.' },
   ];
 
   checkboxCallbackRows = [
@@ -109,6 +120,7 @@ export default class NuvoCheckboxController extends Controller {
     { name: '@checked', type: 'boolean', default: '', description: 'Checked state. Derive it from the group value.' },
     { name: '@label', type: 'string', default: '', description: 'Visible label when no block is given.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the label gets is-disabled.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Circle and label size step. Omit for the default size.' },
   ];
 
   radioCallbackRows = [
@@ -118,7 +130,7 @@ export default class NuvoCheckboxController extends Controller {
   toggleArgRows = [
     { name: '@checked', type: 'boolean', default: '', description: 'On/off state. Controlled; update it from @onChange.' },
     { name: '@variant', type: '"primary" | "secondary" | "success" | "warning" | "danger" | "info"', default: '', description: 'Track colour while on.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Track size step.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Track size step. Omit for the default size.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute plus is-disabled.' },
     { name: '@activeText', type: 'string', default: '', description: 'Short text shown inside the track while on. Adds m-with-text.' },
     { name: '@inactiveText', type: 'string', default: '', description: 'Short text shown inside the track while off. Adds m-with-text.' },

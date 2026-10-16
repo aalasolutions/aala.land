@@ -188,6 +188,44 @@
     }
   }
 
+  @include m(xs) {
+    .nu-pagination__link {
+      --nu-pagination__link--MinInlineSize: 1.75rem;
+      --nu-pagination__link--MinBlockSize: 1.75rem;
+      --nu-pagination__link--PaddingInline: #{nu-space(1)};
+      --nu-pagination__link--FontSize: #{nu-font-size(xs)};
+    }
+
+    .nu-pagination__ellipsis {
+      min-inline-size: 1.75rem;
+      min-block-size: 1.75rem;
+    }
+
+    .nu-pagination__status,
+    .nu-pagination__per-page {
+      font-size: nu-font-size(xs);
+    }
+  }
+
+  @include m(lg) {
+    .nu-pagination__link {
+      --nu-pagination__link--MinInlineSize: 3rem;
+      --nu-pagination__link--MinBlockSize: 3rem;
+      --nu-pagination__link--PaddingInline: #{nu-space(3)};
+      --nu-pagination__link--FontSize: #{nu-font-size(md)};
+    }
+
+    .nu-pagination__ellipsis {
+      min-inline-size: 3rem;
+      min-block-size: 3rem;
+    }
+
+    .nu-pagination__status,
+    .nu-pagination__per-page {
+      font-size: nu-font-size(md);
+    }
+  }
+
   @include m(compact) {
     .nu-pagination__list {
       gap: nu-space(0);

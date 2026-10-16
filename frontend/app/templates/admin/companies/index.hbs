@@ -51,7 +51,7 @@
         as |cell|
       >
         {{#if (eq cell.key "name")}}
-          <span class="font-bold" data-test-companies-row={{cell.row.id}}>
+          <span data-test-companies-row={{cell.row.id}}>
             <LinkTo
               @route="admin.companies.company"
               @model={{cell.row.id}}

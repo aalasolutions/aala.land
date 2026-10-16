@@ -1,6 +1,7 @@
 import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
 import {
   CATEGORIES,
@@ -11,6 +12,8 @@ import {
 import { localMidnightIso } from 'land/utils/local-date';
 
 export default class DocumentsController extends PaginatedController {
+  @service region;
+
   queryParams = [
     'page',
     'limit',
@@ -50,27 +53,35 @@ export default class DocumentsController extends PaginatedController {
     return [{ value: '', label: 'All access levels' }, ...ACCESS_LEVELS];
   }
 
+  get zone() {
+    return this.region.activeRegion?.timezone;
+  }
+
   // The panel owns the list fetch; the URL filters reach it as query params.
   get panelFilters() {
     return {
       category: this.category,
       search: this.search,
       accessLevel: this.accessLevel,
-      dateFrom: localMidnightIso(this.dateFrom),
-      dateTo: localMidnightIso(this.dateTo, 1),
+      dateFrom: localMidnightIso(this.dateFrom, 0, this.zone),
+      dateTo: localMidnightIso(this.dateTo, 1, this.zone),
       related: this.related,
     };
   }
 
   get hasActiveFilters() {
-    return Boolean(
-      this.category ||
-      this.search ||
-      this.accessLevel ||
-      this.dateFrom ||
-      this.dateTo ||
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [
+      this.category,
+      this.search,
+      this.accessLevel,
+      this.dateFrom,
+      this.dateTo,
       this.related,
-    );
+    ].filter(Boolean).length;
   }
 
   // Nuvo::Dropdown calls onSelect with the value.

@@ -22,7 +22,8 @@
       <li class="nu-list__item">Native inputs inside labels; disabled sets the real attribute.</li>
       <li class="nu-list__item">Checkbox indeterminate state synced to the DOM property.</li>
       <li class="nu-list__item">Radio reports its own value only when it becomes checked.</li>
-      <li class="nu-list__item">Toggle in six colours, two extra sizes, with in-track text or a trailing label.</li>
+      <li class="nu-list__item">Four sizes on all three controls (xs, sm, md default, lg), matched to the control-height scale.</li>
+      <li class="nu-list__item">Toggle in six colours, with in-track text or a trailing label.</li>
       <li class="nu-list__item">nu-check-group lays out a run of controls.</li>
     </ul>
   </NuvoDocs::Section>
@@ -67,6 +68,17 @@
       @code={{this.code.unlabelled}}
     >
       <Nuvo::Checkbox @checked={{true}} aria-label="Select row" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Sizes"
+      @note="xs, sm, md (default) and lg. The box is 14, 16, 18 and 20px; pick the step that matches the inputs and buttons in the same row."
+      @code={{this.code.checkboxSizes}}
+    >
+      <Nuvo::Checkbox @size="xs" @checked={{true}} @label="Extra small" data-test-nuvo-checkbox-size="xs" />
+      <Nuvo::Checkbox @size="sm" @checked={{true}} @label="Small" data-test-nuvo-checkbox-size="sm" />
+      <Nuvo::Checkbox @checked={{true}} @label="Default" data-test-nuvo-checkbox-size="md" />
+      <Nuvo::Checkbox @size="lg" @checked={{true}} @label="Large" data-test-nuvo-checkbox-size="lg" />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -130,6 +142,17 @@
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
+      @title="Sizes"
+      @note="The same four steps as Checkbox, so a radio set lines up with checkboxes of the same size."
+      @code={{this.code.radioSizes}}
+    >
+      <Nuvo::Radio @name="radio-size-xs" @size="xs" @checked={{true}} @label="Extra small" data-test-nuvo-radio-size="xs" />
+      <Nuvo::Radio @name="radio-size-sm" @size="sm" @checked={{true}} @label="Small" data-test-nuvo-radio-size="sm" />
+      <Nuvo::Radio @name="radio-size-md" @checked={{true}} @label="Default" data-test-nuvo-radio-size="md" />
+      <Nuvo::Radio @name="radio-size-lg" @size="lg" @checked={{true}} @label="Large" data-test-nuvo-radio-size="lg" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
       @title="Block label"
       @note="A block replaces the label text, for a title with a muted description beside it."
       @code={{this.code.radioBlock}}
@@ -156,19 +179,14 @@
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
-      @title="Small"
-      @note="For table rows and dense settings lists."
-      @code={{this.code.toggleSm}}
+      @title="Sizes"
+      @note="xs for dense table cells, sm for settings lists, md by default, lg for a single prominent setting. The track is 16, 20, 24 and 28px tall."
+      @code={{this.code.toggleSizes}}
     >
-      <Nuvo::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} aria-label="Small toggle" />
-    </NuvoDocs::Example>
-
-    <NuvoDocs::Example
-      @title="Large"
-      @note="For a single prominent setting at the top of a panel."
-      @code={{this.code.toggleLg}}
-    >
-      <Nuvo::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} aria-label="Large toggle" />
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="xs" @onChange={{this.updateToggle}} data-test-nuvo-toggle-size="xs">Extra small</Nuvo::Toggle>
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} data-test-nuvo-toggle-size="sm">Small</Nuvo::Toggle>
+      <Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} data-test-nuvo-toggle-size="md">Default</Nuvo::Toggle>
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} data-test-nuvo-toggle-size="lg">Large</Nuvo::Toggle>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example

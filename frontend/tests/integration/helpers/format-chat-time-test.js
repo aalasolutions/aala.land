@@ -42,12 +42,12 @@ module('Integration | Helper | format-chat-time', function (hooks) {
 
   test('a week or more ago in the same year renders month and day', async function (assert) {
     await renderAt(this, local(2026, 8, 18, 10, 0));
-    assert.dom('[data-test-out]').hasText('Sep 18');
+    assert.dom('[data-test-out]').hasText('18 Sep');
   });
 
   test('an older year renders the full date', async function (assert) {
     await renderAt(this, local(2025, 8, 18, 10, 0));
-    assert.dom('[data-test-out]').hasText('Sep 18, 2025');
+    assert.dom('[data-test-out]').hasText('18 Sep 2025');
   });
 
   test('just after local midnight the day boundary is the browser calendar day', async function (assert) {

@@ -1,8 +1,7 @@
 {{page-title "Leads"}}
 
-<div data-test-leads-page class="flex col gap-6">
+<div data-test-leads-page class="flex col gap-4">
   <Nuvo::PageHeader
-    @icon="funnel"
     @title="Lead Pipeline"
     @subtitle="Track and manage your leads through the pipeline."
   >
@@ -18,15 +17,7 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <div class="flex end" data-test-leads-toolbar>
-    <Nuvo::Segmented
-      @options={{this.viewTabs}}
-      @value={{this.viewMode}}
-      @onChange={{this.setViewMode}}
-      data-test-view-toggle
-    />
-  </div>
- {{! Agent board columns are already the ownership breakdown }}
+  {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
     <Nuvo::Tabs
       @tabs={{this.filterTabs}}
@@ -35,6 +26,14 @@
       data-test-lead-filters
     />
   {{/unless}}
+  <div class="flex end" data-test-leads-toolbar>
+    <Nuvo::Segmented
+      @options={{this.viewTabs}}
+      @value={{this.viewMode}}
+      @onChange={{this.setViewMode}}
+      data-test-view-toggle
+    />
+  </div>
   {{#if (eq this.viewMode "pipeline")}}
     <div
       class="nu-kanban
@@ -217,7 +216,6 @@
         {{#if (eq cell.key "contact.displayName")}}
           <span class="flex gap-2 x-center">
             <span
-              class="font-bold"
               data-test-lead-row
               data-test-lead-id={{cell.row.id}}
             >{{contact-name cell.row.contact}}</span>
@@ -281,7 +279,10 @@
             <span class="text-muted">Unassigned</span>
           {{/if}}
         {{else if (eq cell.key "createdAt")}}
-          <span class="text-xs text-muted">{{format-date cell.value}}</span>
+          <span class="text-xs text-muted">{{format-date
+              cell.value
+              zone="region"
+            }}</span>
         {{else if (eq cell.key "id")}}
           <div class="flex">
             <Nuvo::Button

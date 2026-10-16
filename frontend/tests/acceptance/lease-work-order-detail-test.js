@@ -145,7 +145,9 @@ module('Acceptance | leases/detail', function (hooks) {
     await waitFor('[data-test-lease-documents] [data-test-data-table-row]');
 
     assert.dom('[data-test-nu-page-header-title]').hasText('Test Tenant');
-    assert.dom('[data-test-breadcrumb-leases]').hasAttribute('href', '/leases');
+    assert
+      .dom('[data-test-breadcrumb-leases] [data-test-nu-breadcrumb-link]')
+      .hasAttribute('href', '/leases');
     assert.dom('[data-test-lease-unit-link]').hasText('Bay Tower - 101');
     assert.deepEqual(documentListCalls(this.calls), [
       '/documents?page=1&limit=20&leaseId=lease-1',
@@ -273,7 +275,7 @@ module('Acceptance | maintenance/detail', function (hooks) {
 
     assert.dom('[data-test-nu-page-header-title]').hasText('Fix AC');
     assert
-      .dom('[data-test-breadcrumb-maintenance]')
+      .dom('[data-test-breadcrumb-maintenance] [data-test-nu-breadcrumb-link]')
       .hasAttribute('href', '/maintenance');
     assert.deepEqual(documentListCalls(this.calls), [
       '/documents?page=1&limit=20&workOrderId=wo-1',

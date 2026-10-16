@@ -101,7 +101,7 @@
         <span class="nu-info-row__label"><Ui::Ph @icon="calendar-check" />
           Completed</span>
         <span class="nu-info-row__value" data-test-work-order-completed>{{or
-            (format-date @workOrder.completedAt)
+            (format-date @workOrder.completedAt zone="region")
             "-"
           }}</span>
       </div>

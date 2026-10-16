@@ -54,6 +54,12 @@ $dashboard-bar-size: 10px;
   grid-area: outcome;
 }
 
+// Headline values stay below the xl page title.
+.kpi-action .nu-stat,
+.kpi-outcome {
+  --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+}
+
 // Equal row heights keep the gaps on the scale instead of inflating them with leftover space.
 .kpi-status {
   grid-area: status;

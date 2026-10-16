@@ -1,42 +1,25 @@
 {{! Only file that touches ember-table; swap the library here. }}
 <div class="data-table-shell" dir={{if this.isRtl "rtl" "ltr"}} ...attributes>
   {{#if (and @showOptions this.optionColumns.length)}}
-    <div class="data-table-shell__toolbar">
-      <Nuvo::Popover @title="Columns" @placement="bottom" @align="end">
-        <:trigger as |toggle|>
-          <Nuvo::Button
-            @variant="ghost"
-            @size="sm"
-            @icon="sliders-horizontal"
-            @onClick={{toggle}}
-            data-test-data-table-options
-          >Options</Nuvo::Button>
-        </:trigger>
-        <:body>
-          <div class="flex col" data-test-data-table-columns>
-            {{#each this.optionColumns key="key" as |option|}}
-              <Nuvo::Checkbox
-                @label={{option.name}}
-                @checked={{option.visible}}
-                @onChange={{fn this.toggleColumn option.key}}
-                data-test-data-table-column-toggle={{option.key}}
-              />
-            {{/each}}
-          </div>
-        </:body>
-        <:footer>
-          {{#if @tableId}}
-            <Nuvo::Button
-              @variant="ghost"
-              @size="sm"
-              @icon="arrow-counter-clockwise"
-              @onClick={{this.resetLayout}}
-              data-test-data-table-reset
-            >Reset columns</Nuvo::Button>
-          {{/if}}
-        </:footer>
-      </Nuvo::Popover>
-    </div>
+    {{#if this.optionsHost}}
+      {{#in-element this.optionsHost insertBefore=null}}
+        <this.Options
+          @columns={{this.optionColumns}}
+          @onToggle={{this.toggleColumn}}
+          @onReset={{if @tableId this.resetLayout}}
+          @size={{@optionsSize}}
+        />
+      {{/in-element}}
+    {{else}}
+      <div class="data-table-shell__toolbar">
+        <this.Options
+          @columns={{this.optionColumns}}
+          @onToggle={{this.toggleColumn}}
+          @onReset={{if @tableId this.resetLayout}}
+          @size={{@optionsSize}}
+        />
+      </div>
+    {{/if}}
   {{/if}}
 
   <EmberTable

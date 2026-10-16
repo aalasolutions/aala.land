@@ -1,7 +1,7 @@
 <Nuvo::Panel
   @compact={{true}}
   @interactive={{true}}
-  class="flex col gap-2 {{@dragClass}}"
+  class="lead-card {{@dragClass}}"
   data-test-lead-card
   data-test-lead-id={{@lead.id}}
   data-lead-id={{@lead.id}}
@@ -29,30 +29,34 @@
       />
     {{/if}}
   </div>
-  <div class="flex gap-2 x-center">
-    <p class="text-muted text-xs" dir="ltr" data-test-lead-phone>{{contact-phone
-        @lead.contact
-      }}</p>
-    {{#if (can-whatsapp @lead.contact)}}
-      <a
-        href={{wa-link @lead.contact.phone}}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="wa-link"
-        aria-label="Open WhatsApp chat with {{contact-name @lead.contact}}"
-        data-test-wa-link
-        {{on "click" this.stopPropagation}}
-      >
-        <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-      </a>
-    {{/if}}
-  </div>
+  {{#if (contact-phone @lead.contact)}}
+    <div class="flex gap-2 x-center">
+      <p
+        class="text-muted text-xs"
+        dir="ltr"
+        data-test-lead-phone
+      >{{contact-phone @lead.contact}}</p>
+      {{#if (can-whatsapp @lead.contact)}}
+        <a
+          href={{wa-link @lead.contact.phone}}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="wa-link"
+          aria-label="Open WhatsApp chat with {{contact-name @lead.contact}}"
+          data-test-wa-link
+          {{on "click" this.stopPropagation}}
+        >
+          <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+        </a>
+      {{/if}}
+    </div>
+  {{/if}}
   {{#if this.isAgentBoard}}
     <Nuvo::Tag
       class="tag-lead-{{lowercase @lead.status}}"
       @text={{@lead.status}}
     />
-  {{else}}
+  {{else if (contact-email @lead.contact)}}
     <p class="text-muted text-xs" data-test-lead-email>{{contact-email
         @lead.contact
       }}</p>
@@ -71,8 +75,11 @@
   {{#if (and (not this.isAgentBoard) @lead.assignedAgentName)}}
     <p class="lead-assign">{{@lead.assignedAgentName}}</p>
   {{/if}}
-  <div class="flex between x-center mt-1">
-    <span class="text-xs text-muted">{{format-date @lead.createdAt}}</span>
+  <div class="flex between x-center">
+    <span class="text-xs text-muted">{{format-date
+        @lead.createdAt
+        zone="region"
+      }}</span>
     <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
       <Nuvo::Button
         @variant="secondary"

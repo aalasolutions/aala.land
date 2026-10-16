@@ -21,7 +21,7 @@
 
   <NuvoDocs::Section @title="Features" @id="features">
     <ul class="nu-list">
-      <li class="nu-list__item">Two extra sizes, invalid and valid states, disabled and readonly.</li>
+      <li class="nu-list__item">Four sizes (xs, sm, md default, lg) on input, select, textarea and input group; invalid and valid states, disabled and readonly.</li>
       <li class="nu-list__item">Prefix and suffix glyphs; a clear button that is always reachable by keyboard.</li>
       <li class="nu-list__item">Numeric, phone, email and URL inputs stay left-to-right inside an RTL page.</li>
       <li class="nu-list__item">Textarea with row count and resize control.</li>
@@ -82,6 +82,15 @@
   </NuvoDocs::Section>
 
   <NuvoDocs::Section @title="Input: sizes" @id="input-sizes">
+    <NuvoDocs::Example
+      @title="Extra small"
+      @note="Toolbar rows beside xs buttons and dropdowns."
+      @layout="stack"
+      @code={{this.code.xs}}
+    >
+      <Nuvo::Input @size="xs" @placeholder="Extra small" />
+    </NuvoDocs::Example>
+
     <NuvoDocs::Example
       @title="Small"
       @note="Toolbars, table filters and the search box inside a dropdown menu."
@@ -227,6 +236,18 @@
       <Nuvo::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />
     </NuvoDocs::Example>
 
+    <NuvoDocs::Example
+      @title="Sizes"
+      @note="Font and padding follow the input sizes; rows still set the height."
+      @layout="stack"
+      @code={{this.code.textareaSizes}}
+    >
+      <Nuvo::Textarea @size="xs" @rows={{2}} @placeholder="Extra small" data-test-nuvo-textarea-size="xs" />
+      <Nuvo::Textarea @size="sm" @rows={{2}} @placeholder="Small" data-test-nuvo-textarea-size="sm" />
+      <Nuvo::Textarea @rows={{2}} @placeholder="Default" data-test-nuvo-textarea-size="md" />
+      <Nuvo::Textarea @size="lg" @rows={{2}} @placeholder="Large" data-test-nuvo-textarea-size="lg" />
+    </NuvoDocs::Example>
+
     <h3 class="nuvo-subtitle">Textarea arguments</h3>
     <NuvoDocs::Table @kind="args" @rows={{this.textareaArgRows}} />
     <h3 class="nuvo-subtitle">Textarea callbacks</h3>
@@ -251,6 +272,15 @@
       @code={{this.code.selectStrings}}
     >
       <Nuvo::Select @options={{this.propertyTypeOptions}} @placeholder="Choose a property type" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Extra small"
+      @note="Matches xs inputs and buttons in dense toolbars."
+      @layout="stack"
+      @code={{this.code.selectXs}}
+    >
+      <Nuvo::Select @size="xs" @options={{this.propertyTypeOptions}} @placeholder="Extra small" />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -317,6 +347,26 @@
     >
       <Nuvo::InputGroup @prepend="AED" @append=".00">
         <Nuvo::Input @value={{this.groupInputValue}} @onInput={{this.updateGroupInput}} />
+      </Nuvo::InputGroup>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Sizes"
+      @note="The size step scales the addon text and padding. Pass the same size to the input inside so both parts share one height."
+      @layout="stack"
+      @code={{this.code.groupSizes}}
+    >
+      <Nuvo::InputGroup @size="xs" @prepend="AED" data-test-nuvo-group-size="xs">
+        <Nuvo::Input @size="xs" @placeholder="Extra small" />
+      </Nuvo::InputGroup>
+      <Nuvo::InputGroup @size="sm" @prepend="AED" data-test-nuvo-group-size="sm">
+        <Nuvo::Input @size="sm" @placeholder="Small" />
+      </Nuvo::InputGroup>
+      <Nuvo::InputGroup @prepend="AED" data-test-nuvo-group-size="md">
+        <Nuvo::Input @placeholder="Default" />
+      </Nuvo::InputGroup>
+      <Nuvo::InputGroup @size="lg" @prepend="AED" data-test-nuvo-group-size="lg">
+        <Nuvo::Input @size="lg" @placeholder="Large" />
       </Nuvo::InputGroup>
     </NuvoDocs::Example>
 

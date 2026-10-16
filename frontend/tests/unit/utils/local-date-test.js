@@ -6,7 +6,11 @@ import {
   daysUntil,
   formatCalendarDate,
   formatCalendarRange,
+  formatDualZoneDateTime,
   formatInstant,
+  formatShortDate,
+  formatShortDateTime,
+  formatShortTime,
   isDateOnly,
   isKnownRange,
   localDateString,
@@ -54,6 +58,27 @@ module('Unit | Utility | local-date', function () {
     assert.strictEqual(localMidnightIso('garbage'), null);
     assert.strictEqual(localMidnightIso('2026-02-31'), null);
     assert.strictEqual(localMidnightIso('2026-02-31', 1), null);
+  });
+
+  test('localMidnightIso returns midnight in the given zone', function (assert) {
+    assert.strictEqual(
+      localMidnightIso('2026-09-16', 0, 'Pacific/Kiritimati'),
+      '2026-09-15T10:00:00.000Z',
+    );
+    assert.strictEqual(
+      localMidnightIso('2026-09-16', 0, 'Pacific/Pago_Pago'),
+      '2026-09-16T11:00:00.000Z',
+    );
+    assert.strictEqual(
+      localMidnightIso('2026-09-30', 1, 'Pacific/Kiritimati'),
+      '2026-09-30T10:00:00.000Z',
+    );
+    assert.strictEqual(
+      localMidnightIso('2026-09-16', 0, 'Not/AZone'),
+      localMidnightIso('2026-09-16'),
+      'an invalid zone falls back to browser-local',
+    );
+    assert.strictEqual(localMidnightIso('2026-02-31', 0, 'Asia/Dubai'), null);
   });
 
   test('formatCalendarDate does not shift a date-only value', function (assert) {
@@ -125,6 +150,22 @@ module('Unit | Utility | local-date', function () {
     assert.strictEqual(localEndOfDayIso(null), null);
     assert.strictEqual(localEndOfDayIso('garbage'), null);
     assert.strictEqual(localEndOfDayIso('2026-02-31'), null);
+  });
+
+  test('localEndOfDayIso returns 23:59:59.000 in the given zone', function (assert) {
+    assert.strictEqual(
+      localEndOfDayIso('2026-09-16', 'Pacific/Kiritimati'),
+      '2026-09-16T09:59:59.000Z',
+    );
+    assert.strictEqual(
+      localEndOfDayIso('2026-09-16', 'Pacific/Pago_Pago'),
+      '2026-09-17T10:59:59.000Z',
+    );
+    assert.strictEqual(
+      localEndOfDayIso('2026-09-16', null),
+      localEndOfDayIso('2026-09-16'),
+    );
+    assert.strictEqual(localEndOfDayIso('', 'Asia/Dubai'), null);
   });
 
   test('toDateOnly keeps the written date part', function (assert) {
@@ -333,47 +374,63 @@ module('Unit | Utility | local-date', function () {
     );
   });
 
+  // 12:00 UTC on 31 Dec 2026 is already 1 Jan 2027 in Kiritimati (UTC+14) but still 31 Dec in Pago_Pago (UTC-11).
+  const NEW_YEAR = '2026-12-31T12:00:00Z';
+  const EAST = 'Pacific/Kiritimati';
+  const WEST = 'Pacific/Pago_Pago';
+  const en = 'en-US';
+
   module('formatCalendarRange', function () {
-    const en = 'en-US';
+    const opts = { todayZone: 'UTC', now: '2026-10-14T00:00:00Z' };
 
     test('reads as one span when both ends share a month', function (assert) {
-      const label = formatCalendarRange('2026-09-14', '2026-09-20', en, {
-        month: 'short',
-        day: 'numeric',
-      });
-
-      assert.true(label.startsWith('Sep 14'), `names the start: ${label}`);
-      assert.true(label.includes('20'), `names the end: ${label}`);
+      assert.strictEqual(
+        formatCalendarRange('2026-09-14', '2026-09-20', en, opts),
+        '14–20 Sep',
+      );
     });
 
     test('names both months when the span crosses one', function (assert) {
-      const label = formatCalendarRange('2026-08-23', '2026-09-21', en, {
-        month: 'short',
-        day: 'numeric',
-      });
-
-      assert.true(label.includes('Aug 23'), label);
-      assert.true(label.includes('Sep 21'), label);
+      assert.strictEqual(
+        formatCalendarRange('2026-08-23', '2026-09-21', en, opts),
+        '23 Aug – 21 Sep',
+      );
     });
 
     test('a single day reads as that day, not as a range', function (assert) {
       assert.strictEqual(
-        formatCalendarRange('2026-09-21', '2026-09-21', en, {
-          month: 'short',
-          day: 'numeric',
-        }),
-        'Sep 21',
+        formatCalendarRange('2026-09-21', '2026-09-21', en, opts),
+        '21 Sep',
+      );
+    });
+
+    test('names the year only outside the current year', function (assert) {
+      assert.strictEqual(
+        formatCalendarRange('2025-03-31', '2025-06-28', en, opts),
+        '31 Mar – 28 Jun 2025',
+      );
+      assert.strictEqual(
+        formatCalendarRange('2025-12-29', '2026-01-04', en, opts),
+        '29 Dec 2025 – 4 Jan 2026',
       );
     });
 
     test('renders in UTC, so neither end shifts a day', function (assert) {
       assert.strictEqual(
-        formatCalendarRange('2026-01-01', '2026-01-01', en, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        }),
-        'Jan 1, 2026',
+        formatCalendarRange('2026-01-01', '2026-01-01', en, opts),
+        '1 Jan',
+      );
+    });
+
+    test('judges the current year in todayZone', function (assert) {
+      const range = ['2026-12-01', '2026-12-07', en];
+      assert.strictEqual(
+        formatCalendarRange(...range, { todayZone: WEST, now: NEW_YEAR }),
+        '1–7 Dec',
+      );
+      assert.strictEqual(
+        formatCalendarRange(...range, { todayZone: EAST, now: NEW_YEAR }),
+        '1–7 Dec 2026',
       );
     });
 
@@ -387,6 +444,160 @@ module('Unit | Utility | local-date', function () {
         null,
       );
       assert.strictEqual(formatCalendarRange(null, undefined, en), null);
+    });
+  });
+
+  module('compact display formatters', function () {
+    test('a date-only value is day first and drops the current year', function (assert) {
+      const now = '2026-10-14T00:00:00Z';
+      assert.strictEqual(
+        formatShortDate('2026-09-22', { locale: en, todayZone: 'UTC', now }),
+        '22 Sep',
+      );
+      assert.strictEqual(
+        formatShortDate('2025-09-22', { locale: en, todayZone: 'UTC', now }),
+        '22 Sep 2025',
+      );
+    });
+
+    test('the current year is judged in todayZone across New Year', function (assert) {
+      assert.strictEqual(
+        formatShortDate('2026-12-20', {
+          locale: en,
+          todayZone: WEST,
+          now: NEW_YEAR,
+        }),
+        '20 Dec',
+      );
+      assert.strictEqual(
+        formatShortDate('2026-12-20', {
+          locale: en,
+          todayZone: EAST,
+          now: NEW_YEAR,
+        }),
+        '20 Dec 2026',
+      );
+      assert.strictEqual(
+        formatShortDate('2027-01-02', {
+          locale: en,
+          todayZone: EAST,
+          now: NEW_YEAR,
+        }),
+        '2 Jan',
+      );
+    });
+
+    test('an instant renders its day in timeZone', function (assert) {
+      const at = (timeZone, todayZone) =>
+        formatShortDate(NEW_YEAR, {
+          locale: en,
+          timeZone,
+          todayZone,
+          now: NEW_YEAR,
+        });
+      assert.strictEqual(at(EAST, EAST), '1 Jan');
+      assert.strictEqual(at(WEST, WEST), '31 Dec');
+      assert.strictEqual(at(WEST, EAST), '31 Dec 2026');
+    });
+
+    test('the time has no leading zero on the hour', function (assert) {
+      const options = {
+        locale: en,
+        timeZone: 'Asia/Riyadh',
+        todayZone: 'Asia/Riyadh',
+        now: '2026-10-14T00:00:00Z',
+      };
+      assert.strictEqual(
+        formatShortDateTime('2026-09-22T03:05:09Z', options),
+        '22 Sep, 6:05 AM',
+      );
+      assert.strictEqual(
+        formatShortDateTime('2026-09-22T03:05:09Z', {
+          ...options,
+          withSeconds: true,
+        }),
+        '22 Sep, 6:05:09 AM',
+      );
+      assert.strictEqual(
+        formatShortDateTime('2024-09-22T16:05:00Z', options),
+        '22 Sep 2024, 7:05 PM',
+      );
+    });
+
+    test('formatShortTime renders time only, no leading zero', function (assert) {
+      assert.strictEqual(
+        formatShortTime('2026-09-22T16:05:00Z', {
+          locale: en,
+          timeZone: 'Asia/Dubai',
+        }),
+        '8:05 PM',
+      );
+      assert.strictEqual(formatShortTime('bad'), null);
+    });
+
+    test('invalid values and zones render null', function (assert) {
+      assert.strictEqual(formatShortDate('bad', { locale: en }), null);
+      assert.strictEqual(formatShortDate('2026-02-31', { locale: en }), null);
+      assert.strictEqual(formatShortDate(null), null);
+      assert.strictEqual(
+        formatShortDateTime(NEW_YEAR, { locale: en, timeZone: 'Not/AZone' }),
+        null,
+      );
+    });
+
+    test('dual zone shows only the region time on the same day', function (assert) {
+      assert.strictEqual(
+        formatDualZoneDateTime(
+          '2026-09-22T16:05:00Z',
+          'Makkah',
+          'Asia/Riyadh',
+          {
+            locale: en,
+            timeZone: 'Asia/Dubai',
+            todayZone: 'Asia/Riyadh',
+            now: '2026-10-14T00:00:00Z',
+          },
+        ),
+        '22 Sep, 8:05 PM (Makkah 7:05 PM)',
+      );
+    });
+
+    test('dual zone dates the region part when its day differs', function (assert) {
+      assert.strictEqual(
+        formatDualZoneDateTime(
+          '2026-09-22T23:05:00Z',
+          'Makkah',
+          'Asia/Riyadh',
+          {
+            locale: en,
+            timeZone: 'America/New_York',
+            todayZone: 'Asia/Riyadh',
+            now: '2026-10-14T00:00:00Z',
+          },
+        ),
+        '22 Sep, 7:05 PM (Makkah 23 Sep, 2:05 AM)',
+      );
+      assert.strictEqual(
+        formatDualZoneDateTime(NEW_YEAR, 'Line Islands', EAST, {
+          locale: en,
+          timeZone: WEST,
+          todayZone: WEST,
+          now: NEW_YEAR,
+        }),
+        '31 Dec, 1:00 AM (Line Islands 1 Jan 2027, 2:00 AM)',
+      );
+    });
+
+    test('dual zone drops the region part when it reads the same', function (assert) {
+      assert.strictEqual(
+        formatDualZoneDateTime('2026-09-22T16:05:00Z', 'Dubai', 'Asia/Muscat', {
+          locale: en,
+          timeZone: 'Asia/Dubai',
+          todayZone: 'Asia/Dubai',
+          now: '2026-10-14T00:00:00Z',
+        }),
+        '22 Sep, 8:05 PM',
+      );
     });
   });
 });

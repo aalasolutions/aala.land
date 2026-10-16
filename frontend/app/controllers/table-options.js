@@ -2,7 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { debounceTask } from 'ember-lifeline';
+import { cancelDebounce, debounceTask } from 'ember-lifeline';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -152,14 +152,19 @@ export default class TableOptionsController extends PaginatedController {
   }
 
   get hasActiveFilters() {
-    return Boolean(
-      this.agentId ||
-        this.isWhatsapp ||
-        this.company ||
-        this.nationality ||
-        this.dateFrom ||
-        this.dateTo,
-    );
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [
+      this.search,
+      this.agentId,
+      this.isWhatsapp,
+      this.company,
+      this.nationality,
+      this.dateFrom,
+      this.dateTo,
+    ].filter(Boolean).length;
   }
 
   @tracked showModal = false;
@@ -227,6 +232,8 @@ export default class TableOptionsController extends PaginatedController {
   }
 
   @action clearFilters() {
+    cancelDebounce(this, 'applyFilter');
+    this.search = '';
     this.agentId = '';
     this.isWhatsapp = false;
     this.company = '';

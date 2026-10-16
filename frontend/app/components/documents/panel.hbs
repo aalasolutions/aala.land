@@ -32,7 +32,7 @@
     </div>
   {{/if}}
 
-  <Nuvo::Card>
+  <Nuvo::Card @compact={{true}}>
     {{#if this.showInitialLoading}}
       <div
         class="flex x-center gap-2 text-sm text-muted"
@@ -62,7 +62,7 @@
         {{#if (eq cell.key "name")}}
           <div class="flex x-center gap-2" data-test-document-row>
             <Ui::Ph @icon="file-text" />
-            <span class="font-bold">{{cell.value}}</span>
+            <span>{{cell.value}}</span>
             {{#if cell.row.derivedLabel}}
               <Nuvo::Badge
                 @variant="secondary"
@@ -139,7 +139,10 @@
             {{/if}}
           </span>
         {{else if (eq cell.key "createdAt")}}
-          <span class="text-sm text-muted">{{format-date cell.value}}</span>
+          <span class="text-sm text-muted">{{format-date
+              cell.value
+              zone="region"
+            }}</span>
         {{else if (eq cell.key "id")}}
           <div class="flex">
             <Nuvo::Button

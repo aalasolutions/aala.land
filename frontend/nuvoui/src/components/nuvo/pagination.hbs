@@ -60,13 +60,13 @@
         @options={{this.perPageOptions}}
         @value={{this.perPage}}
         @onSelect={{this.changePerPage}}
-        @size="sm"
+        @size={{this.perPageSize}}
         @align="end"
       >
         <:trigger as |toggle isOpen|>
           <Nuvo::Button
             @variant="secondary"
-            @size="sm"
+            @size={{this.perPageSize}}
             @onClick={{toggle}}
             id={{this.selectId}}
             aria-haspopup="listbox"

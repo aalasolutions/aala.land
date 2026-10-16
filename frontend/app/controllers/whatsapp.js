@@ -9,6 +9,7 @@ import {
   isTokenInvalidReason,
 } from 'land/utils/whatsapp-disconnect-reasons';
 import { REPLY_WINDOW_MS, formatRemaining } from 'land/utils/reply-window';
+import { formatShortTime } from 'land/utils/local-date';
 import { isIgnoredChat } from 'land/services/whatsapp';
 import { mediaLabel } from 'land/utils/wa-media-label';
 import { isRetryableSend } from 'land/utils/wa-outbound-media';
@@ -337,10 +338,7 @@ export default class WhatsappController extends Controller {
       };
     }
 
-    const closesAt = new Date(openedAt + REPLY_WINDOW_MS).toLocaleTimeString(
-      [],
-      { hour: 'numeric', minute: '2-digit' },
-    );
+    const closesAt = formatShortTime(openedAt + REPLY_WINDOW_MS);
     return {
       open: true,
       everOpened: true,

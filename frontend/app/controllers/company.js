@@ -7,8 +7,8 @@ import { canManageRegions, isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
 import {
   daysUntil,
-  formatInstant,
-  formatLongInstant,
+  formatShortDate,
+  formatShortDateTime,
   todayInZone,
 } from '../utils/local-date';
 import { creditDisplayAmount } from '../utils/billing-credit';
@@ -232,15 +232,13 @@ export default class CompanyController extends Controller {
   }
 
   get downgradeDateLabel() {
-    return formatLongInstant(this.billing?.downgradeEffectiveAt);
+    return this.formatDateTime(this.billing?.downgradeEffectiveAt);
   }
 
   get cancelDateLabel() {
     if (!this.billing?.cancelAt) return null;
-    return formatInstant(this.billing.cancelAt, undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return formatShortDate(this.billing.cancelAt, {
+      todayZone: this.region.activeRegion?.timezone,
     });
   }
 
@@ -256,12 +254,11 @@ export default class CompanyController extends Controller {
     // The page can outlive the period it loaded, so never render a negative countdown.
     if (daysToReset !== null) {
       const daysLeft = Math.max(0, daysToReset);
-      const date = formatInstant(
-        this.creditsResetsAt,
-        'en-US',
-        { month: 'short', day: 'numeric' },
-        zone,
-      );
+      const date = formatShortDate(this.creditsResetsAt, {
+        locale: 'en-US',
+        timeZone: zone,
+        todayZone: zone,
+      });
       suffix = ` - resets in ${daysLeft}d (${date})`;
     }
     return `You've used ${used}/${this.creditsLimit} AI credits this period${suffix}`;
@@ -468,11 +465,18 @@ export default class CompanyController extends Controller {
     }
   }
 
+  formatDateTime(value) {
+    return formatShortDateTime(value, {
+      locale: 'en-US',
+      todayZone: this.region.activeRegion?.timezone,
+    });
+  }
+
   downgradeSuccessMessage(res) {
     if (!this.isDelayedRefund) {
       return 'Subscription will end at the close of the current billing period.';
     }
-    const endsOn = formatLongInstant(res?.data?.downgradeEffectiveAt);
+    const endsOn = this.formatDateTime(res?.data?.downgradeEffectiveAt);
     return endsOn
       ? `Your plan will end on ${endsOn}. You can undo this until then.`
       : 'Your plan will end in 48 hours. You can undo this until then.';

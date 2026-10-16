@@ -104,15 +104,19 @@ export default class PropertiesIndexController extends Controller {
   }
 
   get hasActiveFilters() {
-    return Boolean(
-      this.filterType ||
-        this.filterStatus ||
-        this.filterBeds ||
-        this.filterMinPrice ||
-        this.filterMaxPrice ||
-        this.filterAmenities.length ||
-        this.archivedFilterValue !== 'exclude',
-    );
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [
+      this.filterType,
+      this.filterStatus,
+      this.filterBeds,
+      this.filterMinPrice,
+      this.filterMaxPrice,
+      this.filterAmenities.length,
+      this.archivedFilterValue !== 'exclude',
+    ].filter(Boolean).length;
   }
 
   @action setField(fieldName, e) {

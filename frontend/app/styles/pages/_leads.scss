@@ -17,6 +17,16 @@ $lead-temps: (
   }
 }
 
+.lead-card {
+  .nu-panel__body {
+    gap: nu-space(2);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
 // Shown as a subtle chip, not a full badge, so it doesn't compete with the status tag.
 .lead-assign {
   display: inline-flex;

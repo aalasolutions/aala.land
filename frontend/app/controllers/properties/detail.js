@@ -2,7 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { formatCalendarDate } from '../../utils/local-date';
+import { formatShortDate } from '../../utils/local-date';
 import { contactName } from '../../utils/contact-display';
 import { ARCHIVED_FILTER_OPTIONS } from 'land/constants';
 
@@ -11,6 +11,7 @@ export default class PropertiesDetailController extends Controller {
   @service auth;
   @service router;
   @service preferences;
+  @service region;
 
   @tracked archived = 'exclude';
 
@@ -68,6 +69,7 @@ export default class PropertiesDetailController extends Controller {
     try {
       const result = await this.auth.fetchJson(`/leases/unit/${unitId}`);
       const leases = result.data || [];
+      const todayZone = this.region.activeRegion?.timezone;
 
       const tenantHistory = leases
         .filter(
@@ -77,10 +79,10 @@ export default class PropertiesDetailController extends Controller {
         .map((lease) => ({
           tenantName: contactName(lease.contact) || 'Unknown tenant',
           startDate: lease.startDate
-            ? formatCalendarDate(lease.startDate)
+            ? formatShortDate(lease.startDate, { todayZone })
             : 'N/A',
           endDate: lease.endDate
-            ? formatCalendarDate(lease.endDate)
+            ? formatShortDate(lease.endDate, { todayZone })
             : 'Present',
         }));
 

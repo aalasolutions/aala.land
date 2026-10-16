@@ -3,16 +3,10 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import { render, click, find } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
+import { formatShortDateTime } from 'land/utils/local-date';
 
 const NOW = Date.UTC(2026, 8, 25, 12, 0, 0);
 const HOUR_MS = 60 * 60 * 1000;
-const FULL_STAMP = {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-};
 
 // Browser-local wall clock on NOW's calendar day, shifted by dayOffset days.
 function localAt(dayOffset, hours, minutes) {
@@ -151,7 +145,7 @@ module('Integration | Component | whatsapp/chat-list', function (hooks) {
     />`);
 
     const fullStamp = (value) =>
-      new Date(value).toLocaleString('en-US', FULL_STAMP).replace(/\s/g, ' ');
+      formatShortDateTime(value, { locale: 'en-US' });
     assert
       .dom('[data-test-wa-chat="c-today"] [data-test-wa-chat-time]')
       .hasText('9:30 AM')

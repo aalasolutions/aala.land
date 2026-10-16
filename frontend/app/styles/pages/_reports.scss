@@ -1,5 +1,10 @@
-// Reports: pipeline funnel and red-flag alert rows.
+// Reports: KPI tiles, pipeline funnel and red-flag alert rows.
 @use "@nuvoui/ember/styles/common/var" as *;
+
+// KPI values stay below the xl page title.
+.reports-kpis .nu-stat {
+  --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+}
 
 .funnel-grid {
   display: grid;

@@ -1,6 +1,7 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import { localDateString } from 'land/utils/local-date';
 
 const CARD = {
   occurredAt: '2026-09-01T10:00:00.000Z',
@@ -29,6 +30,17 @@ module('Unit | Controller | admin/companies/company', function (hooks) {
     await controller.loadPayments();
     return controller.paymentRows;
   }
+
+  test('the payment modal defaults to the browser day without an active region', function (assert) {
+    const controller = this.owner.lookup('controller:admin/companies/company');
+    controller.region.activeRegion = null;
+    const before = localDateString();
+    controller.openPaymentModal();
+    const after = localDateString();
+
+    assert.true([before, after].includes(controller.payReceivedAt));
+    assert.strictEqual(controller.payCoversStart, controller.payReceivedAt);
+  });
 
   test('card rows carry type and credit figures', async function (assert) {
     const rows = await loadRows(this, [

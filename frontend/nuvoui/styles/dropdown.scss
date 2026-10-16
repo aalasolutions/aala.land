@@ -24,6 +24,35 @@
     }
   }
 
+  // In a bounded container a long selected label ellipsizes and the caret keeps
+  // its size. The full label is in the trigger `title`.
+  max-inline-size: 100%;
+
+  > .nu-btn {
+    max-inline-size: 100%;
+  }
+
+  > .nu-btn .nu-btn__label {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    min-inline-size: 0;
+  }
+
+  // Min-content stays the full label so wrapping rows keep it whole; a flex item
+  // that must shrink below it needs its own `min-inline-size: 0`.
+  @include e(value) {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.25;
+  }
+
+  > .nu-btn .nu-dropdown__caret {
+    flex-shrink: 0;
+  }
+
   // Trigger text alignment. Default centres (button behaviour); m-align-start
   // reads like a select field, with the caret pushed to the far end.
   @include m(align-start, align-end, align-center) {
@@ -53,6 +82,11 @@
       inline-size: 100%;
     }
 
+    .nu-dropdown__value {
+      flex: 1 1 auto;
+      text-align: start;
+    }
+
     .nu-dropdown__caret {
       margin-inline-start: auto;
     }
@@ -70,11 +104,19 @@
     .nu-btn__label {
       justify-content: center;
     }
+
+    .nu-dropdown__value {
+      text-align: center;
+    }
   }
 
   @include m(align-end) {
     .nu-btn__label {
       justify-content: flex-end;
+    }
+
+    .nu-dropdown__value {
+      text-align: end;
     }
   }
 

@@ -112,9 +112,17 @@ export default class LeasesController extends PaginatedController {
   }
 
   get hasActiveFilters() {
-    return Boolean(
-      this.type || this.search || this.dateFrom || this.dateTo || this.archived,
-    );
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [
+      this.type,
+      this.search,
+      this.dateFrom,
+      this.dateTo,
+      this.archived,
+    ].filter(Boolean).length;
   }
 
   get canArchiveLease() {

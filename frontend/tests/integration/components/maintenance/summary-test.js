@@ -161,7 +161,7 @@ module('Integration | Component | maintenance/summary', function (hooks) {
     assert
       .dom('[data-test-work-order-reported]')
       .hasText(
-        `Reported by Test User · ${formatDate(addCalendarDays(today, -2))} · open 2 days`,
+        `Reported by Test User · ${formatDate(addCalendarDays(today, -2), zone)} · open 2 days`,
       );
   });
 

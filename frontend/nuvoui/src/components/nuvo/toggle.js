@@ -2,7 +2,7 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
+const SIZES = ['xs', 'sm', 'lg'];
 
 export default class NuToggleComponent extends Component {
   get classes() {

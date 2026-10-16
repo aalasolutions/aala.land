@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
+import { modifier } from 'ember-modifier';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -143,15 +144,19 @@ export default class ContactsIndexController extends PaginatedController {
   }
 
   get hasActiveFilters() {
-    return Boolean(
-      this.agentId ||
-      this.isWhatsapp ||
-      this.company ||
-      this.region ||
-      this.nationality ||
-      this.dateFrom ||
+    return this.activeFilterCount > 0;
+  }
+
+  get activeFilterCount() {
+    return [
+      this.agentId,
+      this.isWhatsapp,
+      this.company,
+      this.region,
+      this.nationality,
+      this.dateFrom,
       this.dateTo,
-    );
+    ].filter(Boolean).length;
   }
 
   @tracked showModal = false;
@@ -161,6 +166,15 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked isDeleting = false;
   @tracked deleteReason = '';
   @tracked reasonError = '';
+  @tracked tableOptionsHost = null;
+
+  // Hands the toolbar slot to the table's Options trigger.
+  registerTableOptionsHost = modifier((element) => {
+    this.tableOptionsHost = element;
+    return () => {
+      if (this.tableOptionsHost === element) this.tableOptionsHost = null;
+    };
+  });
 
   // Nuvo inputs pass (value, event), not the raw DOM event legacy setField expects.
   @action setFieldValue(fieldName, value) {

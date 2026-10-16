@@ -75,6 +75,12 @@ $nu-duration: (
 
 $nu-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
+$nu-placeholder-color: color-mix(
+  in srgb,
+  var(--nu-text-subtle) 50%,
+  var(--nu-text-muted)
+);
+
 $nu-variants: (primary, secondary, success, warning, danger, info);
 
 $nu-variant-roles: (

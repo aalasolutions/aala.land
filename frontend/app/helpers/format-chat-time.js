@@ -2,14 +2,13 @@ import { helper } from '@ember/component/helper';
 import {
   addCalendarDays,
   formatInstant,
+  formatShortDate,
   localDateString,
 } from '../utils/local-date';
 
 const LOCALE = 'en-US';
 const TIME = { hour: 'numeric', minute: '2-digit' };
 const WEEKDAY = { weekday: 'long' };
-const SAME_YEAR = { month: 'short', day: 'numeric' };
-const OTHER_YEAR = { year: 'numeric', month: 'short', day: 'numeric' };
 
 // Chat list stamp on browser calendar days: time today, Yesterday, weekday within six days, then a date.
 export function formatChatTime(value, now = Date.now()) {
@@ -23,8 +22,7 @@ export function formatChatTime(value, now = Date.now()) {
   if (day >= today) options = TIME;
   else if (day === addCalendarDays(today, -1)) return 'Yesterday';
   else if (day >= addCalendarDays(today, -6)) options = WEEKDAY;
-  else if (day.slice(0, 4) === today.slice(0, 4)) options = SAME_YEAR;
-  else options = OTHER_YEAR;
+  else return formatShortDate(value, { locale: LOCALE, now }) ?? '';
 
   return formatInstant(value, LOCALE, options) ?? '';
 }

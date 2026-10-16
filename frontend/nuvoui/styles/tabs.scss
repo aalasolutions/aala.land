@@ -210,6 +210,37 @@
     }
   }
 
+  // ---- sizes: trigger height follows the control scale ----
+
+  @include m(xs) {
+    .nu-tabs__trigger {
+      --nu-tabs__trigger--Gap: #{nu-space(1)};
+      --nu-tabs__trigger--PaddingBlock: #{nu-space(1)};
+      --nu-tabs__trigger--PaddingInline: #{nu-space(2)};
+      --nu-tabs__trigger--MinHeight: 1.75rem;
+      --nu-tabs__trigger--FontSize: #{nu-font-size(xs)};
+    }
+  }
+
+  @include m(sm) {
+    .nu-tabs__trigger {
+      --nu-tabs__trigger--Gap: #{nu-space(1)};
+      --nu-tabs__trigger--PaddingBlock: #{nu-space(1)};
+      --nu-tabs__trigger--PaddingInline: #{nu-space(3)};
+      --nu-tabs__trigger--MinHeight: 2rem;
+      --nu-tabs__trigger--FontSize: #{nu-font-size(xs)};
+    }
+  }
+
+  @include m(lg) {
+    .nu-tabs__trigger {
+      --nu-tabs__trigger--PaddingBlock: #{nu-space(3)};
+      --nu-tabs__trigger--PaddingInline: #{nu-space(5)};
+      --nu-tabs__trigger--MinHeight: 3rem;
+      --nu-tabs__trigger--FontSize: #{nu-font-size(md)};
+    }
+  }
+
   // ---- orientation / layout ----
 
   @include m(vertical) {

@@ -21,7 +21,7 @@
       <li class="nu-list__item">Compact page list with ellipses for long ranges.</li>
       <li class="nu-list__item">Status text ("1-50 of 430") derived from the inputs.</li>
       <li class="nu-list__item">Per-page select rendered only when a per-page callback is given; 50, 100 and 250 by default.</li>
-      <li class="nu-list__item">Small and compact styles; previous and next overrides for step-only controllers.</li>
+      <li class="nu-list__item">Four sizes (xs, sm, md default, lg) and a compact style; previous and next overrides for step-only controllers.</li>
     </ul>
   </NuvoDocs::Section>
 
@@ -68,8 +68,20 @@
         @perPageOptions={{array 10 20 30}}
         @onPageChange={{this.setSmallPage}}
         @onPerPageChange={{this.setSmallLimit}}
-        @sm={{true}}
+        @size="sm"
       />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Sizes"
+      @note="xs, sm, md (default) and lg. Page buttons are 28, 32, 36 and 48px, matching buttons of the same size."
+      @layout="stack"
+      @code={{this.code.sizes}}
+    >
+      <Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="xs" data-test-nuvo-pagination-size="xs" />
+      <Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="sm" data-test-nuvo-pagination-size="sm" />
+      <Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} data-test-nuvo-pagination-size="md" />
+      <Nuvo::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="lg" data-test-nuvo-pagination-size="lg" />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example

@@ -15,12 +15,12 @@
     }}
   >
     <:breadcrumb>
-      <LinkTo
-        @route="properties"
-        class="text-muted text-sm"
+      <Nuvo::Breadcrumb
+        @items={{array (hash label="Properties" route="properties")}}
+        @compact={{true}}
+        @parentsOnly={{true}}
         data-test-breadcrumb-properties
-      >Properties</LinkTo>
-      <span class="text-muted">/</span>
+      />
     </:breadcrumb>
     <:actions>
       <Nuvo::Button
@@ -221,7 +221,7 @@
       >
         {{#if (eq cell.key "assetName")}}
           {{#unless cell.depth}}
-            <span class="font-bold">{{cell.value}}</span>
+            <span>{{cell.value}}</span>
           {{/unless}}
         {{else if (eq cell.key "unitNumber")}}
           {{#if cell.depth}}

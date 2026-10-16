@@ -3,7 +3,7 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import template from 'land/templates/company';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { click } from '@ember/test-helpers';
-import { formatLongInstant } from 'land/utils/local-date';
+import { formatShortDate, formatShortDateTime } from 'land/utils/local-date';
 import {
   httpError,
   stubAuth,
@@ -304,9 +304,9 @@ module('Integration | Template | company billing', function (hooks) {
     assert.strictEqual(toasts.length, 1);
     assert.strictEqual(
       toasts[0].message,
-      `Your plan will end on ${formatLongInstant(effective)}. You can undo this until then.`,
+      `Your plan will end on ${formatShortDateTime(effective, { locale: 'en-US' })}. You can undo this until then.`,
     );
-    assert.true(toasts[0].message.includes('2026'));
+    assert.true(/ on \d{1,2} Oct/.test(toasts[0].message), 'day first');
   });
 
   test('a pending downgrade shows the notice and Keep my plan, not Downgrade', async function (assert) {
@@ -328,7 +328,9 @@ module('Integration | Template | company billing', function (hooks) {
     assert.dom('[data-test-downgrade-free]').doesNotExist();
     assert
       .dom('[data-test-downgrade-pending] .font-bold')
-      .hasText(`Your plan ends on ${formatLongInstant(effective)}`);
+      .hasText(
+        `Your plan ends on ${formatShortDateTime(effective, { locale: 'en-US' })}`,
+      );
     assert
       .dom('[data-test-downgrade-pending] p')
       .hasText(
@@ -360,7 +362,9 @@ module('Integration | Template | company billing', function (hooks) {
     assert
       .dom('[data-test-cancel-scheduled] .font-bold')
       .hasText('Scheduled to move to the Free plan');
-    assert.dom('[data-test-cancel-scheduled]').containsText('October 30, 2026');
+    assert
+      .dom('[data-test-cancel-scheduled]')
+      .containsText(formatShortDate('2026-10-30T12:00:00.000Z'));
     assert.dom('[data-test-downgrade-free]').doesNotExist();
     assert.dom('[data-test-reactivate-pro]').hasText('Reactivate plan');
     await click('[data-test-reactivate-pro]');

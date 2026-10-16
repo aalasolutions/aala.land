@@ -3,12 +3,12 @@
 <div data-test-work-order-detail class="flex col gap-6">
   <Nuvo::PageHeader @title={{this.title}} @subtitle={{this.subtitle}}>
     <:breadcrumb>
-      <LinkTo
-        @route="maintenance.index"
-        class="text-muted text-sm"
+      <Nuvo::Breadcrumb
+        @items={{array (hash label="Maintenance" route="maintenance.index")}}
+        @compact={{true}}
+        @parentsOnly={{true}}
         data-test-breadcrumb-maintenance
-      >Maintenance</LinkTo>
-      <span class="text-muted">/</span>
+      />
     </:breadcrumb>
     <:meta>
       {{#if @model.workOrder}}
