@@ -1,0 +1,30 @@
+<fieldset
+  class={{this.classes}}
+  aria-describedby={{this.describedBy}}
+  data-test-nu-field-group
+  {{this.applyToControls}}
+  ...attributes
+>
+  {{#if @label}}
+    <legend class="nu-field-group__legend" data-test-nu-field-group-legend>
+      {{@label}}
+      {{#if @required}}
+        <span
+          class="nu-field__required"
+          aria-hidden="true"
+          data-test-nu-field-group-required
+        >*</span>
+      {{/if}}
+    </legend>
+  {{/if}}
+
+  {{yield this.api}}
+
+  <Nuvo::FieldMessage
+    @error={{@error}}
+    @hint={{@hint}}
+    @status={{this.status}}
+    @hintId={{this.hintId}}
+    @errorId={{this.errorId}}
+  />
+</fieldset>

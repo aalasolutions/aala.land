@@ -10,8 +10,17 @@
     {{#if this.errorMsg}}
       <p class="text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
-    <form id="commission-form" class="flex col gap-4" {{on "submit" this.save}}>
-      <Nuvo::Field @label="Agent" @required={{true}}>
+    <form
+      id="commission-form"
+      class="nu-form"
+      novalidate
+      {{on "submit" this.save}}
+    >
+      <Nuvo::Field
+        @label="Agent"
+        @required={{true}}
+        @error={{this.fieldErrors.agentId}}
+      >
         <Nuvo::Dropdown
           id="commission-agent"
           @align="start"
@@ -23,7 +32,11 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Type" @required={{true}}>
+      <Nuvo::Field
+        @label="Type"
+        @required={{true}}
+        @error={{this.fieldErrors.type}}
+      >
         <Nuvo::Dropdown
           id="commission-type"
           @align="start"
@@ -38,6 +51,7 @@
       <Nuvo::Field
         @label="Gross Amount"
         @required={{true}}
+        @error={{this.fieldErrors.grossAmount}}
         @tooltip="The full value of the deal before any deductions. The commission is worked out from this, so it is not the payout."
       >
         <Nuvo::Input
@@ -54,6 +68,7 @@
       <Nuvo::Field
         @label="Commission Rate %"
         @required={{true}}
+        @error={{this.fieldErrors.commissionRate}}
         @tooltip="The share of the gross amount paid as commission. A rate of 2 on a gross of 100,000 pays 2,000."
       >
         <Nuvo::Input

@@ -36,11 +36,48 @@
     </span>
   {{/if}}
 
-  {{yield}}
-
-  {{#if this.showError}}
-    <span class="nu-field__error" data-test-nu-field-error>{{@error}}</span>
-  {{else if this.showHint}}
-    <span class="nu-field__hint" data-test-nu-field-hint>{{@hint}}</span>
+  {{#if this.floating}}
+    <div class="nu-field__control" data-test-nu-field-control>
+      {{yield this.api}}
+      {{! After the control so it paints over the control's background. }}
+      <label
+        class="nu-field__float-label"
+        id={{this.floatLabelId}}
+        data-test-nu-field-label
+      >
+        {{@placeholder}}
+        {{#if @required}}
+          <span
+            class="nu-field__required"
+            aria-hidden="true"
+            data-test-nu-field-required
+          >*</span>
+        {{/if}}
+      </label>
+    </div>
+  {{else if @horizontal}}
+    {{! The control and its message share one column beside the label. }}
+    <div class="nu-field__body">
+      {{yield this.api}}
+      <Nuvo::FieldMessage
+        @error={{@error}}
+        @hint={{@hint}}
+        @status={{this.status}}
+        @hintId={{this.hintId}}
+        @errorId={{this.errorId}}
+      />
+    </div>
+  {{else}}
+    {{yield this.api}}
   {{/if}}
+
+  {{#unless this.messageInBody}}
+    <Nuvo::FieldMessage
+      @error={{@error}}
+      @hint={{@hint}}
+      @status={{this.status}}
+      @hintId={{this.hintId}}
+      @errorId={{this.errorId}}
+    />
+  {{/unless}}
 </div>

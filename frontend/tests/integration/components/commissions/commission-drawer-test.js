@@ -54,7 +54,7 @@ module(
       await fillIn('#commission-rate', '2');
       await click('[data-test-save-commission]');
 
-      assert.dom('[data-test-error]').hasText('Please select an agent');
+      assert.dom('[data-test-nu-field-error]').hasText('Choose an agent');
       assert.strictEqual(this.calls.length, 0);
     });
 
@@ -121,13 +121,13 @@ module(
       await fillIn('#commission-gross', '100');
       await fillIn('#commission-rate', '1');
       await click('[data-test-save-commission]');
-      assert.dom('[data-test-error]').exists();
+      assert.dom('[data-test-nu-field-error]').hasText('Choose an agent');
 
       await click('[data-test-cancel-commission]');
       this.set('open', true);
       await waitFor('#commission-form');
 
-      assert.dom('[data-test-error]').doesNotExist();
+      assert.dom('[data-test-nu-field-error]').doesNotExist();
       assert.dom('#commission-gross').hasValue('');
     });
   },

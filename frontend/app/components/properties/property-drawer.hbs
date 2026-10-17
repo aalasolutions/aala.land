@@ -7,9 +7,13 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="property-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form id="property-form" class="nu-form" novalidate {{on "submit" this.save}}>
       {{#if this.isList}}
-        <Nuvo::Field @label="City" @required={{true}}>
+        <Nuvo::Field
+          @label="City"
+          @required={{true}}
+          @error={{this.fieldErrors.city}}
+        >
           <RemoteAutocomplete
             @listUrl={{this.cityListUrl}}
             @searchUrl={{this.citySearchUrl}}
@@ -22,7 +26,11 @@
           />
         </Nuvo::Field>
         {{#if this.form.city}}
-          <Nuvo::Field @label="Location / Area" @required={{true}}>
+          <Nuvo::Field
+            @label="Location / Area"
+            @required={{true}}
+            @error={{this.fieldErrors.locality}}
+          >
             <RemoteAutocomplete
               @listUrl={{this.localityListUrl}}
               @searchUrl={{this.localitySearchUrl}}
@@ -36,7 +44,11 @@
           </Nuvo::Field>
         {{/if}}
         {{#if this.form.locality}}
-          <Nuvo::Field @label="Asset" @required={{true}}>
+          <Nuvo::Field
+            @label="Asset"
+            @required={{true}}
+            @error={{this.fieldErrors.asset}}
+          >
             <RemoteAutocomplete
               @listUrl={{this.assetListUrl}}
               @searchUrl={{this.assetSearchUrl}}
@@ -56,7 +68,12 @@
 
       {{#if this.showFields}}
         <div class="flex gap-4">
-          <Nuvo::Field @label="Property Number" @required={{true}} class="grow">
+          <Nuvo::Field
+            @label="Property Number"
+            @required={{true}}
+            @error={{this.fieldErrors.unitNumber}}
+            class="grow"
+          >
             <Nuvo::Input
               id="unit-number"
               @type="text"
@@ -83,6 +100,7 @@
         <Nuvo::Field
           @label="Property Kind"
           @required={{true}}
+          @error={{this.fieldErrors.subType}}
           @tooltip="Sets the lease type: homes take residential leases; offices, shops and warehouses take commercial ones."
         >
           <Nuvo::Dropdown

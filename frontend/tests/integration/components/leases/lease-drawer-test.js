@@ -210,8 +210,8 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await fillIn('#lease-cheques', '');
     await click('[data-test-save-lease]');
     assert
-      .dom('#lease-form .text-danger')
-      .hasText('Enter the number of cheques, 1 or more.');
+      .dom('[data-test-nu-field-error]')
+      .hasText('Enter the number of cheques, 1 or more');
     assert.notOk(sent(this.calls, 'POST'));
 
     await fillIn('#lease-cheques', '2');
@@ -228,11 +228,11 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await renderDrawer(this, 'edit', LEASE);
     await fillIn('#lease-cheques', '');
     await click('[data-test-save-lease]');
-    assert.dom('#lease-form .text-danger').exists();
+    assert.dom('#lease-form [data-test-nu-field-error]').exists();
 
     this.set('mode', 'create');
     this.set('lease', null);
-    assert.dom('#lease-form .text-danger').doesNotExist();
+    assert.dom('#lease-form [data-test-nu-field-error]').doesNotExist();
   });
 
   test('an archived unit warns on edit even without a unit relation', async function (assert) {

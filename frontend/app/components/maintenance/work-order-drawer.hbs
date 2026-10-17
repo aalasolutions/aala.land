@@ -9,11 +9,16 @@
   <:body>
     <form
       id="work-order-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{this.loadOnOpen}}
       {{on "submit" this.save}}
     >
-      <Nuvo::Field @label="Property" @required={{true}}>
+      <Nuvo::Field
+        @label="Property"
+        @required={{true}}
+        @error={{this.fieldErrors.unitId}}
+      >
         <Nuvo::Dropdown
           id="wo-unit"
           @align="start"
@@ -25,7 +30,11 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Title" @required={{true}}>
+      <Nuvo::Field
+        @label="Title"
+        @required={{true}}
+        @error={{this.fieldErrors.title}}
+      >
         <Nuvo::Input
           id="wo-title"
           type="text"
@@ -37,7 +46,11 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Description" @required={{true}}>
+      <Nuvo::Field
+        @label="Description"
+        @required={{true}}
+        @error={{this.fieldErrors.description}}
+      >
         <Nuvo::Textarea
           id="wo-desc"
           placeholder="Describe the issue in detail..."

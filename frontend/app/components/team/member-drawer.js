@@ -34,6 +34,7 @@ export default class TeamMemberDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
 
@@ -57,6 +58,12 @@ export default class TeamMemberDrawerComponent extends Component {
 
   get errorMsg() {
     return this.error?.source === this.source ? this.error.message : '';
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get submitLabel() {
@@ -90,6 +97,24 @@ export default class TeamMemberDrawerComponent extends Component {
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    this.dropFieldError(name);
+  }
+
+  dropFieldError(name) {
+    if (!(name in this.fieldErrors)) return;
+    const errors = { ...this.fieldErrors };
+    delete errors[name];
+    this.fieldError = { source: this.source, errors };
+  }
+
+  validate(form) {
+    const errors = {};
+    if (!form.formName.trim()) errors.formName = 'Enter a name';
+    if (!form.formEmail.trim()) errors.formEmail = 'Enter an email';
+    if (!this.isEdit && !form.formPassword) {
+      errors.formPassword = 'Enter a password';
+    }
+    return errors;
   }
 
   @action toggleRegion(code) {
@@ -107,16 +132,25 @@ export default class TeamMemberDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
-    this.error = null;
 
     const form = this.form;
+    const errors = this.validate(form);
+    if (Object.keys(errors).length > 0) {
+      this.error = null;
+      this.fieldError = { source: this.source, errors };
+      return;
+    }
+
+    this.isSaving = true;
+    this.error = null;
+    this.fieldError = null;
     const source = this.source;
     const isEdit = this.isEdit;
     const userId = this.args.user?.id;

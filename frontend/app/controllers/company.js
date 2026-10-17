@@ -35,6 +35,7 @@ export default class CompanyController extends Controller {
   @tracked formDefaultRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked fieldErrors = {};
   @tracked expandedCountries = [];
   @tracked storageUsage = null;
   @tracked billing = null;
@@ -97,6 +98,7 @@ export default class CompanyController extends Controller {
     this.formActiveRegions = [];
     this.formDefaultRegionCode = '';
     this.errorMsg = '';
+    this.fieldErrors = {};
     this.isSaving = false;
     this.expandedCountries = [];
     this.showDowngradeConfirm = false;
@@ -329,6 +331,11 @@ export default class CompanyController extends Controller {
 
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (fieldName in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[fieldName];
+      this.fieldErrors = errors;
+    }
   }
 
   // Stripe and Paddle spell it `canceled` (one L); app badges use the correct `cancelled` spelling.
@@ -638,10 +645,11 @@ export default class CompanyController extends Controller {
 
     if (this.isSaving) return;
 
-    if (this.formActiveRegions.length === 0) {
-      this.errorMsg = 'At least one region must be selected.';
-      return;
-    }
+    const nameMissing = !this.formName.trim();
+    this.fieldErrors = nameMissing ? { formName: 'Enter a company name' } : {};
+    const noRegions = this.formActiveRegions.length === 0;
+    if (noRegions) this.errorMsg = 'At least one region must be selected.';
+    if (nameMissing || noRegions) return;
 
     if (this.removedRegionNames.length) {
       this.errorMsg = '';

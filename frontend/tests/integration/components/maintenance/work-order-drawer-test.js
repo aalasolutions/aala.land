@@ -94,9 +94,7 @@ module(
       await fillIn('#wo-desc', 'Hinge broken');
       await click('[data-test-save-work-order]');
 
-      assert
-        .dom('[data-test-error]')
-        .hasText('Please select a property before saving the work order.');
+      assert.dom('[data-test-nu-field-error]').hasText('Choose a property');
       assert.notOk(sent(this.calls, 'POST'));
     });
 

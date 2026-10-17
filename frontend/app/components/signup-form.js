@@ -18,6 +18,7 @@ export default class SignupFormComponent extends Component {
   @tracked isLoading = false;
   @tracked isGoogleLoading = false;
   @tracked errorMessage = '';
+  @tracked fieldErrors = {};
 
   get regionOptions() {
     return (this.args.grouped || []).flatMap((group) =>
@@ -27,6 +28,38 @@ export default class SignupFormComponent extends Component {
         group: group.countryName,
       })),
     );
+  }
+
+  validate() {
+    const errors = {};
+    if (!this.companyName.trim()) {
+      errors.companyName = 'Enter a company name';
+    } else if (!this.companySlug.trim()) {
+      errors.companyName = 'Use letters or numbers in the company name';
+    }
+    if (!this.companySlug.trim())
+      errors.companySlug = 'Enter a company URL slug';
+    if (!this.selectedRegion) errors.region = 'Choose a region';
+    if (!this.userName.trim()) errors.userName = 'Enter your name';
+    if (!this.email.trim()) errors.email = 'Enter your email address';
+    if (!this.password) {
+      errors.password = 'Enter a password';
+    } else if (this.password.length < 8) {
+      errors.password = 'Use at least 8 characters';
+    }
+    if (!this.confirmPassword) {
+      errors.confirmPassword = 'Confirm your password';
+    } else if (this.password !== this.confirmPassword) {
+      errors.confirmPassword = 'Re-enter the same password';
+    }
+    return errors;
+  }
+
+  dropFieldErrors(...names) {
+    if (!names.some((name) => name in this.fieldErrors)) return;
+    const errors = { ...this.fieldErrors };
+    names.forEach((name) => delete errors[name]);
+    this.fieldErrors = errors;
   }
 
   get canSubmit() {
@@ -49,6 +82,7 @@ export default class SignupFormComponent extends Component {
   updateField(field, value) {
     this[field] = value;
     this.errorMessage = '';
+    this.dropFieldErrors(field);
 
     if (field === 'companyName') {
       this.companySlug = value
@@ -64,6 +98,7 @@ export default class SignupFormComponent extends Component {
   selectRegion(code) {
     this.selectedRegion = code;
     this.errorMessage = '';
+    this.dropFieldErrors('region');
   }
 
   @action
@@ -72,13 +107,10 @@ export default class SignupFormComponent extends Component {
 
     if (this.isLoading) return;
 
-    if (!this.canSubmit) {
-      if (!this.selectedRegion) this.errorMessage = 'Please select a region';
-      else if (this.password !== this.confirmPassword)
-        this.errorMessage = 'Passwords do not match';
-      else if (this.password.length < 8)
-        this.errorMessage = 'Password must be at least 8 characters';
-      else this.errorMessage = 'Please fill in all fields';
+    const errors = this.validate();
+    this.fieldErrors = errors;
+    if (Object.keys(errors).length) {
+      this.errorMessage = '';
       return;
     }
 

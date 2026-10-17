@@ -81,8 +81,12 @@ module('Integration | Component | nuvo/dropdown', function (hooks) {
       'inline-start edges meet in LTR',
     );
     assert.ok(
-      box.right <= window.innerWidth && box.bottom <= window.innerHeight,
-      'menu stays inside the viewport',
+      box.right <= window.innerWidth,
+      'menu stays inside the viewport width',
+    );
+    assert.ok(
+      box.bottom <= window.innerHeight,
+      'menu stays inside the viewport height',
     );
   });
 

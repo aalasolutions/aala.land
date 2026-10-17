@@ -62,6 +62,7 @@ export default class PropertiesPropertyDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
   @tracked selectionEpoch = 0;
 
   draftFor = null;
@@ -116,6 +117,12 @@ export default class PropertiesPropertyDrawerComponent extends Component {
 
   set errorMsg(message) {
     this.error = message ? { source: this.source, message } : null;
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get title() {
@@ -184,8 +191,16 @@ export default class PropertiesPropertyDrawerComponent extends Component {
     this.draft = { ...this.form, ...changes };
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     this.update({ [name]: value });
+    this.dropFieldErrors(name);
   }
 
   @action toggleAmenity(key) {
@@ -194,26 +209,32 @@ export default class PropertiesPropertyDrawerComponent extends Component {
 
   @action selectCity(city) {
     this.update({ city, locality: null, asset: null });
+    this.dropFieldErrors('city', 'locality', 'asset');
   }
 
   @action clearCity() {
     this.update({ city: null, locality: null, asset: null });
+    this.dropFieldErrors('city', 'locality', 'asset');
   }
 
   @action selectLocality(locality) {
     this.update({ locality, asset: null });
+    this.dropFieldErrors('locality', 'asset');
   }
 
   @action clearLocality() {
     this.update({ locality: null, asset: null });
+    this.dropFieldErrors('locality', 'asset');
   }
 
   @action selectAsset(asset) {
     this.update({ asset });
+    this.dropFieldErrors('asset');
   }
 
   @action clearAsset() {
     this.update({ asset: null });
+    this.dropFieldErrors('asset');
   }
 
   @action close() {
@@ -225,19 +246,21 @@ export default class PropertiesPropertyDrawerComponent extends Component {
     this.draftFor = null;
     this.selectionEpoch += 1;
     this.errorMsg = '';
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
   validate(form) {
+    const fields = {};
     if (this.isList) {
-      if (!form.asset) {
-        return 'Please select a city, location, and asset first.';
-      }
-      if (!form.unitNumber.trim()) return 'Property number is required.';
+      if (!form.city) fields.city = 'Choose a city';
+      else if (!form.locality) fields.locality = 'Choose a location';
+      else if (!form.asset) fields.asset = 'Choose an asset';
     }
-    if (!form.subType) return UNIT_KIND_REQUIRED_ERROR;
-    if (!this.ownerSelection.isPresent) return OWNER_REQUIRED_ERROR;
-    return '';
+    if (!form.unitNumber.trim()) fields.unitNumber = 'Enter a property number';
+    if (!form.subType) fields.subType = UNIT_KIND_REQUIRED_ERROR;
+    const owner = this.ownerSelection.isPresent ? '' : OWNER_REQUIRED_ERROR;
+    return { fields, owner };
   }
 
   buildBody(form) {
@@ -279,14 +302,16 @@ export default class PropertiesPropertyDrawerComponent extends Component {
     if (this.isSaving) return;
 
     const form = this.form;
-    const invalid = this.validate(form);
-    if (invalid) {
-      this.errorMsg = invalid;
+    const { fields, owner } = this.validate(form);
+    if (owner || Object.keys(fields).length > 0) {
+      this.fieldError = { source: this.source, errors: fields };
+      this.errorMsg = owner;
       return;
     }
 
     this.isSaving = true;
     this.errorMsg = '';
+    this.fieldError = null;
 
     const isEdit = this.isEdit;
     const path = isEdit

@@ -88,6 +88,7 @@ export default class PropertiesUnitController extends Controller {
   // Kit form components call onInput/onChange as (value, event).
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (fieldName === 'unitActionReason') this.reasonError = '';
   }
 
   @action openEdit() {
@@ -274,7 +275,7 @@ export default class PropertiesUnitController extends Controller {
 
     const reason = this.unitActionReason.trim();
     if (config.reasonRequired && !reason) {
-      this.reasonError = 'A reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 

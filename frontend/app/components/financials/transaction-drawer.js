@@ -56,6 +56,17 @@ function withTypeLock(form) {
   return form;
 }
 
+function amountErrorFor(amount) {
+  const text = typeof amount === 'string' ? amount.trim() : amount;
+  if (text === '' || text === null || text === undefined) {
+    return 'Enter an amount';
+  }
+  const value = parseFloat(text);
+  return Number.isNaN(value) || value <= 0
+    ? 'Enter an amount greater than 0'
+    : '';
+}
+
 function formFrom(tx, today) {
   const form = tx
     ? {
@@ -88,6 +99,7 @@ export default class FinancialsTransactionDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
   transactionTypeOptions = TRANSACTION_TYPE_OPTIONS;
@@ -117,6 +129,30 @@ export default class FinancialsTransactionDrawerComponent extends Component {
 
   set errorMsg(message) {
     this.error = message ? { source: this.source, message } : null;
+  }
+
+  get dateError() {
+    return this.fieldError?.source === this.source
+      ? (this.fieldError.date ?? '')
+      : '';
+  }
+
+  get amountError() {
+    return this.fieldError?.source === this.source
+      ? (this.fieldError.amount ?? '')
+      : '';
+  }
+
+  get categoryError() {
+    return this.fieldError?.source === this.source
+      ? (this.fieldError.category ?? '')
+      : '';
+  }
+
+  clearFieldError(key) {
+    if (this.fieldError?.[key] === undefined) return;
+    const { [key]: removed, ...rest } = this.fieldError; // eslint-disable-line no-unused-vars
+    this.fieldError = rest.date || rest.amount || rest.category ? rest : null;
   }
 
   get submitLabel() {
@@ -158,11 +194,14 @@ export default class FinancialsTransactionDrawerComponent extends Component {
 
   @action setField(name, value) {
     this.write({ ...this.form, [name]: value });
+    if (name === 'date' || name === 'status') this.clearFieldError('date');
+    if (name === 'amount') this.clearFieldError('amount');
   }
 
   // The selector stays visible and readonly, so the form must carry the locked value too.
   @action setCategory(value) {
     this.write(withTypeLock({ ...this.form, category: value }));
+    this.clearFieldError('category');
   }
 
   // A category the new method no longer offers is cleared, so the choice is re-made rather
@@ -183,22 +222,32 @@ export default class FinancialsTransactionDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
   @action async save(event) {
     event.preventDefault();
     const form = this.form;
+    const errors = {};
     if (this.dateRequired && !form.date) {
-      this.errorMsg =
+      errors.date =
         form.type === 'EXPENSE'
-          ? 'Enter the date the money was paid.'
-          : 'Enter the date the money arrived.';
+          ? 'Enter the date the money was paid'
+          : 'Enter the date the money arrived';
+    }
+    if (!form.category) errors.category = 'Choose a category';
+    const amountMsg = amountErrorFor(form.amount);
+    if (amountMsg) errors.amount = amountMsg;
+    if (errors.date || errors.amount || errors.category) {
+      this.errorMsg = '';
+      this.fieldError = { source: this.source, ...errors };
       return;
     }
     if (this.isSaving) return;
     this.isSaving = true;
     this.errorMsg = '';
+    this.fieldError = null;
 
     const isEdit = this.isEdit;
     const source = this.source;

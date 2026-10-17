@@ -457,7 +457,7 @@ module('Unit | Controller | cheques', function (hooks) {
       await controller.confirmUnclear();
 
       assert.strictEqual(calls.length, 0);
-      assert.strictEqual(controller.reasonError, 'Reason is required.');
+      assert.strictEqual(controller.reasonError, 'Enter a reason');
     });
 
     test('closing the dialog clears the reason error it set', async function (assert) {
@@ -466,7 +466,7 @@ module('Unit | Controller | cheques', function (hooks) {
       controller.openUnclear({ id: 'c1' });
       controller.unclearReason = '';
       await controller.confirmUnclear();
-      assert.strictEqual(controller.reasonError, 'Reason is required.');
+      assert.strictEqual(controller.reasonError, 'Enter a reason');
 
       controller.closeUnclearModal();
 
@@ -479,7 +479,7 @@ module('Unit | Controller | cheques', function (hooks) {
       controller.openCancel({ id: 'c1' });
       controller.cancelReason = '';
       await controller.confirmCancel();
-      assert.strictEqual(controller.reasonError, 'Reason is required.');
+      assert.strictEqual(controller.reasonError, 'Enter a reason');
 
       controller.closeCancelModal();
 

@@ -137,7 +137,7 @@
   <:body>
     <form
       id="approve-access-form"
-      class="flex col gap-3"
+      class="nu-form"
       {{on "submit" this.confirmApprove}}
     >
       <div class="flex col gap-2" role="radiogroup" aria-label="Access lasts">
@@ -153,7 +153,10 @@
         {{/each}}
       </div>
       {{#if (eq this.expiryChoice "date")}}
-        <Nuvo::Field @label="Access ends on">
+        <Nuvo::Field
+          @label="Access ends on"
+          @error={{this.expiryDateError}}
+        >
           <Nuvo::Input
             id="access-expiry-date"
             @type="date"

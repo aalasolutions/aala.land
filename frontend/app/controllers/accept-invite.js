@@ -15,6 +15,7 @@ export default class AcceptInviteController extends Controller {
   @tracked confirmPassword = '';
   @tracked isSubmitting = false;
   @tracked errorMsg = '';
+  @tracked fieldErrors = {};
   @tracked done = false;
 
   @action setField(field, e) {
@@ -24,20 +25,30 @@ export default class AcceptInviteController extends Controller {
   // Nuvo::Input calls onInput as (value, event), not with a raw DOM event.
   @action setFieldValue(field, value) {
     this[field] = value;
+    if (field in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[field];
+      this.fieldErrors = errors;
+    }
   }
 
   @action async submit(event) {
     event.preventDefault();
     this.errorMsg = '';
 
-    if (this.password.length < 8) {
-      this.errorMsg = 'Password must be at least 8 characters.';
-      return;
+    const errors = {};
+    if (!this.password) {
+      errors.password = 'Enter a password';
+    } else if (this.password.length < 8) {
+      errors.password = 'Use at least 8 characters';
     }
-    if (this.password !== this.confirmPassword) {
-      this.errorMsg = 'Passwords do not match.';
-      return;
+    if (!this.confirmPassword) {
+      errors.confirmPassword = 'Confirm your password';
+    } else if (this.password !== this.confirmPassword) {
+      errors.confirmPassword = 'Re-enter the same password';
     }
+    this.fieldErrors = errors;
+    if (Object.keys(errors).length) return;
 
     this.isSubmitting = true;
     try {

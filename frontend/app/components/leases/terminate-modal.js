@@ -27,7 +27,7 @@ export default class LeasesTerminateModalComponent extends Component {
     if (!lease || this.isTerminating) return;
     const reason = this.reason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 

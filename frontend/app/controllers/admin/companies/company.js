@@ -42,6 +42,15 @@ const HISTORY_EVENTS = {
   next_bill_discount: 'Next-bill discount',
 };
 
+const LIMIT_ERROR = 'Enter a whole number';
+
+function withoutKeys(errors, ...names) {
+  if (!names.some((name) => name in errors)) return errors;
+  const next = { ...errors };
+  names.forEach((name) => delete next[name]);
+  return next;
+}
+
 export default class AdminCompaniesCompanyController extends Controller {
   @service auth;
   @service notifications;
@@ -64,6 +73,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked dealLifetime = false;
   @tracked dealWhy = '';
   @tracked dealBusy = false;
+  @tracked dealErrors = {};
   @tracked endDealConfirmOpen = false;
   @tracked endDealBusy = false;
 
@@ -77,6 +87,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked limitMaxRegions = '';
   @tracked limitMaxProperties = '';
   @tracked limitsBusy = false;
+  @tracked limitErrors = {};
 
   @tracked paymentsLoading = false;
   @tracked paymentsLoaded = false;
@@ -91,6 +102,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked payReceipt = null;
   @tracked payReceiptName = '';
   @tracked payBusy = false;
+  @tracked payErrors = {};
+  @tracked payDocError = '';
 
   @tracked remedyModalOpen = false;
   @tracked remedyAnchor = null;
@@ -99,6 +112,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked remedyAmount = '';
   @tracked remedyWhy = '';
   @tracked remedyBusy = false;
+  @tracked remedyErrors = {};
 
   @tracked historyLoading = false;
   @tracked historyLoaded = false;
@@ -323,6 +337,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.dealUntil = '';
       this.dealWhy = '';
     }
+    this.dealErrors = {};
     this.dealModalOpen = true;
   }
 
@@ -335,6 +350,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   setDealField(field, event) {
     this[field] = event.target.value;
+    this.dealErrors = withoutKeys(this.dealErrors, field);
   }
 
   @action
@@ -346,6 +362,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   toggleDealLifetime(event) {
     this.dealLifetime = event.target.checked;
     if (this.dealLifetime) this.dealUntil = '';
+    this.dealErrors = withoutKeys(this.dealErrors, 'dealUntil');
   }
 
   @action
@@ -355,30 +372,28 @@ export default class AdminCompaniesCompanyController extends Controller {
     const seatCap = parseInt(this.dealSeatCap, 10);
     const currency = (this.dealCurrency || '').trim().toLowerCase();
 
+    const errors = {};
     if (price == null || price < 0) {
-      this.notifications.error('Enter a valid price.');
-      return;
+      errors.dealPrice = 'Enter a price of 0 or more';
     }
     if (!/^[a-z]{3}$/.test(currency)) {
-      this.notifications.error('Currency must be a 3-letter code.');
-      return;
+      errors.dealCurrency = 'Enter a 3-letter currency code';
     }
     if (!seatCap || seatCap < 1) {
-      this.notifications.error('Seats included must be at least 1.');
-      return;
+      errors.dealSeatCap = 'Enter at least 1 seat';
     }
     // End-of-day local time; UTC midnight would already be past and 400 on the backend.
     const untilDate = this.dealLifetime
       ? null
       : localEndOfDayIso(this.dealUntil);
     if (!this.dealLifetime && !untilDate) {
-      this.notifications.error('Pick an expiry date, or mark it lifetime.');
-      return;
+      errors.dealUntil = 'Choose an expiry date or tick Lifetime';
     }
     if (!this.dealWhy.trim()) {
-      this.notifications.error('The "why" note is required.');
-      return;
+      errors.dealWhy = 'Explain why this deal is given';
     }
+    this.dealErrors = errors;
+    if (Object.keys(errors).length) return;
 
     const body = {
       priceAmount: price,
@@ -512,6 +527,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     this.limitMaxUsers = String(l.maxUsers ?? '');
     this.limitMaxRegions = String(l.maxRegions ?? '');
     this.limitMaxProperties = String(l.maxProperties ?? '');
+    this.limitErrors = {};
     this.limitsModalOpen = true;
   }
 
@@ -524,6 +540,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   setLimitField(field, event) {
     this[field] = event.target.value;
+    this.limitErrors = withoutKeys(this.limitErrors, field);
   }
 
   @action
@@ -534,14 +551,14 @@ export default class AdminCompaniesCompanyController extends Controller {
       maxRegions: parseInt(this.limitMaxRegions, 10),
       maxProperties: parseInt(this.limitMaxProperties, 10),
     };
-    if (
-      Number.isNaN(body.maxUsers) ||
-      Number.isNaN(body.maxRegions) ||
-      Number.isNaN(body.maxProperties)
-    ) {
-      this.notifications.error('Limits must be whole numbers.');
-      return;
+    const errors = {};
+    if (Number.isNaN(body.maxUsers)) errors.limitMaxUsers = LIMIT_ERROR;
+    if (Number.isNaN(body.maxRegions)) errors.limitMaxRegions = LIMIT_ERROR;
+    if (Number.isNaN(body.maxProperties)) {
+      errors.limitMaxProperties = LIMIT_ERROR;
     }
+    this.limitErrors = errors;
+    if (Object.keys(errors).length) return;
     this.limitsBusy = true;
     try {
       await this.auth.fetchJson(`/companies/${this.detail.id}`, {
@@ -640,6 +657,8 @@ export default class AdminCompaniesCompanyController extends Controller {
     this.payNotes = '';
     this.payReceipt = null;
     this.payReceiptName = '';
+    this.payErrors = {};
+    this.payDocError = '';
     this.paymentModalOpen = true;
   }
 
@@ -652,6 +671,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   setPayField(field, event) {
     this[field] = event.target.value;
+    this.payErrors = withoutKeys(this.payErrors, field);
+    if (field === 'payNotes') this.payDocError = '';
   }
 
   @action
@@ -659,6 +680,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     const file = event.target.files?.[0] ?? null;
     this.payReceipt = file;
     this.payReceiptName = file?.name ?? '';
+    this.payDocError = '';
   }
 
   @action
@@ -666,28 +688,29 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (this.payBusy) return;
     const amount = toMinorUnits(this.payAmount, this.payCurrency);
     const currency = (this.payCurrency || '').trim().toLowerCase();
+    const errors = {};
     if (amount == null || amount < 1) {
-      this.notifications.error('Enter a valid amount.');
-      return;
+      errors.payAmount = 'Enter an amount greater than 0';
     }
     if (!/^[a-z]{3}$/.test(currency)) {
-      this.notifications.error('Currency must be a 3-letter code.');
-      return;
+      errors.payCurrency = 'Enter a 3-letter currency code';
     }
-    if (!this.payReceivedAt || !this.payCoversStart || !this.payCoversEnd) {
-      this.notifications.error(
-        'Received date and covered period are required.',
-      );
-      return;
+    if (!this.payReceivedAt) errors.payReceivedAt = 'Choose the date received';
+    if (!this.payCoversStart) {
+      errors.payCoversStart = 'Choose the first covered day';
     }
-    if (this.payCoversEnd < this.payCoversStart) {
-      this.notifications.error('The period end cannot be before its start.');
-      return;
+    if (!this.payCoversEnd) {
+      errors.payCoversEnd = 'Choose the last covered day';
+    } else if (this.payCoversStart && this.payCoversEnd < this.payCoversStart) {
+      errors.payCoversEnd = 'Choose a date on or after the start';
     }
-    if (!this.payNotes.trim() && !this.payReceipt) {
-      this.notifications.error('Add notes or a receipt image (document it).');
-      return;
-    }
+    const docError =
+      !this.payNotes.trim() && !this.payReceipt
+        ? 'Add notes or a receipt image'
+        : '';
+    this.payErrors = errors;
+    this.payDocError = docError;
+    if (Object.keys(errors).length || docError) return;
 
     const form = new FormData();
     form.append('amount', String(amount));
@@ -754,6 +777,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     this.remedyScope = 'partial';
     this.remedyAmount = '';
     this.remedyWhy = '';
+    this.remedyErrors = {};
     this.remedyModalOpen = true;
   }
 
@@ -766,16 +790,19 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   setRemedyKind(kind) {
     this.remedyKind = kind;
+    this.remedyErrors = withoutKeys(this.remedyErrors, 'remedyAmount');
   }
 
   @action
   setRemedyScope(scope) {
     this.remedyScope = scope;
+    this.remedyErrors = withoutKeys(this.remedyErrors, 'remedyAmount');
   }
 
   @action
   setRemedyField(field, event) {
     this[field] = event.target.value;
+    this.remedyErrors = withoutKeys(this.remedyErrors, field);
   }
 
   @action
@@ -784,10 +811,8 @@ export default class AdminCompaniesCompanyController extends Controller {
     const currency = this.remedyAnchor.currency;
     const anchorAmount = this.remedyAnchor.amountMinor;
 
-    if (!this.remedyWhy.trim()) {
-      this.notifications.error('The "why" note is required.');
-      return;
-    }
+    const errors = {};
+    if (!this.remedyWhy.trim()) errors.remedyWhy = 'Explain why';
 
     const body = {
       source: this.remedyAnchor.source,
@@ -796,28 +821,19 @@ export default class AdminCompaniesCompanyController extends Controller {
       whyNote: this.remedyWhy.trim(),
     };
 
-    if (this.remedyKind === 'refund') {
-      body.scope = this.remedyScope;
-      if (this.remedyScope === 'partial') {
-        const amount = toMinorUnits(this.remedyAmount, currency);
-        if (amount == null || amount < 1 || amount > anchorAmount) {
-          this.notifications.error(
-            'Enter a partial amount up to the payment total.',
-          );
-          return;
-        }
-        body.amount = amount;
-      }
-    } else {
+    const needsAmount =
+      this.remedyKind !== 'refund' || this.remedyScope === 'partial';
+    if (this.remedyKind === 'refund') body.scope = this.remedyScope;
+    if (needsAmount) {
       const amount = toMinorUnits(this.remedyAmount, currency);
       if (amount == null || amount < 1 || amount > anchorAmount) {
-        this.notifications.error(
-          'Enter a discount amount up to the payment total.',
-        );
-        return;
+        errors.remedyAmount = 'Enter an amount up to the payment total';
+      } else {
+        body.amount = amount;
       }
-      body.amount = amount;
     }
+    this.remedyErrors = errors;
+    if (Object.keys(errors).length) return;
 
     this.remedyBusy = true;
     try {

@@ -372,6 +372,7 @@ module('Unit | Controller | company', function (hooks) {
       const controller = makeController(this, {
         company: { activeRegions: ['dxb', 'auh'] },
         formActiveRegions: ['dxb'],
+        formName: 'Test Company',
       });
 
       // auth.fetchJson throws if the save runs, so reaching the confirm is the assertion.
@@ -386,6 +387,7 @@ module('Unit | Controller | company', function (hooks) {
       const controller = makeController(this, {
         company: { activeRegions: ['dxb'] },
         formActiveRegions: ['dxb', 'auh'],
+        formName: 'Test Company',
       });
       let sent = false;
       controller.auth.fetchJson = () => {

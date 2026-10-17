@@ -8,8 +8,12 @@
 
   {{#if this.model}}
     <Nuvo::Card class="profile-card">
-      <form class="flex col gap-4" {{on "submit" this.saveProfile}}>
-        <Nuvo::Field @label="Name" @required={{true}}>
+      <form class="nu-form" novalidate {{on "submit" this.saveProfile}}>
+        <Nuvo::Field
+          @label="Name"
+          @required={{true}}
+          @error={{this.fieldErrors.formName}}
+        >
           <Nuvo::Input
             id="profile-name"
             type="text"

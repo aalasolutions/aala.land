@@ -120,7 +120,7 @@
     data-test-system-price-add-modal
   >
     <:body>
-      <div class="flex col gap-4">
+      <div class="nu-form">
         <Nuvo::Field @label="Kind" @flush={{true}}>
           <Nuvo::Select
             @value={{this.addKind}}
@@ -133,6 +133,7 @@
           <Nuvo::Field
             @label="Currency"
             @tooltip="Three letter code such as USD."
+            @error={{this.fieldErrors.addCurrency}}
             @flush={{true}}
             class="nu-field-row__narrow"
           >
@@ -146,7 +147,12 @@
               {{on "input" (fn this.setPriceField "addCurrency")}}
             />
           </Nuvo::Field>
-          <Nuvo::Field @label="Monthly amount" @flush={{true}} class="grow">
+          <Nuvo::Field
+            @label="Monthly amount"
+            @error={{this.fieldErrors.addAmount}}
+            @flush={{true}}
+            class="grow"
+          >
             <Nuvo::Input
               id="price-amount"
               type="number"
@@ -161,6 +167,7 @@
         <Nuvo::Field
           @label="Countries"
           @tooltip="Leave empty for the base price. For a custom price, list 2-letter country codes separated by commas, such as PK, IN."
+          @error={{this.fieldErrors.addCountries}}
           @flush={{true}}
         >
           <Nuvo::Input
@@ -224,7 +231,7 @@
     data-test-system-price-amount-modal
   >
     <:body>
-      <div class="flex col gap-4">
+      <div class="nu-form">
         <p class="text-sm">Current amount:
           {{format-money
             this.amountRow.unitAmount
@@ -232,7 +239,11 @@
             minor=true
             compact=false
           }}</p>
-        <Nuvo::Field @label="New monthly amount" @flush={{true}}>
+        <Nuvo::Field
+          @label="New monthly amount"
+          @error={{this.fieldErrors.newAmount}}
+          @flush={{true}}
+        >
           <Nuvo::Input
             id="price-new-amount"
             type="number"

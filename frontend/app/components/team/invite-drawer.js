@@ -20,6 +20,7 @@ export default class TeamInviteDrawerComponent extends Component {
   @tracked isInviting = false;
   @tracked errorMsg = '';
   @tracked existingUser = null;
+  @tracked fieldErrors = {};
 
   get form() {
     return this.draft ?? EMPTY_FORM;
@@ -31,6 +32,23 @@ export default class TeamInviteDrawerComponent extends Component {
 
   @action setField(name, value) {
     this.draft = { ...this.form, [name]: value };
+    if (name in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[name];
+      this.fieldErrors = errors;
+    }
+  }
+
+  validate(form) {
+    const errors = {};
+    if (!form.inviteFirstName.trim()) {
+      errors.inviteFirstName = 'Enter a first name';
+    }
+    if (!form.inviteLastName.trim()) {
+      errors.inviteLastName = 'Enter a last name';
+    }
+    if (!form.inviteEmail.trim()) errors.inviteEmail = 'Enter an email';
+    return errors;
   }
 
   @action close() {
@@ -41,17 +59,27 @@ export default class TeamInviteDrawerComponent extends Component {
     this.draft = null;
     this.errorMsg = '';
     this.existingUser = null;
+    this.fieldErrors = {};
     this.args.onClosed?.();
   }
 
   @action async send(event) {
     event.preventDefault();
     if (this.isInviting || this.args.isReactivating) return;
+
+    const form = this.form;
+    const errors = this.validate(form);
+    if (Object.keys(errors).length > 0) {
+      this.errorMsg = '';
+      this.existingUser = null;
+      this.fieldErrors = errors;
+      return;
+    }
+
     this.isInviting = true;
     this.errorMsg = '';
     this.existingUser = null;
-
-    const form = this.form;
+    this.fieldErrors = {};
     try {
       await this.auth.fetchJson('/users/invite', {
         method: 'POST',

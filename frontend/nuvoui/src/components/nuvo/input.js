@@ -1,9 +1,18 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { resolveStatus, statusClass } from './-field-status.js';
 
 const SIZES = ['xs', 'sm', 'lg'];
 const LTR_TYPES = ['tel', 'number', 'email', 'url'];
 
+/**
+ * Text input. `@status` (`error | warning | success`, with `@invalid` and
+ * `@valid` as aliases) sets the border and `aria-invalid`.
+ * `@inputmode` picks the on-screen keyboard: phones use `type="tel"` with
+ * `inputmode="tel"`; codes, OTPs, cheque and postal numbers use `type="text"`
+ * with `inputmode="numeric"` (and `pattern="[0-9]*"`); money and quantities keep
+ * `type="number"`.
+ */
 export default class NuInputComponent extends Component {
   get wrapClasses() {
     const parts = ['nu-input-wrap'];
@@ -28,12 +37,19 @@ export default class NuInputComponent extends Component {
     if (this.args.auto) {
       parts.push('m-auto');
     }
-    if (this.args.invalid) {
-      parts.push('is-invalid');
-    } else if (this.args.valid) {
-      parts.push('is-valid');
+    const status = statusClass(this.status);
+    if (status) {
+      parts.push(status);
     }
     return parts.join(' ');
+  }
+
+  get status() {
+    return resolveStatus(this.args);
+  }
+
+  get isInvalid() {
+    return this.status === 'error';
   }
 
   get type() {

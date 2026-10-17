@@ -49,6 +49,7 @@ export default class NuvoController extends Controller {
         { route: 'nuvo.input', label: 'Input, Textarea, Select', icon: '▤' },
         { route: 'nuvo.checkbox', label: 'Checkbox, Radio, Toggle', icon: '☑' },
         { route: 'nuvo.field', label: 'Field and layout', icon: '▣' },
+        { route: 'nuvo.form', label: 'Form', icon: '▤' },
       ],
     },
     {

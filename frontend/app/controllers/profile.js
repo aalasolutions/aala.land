@@ -14,6 +14,7 @@ export default class ProfileController extends Controller {
   @tracked isSaving = false;
   @tracked isLinkingGoogle = false;
   @tracked errorMsg = '';
+  @tracked fieldErrors = {};
 
   get user() {
     return this.model;
@@ -30,17 +31,28 @@ export default class ProfileController extends Controller {
   // Nuvo::Input calls onInput as (value, event), not with a raw DOM event.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (fieldName in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[fieldName];
+      this.fieldErrors = errors;
+    }
   }
 
   @action async saveProfile(event) {
     event.preventDefault();
     if (this.isSaving) return;
+    const name = this.formName || this.user.name;
+    if (!name?.trim()) {
+      this.fieldErrors = { formName: 'Enter a name' };
+      return;
+    }
+    this.fieldErrors = {};
     this.isSaving = true;
     this.errorMsg = '';
 
     try {
       const body = {
-        name: this.formName || this.user.name,
+        name,
       };
 
       if (this.formPassword) {

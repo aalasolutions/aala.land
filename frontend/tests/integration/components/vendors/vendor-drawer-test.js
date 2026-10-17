@@ -54,7 +54,9 @@ module('Integration | Component | vendors/vendor-drawer', function (hooks) {
     await fillIn('#v-name', 'New Vendor');
     await click('[data-test-save-vendor]');
 
-    assert.dom('[data-test-error]').hasText('Select at least one specialty.');
+    assert
+      .dom('[data-test-nu-field-error]')
+      .hasText('Choose a specialty');
     assert.notOk(sent(this.calls, 'POST'));
   });
 

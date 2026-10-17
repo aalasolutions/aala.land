@@ -63,6 +63,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
   @tracked units = [];
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   @tracked selectionEpoch = 0;
 
@@ -129,6 +130,12 @@ export default class LeasesLeaseDrawerComponent extends Component {
     this.error = message ? { source: this.source, message } : null;
   }
 
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
+  }
+
   get title() {
     if (this.isEdit) return 'Edit Lease';
     return this.isRenew ? 'Renew Lease' : 'New Lease';
@@ -185,9 +192,17 @@ export default class LeasesLeaseDrawerComponent extends Component {
     return selection.hasIdentity ? { tenant: selection.cleanIdentity } : {};
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    this.dropFieldErrors(name);
   }
 
   // Native <input type="date"> still emits a raw DOM event.
@@ -199,6 +214,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
     const type = this.leaseTypeFor(unitId);
     this.draftFor = this.source;
     this.draft = { ...this.form, unitId, ...(type ? { type } : {}) };
+    this.dropFieldErrors('unitId');
   }
 
   @action close() {
@@ -211,6 +227,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
     this.units = [];
     this.selectionEpoch += 1;
     this.errorMsg = '';
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
@@ -224,21 +241,21 @@ export default class LeasesLeaseDrawerComponent extends Component {
     const isRenew = this.isRenew;
     const lease = this.args.lease;
 
-    if (!isEdit && !UUID_PATTERN.test(form.unitId)) {
-      this.errorMsg = 'Please select a valid property.';
-      return;
+    const fields = {};
+    if (!UUID_PATTERN.test(form.unitId)) {
+      fields.unitId = 'Choose a property';
     }
-
-    if (!this.tenantSelection.isPresent) {
-      this.errorMsg = CONTACT_REQUIRED_ERROR;
-      return;
-    }
-
     const cheques = Number(form.numberOfCheques);
     if (!Number.isInteger(cheques) || cheques < 1) {
-      this.errorMsg = 'Enter the number of cheques, 1 or more.';
-      return;
+      fields.numberOfCheques = 'Enter the number of cheques, 1 or more';
     }
+    if (!form.startDate) fields.startDate = 'Enter a start date';
+    if (!form.endDate) fields.endDate = 'Enter an end date';
+    if (!form.monthlyRent) fields.monthlyRent = 'Enter a monthly rent';
+    const tenantMissing = !this.tenantSelection.isPresent;
+    this.fieldError = { source: this.source, errors: fields };
+    if (tenantMissing) this.errorMsg = CONTACT_REQUIRED_ERROR;
+    if (tenantMissing || Object.keys(fields).length > 0) return;
 
     this.isSaving = true;
 

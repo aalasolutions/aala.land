@@ -1,5 +1,6 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { resolveStatus, statusClass } from './-field-status.js';
 
 const SIZES = ['xs', 'sm', 'lg'];
 
@@ -9,7 +10,15 @@ export default class NuRadioComponent extends Component {
   }
 
   get classes() {
-    return ['nu-check', 'm-radio', this.sizeClass].filter(Boolean).join(' ');
+    return ['nu-check', 'm-radio', this.sizeClass, statusClass(this.status)]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  // A radio's invalid and required state belong to its group (ARIA), so `@status`
+  // only styles it here; Nuvo::FieldGroup carries the message for the set.
+  get status() {
+    return resolveStatus(this.args);
   }
 
   get labelClasses() {

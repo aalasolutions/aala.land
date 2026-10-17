@@ -17,8 +17,12 @@
         </Nuvo::Button>
       </div>
     {{else}}
-      <form class="flex col gap-4" {{on "submit" this.submit}}>
-        <Nuvo::Field @label="New Password" @required={{true}}>
+      <form class="nu-form" novalidate {{on "submit" this.submit}}>
+        <Nuvo::Field
+          @label="New Password"
+          @required={{true}}
+          @error={{this.fieldErrors.password}}
+        >
           <Nuvo::Input
             id="ai-password"
             type="password"
@@ -29,7 +33,11 @@
           />
         </Nuvo::Field>
 
-        <Nuvo::Field @label="Confirm Password" @required={{true}}>
+        <Nuvo::Field
+          @label="Confirm Password"
+          @required={{true}}
+          @error={{this.fieldErrors.confirmPassword}}
+        >
           <Nuvo::Input
             id="ai-confirm"
             type="password"

@@ -28,12 +28,19 @@ export default class ContactContactDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
 
   // Draft and error are keyed to the record they were made for.
   get source() {
     return this.args.contact?.id ?? 'new';
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get form() {
@@ -54,9 +61,17 @@ export default class ContactContactDrawerComponent extends Component {
     return this.isEdit ? 'Update' : 'Create Contact';
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    this.dropFieldErrors(name);
   }
 
   @action close() {
@@ -67,16 +82,33 @@ export default class ContactContactDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
+  }
+
+  validate(form) {
+    const errors = {};
+    if (!form.formFirstName?.trim())
+      errors.formFirstName = 'Enter a first name';
+    if (!form.formPhone?.trim()) errors.formPhone = 'Enter a phone number';
+    return errors;
   }
 
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
-    this.error = null;
 
     const form = this.form;
+    const errors = this.validate(form);
+    if (Object.keys(errors).length > 0) {
+      this.fieldError = { source: this.source, errors };
+      return;
+    }
+
+    this.isSaving = true;
+    this.error = null;
+    this.fieldError = null;
+
     const isEdit = this.isEdit;
     const source = this.source;
     const path = isEdit ? `/contacts/${this.args.contact.id}` : '/contacts';

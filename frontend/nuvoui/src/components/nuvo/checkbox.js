@@ -1,5 +1,6 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { resolveStatus, statusClass } from './-field-status.js';
 
 const SIZES = ['xs', 'sm', 'lg'];
 
@@ -9,7 +10,17 @@ export default class NuCheckboxComponent extends Component {
   }
 
   get classes() {
-    return ['nu-check', this.sizeClass].filter(Boolean).join(' ');
+    return ['nu-check', this.sizeClass, statusClass(this.status)]
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  get status() {
+    return resolveStatus(this.args);
+  }
+
+  get isInvalid() {
+    return this.status === 'error';
   }
 
   get labelClasses() {

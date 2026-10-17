@@ -25,6 +25,7 @@ Router.map(function () {
     this.route('input');
     this.route('checkbox');
     this.route('field');
+    this.route('form');
     this.route('card');
     this.route('panel');
     this.route('list');

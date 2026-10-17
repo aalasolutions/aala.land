@@ -394,11 +394,12 @@
     @onClose={{this.closeDealModal}}
   >
     <:body>
-      <div class="flex col gap-4" data-test-deal-form>
+      <div class="nu-form" data-test-deal-form>
         <div class="nu-field-row">
           <Nuvo::Field
             @label="Price"
             @tooltip="Enter the amount that matches the Basis below, either per seat each month or one flat total each month."
+            @error={{this.dealErrors.dealPrice}}
             @flush={{true}}
             class="nu-field-row__wide"
           >
@@ -415,6 +416,7 @@
           <Nuvo::Field
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
+            @error={{this.dealErrors.dealCurrency}}
             @flush={{true}}
             class="nu-field-row__narrow"
           >
@@ -448,6 +450,7 @@
         <Nuvo::Field
           @label="Seats included"
           @tooltip="How many active users this price covers. Extra users above this are billed at the normal per seat rate."
+          @error={{this.dealErrors.dealSeatCap}}
           @flush={{true}}
         >
           <Nuvo::Input
@@ -465,6 +468,7 @@
           <Nuvo::Field
             @label="Until"
             @tooltip="The last day this price applies. After it, the company goes back to standard plan pricing."
+            @error={{this.dealErrors.dealUntil}}
             @flush={{true}}
             class="nu-field-row__wide"
           >
@@ -488,7 +492,12 @@
           </label>
         </div>
 
-        <Nuvo::Field @label="Why" @required={{true}} @flush={{true}}>
+        <Nuvo::Field
+          @label="Why"
+          @required={{true}}
+          @error={{this.dealErrors.dealWhy}}
+          @flush={{true}}
+        >
           <Nuvo::Textarea
             id="deal-why"
             rows="2"
@@ -535,9 +544,14 @@
     @onClose={{this.closePaymentModal}}
   >
     <:body>
-      <div class="flex col gap-4" data-test-payment-form>
+      <div class="nu-form" data-test-payment-form>
         <div class="nu-field-row">
-          <Nuvo::Field @label="Amount" @flush={{true}} class="nu-field-row__wide">
+          <Nuvo::Field
+            @label="Amount"
+            @error={{this.payErrors.payAmount}}
+            @flush={{true}}
+            class="nu-field-row__wide"
+          >
             <Nuvo::Input
               id="pay-amount"
               type="number"
@@ -551,6 +565,7 @@
           <Nuvo::Field
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
+            @error={{this.payErrors.payCurrency}}
             @flush={{true}}
             class="nu-field-row__narrow"
           >
@@ -567,7 +582,12 @@
         </div>
 
         <div class="nu-field-row">
-          <Nuvo::Field @label="Date received" @flush={{true}} class="grow">
+          <Nuvo::Field
+            @label="Date received"
+            @error={{this.payErrors.payReceivedAt}}
+            @flush={{true}}
+            class="grow"
+          >
             <Nuvo::Input
               id="pay-received"
               type="date"
@@ -579,6 +599,7 @@
           <Nuvo::Field
             @label="Covers from"
             @tooltip="First day of the period this payment pays for. Paid access runs from here."
+            @error={{this.payErrors.payCoversStart}}
             @flush={{true}}
             class="grow"
           >
@@ -593,6 +614,7 @@
           <Nuvo::Field
             @label="Covers to"
             @tooltip="Last day of the period this payment pays for. Access lapses after this date unless it is renewed."
+            @error={{this.payErrors.payCoversEnd}}
             @flush={{true}}
             class="grow"
           >
@@ -632,6 +654,9 @@
         </Nuvo::Field>
         <p class="text-sm text-muted">Document it: notes or a receipt image is
           required.</p>
+        {{#if this.payDocError}}
+          <p class="text-sm text-danger" data-test-payment-doc-error>{{this.payDocError}}</p>
+        {{/if}}
       </div>
     </:body>
     <:footer>
@@ -658,7 +683,7 @@
     @onClose={{this.closeRemedy}}
   >
     <:body>
-      <div class="flex col gap-4" data-test-remedy-form>
+      <div class="nu-form" data-test-remedy-form>
         <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
 
         <div class="flex col gap-2">
@@ -710,7 +735,11 @@
         {{/if}}
 
         {{#if this.showRemedyAmount}}
-          <Nuvo::Field @label="Amount" @flush={{true}}>
+          <Nuvo::Field
+            @label="Amount"
+            @error={{this.remedyErrors.remedyAmount}}
+            @flush={{true}}
+          >
             <Nuvo::Input
               id="remedy-amount"
               type="number"
@@ -724,7 +753,12 @@
           </Nuvo::Field>
         {{/if}}
 
-        <Nuvo::Field @label="Why" @required={{true}} @flush={{true}}>
+        <Nuvo::Field
+          @label="Why"
+          @required={{true}}
+          @error={{this.remedyErrors.remedyWhy}}
+          @flush={{true}}
+        >
           <Nuvo::Textarea
             id="remedy-why"
             rows="2"
@@ -769,10 +803,11 @@
     @onClose={{this.closeLimitsModal}}
   >
     <:body>
-      <div class="flex col gap-4">
+      <div class="nu-form">
         <Nuvo::Field
           @label="Max users"
           @tooltip="A hard cap on active team members for this company. It overrides the seat limit that comes with their plan."
+          @error={{this.limitErrors.limitMaxUsers}}
           @flush={{true}}
         >
           <Nuvo::Input
@@ -787,6 +822,7 @@
         <Nuvo::Field
           @label="Max regions"
           @tooltip="A hard cap on how many regions this company can switch on. It overrides the region limit from their plan."
+          @error={{this.limitErrors.limitMaxRegions}}
           @flush={{true}}
         >
           <Nuvo::Input
@@ -801,6 +837,7 @@
         <Nuvo::Field
           @label="Max properties"
           @tooltip="A hard cap on how many properties this company can create. It overrides the limit from their plan."
+          @error={{this.limitErrors.limitMaxProperties}}
           @flush={{true}}
         >
           <Nuvo::Input

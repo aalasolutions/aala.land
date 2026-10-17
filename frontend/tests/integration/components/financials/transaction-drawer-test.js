@@ -138,8 +138,8 @@ module(
         await click('[data-test-save-transaction]');
 
         assert
-          .dom('[data-test-error]')
-          .hasText('Enter the date the money arrived.');
+          .dom('[data-test-nu-field-error]')
+          .hasText('Enter the date the money arrived');
         assert.notOk(sent(this.calls, 'POST'));
         assert.dom('[data-test-save-transaction]').hasText('Create');
       });
@@ -153,8 +153,8 @@ module(
         await click('[data-test-save-transaction]');
 
         assert
-          .dom('[data-test-error]')
-          .hasText('Enter the date the money was paid.');
+          .dom('[data-test-nu-field-error]')
+          .hasText('Enter the date the money was paid');
       });
     });
 

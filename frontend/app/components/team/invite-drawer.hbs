@@ -12,42 +12,54 @@
     <SeatNote @seatInfo={{@seatInfo}} />
     <form
       id="team-invite-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{on "submit" this.send}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="First Name"
+          @required={{true}}
+          @error={{this.fieldErrors.inviteFirstName}}
+        >
           <Nuvo::Input
             id="i-fname"
             type="text"
             placeholder="e.g. Jane"
             @value={{this.form.inviteFirstName}}
             @onInput={{fn this.setField "inviteFirstName"}}
-            required={{true}}
             data-test-invite-first
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Last Name" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="Last Name"
+          @required={{true}}
+          @error={{this.fieldErrors.inviteLastName}}
+        >
           <Nuvo::Input
             id="i-lname"
             type="text"
             placeholder="e.g. Smith"
             @value={{this.form.inviteLastName}}
             @onInput={{fn this.setField "inviteLastName"}}
-            required={{true}}
             data-test-invite-last
           />
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Field
+        @label="Email"
+        @required={{true}}
+        @error={{this.fieldErrors.inviteEmail}}
+      >
         <Nuvo::Input
           id="i-email"
           type="email"
           placeholder="e.g. jane@company.com"
           @value={{this.form.inviteEmail}}
           @onInput={{fn this.setField "inviteEmail"}}
-          required={{true}}
           data-test-invite-email
         />
       </Nuvo::Field>

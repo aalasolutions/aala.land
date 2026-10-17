@@ -9,18 +9,23 @@
   <:body>
     <form
       id="email-template-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Template Name" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="Template Name"
+          @required={{true}}
+          @error={{this.fieldErrors.formName}}
+        >
           <Nuvo::Input
             id="t-name"
             type="text"
             placeholder="Welcome New Tenant"
             @value={{this.form.formName}}
             @onInput={{fn this.setField "formName"}}
-            required={{true}}
             data-test-input-name
           />
         </Nuvo::Field>
@@ -37,26 +42,32 @@
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="Subject" @required={{true}}>
+      <Nuvo::Field
+        @label="Subject"
+        @required={{true}}
+        @error={{this.fieldErrors.formSubject}}
+      >
         <Nuvo::Input
           id="t-subject"
           type="text"
           placeholder="Welcome to your new home!"
           @value={{this.form.formSubject}}
           @onInput={{fn this.setField "formSubject"}}
-          required={{true}}
           data-test-input-subject
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Body (HTML)" @required={{true}}>
+      <Nuvo::Field
+        @label="Body (HTML)"
+        @required={{true}}
+        @error={{this.fieldErrors.formBody}}
+      >
         <Nuvo::Textarea
           id="t-body"
           placeholder="Use curly braces for variables, e.g. first name"
           rows="8"
           @value={{this.form.formBody}}
           @onInput={{fn this.setField "formBody"}}
-          required={{true}}
           data-test-input-body
         />
       </Nuvo::Field>

@@ -39,6 +39,7 @@ export default class AdminSystemController extends Controller {
   @tracked newTaxInclusive = true;
   @tracked deactivateRow = null;
   @tracked priceError = '';
+  @tracked fieldErrors = {};
   @tracked priceBusy = false;
 
   kindOptions = [
@@ -147,6 +148,7 @@ export default class AdminSystemController extends Controller {
     this.addCountries = '';
     this.addTaxInclusive = true;
     this.priceError = '';
+    this.fieldErrors = {};
     this.addOpen = true;
   }
 
@@ -156,6 +158,7 @@ export default class AdminSystemController extends Controller {
     this.newAmount = String(toMajorUnits(row.unitAmount, row.currency));
     this.newTaxInclusive = row.taxInclusive !== false;
     this.priceError = '';
+    this.fieldErrors = {};
   }
 
   @action
@@ -180,6 +183,11 @@ export default class AdminSystemController extends Controller {
   @action
   setPriceField(field, event) {
     this[field] = event.target.value;
+    if (field in this.fieldErrors) {
+      const rest = { ...this.fieldErrors };
+      delete rest[field];
+      this.fieldErrors = rest;
+    }
   }
 
   @action
@@ -190,24 +198,24 @@ export default class AdminSystemController extends Controller {
   @action
   submitAdd() {
     const currency = (this.addCurrency || '').trim().toLowerCase();
-    if (!/^[a-z]{3}$/.test(currency)) {
-      this.priceError = 'Currency must be a 3-letter code.';
-      return;
-    }
-    const amountError = this.amountError(this.addAmount, currency);
-    if (amountError) {
-      this.priceError = amountError;
-      return;
-    }
-    const unitAmount = toMinorUnits(this.addAmount, currency);
+    const errors = {};
+    const validCurrency = /^[a-z]{3}$/.test(currency);
+    if (!validCurrency) errors.addCurrency = 'Enter a 3-letter currency code';
+    const amountError = this.amountError(
+      this.addAmount,
+      validCurrency ? currency : 'usd',
+    );
+    if (amountError) errors.addAmount = amountError;
     const countryCodes = (this.addCountries || '')
       .split(',')
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean);
     if (countryCodes.some((c) => !/^[A-Z]{2}$/.test(c))) {
-      this.priceError = 'Countries must be 2-letter codes, comma separated.';
-      return;
+      errors.addCountries = 'Enter 2-letter country codes separated by commas';
     }
+    this.fieldErrors = errors;
+    if (Object.keys(errors).length) return;
+    const unitAmount = toMinorUnits(this.addAmount, currency);
     const body = { kind: this.addKind, currency, unitAmount };
     if (countryCodes.length) body.countryCodes = countryCodes;
     else body.taxInclusive = this.addTaxInclusive;
@@ -219,10 +227,8 @@ export default class AdminSystemController extends Controller {
     const row = this.amountRow;
     if (!row) return;
     const amountError = this.amountError(this.newAmount, row.currency);
-    if (amountError) {
-      this.priceError = amountError;
-      return;
-    }
+    this.fieldErrors = amountError ? { newAmount: amountError } : {};
+    if (amountError) return;
     const body = { unitAmount: toMinorUnits(this.newAmount, row.currency) };
     if (!row.countryCodes?.length) body.taxInclusive = this.newTaxInclusive;
     return this.writePrice(
@@ -235,17 +241,17 @@ export default class AdminSystemController extends Controller {
   /** Why a typed price amount is refused; null when it is valid. */
   amountError(major, currency) {
     if (major === '' || major === null || major === undefined) {
-      return 'Enter an amount.';
+      return 'Enter an amount';
     }
     const amount = Number(major);
-    if (!Number.isFinite(amount)) return 'The amount must be a number.';
-    if (amount < 1) return 'Enter an amount of 1 or more.';
+    if (!Number.isFinite(amount)) return 'Enter the amount as a number';
+    if (amount < 1) return 'Enter an amount of 1 or more';
     if (toMinorUnits(major, currency) === null) {
       const digits = minorUnitDigits(currency);
       const code = currency.toUpperCase();
       return digits
-        ? `${code} amounts take at most ${digits} decimal places.`
-        : `${code} amounts take no decimal places.`;
+        ? `Use at most ${digits} decimal places for ${code}`
+        : `Use a whole number for ${code}`;
     }
     return null;
   }

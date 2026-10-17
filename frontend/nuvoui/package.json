@@ -82,6 +82,8 @@
       "./components/nuvo/drawer.js": "./dist/_app_/components/nuvo/drawer.js",
       "./components/nuvo/dropdown.js": "./dist/_app_/components/nuvo/dropdown.js",
       "./components/nuvo/empty-state.js": "./dist/_app_/components/nuvo/empty-state.js",
+      "./components/nuvo/field-group.js": "./dist/_app_/components/nuvo/field-group.js",
+      "./components/nuvo/field-message.js": "./dist/_app_/components/nuvo/field-message.js",
       "./components/nuvo/field.js": "./dist/_app_/components/nuvo/field.js",
       "./components/nuvo/form-actions.js": "./dist/_app_/components/nuvo/form-actions.js",
       "./components/nuvo/icon.js": "./dist/_app_/components/nuvo/icon.js",

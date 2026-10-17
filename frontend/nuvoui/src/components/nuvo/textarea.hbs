@@ -7,7 +7,7 @@
   maxlength={{@maxlength}}
   rows={{if @rows @rows 3}}
   style={{this.resizeStyle}}
-  aria-invalid={{if @invalid "true"}}
+  aria-invalid={{if this.isInvalid "true"}}
   data-test-nu-textarea
   {{on "input" this.handleInput}}
   {{on "change" this.handleChange}}

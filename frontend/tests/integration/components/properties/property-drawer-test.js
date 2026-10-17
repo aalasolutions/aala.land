@@ -112,7 +112,9 @@ module(
       await fillIn('#unit-number', ' 101 ');
       await click('[data-test-unit-save]');
       assert
-        .dom('#property-form .text-danger')
+        .dom(
+          '[data-test-nu-field]:has(#unit-sub-type) [data-test-nu-field-error]',
+        )
         .hasText('Choose the property kind.');
 
       await pickOption('#unit-sub-type', 'Villa');
@@ -144,8 +146,10 @@ module(
       await fillIn('#unit-number', '   ');
       await click('[data-test-unit-save]');
       assert
-        .dom('#property-form .text-danger')
-        .hasText('Property number is required.');
+        .dom(
+          '[data-test-nu-field]:has(#unit-number) [data-test-nu-field-error]',
+        )
+        .hasText('Enter a property number');
       assert.notOk(sent(this.calls, 'POST'));
     });
 
@@ -211,9 +215,7 @@ module(
       );
       await waitFor('#property-form');
       assert.dom('[data-test-unit-floor]').hasValue('3');
-      assert
-        .dom('[data-test-unit-number]')
-        .doesNotHaveAttribute('required');
+      assert.dom('[data-test-unit-number]').doesNotHaveAttribute('required');
       assert.dom('[data-test-amenities-picker]').exists();
       assert.dom('[data-test-unit-save]').hasText('Update Property');
 

@@ -193,7 +193,11 @@
       />
     {{else}}
       <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
-        <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--nu-text-muted)" />
+        <Ui::Ph
+          @icon="file-arrow-up"
+          @size="48px"
+          @color="var(--nu-text-muted)"
+        />
         <p class="text-muted">{{if
             @filtered
             "No documents match these filters."
@@ -228,7 +232,8 @@
   <:body>
     <form
       id={{this.formId}}
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{on "submit" this.saveDocument}}
     >
       {{#if this.editDocument}}
@@ -254,11 +259,11 @@
           </div>
         </Nuvo::Field>
       {{else}}
-        <div class="flex col gap-2">
-          <label
-            class="text-sm text-muted"
-            for="{{this.fieldPrefix}}-file"
-          >File *</label>
+        <Nuvo::Field
+          @label="File"
+          @required={{true}}
+          @error={{this.fieldErrors.file}}
+        >
           <input
             id="{{this.fieldPrefix}}-file"
             type="file"
@@ -274,10 +279,14 @@
               ({{format-bytes this.selectedFile.size}})
             </p>
           {{/if}}
-        </div>
+        </Nuvo::Field>
       {{/if}}
 
-      <Nuvo::Field @label="Document Name" @required={{true}}>
+      <Nuvo::Field
+        @label="Document Name"
+        @required={{true}}
+        @error={{this.fieldErrors.name}}
+      >
         <Nuvo::Input
           id="{{this.fieldPrefix}}-name"
           type="text"
@@ -323,7 +332,11 @@
           />
         </Nuvo::Field>
         {{#each this.recordPickers key="type" as |picker|}}
-          <Nuvo::Field @label={{picker.fieldLabel}} @required={{true}}>
+          <Nuvo::Field
+            @label={{picker.fieldLabel}}
+            @required={{true}}
+            @error={{this.fieldErrors.record}}
+          >
             <RemoteAutocomplete
               @listUrl={{picker.listUrl}}
               @searchUrl={{picker.searchUrl}}

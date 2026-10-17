@@ -280,7 +280,7 @@ export default class ContactsIndexController extends PaginatedController {
   @action async confirmDelete() {
     const reason = this.deleteReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
     await confirmDeleteModal(this, {

@@ -7,9 +7,19 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="contact-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form
+      id="contact-form"
+      class="nu-form"
+      novalidate
+      {{on "submit" this.save}}
+    >
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="First Name">
+        <Nuvo::Field
+          class="grow"
+          @label="First Name"
+          @required={{true}}
+          @error={{this.fieldErrors.formFirstName}}
+        >
           <Nuvo::Input
             id="c-fname"
             type="text"
@@ -55,7 +65,12 @@
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Phone">
+        <Nuvo::Field
+          class="grow"
+          @label="Phone"
+          @required={{true}}
+          @error={{this.fieldErrors.formPhone}}
+        >
           <Nuvo::Input
             id="c-phone"
             type="text"

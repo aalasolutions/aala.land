@@ -396,8 +396,8 @@ module('Integration | Component | documents/panel', function (hooks) {
     await click('[data-test-save-btn]');
 
     assert
-      .dom('[data-test-error]')
-      .hasText('Choose a lease to link, or pick Library only.');
+      .dom('[data-test-nu-field-error]')
+      .hasText('Choose a lease or pick Library only');
     assert.notOk(
       this.calls.some((c) => c.path.startsWith('/documents/upload')),
     );

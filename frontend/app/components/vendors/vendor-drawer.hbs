@@ -7,7 +7,7 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="vendor-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form id="vendor-form" class="nu-form" novalidate {{on "submit" this.save}}>
       {{#if this.showRegionField}}
         <Nuvo::Field
           @label="Region"
@@ -25,7 +25,11 @@
         </Nuvo::Field>
       {{/if}}
 
-      <Nuvo::Field @label="Name" @required={{true}}>
+      <Nuvo::Field
+        @label="Name"
+        @required={{true}}
+        @error={{this.fieldErrors.formName}}
+      >
         <Nuvo::Input
           id="v-name"
           type="text"
@@ -37,15 +41,12 @@
         />
       </Nuvo::Field>
 
-      <div class="flex col gap-2">
-        <span id="vendor-specialty-label" class="text-sm text-muted">Specialty
-          (select one or more)</span>
-        <div
-          class="flex gap-2 wrap"
-          role="group"
-          aria-labelledby="vendor-specialty-label"
-          data-test-vendor-specialty
-        >
+      <Nuvo::FieldGroup
+        @label="Specialty (select one or more)"
+        @required={{true}}
+        @error={{this.fieldErrors.formSpecialties}}
+      >
+        <div class="flex gap-2 wrap" data-test-vendor-specialty>
           {{#each this.specialtyOptions as |opt|}}
             <button
               type="button"
@@ -66,7 +67,7 @@
             >{{opt.label}}</button>
           {{/each}}
         </div>
-      </div>
+      </Nuvo::FieldGroup>
 
       <div class="flex gap-4">
         <Nuvo::Field class="grow" @label="Email">

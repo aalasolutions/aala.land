@@ -17,6 +17,7 @@
       @clearable={{true}}
       @onInput={{this.onFilterInput}}
       @onClear={{this.onFilterClear}}
+      @status={{this.status}}
       role="combobox"
       aria-expanded={{if this.isOpen "true" "false"}}
       aria-controls={{this.menuId}}
@@ -32,6 +33,8 @@
       @onClick={{this.toggle}}
       aria-haspopup="listbox"
       aria-expanded={{if this.isOpen "true" "false"}}
+      aria-invalid={{if (eq this.status "error") "true"}}
+      class={{this.triggerStatusClass}}
       title={{this.triggerTitle}}
       data-test-nu-dropdown-trigger
     >

@@ -9,7 +9,8 @@
   <:body>
     <form
       id="lease-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{this.loadOnOpen}}
       {{on "submit" this.save}}
     >
@@ -20,7 +21,11 @@
           data-test-lease-unit-archived
         />
       {{/if}}
-      <Nuvo::Field @label="Property" @required={{true}}>
+      <Nuvo::Field
+        @label="Property"
+        @required={{true}}
+        @error={{this.fieldErrors.unitId}}
+      >
         <Nuvo::Dropdown
           id="lease-unit-id"
           @align="start"
@@ -73,6 +78,7 @@
           class="grow"
           @required={{true}}
           @label="Number of Cheques"
+          @error={{this.fieldErrors.numberOfCheques}}
           @tooltip="How many post-dated rent cheques the tenant gives, such as 4 for quarterly or 12 for monthly. Add each cheque under Cheques."
         >
           <Nuvo::Input
@@ -88,7 +94,12 @@
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Start Date" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="Start Date"
+          @required={{true}}
+          @error={{this.fieldErrors.startDate}}
+        >
           <input
             id="lease-start"
             type="date"
@@ -99,7 +110,12 @@
             {{on "input" (fn this.setFieldFromEvent "startDate")}}
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="End Date" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="End Date"
+          @required={{true}}
+          @error={{this.fieldErrors.endDate}}
+        >
           <input
             id="lease-end"
             type="date"
@@ -113,7 +129,12 @@
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Monthly Rent" @required={{true}}>
+        <Nuvo::Field
+          class="grow"
+          @label="Monthly Rent"
+          @required={{true}}
+          @error={{this.fieldErrors.monthlyRent}}
+        >
           <Nuvo::Input
             id="lease-rent"
             type="number"

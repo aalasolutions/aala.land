@@ -5,6 +5,9 @@
     checked={{@checked}}
     value={{@value}}
     disabled={{@disabled}}
+    aria-invalid={{if this.isInvalid "true"}}
+    aria-describedby={{@describedBy}}
+    aria-required={{if @required "true"}}
     data-test-nu-checkbox-input
     {{on "change" this.handleChange}}
     {{did-insert this.syncIndeterminate}}

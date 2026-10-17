@@ -45,6 +45,7 @@ export default class VendorsVendorDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
   specialtyOptions = SPECIALTY_OPTIONS;
@@ -67,6 +68,12 @@ export default class VendorsVendorDrawerComponent extends Component {
     return this.error?.source === this.source ? this.error.message : '';
   }
 
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
+  }
+
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
     return this.isEdit ? 'Update' : 'Create Vendor';
@@ -80,9 +87,17 @@ export default class VendorsVendorDrawerComponent extends Component {
     return this.region.regionOptions;
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    this.dropFieldErrors(name);
   }
 
   @action toggleSpecialty(value) {
@@ -100,6 +115,7 @@ export default class VendorsVendorDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
@@ -109,12 +125,18 @@ export default class VendorsVendorDrawerComponent extends Component {
 
     const form = this.form;
     const source = this.source;
+    const fields = {};
+    if (!form.formName.trim()) fields.formName = 'Enter a name';
     if (!form.formSpecialties.length) {
-      this.error = { source, message: 'Select at least one specialty.' };
+      fields.formSpecialties = 'Choose a specialty';
+    }
+    if (Object.keys(fields).length > 0) {
+      this.fieldError = { source, errors: fields };
       return;
     }
     this.isSaving = true;
     this.error = null;
+    this.fieldError = null;
 
     const isEdit = this.isEdit;
     const path = isEdit ? `/vendors/${this.args.vendor.id}` : '/vendors';

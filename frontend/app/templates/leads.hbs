@@ -329,7 +329,7 @@
   @title="Assign Lead"
   @onClose={{this.closeAssignModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
+  <form class="nu-form" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
       <strong>{{contact-name this.assignLead.contact}}</strong>
       to:</p>

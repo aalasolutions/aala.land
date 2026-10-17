@@ -35,6 +35,7 @@ export default class EmailTemplatesTemplateDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
   categories = EMAIL_CATEGORIES;
@@ -47,6 +48,12 @@ export default class EmailTemplatesTemplateDrawerComponent extends Component {
   get form() {
     if (this.draft && this.draftFor === this.source) return this.draft;
     return formFrom(this.args.template);
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get isEdit() {
@@ -65,6 +72,19 @@ export default class EmailTemplatesTemplateDrawerComponent extends Component {
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    if (name in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[name];
+      this.fieldError = { source: this.source, errors };
+    }
+  }
+
+  validate(form) {
+    const errors = {};
+    if (!form.formName?.trim()) errors.formName = 'Enter a template name';
+    if (!form.formSubject?.trim()) errors.formSubject = 'Enter a subject';
+    if (!form.formBody?.trim()) errors.formBody = 'Enter a body';
+    return errors;
   }
 
   @action close() {
@@ -75,16 +95,24 @@ export default class EmailTemplatesTemplateDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
-    this.error = null;
 
     const form = this.form;
+    const errors = this.validate(form);
+    if (Object.keys(errors).length > 0) {
+      this.fieldError = { source: this.source, errors };
+      return;
+    }
+
+    this.isSaving = true;
+    this.error = null;
+    this.fieldError = null;
     const source = this.source;
     const isEdit = this.isEdit;
     const path = isEdit

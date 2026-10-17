@@ -201,7 +201,7 @@
   @onClose={{this.closeRemoveModal}}
 >
   {{#if (eq this.removeStep 1)}}
-    <div class="flex col gap-4" data-test-remove-step-1>
+    <div class="nu-form" data-test-remove-step-1>
       <p class="text-muted text-sm">
         Removing
         <strong>{{this.userToRemove.name}}</strong>. Their leads, documents,
@@ -251,6 +251,7 @@
         @label="Reassign records to"
         @required={{true}}
         @tooltip="Who takes over this person's leads, documents, commissions and work orders. Someone must be chosen."
+        @error={{this.removeTargetError}}
       >
         <Nuvo::Dropdown
           id="remove-target"
@@ -359,7 +360,7 @@
   @onClose={{this.closeTrimModal}}
 >
   {{#if (eq this.trimStep 1)}}
-    <div class="flex col gap-4" data-test-trim-step-1>
+    <div class="nu-form" data-test-trim-step-1>
       <p class="text-muted text-sm">
         Downgrading to the Free plan requires exactly one active user. Every
         other member will be deactivated and their records handed to the member
@@ -370,6 +371,7 @@
         @label="Member who stays active (must be a company admin)"
         @tooltip="The Free plan allows one user. Everyone else loses access as soon as you confirm."
         @required={{true}}
+        @error={{this.trimKeepError}}
       >
         <Nuvo::Dropdown
           id="trim-keep"

@@ -29,6 +29,7 @@ export default class PropertiesAssetDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
 
@@ -52,6 +53,12 @@ export default class PropertiesAssetDrawerComponent extends Component {
 
   set errorMsg(message) {
     this.error = message ? { source: this.source, message } : null;
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get submitLabel() {
@@ -92,24 +99,36 @@ export default class PropertiesAssetDrawerComponent extends Component {
     this.draft = { ...this.form, ...changes };
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     this.update({ [name]: value });
+    this.dropFieldErrors(name);
   }
 
   @action selectCity(city) {
     this.update({ city, locality: null });
+    this.dropFieldErrors('city', 'locality');
   }
 
   @action clearCity() {
     this.update({ city: null, locality: null });
+    this.dropFieldErrors('city', 'locality');
   }
 
   @action selectLocality(locality) {
     this.update({ locality });
+    this.dropFieldErrors('locality');
   }
 
   @action clearLocality() {
     this.update({ locality: null });
+    this.dropFieldErrors('locality');
   }
 
   @action close() {
@@ -120,6 +139,7 @@ export default class PropertiesAssetDrawerComponent extends Component {
     this.draft = null;
     this.draftFor = null;
     this.errorMsg = '';
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
@@ -129,13 +149,20 @@ export default class PropertiesAssetDrawerComponent extends Component {
 
     const form = this.form;
     const isEdit = this.isEdit;
-    if (!isEdit && !form.locality) {
-      this.errorMsg = 'Please select a city and locality first.';
+    const fields = {};
+    if (!isEdit) {
+      if (!form.city) fields.city = 'Choose a city';
+      else if (!form.locality) fields.locality = 'Choose a location';
+    }
+    if (!form.name.trim()) fields.name = 'Enter an asset name';
+    if (Object.keys(fields).length > 0) {
+      this.fieldError = { source: this.source, errors: fields };
       return;
     }
 
     this.isSaving = true;
     this.errorMsg = '';
+    this.fieldError = null;
 
     const path = isEdit
       ? `/properties/assets/${this.args.asset.id}`

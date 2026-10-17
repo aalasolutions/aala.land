@@ -24,6 +24,7 @@ export default class CommissionsCommissionDrawerComponent extends Component {
   @tracked draft = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked fieldErrors = {};
 
   commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
 
@@ -40,6 +41,20 @@ export default class CommissionsCommissionDrawerComponent extends Component {
 
   @action setField(name, value) {
     this.draft = { ...this.form, [name]: value };
+    if (name in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[name];
+      this.fieldErrors = errors;
+    }
+  }
+
+  validate(form) {
+    const fields = {};
+    if (!form.agentId) fields.agentId = 'Choose an agent';
+    if (!form.type) fields.type = 'Choose a type';
+    if (!form.grossAmount) fields.grossAmount = 'Enter a gross amount';
+    if (!form.commissionRate) fields.commissionRate = 'Enter a commission rate';
+    return fields;
   }
 
   @action close() {
@@ -49,6 +64,7 @@ export default class CommissionsCommissionDrawerComponent extends Component {
   @action reset() {
     this.draft = null;
     this.errorMsg = '';
+    this.fieldErrors = {};
     this.args.onClosed?.();
   }
 
@@ -56,12 +72,15 @@ export default class CommissionsCommissionDrawerComponent extends Component {
     event.preventDefault();
     if (this.isSaving) return;
     const form = this.form;
-    if (!form.agentId) {
-      this.errorMsg = 'Please select an agent';
+    const fields = this.validate(form);
+    if (Object.keys(fields).length > 0) {
+      this.fieldErrors = fields;
+      this.errorMsg = '';
       return;
     }
     this.isSaving = true;
     this.errorMsg = '';
+    this.fieldErrors = {};
     try {
       const body = {
         agentId: form.agentId,

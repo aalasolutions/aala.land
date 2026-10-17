@@ -9,7 +9,8 @@
   <:body>
     <form
       id="transaction-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
@@ -29,7 +30,12 @@
             data-test-tx-payment
           />
         </Nuvo::Field>
-        <Nuvo::Field @label="Category" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Category"
+          @required={{true}}
+          @error={{this.categoryError}}
+          class="grow"
+        >
           <Nuvo::Dropdown
             id="tx-category"
             @align="start"
@@ -55,7 +61,12 @@
             data-test-tx-type
           />
         </Nuvo::Field>
-        <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Amount"
+          @required={{true}}
+          @error={{this.amountError}}
+          class="grow"
+        >
           <Nuvo::Input
             id="tx-amount"
             type="number"
@@ -83,6 +94,7 @@
         <Nuvo::Field
           @label={{this.dateLabel}}
           @required={{this.dateRequired}}
+          @error={{this.dateError}}
           class="grow"
         >
           <Nuvo::Input

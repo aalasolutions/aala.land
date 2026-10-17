@@ -144,6 +144,9 @@ export default class LeasesController extends PaginatedController {
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (fieldName === 'deleteReason' || fieldName === 'archiveReason') {
+      this.reasonError = '';
+    }
   }
 
   @action setArchivedTab(tabId) {
@@ -242,7 +245,7 @@ export default class LeasesController extends PaginatedController {
   @action async confirmDelete() {
     const reason = this.deleteReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
     await confirmDeleteModal(this, {
@@ -272,7 +275,7 @@ export default class LeasesController extends PaginatedController {
     const isArchive = this.archiveMode === 'archive';
     const reason = this.archiveReason.trim();
     if (isArchive && !reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 

@@ -19,10 +19,15 @@
   {{else}}
     <form
       data-test-forgot-password-form
-      class="flex col gap-5 w-full"
+      class="nu-form w-full"
+      novalidate
       {{on "submit" this.submitForgotPassword}}
     >
-      <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Field
+        @label="Email"
+        @required={{true}}
+        @error={{this.fieldErrors.resetEmail}}
+      >
         <Nuvo::Input
           id="reset-email"
           type="email"
@@ -66,10 +71,15 @@
 {{else}}
   <form
     data-test-login-form
-    class="flex col gap-5 w-full"
+    class="nu-form w-full"
+    novalidate
     {{on "submit" this.submit}}
   >
-    <Nuvo::Field @label="Email" @required={{true}}>
+    <Nuvo::Field
+      @label="Email"
+      @required={{true}}
+      @error={{this.fieldErrors.email}}
+    >
       <Nuvo::Input
         id="login-email"
         type="email"
@@ -82,7 +92,11 @@
       />
     </Nuvo::Field>
 
-    <Nuvo::Field @label="Password" @required={{true}}>
+    <Nuvo::Field
+      @label="Password"
+      @required={{true}}
+      @error={{this.fieldErrors.password}}
+    >
       <Nuvo::Input
         id="login-password"
         type="password"

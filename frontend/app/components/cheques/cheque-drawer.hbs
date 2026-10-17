@@ -9,19 +9,24 @@
   <:body>
     <form
       id="cheque-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{this.loadOnOpen}}
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field @label="Cheque Number" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Cheque Number"
+          @required={{true}}
+          @error={{this.fieldErrors.chequeNumber}}
+          class="grow"
+        >
           <Nuvo::Input
             id="chq-number"
             type="text"
             placeholder="e.g. 000123"
             @value={{this.form.chequeNumber}}
             @onInput={{fn this.setField "chequeNumber"}}
-            required={{true}}
             data-test-input-cheque-number
           />
         </Nuvo::Field>
@@ -37,25 +42,31 @@
           />
         </Nuvo::Field>
       </div>
-      <Nuvo::Field @label="Bank Name" @required={{true}}>
+      <Nuvo::Field
+        @label="Bank Name"
+        @required={{true}}
+        @error={{this.fieldErrors.bankName}}
+      >
         <Nuvo::Input
           id="chq-bank"
           type="text"
           placeholder="e.g. Emirates NBD"
           @value={{this.form.bankName}}
           @onInput={{fn this.setField "bankName"}}
-          required={{true}}
           data-test-input-bank
         />
       </Nuvo::Field>
-      <Nuvo::Field @label="Account Holder" @required={{true}}>
+      <Nuvo::Field
+        @label="Account Holder"
+        @required={{true}}
+        @error={{this.fieldErrors.accountHolder}}
+      >
         <Nuvo::Input
           id="chq-holder"
           type="text"
           placeholder="e.g. Ahmed Al Mansouri"
           @value={{this.form.accountHolder}}
           @onInput={{fn this.setField "accountHolder"}}
-          required={{true}}
           data-test-input-holder
         />
       </Nuvo::Field>
@@ -71,7 +82,12 @@
         />
       </Nuvo::Field>
       <div class="flex gap-4">
-        <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Amount"
+          @required={{true}}
+          @error={{this.fieldErrors.amount}}
+          class="grow"
+        >
           <Nuvo::Input
             id="chq-amount"
             type="number"
@@ -80,17 +96,20 @@
             placeholder="e.g. 8500"
             @value={{this.form.amount}}
             @onInput={{fn this.setField "amount"}}
-            required={{true}}
             data-test-input-amount
           />
         </Nuvo::Field>
-        <Nuvo::Field @label="Due Date" @required={{true}} class="grow">
+        <Nuvo::Field
+          @label="Due Date"
+          @required={{true}}
+          @error={{this.fieldErrors.dueDate}}
+          class="grow"
+        >
           <input
             id="chq-due"
             type="date"
             class="nu-input"
             value={{this.form.dueDate}}
-            required
             data-test-input-due-date
             {{on "input" (fn this.setFieldFromEvent "dueDate")}}
           />

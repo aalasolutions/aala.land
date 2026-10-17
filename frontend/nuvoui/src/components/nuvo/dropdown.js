@@ -5,6 +5,7 @@ import { isDestroyed, registerDestructor } from '@ember/destroyable';
 import { guidFor } from '@ember/object/internals';
 import { service } from '@ember/service';
 import { cancelTask, runTask } from 'ember-lifeline';
+import { resolveStatus, statusClass } from './-field-status.js';
 
 const PLACEMENTS = ['start', 'end', 'up'];
 const ALIGNMENTS = ['start', 'center', 'end'];
@@ -87,6 +88,16 @@ export default class NuDropdownComponent extends Component {
       parts.push('is-open');
     }
     return parts.join(' ');
+  }
+
+  // `@status` (`error | warning | success`, `@invalid`/`@valid` aliases) lands on
+  // the trigger button, or on the filter input when `@filterable`.
+  get status() {
+    return resolveStatus(this.args);
+  }
+
+  get triggerStatusClass() {
+    return statusClass(this.status);
   }
 
   get menuClasses() {

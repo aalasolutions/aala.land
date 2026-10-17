@@ -20,10 +20,19 @@ export default class LoginFormComponent extends Component {
   @tracked resetError = '';
 
   @tracked isGoogleLoading = false;
+  @tracked fieldErrors = {};
+
+  dropFieldErrors(...names) {
+    if (!names.some((name) => name in this.fieldErrors)) return;
+    const errors = { ...this.fieldErrors };
+    names.forEach((name) => delete errors[name]);
+    this.fieldErrors = errors;
+  }
 
   @action
   setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    this.dropFieldErrors(fieldName);
     if (fieldName === 'resetEmail') {
       this.resetError = '';
     } else {
@@ -35,6 +44,12 @@ export default class LoginFormComponent extends Component {
   async submit(event) {
     event.preventDefault();
     if (this.isLoading) return;
+
+    const errors = {};
+    if (!this.email.trim()) errors.email = 'Enter your email address';
+    if (!this.password) errors.password = 'Enter your password';
+    this.fieldErrors = errors;
+    if (Object.keys(errors).length) return;
 
     this.isLoading = true;
     this.errorMessage = '';
@@ -85,12 +100,18 @@ export default class LoginFormComponent extends Component {
     this.resetEmail = '';
     this.resetSent = false;
     this.resetError = '';
+    this.fieldErrors = {};
   }
 
   @action
   async submitForgotPassword(event) {
     event.preventDefault();
     if (this.resetLoading) return;
+    if (!this.resetEmail.trim()) {
+      this.fieldErrors = { resetEmail: 'Enter your email address' };
+      return;
+    }
+    this.fieldErrors = {};
     this.resetLoading = true;
     this.resetError = '';
     try {

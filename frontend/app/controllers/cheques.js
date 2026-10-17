@@ -12,6 +12,8 @@ import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
 import { formatDate } from '../helpers/format-date';
 import { MAX_BACKDATE_DAYS } from 'land/constants';
 
+const REASON_FIELDS = ['unclearReason', 'cancelReason', 'deleteReason'];
+
 export default class ChequesController extends PaginatedController {
   @service auth;
   @service notifications;
@@ -122,6 +124,7 @@ export default class ChequesController extends PaginatedController {
   // Nuvo inputs call onInput/onChange as (value, event).
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (REASON_FIELDS.includes(fieldName)) this.reasonError = '';
   }
 
   @action setTab(tab) {
@@ -250,6 +253,7 @@ export default class ChequesController extends PaginatedController {
   // Moving the clearing day back drags the deposit with it, and that correction sticks.
   @action setClearedDate(value) {
     this.clearedDate = value;
+    this.clearError = '';
     if (
       this.depositDateEditable &&
       this.clearDepositDate &&
@@ -276,7 +280,7 @@ export default class ChequesController extends PaginatedController {
     }
     const { earliest, latest } = this.clearDateWindow;
     if (!this.clearedDate) {
-      this.clearError = 'The date the cheque cleared is required.';
+      this.clearError = 'Enter the date it cleared';
       return;
     }
     if (this.clearedDate < earliest || this.clearedDate > latest) {
@@ -334,7 +338,7 @@ export default class ChequesController extends PaginatedController {
     if (!this.unclearChequeItem || this.isUnclearing) return;
     const reason = this.unclearReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 
@@ -371,7 +375,7 @@ export default class ChequesController extends PaginatedController {
     if (!this.chequeToCancel || this.isCancelling) return;
     const reason = this.cancelReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 
@@ -404,7 +408,7 @@ export default class ChequesController extends PaginatedController {
   @action async confirmDelete() {
     const reason = this.deleteReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
     await confirmDeleteModal(this, {

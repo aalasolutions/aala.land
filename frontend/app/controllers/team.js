@@ -23,6 +23,7 @@ export default class TeamController extends PaginatedController {
   @tracked removeReason = '';
   @tracked removeError = '';
   @tracked removeReasonError = '';
+  @tracked removeTargetError = '';
   @tracked isRemoving = false;
   @tracked reassignCandidates = [];
 
@@ -32,6 +33,7 @@ export default class TeamController extends PaginatedController {
   @tracked trimReason = '';
   @tracked trimError = '';
   @tracked trimReasonError = '';
+  @tracked trimKeepError = '';
   @tracked isTrimming = false;
   @tracked trimCandidates = [];
 
@@ -170,6 +172,13 @@ export default class TeamController extends PaginatedController {
   // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    const cleared = {
+      removeTargetId: 'removeTargetError',
+      removeReason: 'removeReasonError',
+      trimKeepId: 'trimKeepError',
+      trimReason: 'trimReasonError',
+    }[fieldName];
+    if (cleared) this[cleared] = '';
   }
 
   @action openCreate() {
@@ -212,6 +221,7 @@ export default class TeamController extends PaginatedController {
     this.removeReason = '';
     this.removeError = '';
     this.removeReasonError = '';
+    this.removeTargetError = '';
     this.reassignCandidates = [];
     this.showRemoveModal = true;
     this.refreshSeatInfo();
@@ -240,17 +250,12 @@ export default class TeamController extends PaginatedController {
   }
 
   @action continueRemove() {
-    if (!this.removeTargetId) {
-      this.removeError = 'Choose who receives the records.';
-      return;
-    }
-    if (!this.removeReason.trim()) {
-      this.removeError = '';
-      this.removeReasonError = 'A reason is required.';
-      return;
-    }
     this.removeError = '';
-    this.removeReasonError = '';
+    this.removeTargetError = this.removeTargetId
+      ? ''
+      : 'Choose who receives the records';
+    this.removeReasonError = this.removeReason.trim() ? '' : 'Enter a reason';
+    if (this.removeTargetError || this.removeReasonError) return;
     this.removeStep = 2;
   }
 
@@ -344,6 +349,7 @@ export default class TeamController extends PaginatedController {
     this.trimReason = 'Downgrading to the Free plan';
     this.trimError = '';
     this.trimReasonError = '';
+    this.trimKeepError = '';
     this.trimCandidates = [];
     this.showTrimModal = true;
     try {
@@ -359,22 +365,16 @@ export default class TeamController extends PaginatedController {
   }
 
   @action continueTrim() {
-    if (!this.trimKeepId) {
-      this.trimError = 'Choose the company admin who stays active.';
-      return;
-    }
-    if (this.trimOthersCount === 0) {
+    this.trimError = '';
+    this.trimKeepError = this.trimKeepId
+      ? ''
+      : 'Choose the company admin who stays active';
+    this.trimReasonError = this.trimReason.trim() ? '' : 'Enter a reason';
+    if (this.trimKeepId && this.trimOthersCount === 0) {
       this.trimError =
         'You already have only one active user. Nothing to trim.';
-      return;
     }
-    if (!this.trimReason.trim()) {
-      this.trimError = '';
-      this.trimReasonError = 'A reason is required.';
-      return;
-    }
-    this.trimError = '';
-    this.trimReasonError = '';
+    if (this.trimKeepError || this.trimReasonError || this.trimError) return;
     this.trimStep = 2;
   }
 

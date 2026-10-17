@@ -1,0 +1,177 @@
+<NuvoDocs::Page
+  @id="form"
+  @title="Form"
+  @subtitle="Every form state on one page: spacing, validation, floating labels, horizontal and custom controls."
+  @components="Nuvo::Field, Nuvo::FieldGroup, Nuvo::Input, Nuvo::Select, Nuvo::Textarea"
+>
+  <NuvoDocs::Section @title="Full form" @id="full-form">
+    <p class="nuvo-doc__intro">
+      A New Property form with gap-1 between fields. Press Save with the form empty to see every error at once;
+      typing in a field clears its own error.
+    </p>
+
+    {{#if this.saved}}
+      <Nuvo::Alert @variant="success" @icon="✓" @title="Saved (demo only)" data-test-nuvo-form-saved />
+    {{/if}}
+
+    <Nuvo::Card @title="New property">
+      <form class="nu-form" novalidate data-test-nuvo-form {{on "submit" this.save}}>
+        <Nuvo::Field @label="City" @required={{true}} @error={{this.errors.city}}>
+          <Nuvo::Input @value={{this.fields.city}} @onInput={{fn this.setField "city"}} data-test-nuvo-form-city />
+        </Nuvo::Field>
+
+        <Nuvo::Field @label="Location" @required={{true}} @error={{this.errors.location}}>
+          <Nuvo::Input @value={{this.fields.location}} @onInput={{fn this.setField "location"}} data-test-nuvo-form-location />
+        </Nuvo::Field>
+
+        <Nuvo::Field @label="Property number" @required={{true}} @error={{this.errors.propertyNumber}}>
+          <Nuvo::Input @value={{this.fields.propertyNumber}} @onInput={{fn this.setField "propertyNumber"}} data-test-nuvo-form-number />
+        </Nuvo::Field>
+
+        <Nuvo::Field @label="Property kind" @required={{true}} @error={{this.errors.kind}}>
+          <Nuvo::Select
+            @options={{this.kindOptions}}
+            @placeholder="Choose the property kind"
+            @value={{this.fields.kind}}
+            @onChange={{fn this.setField "kind"}}
+            data-test-nuvo-form-kind
+          />
+        </Nuvo::Field>
+
+        <Nuvo::Field @label="Price" @hint="Monthly rent in the region currency" @error={{this.errors.price}}>
+          <Nuvo::Input
+            @type="number"
+            @value={{this.fields.price}}
+            @onInput={{fn this.setField "price"}}
+            data-test-nuvo-form-price
+          />
+        </Nuvo::Field>
+
+        <div class="flex gap-4">
+          <Nuvo::Field @label="Bedrooms">
+            <Nuvo::Input @type="number" @value={{this.fields.bedrooms}} @onInput={{fn this.setField "bedrooms"}} data-test-nuvo-form-bedrooms />
+          </Nuvo::Field>
+          <Nuvo::Field @label="Bathrooms">
+            <Nuvo::Input @type="number" @value={{this.fields.bathrooms}} @onInput={{fn this.setField "bathrooms"}} data-test-nuvo-form-bathrooms />
+          </Nuvo::Field>
+        </div>
+
+        <Nuvo::Field @label="Description">
+          <Nuvo::Textarea @value={{this.fields.description}} @onInput={{fn this.setField "description"}} data-test-nuvo-form-description />
+        </Nuvo::Field>
+
+        <Nuvo::FieldGroup @label="Status" @required={{true}} @error={{this.errors.status}}>
+          <div class="nu-check-group">
+            <Nuvo::Radio @name="form-status" @value="available" @label="Available" @checked={{eq this.fields.status "available"}} @onChange={{fn this.setField "status"}} data-test-nuvo-form-status-available />
+            <Nuvo::Radio @name="form-status" @value="rented" @label="Rented" @checked={{eq this.fields.status "rented"}} @onChange={{fn this.setField "status"}} data-test-nuvo-form-status-rented />
+            <Nuvo::Radio @name="form-status" @value="maintenance" @label="Maintenance" @checked={{eq this.fields.status "maintenance"}} @onChange={{fn this.setField "status"}} data-test-nuvo-form-status-maintenance />
+          </div>
+        </Nuvo::FieldGroup>
+
+        <Nuvo::FieldGroup @label="Features">
+          <div class="nu-check-group">
+            <Nuvo::Checkbox @label="Pool" @checked={{this.fields.featPool}} @onChange={{fn this.setField "featPool"}} data-test-nuvo-form-feature-pool />
+            <Nuvo::Checkbox @label="Gym" @checked={{this.fields.featGym}} @onChange={{fn this.setField "featGym"}} data-test-nuvo-form-feature-gym />
+            <Nuvo::Checkbox @label="Parking" @checked={{this.fields.featParking}} @onChange={{fn this.setField "featParking"}} data-test-nuvo-form-feature-parking />
+          </div>
+        </Nuvo::FieldGroup>
+
+        <Nuvo::Field @label="Publish listing">
+          <Nuvo::Toggle @checked={{this.fields.publish}} @onChange={{fn this.setField "publish"}} data-test-nuvo-form-publish />
+        </Nuvo::Field>
+
+        <Nuvo::FormActions>
+          <Nuvo::Button @variant="primary" @type="submit" @text="Save" data-test-nuvo-form-save />
+          <Nuvo::Button @variant="secondary" @text="Reset" @onClick={{this.reset}} data-test-nuvo-form-reset />
+        </Nuvo::FormActions>
+      </form>
+    </Nuvo::Card>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Statuses" @id="statuses">
+    <p class="nuvo-doc__intro">Error, warning, success, hint only, and nothing (the empty line is still reserved).</p>
+    <div class="flex col gap-1">
+      <Nuvo::Field @label="Monthly rent" @error="Enter a price greater than 0">
+        <Nuvo::Input @value="-100" data-test-nuvo-form-status-error />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Monthly rent" @status="warning" @hint="Above the area average; check the amount">
+        <Nuvo::Input @value="400000" data-test-nuvo-form-status-warning />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Monthly rent" @status="success" @hint="Matches the signed lease">
+        <Nuvo::Input @value="85000" data-test-nuvo-form-status-success />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Monthly rent" @hint="Monthly rent in the region currency">
+        <Nuvo::Input @value="85000" data-test-nuvo-form-status-hint />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Monthly rent">
+        <Nuvo::Input @value="85000" data-test-nuvo-form-status-none />
+      </Nuvo::Field>
+    </div>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Floating labels" @id="floating">
+    <p class="nuvo-doc__intro">
+      Fill sets values from the controller; Clear programmatically empties them. A label stuck above an empty control is the bug to look for.
+    </p>
+    <div class="nu-form">
+      <div class="flex gap-4">
+        <Nuvo::Button @variant="primary" @text="Fill" @onClick={{this.fillFloating}} data-test-nuvo-form-fill />
+        <Nuvo::Button @variant="secondary" @text="Clear programmatically" @onClick={{this.clearFloating}} data-test-nuvo-form-clear />
+      </div>
+      <Nuvo::Field @placeholder="Property name (sm)" @hint="Shown to tenants">
+        <Nuvo::Input @size="sm" @value={{this.floating.small}} @onInput={{fn this.setFloating "small"}} data-test-nuvo-form-float-sm />
+      </Nuvo::Field>
+      <Nuvo::Field @placeholder="Property name (default)" @hint="Shown to tenants">
+        <Nuvo::Input @value={{this.floating.medium}} @onInput={{fn this.setFloating "medium"}} data-test-nuvo-form-float-md />
+      </Nuvo::Field>
+      <Nuvo::Field @placeholder="Property name (lg)" @hint="Shown to tenants">
+        <Nuvo::Input @size="lg" @value={{this.floating.large}} @onInput={{fn this.setFloating "large"}} data-test-nuvo-form-float-lg />
+      </Nuvo::Field>
+      <Nuvo::Field @placeholder="Search area">
+        <Nuvo::Input @prefixIcon="⌕" @value={{this.floating.search}} @onInput={{fn this.setFloating "search"}} data-test-nuvo-form-float-prefix />
+      </Nuvo::Field>
+      <Nuvo::Field @placeholder="Notes">
+        <Nuvo::Textarea @value={{this.floating.notes}} @onInput={{fn this.setFloating "notes"}} data-test-nuvo-form-float-textarea />
+      </Nuvo::Field>
+      <Nuvo::Field @placeholder="Property kind" as |f|>
+        <Nuvo::Select
+          @options={{this.kindOptions}}
+          @placeholder={{f.placeholder}}
+          @value={{this.floating.kind}}
+          @onChange={{fn this.setFloating "kind"}}
+          data-test-nuvo-form-float-select
+        />
+      </Nuvo::Field>
+    </div>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Horizontal" @id="horizontal">
+    <p class="nuvo-doc__intro">Label and control side by side, with one error.</p>
+    <div class="flex col gap-1">
+      <Nuvo::Field @label="City" @horizontal={{true}}>
+        <Nuvo::Input @value="Dubai" data-test-nuvo-form-horizontal-city />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Property kind" @horizontal={{true}}>
+        <Nuvo::Select @options={{this.kindOptions}} @placeholder="Choose the property kind" data-test-nuvo-form-horizontal-kind />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Price" @horizontal={{true}} @error="Enter a price greater than 0">
+        <Nuvo::Input @type="number" @value="0" data-test-nuvo-form-horizontal-price />
+      </Nuvo::Field>
+    </div>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dropdown and autocomplete in a Field" @id="dropdown">
+    <p class="nuvo-doc__intro">Combobox controls take the Field label, hint and error like native inputs.</p>
+    <div class="nu-form">
+      <div class="flex gap-4">
+        <Nuvo::Button @variant="secondary" @text="Toggle error" @onClick={{this.toggleDropdownError}} data-test-nuvo-form-dropdown-error />
+      </div>
+      <Nuvo::Field @label="Property kind" @hint="Pick one" @error={{if this.dropdownError "Choose the property kind"}}>
+        <Nuvo::Dropdown @options={{this.kindOptions}} @placeholder="Choose the property kind" data-test-nuvo-form-dropdown />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Building" @hint="Type to search" @error={{if this.dropdownError "Choose a building"}}>
+        <Nuvo::Autocomplete @options={{this.buildings}} @placeholder="Search buildings" data-test-nuvo-form-autocomplete />
+      </Nuvo::Field>
+    </div>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

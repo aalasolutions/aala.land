@@ -1086,7 +1086,7 @@ export default class WhatsappController extends Controller {
     if (!target || this.isDeletingMedia) return;
     const reason = this.mediaDeleteReason.trim();
     if (!reason) {
-      this.mediaReasonError = 'Reason is required.';
+      this.mediaReasonError = 'Enter a reason';
       return;
     }
     this.isDeletingMedia = true;

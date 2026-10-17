@@ -484,10 +484,15 @@
         <h3 class="text-lg font-bold mb-4">Company Information</h3>
         <form
           aria-label="Company Information"
-          class="flex col gap-4"
+          class="nu-form"
+          novalidate
           {{on "submit" this.saveCompany}}
         >
-          <Nuvo::Field @label="Company Name" @required={{true}}>
+          <Nuvo::Field
+            @label="Company Name"
+            @required={{true}}
+            @error={{this.fieldErrors.formName}}
+          >
             <Nuvo::Input
               id="company-name"
               type="text"

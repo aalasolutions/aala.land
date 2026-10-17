@@ -137,7 +137,9 @@ module(
       await click('[data-test-unit-save]');
 
       assert
-        .dom('#property-form .text-danger')
+        .dom(
+          '[data-test-nu-field]:has(#unit-sub-type) [data-test-nu-field-error]',
+        )
         .hasText('Choose the property kind.');
       assert.strictEqual(this.sent.length, 0);
     });
@@ -157,7 +159,7 @@ module(
     });
 
     test('edit on the unit page, and a full owner sends no number', async function (assert) {
-      this.unit = { id: 'unit-1', subType: 'APARTMENT', owner: LIMITED };
+      this.unit = { id: 'unit-1', unitNumber: '101', subType: 'APARTMENT', owner: LIMITED };
       await render(
         hbs`<Properties::PropertyDrawer @open={{true}} @variant="unit" @unit={{this.unit}} @onClose={{this.noop}} />`,
       );
@@ -166,7 +168,7 @@ module(
       await click('[data-test-unit-save]');
       assert.strictEqual(this.sent[0].body.ownerVerifyPhone, '0501234567');
 
-      this.set('unit', { id: 'unit-2', subType: 'APARTMENT', owner: FULL });
+      this.set('unit', { id: 'unit-2', unitNumber: '102', subType: 'APARTMENT', owner: FULL });
       assert.dom('[data-test-contact-verify-phone]').doesNotExist();
       await click('[data-test-unit-save]');
       assert.strictEqual(this.sent[1].body.ownerId, 'owner-1');

@@ -108,27 +108,30 @@ module('Unit | Controller | admin/system', function (hooks) {
     await controller.submitAdd();
     assert.strictEqual(calls.length, 0);
     assert.strictEqual(
-      controller.priceError,
-      'Countries must be 2-letter codes, comma separated.',
+      controller.fieldErrors.addCountries,
+      'Enter 2-letter country codes separated by commas',
     );
 
     controller.addCountries = '';
     controller.addAmount = '0.99';
     await controller.submitAdd();
     assert.strictEqual(calls.length, 0);
-    assert.strictEqual(controller.priceError, 'Enter an amount of 1 or more.');
+    assert.strictEqual(
+      controller.fieldErrors.addAmount,
+      'Enter an amount of 1 or more',
+    );
 
     controller.addAmount = '19.999';
     await controller.submitAdd();
     assert.strictEqual(
-      controller.priceError,
-      'USD amounts take at most 2 decimal places.',
+      controller.fieldErrors.addAmount,
+      'Use at most 2 decimal places for USD',
     );
     assert.strictEqual(
       controller.amountError('1500.5', 'jpy'),
-      'JPY amounts take no decimal places.',
+      'Use a whole number for JPY',
     );
-    assert.strictEqual(controller.amountError('', 'usd'), 'Enter an amount.');
+    assert.strictEqual(controller.amountError('', 'usd'), 'Enter an amount');
     assert.strictEqual(calls.length, 0);
 
     controller.addAmount = '25';

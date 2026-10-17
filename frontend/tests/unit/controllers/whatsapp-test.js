@@ -2601,7 +2601,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     await controller.confirmDeleteMedia();
 
     assert.false(called);
-    assert.strictEqual(controller.mediaReasonError, 'Reason is required.');
+    assert.strictEqual(controller.mediaReasonError, 'Enter a reason');
     assert.ok(controller.mediaToDelete, 'modal stays open');
   });
 

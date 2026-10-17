@@ -57,6 +57,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
   @tracked vendors = [];
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
   @tracked reasonError = '';
 
   priorityOptions = PRIORITY_OPTIONS;
@@ -95,6 +96,12 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
 
   get errorMsg() {
     return this.error?.source === this.source ? this.error.message : '';
+  }
+
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
   }
 
   get isEdit() {
@@ -141,6 +148,13 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     return this.vendorOptionsFor(this.form.category);
   }
 
+  dropFieldErrors(...names) {
+    const errors = { ...this.fieldErrors };
+    if (!names.some((name) => name in errors)) return;
+    names.forEach((name) => delete errors[name]);
+    this.fieldError = { source: this.source, errors };
+  }
+
   @action setField(name, value) {
     const next = { ...this.form, [name]: value };
 
@@ -153,6 +167,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     if (name === 'reason') this.reasonError = '';
     this.draftFor = this.source;
     this.draft = next;
+    this.dropFieldErrors(name);
   }
 
   @action close() {
@@ -165,6 +180,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
     this.units = [];
     this.vendors = [];
     this.error = null;
+    this.fieldError = null;
     this.reasonError = '';
     this.args.onClosed?.();
   }
@@ -175,21 +191,21 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
 
     const form = this.form;
     const source = this.source;
-    if (!form.unitId) {
-      this.error = {
-        source,
-        message: 'Please select a property before saving the work order.',
-      };
-      return;
-    }
+    const fields = {};
+    if (!form.unitId) fields.unitId = 'Choose a property';
+    if (!form.title?.trim()) fields.title = 'Enter a title';
+    if (!form.description?.trim()) fields.description = 'Enter a description';
     const reason = form.reason.trim();
-    if (this.isCancelling && !reason) {
-      this.reasonError = 'A reason is required to cancel a work order.';
+    const needsReason = this.isCancelling && !reason;
+    if (needsReason) this.reasonError = 'Enter a reason for cancelling';
+    if (needsReason || Object.keys(fields).length > 0) {
+      this.fieldError = { source, errors: fields };
       return;
     }
 
     this.isSaving = true;
     this.error = null;
+    this.fieldError = null;
     this.reasonError = '';
 
     const isEdit = this.isEdit;

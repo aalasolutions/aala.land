@@ -176,6 +176,42 @@ RTL on its own: the SCSS (shipped as the HTML/CSS kit) and the components.
   labels keep their own direction.
 - **Verify on `/nuvo`** with the Dir switch, in both directions.
 
+## Validation
+
+`Nuvo::Field` owns the wiring between a control, its label and its message. A
+template passes state to the Field; the Field writes the ARIA onto the control.
+
+- **Status vocabulary.** `@status` is `error`, `warning` or `success`.
+  `@invalid` aliases `error`, `@valid` aliases `success`, and a non-empty
+  `@error` on a Field or FieldGroup implies `error`. Unknown values render no
+  status. Input, Textarea, Select, Checkbox, Radio, Toggle, Dropdown and
+  Autocomplete accept the same arguments; an argument on the control wins over
+  the Field around it.
+- **What the Field writes**, reactively, onto the control: `aria-invalid="true"`
+  while the status is `error`; `aria-describedby` with the hint id, the error id,
+  then any id already there; `aria-required="true"` with `@required`; and
+  `data-nu-field-status` for the warning and success styles. Styles key on
+  `[aria-invalid="true"]` and `.is-invalid`, never on a class alone, so the red
+  state cannot drift from what assistive technology hears.
+- **Message slot.** Every Field and FieldGroup renders `.nu-field__message`,
+  reserving one line of message text (`--nu-field--MessageMinHeight`, from the
+  type scale) whether or not there is a message. It is `aria-live="polite"`.
+  The error replaces the hint and always carries an icon.
+- **Groups.** Radio and checkbox sets use `Nuvo::FieldGroup` (`<fieldset>` +
+  `<legend>`), not a Field. Its status reaches every control inside it.
+- **Label modes.** `@label` renders a static label above the control.
+  Without `@label`, `@placeholder` renders a floating label inside the control
+  that rises on focus or once there is a value; the native placeholder becomes a
+  single space. Pass the yielded `placeholder` to a Select or Autocomplete.
+  Format examples go in `@hint`, because a floated label leaves no room for them.
+- **Message wording.** Say what is wrong and how to fix it, in sentence case,
+  without blaming the user: "Enter a rent greater than 0", not "Invalid value"
+  or "Error!". Name the field's own words ("Choose a region"), keep it to one
+  line, and end without a period.
+- **Not every input is a Field.** Toolbar search boxes, inline filters and
+  composers stay bare controls with `aria-label` and no reserved slot.
+- **Form container.** Wrap fields in `.nu-form`; fields sit `--nu-form--Gap` apart because each Field's message line is the spacing, and any other child (actions, dividers, alerts) gets `--nu-form--SectionGap`.
+
 ## Showcase
 
 Every component gets a section appended to `app/templates/uikit.hbs`:

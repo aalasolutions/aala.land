@@ -73,12 +73,14 @@ module('Integration | Component | contact/contact-drawer', function (hooks) {
   test('create sends isWhatsapp true when ticked', async function (assert) {
     await renderDrawer();
     await fillIn('[data-test-input-first-name]', 'New');
+    await fillIn('[data-test-input-phone]', '+971511111111');
     await click('[data-test-input-is-whatsapp] [data-test-nu-checkbox-input]');
     await click('[data-test-save-contact]');
 
     assert.deepEqual(sent(this.calls, 'POST').body, {
       isWhatsapp: true,
       firstName: 'New',
+      phone: '+971511111111',
     });
   });
 

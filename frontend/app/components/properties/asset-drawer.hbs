@@ -7,9 +7,13 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="asset-form" class="flex col gap-4" {{on "submit" this.save}}>
+    <form id="asset-form" class="nu-form" novalidate {{on "submit" this.save}}>
       {{#unless this.isEdit}}
-        <Nuvo::Field @label="City" @required={{true}}>
+        <Nuvo::Field
+          @label="City"
+          @required={{true}}
+          @error={{this.fieldErrors.city}}
+        >
           <RemoteAutocomplete
             @listUrl={{this.cityListUrl}}
             @searchUrl={{this.citySearchUrl}}
@@ -22,7 +26,11 @@
           />
         </Nuvo::Field>
         {{#if this.form.city}}
-          <Nuvo::Field @label="Location / Area" @required={{true}}>
+          <Nuvo::Field
+            @label="Location / Area"
+            @required={{true}}
+            @error={{this.fieldErrors.locality}}
+          >
             <RemoteAutocomplete
               @listUrl={{this.localityListUrl}}
               @searchUrl={{this.localitySearchUrl}}
@@ -36,7 +44,11 @@
           </Nuvo::Field>
         {{/if}}
       {{/unless}}
-      <Nuvo::Field @label="Asset Name" @required={{true}}>
+      <Nuvo::Field
+        @label="Asset Name"
+        @required={{true}}
+        @error={{this.fieldErrors.name}}
+      >
         <Nuvo::Input
           data-test-asset-name
           id="b-name"

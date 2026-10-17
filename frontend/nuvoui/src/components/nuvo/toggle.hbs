@@ -1,9 +1,12 @@
 <label class={{this.classes}} data-test-nu-toggle ...attributes>
   <input
     type="checkbox"
-    class="nu-toggle__input"
+    class={{this.inputClasses}}
     checked={{@checked}}
     disabled={{@disabled}}
+    aria-invalid={{if this.isInvalid "true"}}
+    aria-describedby={{@describedBy}}
+    aria-required={{if @required "true"}}
     data-test-nu-toggle-input
     {{on "change" this.handleChange}}
   />

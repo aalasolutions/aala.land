@@ -12,7 +12,8 @@
     readonly={{@readonly}}
     maxlength={{@maxlength}}
     autocomplete={{if @autocomplete @autocomplete "off"}}
-    aria-invalid={{if @invalid "true"}}
+    inputmode={{@inputmode}}
+    aria-invalid={{if this.isInvalid "true"}}
     dir={{this.dir}}
     data-test-nu-input
     {{on "input" this.handleInput}}

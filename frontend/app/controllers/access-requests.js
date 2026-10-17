@@ -70,6 +70,7 @@ export default class AccessRequestsController extends PaginatedController {
   @tracked expiryChoice = EXPIRY_DEFAULT;
   @tracked expiryDate = '';
   @tracked approveError = '';
+  @tracked expiryDateError = '';
   @tracked isApproving = false;
 
   @tracked deciding = null;
@@ -123,6 +124,8 @@ export default class AccessRequestsController extends PaginatedController {
 
   @action setFieldValue(field, value) {
     this[field] = value;
+    if (field === 'expiryDate') this.expiryDateError = '';
+    if (field === 'reason') this.reasonError = '';
   }
 
   @action openApprove(request) {
@@ -130,6 +133,7 @@ export default class AccessRequestsController extends PaginatedController {
     this.expiryChoice = EXPIRY_DEFAULT;
     this.expiryDate = '';
     this.approveError = '';
+    this.expiryDateError = '';
   }
 
   @action closeApprove() {
@@ -139,6 +143,7 @@ export default class AccessRequestsController extends PaginatedController {
   @action setExpiryChoice(value) {
     this.expiryChoice = value;
     this.approveError = '';
+    this.expiryDateError = '';
   }
 
   @action async confirmApprove(event) {
@@ -150,11 +155,13 @@ export default class AccessRequestsController extends PaginatedController {
       this.region.activeRegion?.timezone,
     );
     if (!body) {
-      this.approveError = 'Pick the date the access ends.';
+      this.approveError = '';
+      this.expiryDateError = 'Choose the date the access ends';
       return;
     }
     this.isApproving = true;
     this.approveError = '';
+    this.expiryDateError = '';
     try {
       await this.auth.fetchJson(
         `/contact-access-requests/${this.approving.id}/approve`,
@@ -187,7 +194,7 @@ export default class AccessRequestsController extends PaginatedController {
     if (!this.deciding || this.isDeciding) return;
     const reason = this.reason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
     const decision = this.decision;

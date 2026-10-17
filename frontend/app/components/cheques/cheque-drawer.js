@@ -41,6 +41,7 @@ export default class ChequesChequeDrawerComponent extends Component {
   @tracked units = [];
   @tracked isSaving = false;
   @tracked error = null;
+  @tracked fieldError = null;
 
   draftFor = null;
   unitsRequest = 0;
@@ -84,6 +85,12 @@ export default class ChequesChequeDrawerComponent extends Component {
     return this.error?.source === this.source ? this.error.message : '';
   }
 
+  get fieldErrors() {
+    return this.fieldError?.source === this.source
+      ? this.fieldError.errors
+      : {};
+  }
+
   get unitOptions() {
     return [
       EMPTY_UNIT_OPTION,
@@ -97,6 +104,27 @@ export default class ChequesChequeDrawerComponent extends Component {
   @action setField(name, value) {
     this.draftFor = this.source;
     this.draft = { ...this.form, [name]: value };
+    this.dropFieldError(name);
+  }
+
+  dropFieldError(name) {
+    if (!(name in this.fieldErrors)) return;
+    const errors = { ...this.fieldErrors };
+    delete errors[name];
+    this.fieldError = { source: this.source, errors };
+  }
+
+  validate(form) {
+    const errors = {};
+    if (!form.chequeNumber.trim())
+      errors.chequeNumber = 'Enter a cheque number';
+    if (!form.bankName.trim()) errors.bankName = 'Enter a bank name';
+    if (!form.accountHolder.trim()) {
+      errors.accountHolder = 'Enter an account holder';
+    }
+    if (String(form.amount).trim() === '') errors.amount = 'Enter an amount';
+    if (!form.dueDate) errors.dueDate = 'Enter a due date';
+    return errors;
   }
 
   // Native <input type="date"> still emits a raw DOM event.
@@ -113,16 +141,25 @@ export default class ChequesChequeDrawerComponent extends Component {
     this.draftFor = null;
     this.units = [];
     this.error = null;
+    this.fieldError = null;
     this.args.onClosed?.();
   }
 
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
-    this.error = null;
 
     const form = this.form;
+    const errors = this.validate(form);
+    if (Object.keys(errors).length > 0) {
+      this.error = null;
+      this.fieldError = { source: this.source, errors };
+      return;
+    }
+
+    this.isSaving = true;
+    this.error = null;
+    this.fieldError = null;
     const isEdit = this.isEdit;
     const source = this.source;
     const path = isEdit ? `/cheques/${this.args.cheque.id}` : '/cheques';

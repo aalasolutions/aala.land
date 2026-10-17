@@ -34,6 +34,8 @@ $nu-font-size: core-typo.$font-sizes;
 
 $nu-font-weight: core-typo.$font-weights;
 
+$nu-line-height: core-typo.$line-heights;
+
 // Core's scale bottoms out at xs (0.75rem). Badges, tags, toggle inline text and
 // the topbar meta lines need one step below it. Declared once here rather than
 // hardcoded at the call sites.
@@ -130,6 +132,14 @@ $nu-variant-roles: (
     @error "nu-font-weight: unknown key `#{$key}`.";
   }
   @return map.get($nu-font-weight, $k);
+}
+
+@function nu-line-height($key) {
+  $k: "#{$key}";
+  @if not map.has-key($nu-line-height, $k) {
+    @error "nu-line-height: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-line-height, $k);
 }
 
 @function nu-shadow($key) {

@@ -11,6 +11,7 @@ export default class ResetPasswordFormComponent extends Component {
   @tracked isLoading = false;
   @tracked isSuccess = false;
   @tracked errorMessage = '';
+  @tracked fieldErrors = {};
 
   get token() {
     return this.args.token ?? '';
@@ -32,6 +33,11 @@ export default class ResetPasswordFormComponent extends Component {
   updateField(field, value) {
     this[field] = value;
     this.errorMessage = '';
+    if (field in this.fieldErrors) {
+      const errors = { ...this.fieldErrors };
+      delete errors[field];
+      this.fieldErrors = errors;
+    }
   }
 
   @action
@@ -45,15 +51,19 @@ export default class ResetPasswordFormComponent extends Component {
       return;
     }
 
-    if (this.password.length < 8) {
-      this.errorMessage = 'Password must be at least 8 characters.';
-      return;
+    const errors = {};
+    if (!this.password) {
+      errors.password = 'Enter a password';
+    } else if (this.password.length < 8) {
+      errors.password = 'Use at least 8 characters';
     }
-
-    if (this.password !== this.confirmPassword) {
-      this.errorMessage = 'Passwords do not match.';
-      return;
+    if (!this.confirmPassword) {
+      errors.confirmPassword = 'Confirm your password';
+    } else if (this.password !== this.confirmPassword) {
+      errors.confirmPassword = 'Re-enter the same password';
     }
+    this.fieldErrors = errors;
+    if (Object.keys(errors).length) return;
 
     this.isLoading = true;
     this.errorMessage = '';

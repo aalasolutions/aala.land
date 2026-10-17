@@ -6,6 +6,28 @@ export default class NuvoFieldController extends Controller {
   @tracked filterStatus = '';
   @tracked filterSearch = '';
   @tracked notify = true;
+  @tracked chequeNumber = '';
+  @tracked chequeError = null;
+  @tracked paymentMethod = null;
+
+  buildings = [
+    { id: '1', name: 'Marina Tower' },
+    { id: '2', name: 'Bay Square' },
+  ];
+
+  @action
+  setChequeNumber(value) {
+    this.chequeNumber = value;
+    this.chequeError =
+      value && !/^[0-9]{6}$/.test(value)
+        ? 'Enter the six digits printed on the cheque'
+        : null;
+  }
+
+  @action
+  setPaymentMethod(value) {
+    this.paymentMethod = value;
+  }
 
   regionOptions = [
     { value: 'dubai-marina', label: 'Dubai Marina' },
@@ -51,8 +73,38 @@ export default class NuvoFieldController extends Controller {
   <Nuvo::Input @placeholder="Marina Tower" />
 </Nuvo::Field>`,
     error: `<Nuvo::Field @label="Monthly rent" @hint="Whole dirhams" @error="Rent must be greater than 0">
-  <Nuvo::Input @invalid={{true}} @value="-100" />
+  <Nuvo::Input @value="-100" />
 </Nuvo::Field>`,
+    statuses: `<Nuvo::Field @label="Monthly rent" @error="Enter a rent greater than 0">
+  <Nuvo::Input @value="-100" />
+</Nuvo::Field>
+<Nuvo::Field @label="Monthly rent" @status="warning" @hint="Above the area average; check the amount">
+  <Nuvo::Input @value="400000" />
+</Nuvo::Field>
+<Nuvo::Field @label="Monthly rent" @status="success" @hint="Matches the signed lease">
+  <Nuvo::Input @value="85000" />
+</Nuvo::Field>`,
+    statusControls: `<Nuvo::Field @label="Region" @error="Choose a region">
+  <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+</Nuvo::Field>
+<Nuvo::Field @label="Terms" @error="Accept the terms to continue">
+  <Nuvo::Checkbox @label="I accept the terms" />
+</Nuvo::Field>`,
+    liveError: `<Nuvo::Field @label="Cheque number" @hint="Six digits" @error={{this.chequeError}} @required={{true}}>
+  <Nuvo::Input @value={{this.chequeNumber}} @inputmode="numeric" @onInput={{this.setChequeNumber}} pattern="[0-9]*" />
+</Nuvo::Field>`,
+    floating: `<Nuvo::Field @placeholder="Property name" @hint="Shown to tenants on the portal">
+  <Nuvo::Input />
+</Nuvo::Field>
+<Nuvo::Field @placeholder="Region" as |f|>
+  <Nuvo::Select @options={{this.regionOptions}} @placeholder={{f.placeholder}} />
+</Nuvo::Field>`,
+    fieldGroup: `<Nuvo::FieldGroup @label="Payment method" @required={{true}} @error="Choose how the tenant pays">
+  <div class="nu-check-group">
+    <Nuvo::Radio @name="pay" @value="cheque" @label="Cheque" />
+    <Nuvo::Radio @name="pay" @value="transfer" @label="Bank transfer" />
+  </div>
+</Nuvo::FieldGroup>`,
     horizontal: `<Nuvo::Field @label="Region" @horizontal={{true}}>
   <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
 </Nuvo::Field>`,
@@ -103,8 +155,12 @@ export default class NuvoFieldController extends Controller {
   fieldArgRows = [
     { name: '@label', type: 'string', default: '', description: 'Label text. Linked to the first native control in the block by for/id.' },
     { name: '@required', type: 'boolean', default: 'false', description: 'Appends an aria-hidden asterisk to the label. Set required on the control itself as well.' },
-    { name: '@hint', type: 'string', default: '', description: 'Helper text under the control. Hidden while @error is set.' },
-    { name: '@error', type: 'string', default: '', description: 'Error text under the control; replaces the hint.' },
+    { name: '@placeholder', type: 'string', default: '', description: 'Without @label: floating label text inside the control. The native placeholder becomes a single space.' },
+    { name: '@hint', type: 'string', default: '', description: 'Helper text under the control. Hidden while @error is set. Colored by a warning or success status.' },
+    { name: '@error', type: 'string', default: '', description: 'Error text with an icon; replaces the hint and implies status error.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'Validation status written onto the control. A status argument on the control itself wins.' },
+    { name: '@invalid', type: 'boolean', default: 'false', description: 'Alias for @status="error".' },
+    { name: '@valid', type: 'boolean', default: 'false', description: 'Alias for @status="success".' },
     { name: '@horizontal', type: 'boolean', default: 'false', description: 'Label and control side by side (m-horizontal).' },
     { name: '@flush', type: 'boolean', default: 'false', description: 'Removes the outer block margin (m-flush).' },
     { name: '@tooltip', type: 'string', default: '', description: 'Adds a question-mark button beside the label carrying this text as a tooltip.' },
@@ -112,7 +168,16 @@ export default class NuvoFieldController extends Controller {
   ];
 
   fieldBlockRows = [
-    { name: 'default', description: 'The control. A native input, textarea or select receives the label id; a combobox, listbox or button falls back to aria-labelledby.' },
+    { name: 'default', description: 'The control. A native input, textarea or select receives the label id; a combobox, listbox or button falls back to aria-labelledby. Yields status, invalid, valid, required, controlId, labelId, hintId, errorId, describedBy and placeholder.' },
+  ];
+
+  groupArgRows = [
+    { name: '@label', type: 'string', default: '', description: 'Legend text.' },
+    { name: '@required', type: 'boolean', default: 'false', description: 'Asterisk on the legend.' },
+    { name: '@hint', type: 'string', default: '', description: 'Helper text for the set.' },
+    { name: '@error', type: 'string', default: '', description: 'Error for the set; implies status error.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'Written onto every control inside. @invalid and @valid alias it.' },
+    { name: '@flush', type: 'boolean', default: 'false', description: 'Removes the outer block margin.' },
   ];
 
   actionsArgRows = [

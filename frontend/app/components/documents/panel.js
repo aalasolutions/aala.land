@@ -158,6 +158,7 @@ export default class DocumentsPanelComponent extends Component {
   @tracked uploadProgress = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked fieldErrors = {};
 
   @tracked showDeleteModal = false;
   @tracked documentToDelete = null;
@@ -322,7 +323,7 @@ export default class DocumentsPanelComponent extends Component {
     if (this.args.presetLink || this.formRelatedType === 'none') return '';
     if (this.formRecord) return '';
     const label = optionLabelFor(RELATED_TYPES, this.formRelatedType);
-    return `Choose a ${label.toLowerCase()} to link, or pick Library only.`;
+    return `Choose a ${label.toLowerCase()} or pick Library only`;
   }
 
   // A relink clears the old field too; the server allows only one link per document.
@@ -409,6 +410,7 @@ export default class DocumentsPanelComponent extends Component {
     this.selectedFile = null;
     this.uploadProgress = null;
     this.errorMsg = '';
+    this.fieldErrors = {};
   }
 
   @action openUpload() {
@@ -428,6 +430,7 @@ export default class DocumentsPanelComponent extends Component {
   @action resetDrawer() {
     this.editDocument = null;
     this.errorMsg = '';
+    this.fieldErrors = {};
     this.selectedFile = null;
     this.uploadProgress = null;
   }
@@ -435,12 +438,31 @@ export default class DocumentsPanelComponent extends Component {
   // Nuvo inputs and dropdowns report the value, not the DOM event.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+    if (fieldName === 'formName') this.dropFieldErrors('name');
+  }
+
+  dropFieldErrors(...names) {
+    if (!names.some((name) => name in this.fieldErrors)) return;
+    const errors = { ...this.fieldErrors };
+    names.forEach((name) => delete errors[name]);
+    this.fieldErrors = errors;
+  }
+
+  validate() {
+    const fields = {};
+    if (!this.formName.trim()) fields.name = 'Enter a document name';
+    if (this.linkError) fields.record = this.linkError;
+    if (!this.editDocument && !this.selectedFile) {
+      fields.file = 'Choose a file to upload';
+    }
+    return fields;
   }
 
   @action setRelatedType(value) {
     if (value === this.formRelatedType) return;
     this.formRelatedType = value;
     this.formRecord = null;
+    this.dropFieldErrors('record');
     if (!categoryFits(this.formCategory, this.categoryLinkType)) {
       this.formCategory = 'OTHER';
     }
@@ -448,6 +470,7 @@ export default class DocumentsPanelComponent extends Component {
 
   @action selectRecord(item) {
     this.formRecord = item ?? null;
+    this.dropFieldErrors('record');
   }
 
   @action clearRecord() {
@@ -458,16 +481,20 @@ export default class DocumentsPanelComponent extends Component {
     const file = e.target.files?.[0];
     if (!file) return;
     this.selectedFile = file;
-    if (!this.formName) {
+    const autoNamed = !this.formName;
+    if (autoNamed) {
       this.formName = file.name;
     }
+    this.dropFieldErrors(...(autoNamed ? ['file', 'name'] : ['file']));
   }
 
   @action async saveDocument(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    if (this.linkError) {
-      this.errorMsg = this.linkError;
+    const fields = this.validate();
+    if (Object.keys(fields).length > 0) {
+      this.fieldErrors = fields;
+      this.errorMsg = '';
       return;
     }
     this.isSaving = true;
@@ -487,9 +514,6 @@ export default class DocumentsPanelComponent extends Component {
         });
         this.notifications.success('Document updated');
       } else {
-        if (!this.selectedFile) {
-          throw new Error('Please select a file to upload');
-        }
         this.uploadProgress = 0;
 
         const formData = new FormData();

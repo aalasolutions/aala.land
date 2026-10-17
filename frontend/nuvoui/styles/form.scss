@@ -1,7 +1,20 @@
 // nu-field / nu-input - form controls
 @use "./mixins/bem" as *;
 @use "./mixins/var" as *;
+@use "sass:list";
 @use "./common/var" as *;
+
+// ---- autofill ----
+
+// Browsers paint their own autofill background; an inset shadow covers it with
+// the surface token and the long transition holds the native fill off. Low
+// specificity on purpose: the kit's focus, invalid and status rules win.
+:where(input, select, textarea):is(:autofill, :-webkit-autofill) {
+  border-color: var(--nu-border-control);
+  box-shadow: 0 0 0 100vmax var(--nu-bg-surface) inset;
+  -webkit-text-fill-color: var(--nu-text-regular);
+  transition: background-color 0s 50000s;
+}
 
 // ---- text-like controls ----
 
@@ -89,16 +102,40 @@
     inline-size: auto;
   }
 
-  @include when(invalid) {
-    --nu-input--BorderColor: var(--nu-danger);
-    --nu-input--focus--BorderColor: var(--nu-danger);
-    --nu-input--focus--BoxShadow: #{nu-focus-ring(danger)};
+  // Before the status rules: at equal specificity a status border must win.
+  &:is(:autofill, :-webkit-autofill) {
+    --nu-input--BorderColor: var(--nu-border-control);
+
+    transition: background-color 0s 50000s;
   }
 
-  @include when(valid) {
+  // The focus ring and the inset fill share box-shadow, so both are listed.
+  &:is(:autofill, :-webkit-autofill):focus {
+    box-shadow:
+      nu-var("input", "focus--BoxShadow"),
+      0 0 0 100vmax var(--nu-bg-surface) inset;
+  }
+
+  &.is-valid,
+  &[data-nu-field-status="success"] {
     --nu-input--BorderColor: var(--nu-success);
     --nu-input--focus--BorderColor: var(--nu-success);
     --nu-input--focus--BoxShadow: #{nu-focus-ring(success)};
+  }
+
+  &.is-warning,
+  &[data-nu-field-status="warning"] {
+    --nu-input--BorderColor: var(--nu-warning);
+    --nu-input--focus--BorderColor: var(--nu-warning);
+    --nu-input--focus--BoxShadow: #{nu-focus-ring(warning)};
+  }
+
+  // Keyed on aria-invalid too, so the red state cannot drift from what assistive tech hears.
+  &.is-invalid,
+  &[aria-invalid="true"] {
+    --nu-input--BorderColor: var(--nu-danger);
+    --nu-input--focus--BorderColor: var(--nu-danger);
+    --nu-input--focus--BoxShadow: #{nu-focus-ring(danger)};
   }
 }
 
@@ -269,12 +306,23 @@
 
 $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
 
+// One line of message text, from the type scale, so the reserved slot tracks it.
+$nu-field-message-font-size: nu-font-size(xs);
+$nu-field-message-line-height: nu-line-height(normal);
+
 @include b(field) {
   @include nu-root("field", (
     "Gap": nu-space(2),
-    "MarginBlockEnd": nu-space(4),
+    "MarginBlockEnd": 0,
+    "MessageGap": calc(#{nu-space(1)} / 2),
     // One label line; the label row and the labelless spacer both use it.
     "LabelLineHeight": $nu-field-label-line-height,
+    "MessageFontSize": $nu-field-message-font-size,
+    "MessageLineHeight": $nu-field-message-line-height,
+    "MessageMinHeight": calc(#{$nu-field-message-font-size} * #{$nu-field-message-line-height}),
+    "FloatLabelInset": nu-space(3),
+    "FloatLabelColor": var(--nu-text-muted),
+    "FloatLabelBackground": var(--nu-bg-surface),
   ));
 
   display: flex;
@@ -319,22 +367,60 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
     }
   }
 
+  // Sits MessageGap under the control; the slot itself spaces the next field.
+  > .nu-field__message {
+    margin-block-start: calc(#{nu-var("field", "MessageGap")} - #{nu-var("field", "Gap")});
+  }
+
+  // Always rendered and one line tall even when empty, so a message never shifts the layout.
+  @include e(message) {
+    display: block;
+    // Fallbacks: the slot also renders inside Nuvo::FieldGroup, outside .nu-field.
+    min-block-size: nu-var("field", "MessageMinHeight", calc(#{$nu-field-message-font-size} * #{$nu-field-message-line-height}));
+    font-size: nu-var("field", "MessageFontSize", $nu-field-message-font-size);
+    line-height: nu-var("field", "MessageLineHeight", $nu-field-message-line-height);
+  }
+
   @include e(hint) {
-    font-size: nu-font-size(xs);
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    font-size: nu-var("field", "MessageFontSize", $nu-field-message-font-size);
     color: var(--nu-text-muted);
+
+    @include m(warning) {
+      color: var(--nu-text-warning);
+    }
+
+    @include m(success) {
+      color: var(--nu-text-success);
+    }
   }
 
   @include e(error) {
     display: flex;
     align-items: center;
     gap: nu-space(1);
-    font-size: nu-font-size(xs);
+    font-size: nu-var("field", "MessageFontSize", $nu-field-message-font-size);
     color: var(--nu-danger);
+  }
+
+  @include e(message-icon) {
+    flex-shrink: 0;
+  }
+
+  // Control plus message beside the label in the horizontal layout.
+  @include e(body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: nu-space(1);
+    min-inline-size: 0;
   }
 
   @include m(horizontal) {
     flex-direction: row;
-    align-items: center;
+    align-items: flex-start;
     gap: nu-space(4);
 
     > .nu-field__label-row,
@@ -342,6 +428,72 @@ $nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
       flex-shrink: 0;
       min-inline-size: min(8rem, 40%);
       max-inline-size: 40%;
+      // Centers the label on a default-height control.
+      min-block-size: nu-var("input", "MinHeight", 2.25rem);
+    }
+  }
+
+  // ---- floating label: the placeholder text is the label ----
+
+  @include e(control) {
+    position: relative;
+  }
+
+  @include e(float-label) {
+    position: absolute;
+    inset-block-start: calc(#{nu-var("input", "MinHeight", 2.25rem)} / 2);
+    inset-inline-start: nu-var("field", "FloatLabelInset");
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    max-inline-size: calc(100% - 2 * #{nu-var("field", "FloatLabelInset")});
+    padding-inline: 0;
+    font-size: nu-font-size(sm);
+    line-height: 1;
+    color: nu-var("field", "FloatLabelColor");
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    // Vertical only, so RTL needs no mirrored transform.
+    transform: translateY(-50%);
+    transition:
+      inset-block-start nu-duration(fast) $nu-ease,
+      font-size nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // Leaves the start gutter to a prefix icon while resting.
+  @include en(control) {
+    &:has(.nu-input-wrap.m-has-prefix) .nu-field__float-label {
+      inset-inline-start: nu-var("input-wrap", "AffixGutter", nu-space(12));
+    }
+  }
+
+  // Floated: sits on the top border, on a patch of surface color, never hidden.
+  @include en(control) {
+    &:focus-within,
+    &.has-value,
+    &:has(:is(input, textarea).nu-input:not(:placeholder-shown)) {
+      .nu-field__float-label {
+        inset-block-start: 0;
+        inset-inline-start: calc(#{nu-var("field", "FloatLabelInset")} - #{nu-space(1)});
+        padding-inline: nu-space(1);
+        font-size: nu-font-size(xs);
+        background-color: nu-var("field", "FloatLabelBackground");
+      }
+    }
+
+    &:focus-within .nu-field__float-label {
+      color: var(--nu-brand);
+    }
+
+    &:has([aria-invalid="true"], .is-invalid) .nu-field__float-label {
+      color: var(--nu-danger);
     }
   }
 
@@ -552,6 +704,43 @@ $nu-row-min-column-width: 10rem;
   }
 }
 
+// ---- validation status on checkbox, radio, toggle and the dropdown trigger ----
+// Same mechanism as the text controls: the control's own class, or the
+// attributes a Field or FieldGroup writes onto it.
+
+$nu-control-statuses: (
+  success: (".is-valid", '[data-nu-field-status="success"]'),
+  warning: (".is-warning", '[data-nu-field-status="warning"]'),
+  danger: (".is-invalid", '[aria-invalid="true"]'),
+);
+
+@each $role, $selectors in $nu-control-statuses {
+  $class: list.nth($selectors, 1);
+  $attr: list.nth($selectors, 2);
+
+  .nu-check:is(#{$class}, #{$attr}) {
+    --nu-check--BorderColor: var(--nu-#{$role});
+
+    &:focus-visible {
+      box-shadow: nu-focus-ring($role);
+    }
+  }
+
+  .nu-toggle__input:is(#{$class}, #{$attr}) ~ .nu-toggle__track {
+    box-shadow: 0 0 0 1px var(--nu-#{$role});
+  }
+
+  .nu-toggle__input:is(#{$class}, #{$attr}):focus-visible ~ .nu-toggle__track {
+    box-shadow: nu-focus-ring($role);
+  }
+
+  .nu-dropdown > .nu-btn:is(#{$class}, #{$attr}) {
+    --nu-btn--BorderColor: var(--nu-#{$role});
+    --nu-btn--hover--BorderColor: var(--nu-#{$role});
+    --nu-btn--focus--BoxShadow: #{nu-focus-ring($role)};
+  }
+}
+
 @include b(check-label) {
   @include nu-root("check-label", (
     "Gap": nu-space(2),
@@ -599,6 +788,73 @@ $nu-row-min-column-width: 10rem;
     flex-direction: column;
     align-items: flex-start;
     gap: nu-var("check-group", "RowGap");
+  }
+}
+
+// ---- form: vertical container for fields and the content between them ----
+
+@include b(form) {
+  @include nu-root("form", (
+    "Gap": nu-space(1),
+    "SectionGap": nu-space(4),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("form", "Gap");
+  min-inline-size: 0;
+
+  // Fields carry their own message line as spacing; any other child gets section spacing.
+  > :not(.nu-field, .nu-field-group, :has(> .nu-field, > .nu-field-group)) {
+    margin-block: calc(#{nu-var("form", "SectionGap")} - #{nu-var("form", "Gap")});
+  }
+
+  // Section spacing never pads the container's own edges.
+  > :first-child {
+    margin-block-start: 0;
+  }
+
+  > :last-child {
+    margin-block-end: 0;
+  }
+}
+
+// ---- field group: fieldset + legend around a set of checkboxes or radios ----
+
+@include b(field-group) {
+  @include nu-root("field-group", (
+    "Gap": nu-space(2),
+    "MarginBlockEnd": 0,
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("field-group", "Gap");
+
+  // Sits one step under the control; the slot itself spaces the next field.
+  > .nu-field__message {
+    margin-block-start: calc(calc(#{nu-space(1)} / 2) - #{nu-var("field-group", "Gap")});
+  }
+  min-inline-size: 0;
+  margin: 0;
+  margin-block-end: nu-var("field-group", "MarginBlockEnd");
+  padding: 0;
+  border: 0;
+
+  // A legend ignores the fieldset's flex gap, so its spacing is its own margin.
+  @include e(legend) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    margin-block-end: nu-var("field-group", "Gap");
+    padding: 0;
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    color: var(--nu-text-regular);
+  }
+
+  @include m(flush) {
+    --nu-field-group--MarginBlockEnd: 0;
   }
 }
 

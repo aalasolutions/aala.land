@@ -12,39 +12,49 @@
     {{/unless}}
     <form
       id="team-member-form"
-      class="flex col gap-4"
+      class="nu-form"
+      novalidate
       {{on "submit" this.save}}
     >
-      <Nuvo::Field @label="Name" @required={{true}}>
+      <Nuvo::Field
+        @label="Name"
+        @required={{true}}
+        @error={{this.fieldErrors.formName}}
+      >
         <Nuvo::Input
           id="t-name"
           type="text"
           @value={{this.form.formName}}
           @onInput={{fn this.setField "formName"}}
-          required={{true}}
           data-test-input-name
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Field
+        @label="Email"
+        @required={{true}}
+        @error={{this.fieldErrors.formEmail}}
+      >
         <Nuvo::Input
           id="t-email"
           type="email"
           @value={{this.form.formEmail}}
           @onInput={{fn this.setField "formEmail"}}
-          required={{true}}
           data-test-input-email
         />
       </Nuvo::Field>
 
       {{#unless this.isEdit}}
-        <Nuvo::Field @label="Password" @required={{true}}>
+        <Nuvo::Field
+          @label="Password"
+          @required={{true}}
+          @error={{this.fieldErrors.formPassword}}
+        >
           <Nuvo::Input
             id="t-password"
             type="password"
             @value={{this.form.formPassword}}
             @onInput={{fn this.setField "formPassword"}}
-            required={{true}}
             data-test-input-password
           />
         </Nuvo::Field>

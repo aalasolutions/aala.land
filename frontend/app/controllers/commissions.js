@@ -119,7 +119,7 @@ export default class CommissionsController extends PaginatedController {
     if (!this.commissionToCancel || this.isCancelling) return;
     const reason = this.cancelReason.trim();
     if (!reason) {
-      this.reasonError = 'Reason is required.';
+      this.reasonError = 'Enter a reason';
       return;
     }
 

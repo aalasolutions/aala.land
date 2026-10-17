@@ -27,10 +27,12 @@ module('Integration | Component | reset-password-form', function (hooks) {
       [],
       'auth.resetPassword is not called for invalid input',
     );
-    assert.dom('[data-test-reset-password-error]').exists();
     assert
-      .dom('[data-test-reset-password-error]')
-      .hasText('Passwords do not match.');
+      .dom(
+        '[data-test-reset-password-confirm-field] [data-test-nu-field-error]',
+      )
+      .hasText('Re-enter the same password');
+    assert.dom('[data-test-reset-password-error]').doesNotExist();
   });
 
   test('it submits successfully and shows the success state', async function (assert) {

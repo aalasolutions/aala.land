@@ -1,10 +1,15 @@
 <form
   data-test-signup-form
-  class="flex col gap-5 w-full"
+  class="nu-form w-full"
+  novalidate
   {{on "submit" this.submit}}
 >
-  <div class="grid col gap-4">
-    <Nuvo::Field @label="Company Name" @required={{true}}>
+  <div class="nu-form">
+    <Nuvo::Field
+      @label="Company Name"
+      @required={{true}}
+      @error={{this.fieldErrors.companyName}}
+    >
       <Nuvo::Input
         id="signup-company"
         @type="text"
@@ -17,7 +22,11 @@
     </Nuvo::Field>
 
     <div class="flex col gap-1 signup-slug-field">
-      <Nuvo::Field @label="Company URL Slug" @required={{true}}>
+      <Nuvo::Field
+        @label="Company URL Slug"
+        @required={{true}}
+        @error={{this.fieldErrors.companySlug}}
+      >
         <Nuvo::Input
           id="signup-slug"
           @type="text"
@@ -32,7 +41,10 @@
     </div>
   </div>
 
-  <Nuvo::Field @label="Primary Operating Region">
+  <Nuvo::Field
+    @label="Primary Operating Region"
+    @error={{this.fieldErrors.region}}
+  >
     <Nuvo::Dropdown
       @searchable={{true}}
       @align="start"
@@ -47,7 +59,11 @@
   <Nuvo::Divider />
 
   <div class="grid cols-2 gap-4">
-    <Nuvo::Field @label="Your Name" @required={{true}}>
+    <Nuvo::Field
+      @label="Your Name"
+      @required={{true}}
+      @error={{this.fieldErrors.userName}}
+    >
       <Nuvo::Input
         id="signup-name"
         @type="text"
@@ -59,7 +75,11 @@
       />
     </Nuvo::Field>
 
-    <Nuvo::Field @label="Email Address" @required={{true}}>
+    <Nuvo::Field
+      @label="Email Address"
+      @required={{true}}
+      @error={{this.fieldErrors.email}}
+    >
       <Nuvo::Input
         id="signup-email"
         @type="email"
@@ -74,7 +94,11 @@
   </div>
 
   <div class="grid cols-2 gap-4">
-    <Nuvo::Field @label="Password" @required={{true}}>
+    <Nuvo::Field
+      @label="Password"
+      @required={{true}}
+      @error={{this.fieldErrors.password}}
+    >
       <Nuvo::Input
         id="signup-password"
         @type="password"
@@ -86,7 +110,11 @@
         data-test-password-input
       />
     </Nuvo::Field>
-    <Nuvo::Field @label="Confirm Password" @required={{true}}>
+    <Nuvo::Field
+      @label="Confirm Password"
+      @required={{true}}
+      @error={{this.fieldErrors.confirmPassword}}
+    >
       <Nuvo::Input
         id="signup-confirm"
         @type="password"
