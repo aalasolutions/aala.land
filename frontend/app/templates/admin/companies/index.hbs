@@ -6,17 +6,18 @@
     @subtitle="Every account, its rail, its deal, its lock state."
   />
 
-  <Woven::Card>
-    <div class="console-list-filters mb-4">
-      <Woven::Input
-        class="console-list-filters__search"
-        type="text"
-        placeholder="Search companies..."
-        aria-label="Search companies"
-        @value={{this.search}}
-        @onInput={{this.setSearch}}
-        data-test-companies-search
-      />
+  <div class="flex col gap-3">
+    <div class="console-list-filters">
+      <div class="console-list-filters__search">
+        <Woven::Input
+          type="text"
+          placeholder="Search companies..."
+          aria-label="Search companies"
+          @value={{this.search}}
+          @onInput={{this.setSearch}}
+          data-test-companies-search
+        />
+      </div>
       <Woven::Dropdown
         class="console-list-filters__select"
         aria-label="Filter by rail"
@@ -128,5 +129,5 @@
       @onPageChange={{this.goToPage}}
       @onLimitChange={{this.changeLimit}}
     />
-  </Woven::Card>
+  </div>
 </div>

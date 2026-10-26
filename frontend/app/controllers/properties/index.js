@@ -27,7 +27,6 @@ export default class PropertiesIndexController extends Controller {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },

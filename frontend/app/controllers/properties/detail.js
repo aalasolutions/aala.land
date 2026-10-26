@@ -124,7 +124,6 @@ export default class PropertiesDetailController extends Controller {
       name: 'Actions',
       valuePath: 'id',
       width: 170,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },

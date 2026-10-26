@@ -36,7 +36,7 @@
     </:actions>
   </Woven::PageHeader>
 
-  <Woven::Card @compact={{true}}>
+  <div class="flex col gap-3">
     {{#if this.model.users.length}}
       <Woven::DataTable
         @columns={{this.columns}}
@@ -174,7 +174,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>
 
 <Team::MemberDrawer

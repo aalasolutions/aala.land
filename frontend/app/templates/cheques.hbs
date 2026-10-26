@@ -32,7 +32,7 @@
   />
 
   {{#if (eq this.activeTab "cheques")}}
-    <Woven::Card @compact={{true}}>
+    <div class="flex col gap-3">
       {{#if @model.cheques.length}}
         <Woven::DataTable
           @columns={{this.columns}}
@@ -212,7 +212,7 @@
           @onPageChange={{this.goToPage}}
         />
       {{/if}}
-    </Woven::Card>
+    </div>
   {{/if}}
 
   {{#if (eq this.activeTab "schedule")}}

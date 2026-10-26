@@ -76,7 +76,6 @@ export default class ChequesController extends PaginatedController {
       valuePath: 'id',
       // Sized for the icon action row, whose widest status renders six buttons.
       width: 220,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },

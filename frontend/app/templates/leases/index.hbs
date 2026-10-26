@@ -95,7 +95,7 @@
     </FiltersButton>
   </div>
 
-  <Woven::Card @compact={{true}}>
+  <div class="flex col gap-3">
     {{#if @model.leases.length}}
       <Woven::DataTable
         @columns={{this.columns}}
@@ -289,7 +289,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>
 
 <Leases::LeaseDrawer

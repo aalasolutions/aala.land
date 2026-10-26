@@ -36,7 +36,6 @@ export default class CommissionsController extends PaginatedController {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },

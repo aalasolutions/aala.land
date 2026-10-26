@@ -37,7 +37,6 @@ export default class ContactsDetailController extends Controller {
       name: 'Actions',
       valuePath: 'id',
       width: 120,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },

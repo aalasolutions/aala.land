@@ -32,7 +32,7 @@
     </div>
   {{/if}}
 
-  <Woven::Card @compact={{true}}>
+  <div class="flex col gap-3">
     {{#if this.showInitialLoading}}
       <div
         class="flex x-center gap-2 text-sm text-muted"
@@ -205,7 +205,7 @@
           }}</p>
       </div>
     {{/if}}
-  </Woven::Card>
+  </div>
 
   {{#if this.showPagination}}
     <Woven::Pagination

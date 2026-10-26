@@ -26,7 +26,8 @@
     class="data-table wu-table-wrapper
       {{if this.isRtl 'data-table--rtl'}}
       {{if this.isTree 'data-table--tree'}}
-      {{if this.hasRowClick 'data-table--row-click'}}"
+      {{if this.hasRowClick 'data-table--row-click'}}
+      {{if @stickyHeader 'data-table--sticky-header'}}"
     {{this.startAtReadingEdge}}
     as |t|
   >
@@ -90,6 +91,7 @@
       <b.row
         class="{{if (this.isRowSelected b.rowValue) 'is-selected'}}
           {{if b.rowMeta.depth 'is-child'}}
+          {{unless (eq @hoverable false) 'is-hoverable'}}
           {{this.rowClassFor b.rowValue}}"
         @onClick={{this.handleRowClick}}
         data-test-data-table-row={{b.rowValue.id}}

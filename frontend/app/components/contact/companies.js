@@ -27,7 +27,6 @@ export default class ContactCompaniesComponent extends Component {
       valuePath: 'count',
       width: 140,
       numeric: true,
-      isFixed: 'right',
     },
   ];
 

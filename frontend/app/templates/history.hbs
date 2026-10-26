@@ -59,7 +59,7 @@
     </FiltersButton>
   </div>
 
-  <Woven::Card @compact={{true}}>
+  <div class="flex col gap-3">
     {{#if this.model.forbidden}}
       <Woven::Alert @variant="danger" data-test-history-forbidden>
         You don't have permission to view history.
@@ -124,5 +124,5 @@
     {{else}}
       <Woven::EmptyState @title="No history found" data-test-history-empty />
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>

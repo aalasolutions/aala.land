@@ -304,6 +304,8 @@ export default class WovenTableController extends Controller {
     { name: '@selectOnRowClick', type: 'boolean', default: 'false', description: 'Clicking a row toggles it. Only with @onSelect, and switched off while the table is editable so single and double click do not compete.' },
     { name: '@tree', type: 'boolean', default: 'false', description: 'Rows with a children array nest; parents get a collapse caret. A row with isCollapsed: true starts closed.' },
     { name: '@dir', type: '"ltr" | "rtl"', default: 'html dir', description: 'Per-table direction override. RTL mirrors the column order and pinned sides; cell text reads RTL.' },
+    { name: '@hoverable', type: 'boolean', default: 'true', description: 'Rows highlight on hover (is-hoverable on each row). Pass {{false}} to opt out.' },
+    { name: '@stickyHeader', type: 'boolean', default: 'false', description: 'Header sticks inside the table scroller (data-table--sticky-header on the root). Max height is --wu-data-table--StickyMaxHeight, default calc(100dvh - 240px).' },
   ];
 
   callbackRows = [

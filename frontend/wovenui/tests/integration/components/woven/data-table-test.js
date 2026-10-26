@@ -76,6 +76,36 @@ module('Integration | Component | woven/data-table', function (hooks) {
     }
   });
 
+  test('rows are hoverable by default and opt out with @hoverable={{false}}', async function (assert) {
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+    );
+
+    for (const className of rowClasses(this.element)) {
+      assert.ok(className.includes('is-hoverable'));
+    }
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @hoverable={{false}} />`,
+    );
+
+    for (const className of rowClasses(this.element)) {
+      assert.notOk(className.includes('is-hoverable'));
+    }
+  });
+
+  test('@stickyHeader adds the sticky header modifier', async function (assert) {
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+    );
+    assert.dom('.data-table').doesNotHaveClass('data-table--sticky-header');
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @stickyHeader={{true}} />`,
+    );
+    assert.dom('.data-table').hasClass('data-table--sticky-header');
+  });
+
   test('a saved layout keeps pinned columns at their edges and places new columns in line', async function (assert) {
     this.owner.register(
       'service:woven-storage',

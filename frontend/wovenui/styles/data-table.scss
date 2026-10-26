@@ -15,35 +15,22 @@
     background-color: var(--wu-bg-surface);
   }
 
+  thead th,
   th.is-fixed-left,
   th.is-fixed-right {
-    background-color: var(--wu-bg-surface);
-  }
-
-  .is-fixed-left {
-    box-shadow: inset -1px 0 0 var(--wu-border-regular);
-  }
-
-  .is-fixed-right {
-    box-shadow: inset 1px 0 0 var(--wu-border-regular);
+    background-color: var(--wu-table--HeadBackgroundColor);
   }
 
   // Sticky pinned cells paint over collapsed borders, so header cells draw their own rule.
   thead th {
     border-block-end: 0;
-    box-shadow: inset 0 -1px 0 var(--wu-border-regular);
+    box-shadow: inset 0 -1px 0 var(--wu-table--HeadBorderColor);
   }
 
-  th.is-fixed-left {
-    box-shadow:
-      inset -1px 0 0 var(--wu-border-regular),
-      inset 0 -1px 0 var(--wu-border-regular);
-  }
-
-  th.is-fixed-right {
-    box-shadow:
-      inset 1px 0 0 var(--wu-border-regular),
-      inset 0 -1px 0 var(--wu-border-regular);
+  // Pinned body cells follow the row hover fill.
+  tbody tr.is-hoverable:hover td.is-fixed-left,
+  tbody tr.is-hoverable:hover td.is-fixed-right {
+    background-color: var(--wu-table--hover--RowBackgroundColor);
   }
 }
 
@@ -198,20 +185,45 @@
   }
 }
 
-// Resize handle.
+// Resize handle: wide hit area, the line shows on header hover.
 .data-table .et-header-resize-area {
-  width: 2px;
-  background-color: var(--wu-border-regular);
-  transition: background-color wu-duration(fast) $wu-ease;
+  width: 8px;
+  cursor: col-resize;
 
-  &:hover,
-  &:active {
-    background-color: var(--wu-brand);
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    inline-size: 2px;
+    margin-inline-start: -1px;
+    background: transparent;
   }
+}
 
-  @include reduced-motion {
-    transition: none;
-  }
+.data-table thead th:hover .et-header-resize-area::after {
+  background: color-mix(in srgb, var(--wu-border-regular) 55%, transparent);
+}
+
+.data-table .et-header-resize-area:hover::after,
+.data-table .et-header-resize-area:active::after,
+.data-table thead th:has(.et-header-resize-area:active) .et-header-resize-area::after {
+  background: var(--wu-brand);
+}
+
+// Keeps the dragged handle above pinned headers.
+.data-table thead th:has(.et-header-resize-area:active) {
+  z-index: 5;
+}
+
+.data-table thead th.is-fixed-right .et-header-resize-area::after,
+.data-table thead th.is-last-column .et-header-resize-area::after {
+  display: none;
+}
+
+// Opt-in: the table scrolls inside a bounded height so the header stays in view.
+.data-table--sticky-header .ember-table-overflow {
+  max-block-size: var(--wu-data-table--StickyMaxHeight, calc(100dvh - 240px));
 }
 
 // One line per cell, clipped at the end edge.

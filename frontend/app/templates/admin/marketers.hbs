@@ -4,7 +4,7 @@
   <Woven::PageHeader @title="Marketers" @subtitle="MRR by referral code. Numbers only.">
   </Woven::PageHeader>
 
-  <Woven::Card>
+  <div class="flex col gap-3">
     {{#if this.rows.length}}
       <Woven::DataTable
         @columns={{this.columns}}
@@ -53,5 +53,5 @@
     {{else}}
       <p class="text-muted text-center p-4">No companies yet.</p>
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>

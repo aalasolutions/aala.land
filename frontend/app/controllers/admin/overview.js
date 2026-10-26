@@ -115,7 +115,6 @@ export default class AdminOverviewController extends Controller {
       name: 'Actions',
       valuePath: 'companyId',
       width: 110,
-      isFixed: 'right',
       isSortable: false,
     },
   ];

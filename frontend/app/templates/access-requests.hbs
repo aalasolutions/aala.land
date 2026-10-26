@@ -13,7 +13,7 @@
     data-test-access-status-filter
   />
 
-  <Woven::Card>
+  <div class="flex col gap-3">
     {{#if @model.error}}
       <p
         class="text-danger"
@@ -123,7 +123,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>
 
 <Woven::Modal

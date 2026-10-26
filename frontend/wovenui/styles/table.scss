@@ -56,12 +56,13 @@
     "FontSize": wu-font-size(sm),
     "Color": var(--wu-text-regular),
     "BorderColor": var(--wu-border-regular),
-    "HeadBackgroundColor": var(--wu-bg-surface),
+    "HeadBackgroundColor": var(--wu-bg-alternate),
+    "HeadBorderColor": var(--wu-gray-50),
     "HeadColor": var(--wu-text-muted),
-    "CellPaddingBlock": wu-space(2),
+    "CellPaddingBlock": wu-space(3),
     "CellPaddingInline": wu-space(4),
-    "RowBorderColor": var(--wu-border-regular),
-    "hover--RowBackgroundColor": var(--wu-bg-alternate),
+    "RowBorderColor": color-mix(in srgb, var(--wu-gray-50) 60%, transparent),
+    "hover--RowBackgroundColor": color-mix(in srgb, var(--wu-bg-alternate) 50%, var(--wu-bg-surface)),
     "selected--RowBackgroundColor": #{wu-tint(brand, 8%)},
     "selected--RowBorderColor": var(--wu-brand),
     "sort--Color": var(--wu-text-regular),
@@ -89,7 +90,7 @@
       text-align: start;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      border-block-end: 1px solid wu-var("table", "BorderColor");
+      border-block-end: 1px solid wu-var("table", "HeadBorderColor");
       white-space: nowrap;
     }
   }
@@ -123,11 +124,6 @@
 
   tbody tr {
     border-block-end: 1px solid wu-var("table", "RowBorderColor");
-    transition: background-color wu-var("table", "TransitionDuration") $wu-ease;
-
-    @include reduced-motion {
-      transition: none;
-    }
 
     &:last-child {
       border-block-end: none;

@@ -262,7 +262,9 @@
     />
   </div>
 
-  <Woven::Card @title="Transactions">
+  <div class="flex col gap-3">
+    <h3 class="text-md font-bold" data-test-financials-transactions-title>Transactions</h3>
+
     {{#if @model.forbidden}}
       <Woven::Alert
         @variant="danger"
@@ -361,7 +363,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Woven::Card>
+  </div>
 </div>
 
 <Financials::TransactionDrawer

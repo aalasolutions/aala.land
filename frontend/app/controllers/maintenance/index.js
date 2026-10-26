@@ -53,7 +53,6 @@ export default class MaintenanceController extends PaginatedController {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
-      isFixed: 'right',
       isSortable: false,
       isResizable: false,
     },
