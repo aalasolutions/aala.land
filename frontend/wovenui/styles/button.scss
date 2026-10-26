@@ -1,0 +1,299 @@
+// wu-btn - interactive action trigger
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(btn) {
+  @include wu-root("btn", (
+    "Display": inline-flex,
+    "AlignItems": center,
+    "JustifyContent": center,
+    "Gap": wu-space(2),
+    "PaddingBlock": wu-space(1),
+    "PaddingInline": wu-space(4),
+    "MinHeight": 2.25rem,
+    "FontSize": wu-font-size(sm),
+    "FontWeight": wu-font-weight(semibold),
+    "LineHeight": 1.25,
+    "BorderRadius": wu-radius(md),
+    "BorderWidth": 1px,
+    "BorderStyle": solid,
+    "BorderColor": transparent,
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": transparent,
+    "TransitionDuration": wu-duration(fast),
+    "hover--BackgroundColor": var(--wu-bg-alternate),
+    "hover--BorderColor": var(--wu-border-regular),
+    "hover--Color": var(--wu-text-regular),
+    "focus--BoxShadow": wu-focus-ring(),
+    "disabled--Opacity": 0.55,
+  ));
+
+  display: wu-var("btn", "Display");
+  align-items: wu-var("btn", "AlignItems");
+  justify-content: wu-var("btn", "JustifyContent");
+  gap: wu-var("btn", "Gap");
+  padding-block: wu-var("btn", "PaddingBlock");
+  padding-inline: wu-var("btn", "PaddingInline");
+  min-height: wu-var("btn", "MinHeight");
+  font-family: inherit;
+  font-size: wu-var("btn", "FontSize");
+  font-weight: wu-var("btn", "FontWeight");
+  line-height: wu-var("btn", "LineHeight");
+  color: wu-var("btn", "Color");
+  background-color: wu-var("btn", "BackgroundColor");
+  border: wu-var("btn", "BorderWidth") wu-var("btn", "BorderStyle") wu-var("btn", "BorderColor");
+  border-radius: wu-var("btn", "BorderRadius");
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color wu-var("btn", "TransitionDuration") $wu-ease,
+    border-color wu-var("btn", "TransitionDuration") $wu-ease,
+    color wu-var("btn", "TransitionDuration") $wu-ease,
+    box-shadow wu-var("btn", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover:not(:disabled):not(.is-disabled):not(.is-loading) {
+    @include wu-set-all("btn", "hover", ("Color", "BackgroundColor", "BorderColor"));
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: wu-var("btn", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+
+    // Icon order is flex order: place __icon before or after the label in
+    // markup and the gap handles the rest. No modifier needed.
+    @include when(spinning) {
+      animation: wu-btn-spin wu-duration(slow) linear infinite;
+
+      @include reduced-motion {
+        animation: none;
+      }
+    }
+  }
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  // ---- variants: shape differs, so enumerated ----
+
+  @include m(primary) {
+    --wu-btn--Color: var(--wu-text-inverted);
+    --wu-btn--BackgroundColor: var(--wu-brand);
+    --wu-btn--hover--Color: var(--wu-text-inverted);
+    --wu-btn--hover--BackgroundColor: var(--wu-brand-hover);
+    --wu-btn--hover--BorderColor: transparent;
+  }
+
+  @include m(secondary) {
+    --wu-btn--Color: var(--wu-text-regular);
+    --wu-btn--BackgroundColor: var(--wu-bg-surface);
+    --wu-btn--BorderColor: var(--wu-border-regular);
+    --wu-btn--hover--BackgroundColor: var(--wu-bg-alternate);
+    --wu-btn--hover--BorderColor: var(--wu-border-regular);
+  }
+
+  @include m(danger) {
+    --wu-btn--Color: var(--wu-text-inverted);
+    --wu-btn--BackgroundColor: var(--wu-danger);
+    --wu-btn--hover--Color: var(--wu-text-inverted);
+    --wu-btn--hover--BackgroundColor: var(--wu-danger-hover);
+    --wu-btn--hover--BorderColor: transparent;
+    --wu-btn--focus--BoxShadow: #{wu-focus-ring(danger)};
+  }
+
+  @include m(success) {
+    --wu-btn--Color: var(--wu-text-inverted);
+    --wu-btn--BackgroundColor: var(--wu-success);
+    --wu-btn--hover--Color: var(--wu-text-inverted);
+    --wu-btn--hover--BackgroundColor: var(--wu-success-hover);
+    --wu-btn--hover--BorderColor: transparent;
+    --wu-btn--focus--BoxShadow: #{wu-focus-ring(success)};
+  }
+
+  @include m(warning) {
+    --wu-btn--Color: var(--wu-text-regular);
+    --wu-btn--BackgroundColor: var(--wu-warning);
+    --wu-btn--hover--Color: var(--wu-text-regular);
+    --wu-btn--hover--BackgroundColor: var(--wu-warning-hover);
+    --wu-btn--hover--BorderColor: transparent;
+    --wu-btn--focus--BoxShadow: #{wu-focus-ring(warning)};
+  }
+
+  @include m(info) {
+    --wu-btn--Color: var(--wu-text-inverted);
+    --wu-btn--BackgroundColor: var(--wu-info);
+    --wu-btn--hover--Color: var(--wu-text-inverted);
+    --wu-btn--hover--BackgroundColor: var(--wu-info-hover);
+    --wu-btn--hover--BorderColor: transparent;
+    --wu-btn--focus--BoxShadow: #{wu-focus-ring(info)};
+  }
+
+  @include m(ghost) {
+    --wu-btn--Color: var(--wu-text-muted);
+    --wu-btn--BackgroundColor: transparent;
+    --wu-btn--BorderColor: transparent;
+    --wu-btn--hover--Color: var(--wu-text-regular);
+    --wu-btn--hover--BackgroundColor: var(--wu-bg-alternate);
+    --wu-btn--hover--BorderColor: transparent;
+  }
+
+  @include m(link) {
+    --wu-btn--Color: var(--wu-brand);
+    --wu-btn--BackgroundColor: transparent;
+    --wu-btn--BorderColor: transparent;
+    --wu-btn--PaddingInline: 0;
+    --wu-btn--MinHeight: auto;
+    --wu-btn--hover--Color: var(--wu-brand-hover);
+    --wu-btn--hover--BackgroundColor: transparent;
+    --wu-btn--hover--BorderColor: transparent;
+
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  // ---- outline variants: uniform, so looped ----
+
+  @each $variant in $wu-variants {
+    &.m-outline.m-#{$variant} {
+      --wu-btn--Color: var(--wu-#{wu-role($variant)});
+      --wu-btn--BackgroundColor: transparent;
+      --wu-btn--BorderColor: var(--wu-#{wu-role($variant)});
+      --wu-btn--hover--Color: var(--wu-text-inverted);
+      --wu-btn--hover--BackgroundColor: var(--wu-#{wu-role($variant)});
+      --wu-btn--hover--BorderColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  // The base warning tone fails 4.5:1 as text and under white text; the 700 stop passes, as in badges.
+  &.m-outline.m-warning {
+    --wu-btn--Color: var(--wu-warning-700);
+    --wu-btn--hover--BackgroundColor: var(--wu-warning-700);
+    --wu-btn--hover--BorderColor: var(--wu-warning-700);
+  }
+
+  // ---- subtle variants: borderless and muted, the variant colour shows on hover ----
+
+  @each $variant in $wu-variants {
+    &.m-subtle.m-#{$variant} {
+      --wu-btn--Color: var(--wu-text-muted);
+      --wu-btn--BackgroundColor: transparent;
+      --wu-btn--BorderColor: transparent;
+      --wu-btn--hover--Color: var(--wu-#{wu-role($variant)});
+      --wu-btn--hover--BackgroundColor: #{wu-tint(wu-role($variant), 12%)};
+      --wu-btn--hover--BorderColor: transparent;
+    }
+  }
+
+  // ---- sizes: uniform, so looped ----
+
+  $wu-btn-sizes: (
+    "xs": ("PaddingBlock": wu-space(1), "PaddingInline": wu-space(2), "FontSize": wu-font-size(xs), "MinHeight": 1.75rem, "Gap": wu-space(1)),
+    "sm": ("PaddingBlock": wu-space(1), "PaddingInline": wu-space(3), "FontSize": wu-font-size(xs), "MinHeight": 2rem, "Gap": wu-space(1)),
+    "lg": ("PaddingBlock": wu-space(3), "PaddingInline": wu-space(5), "FontSize": wu-font-size(md), "MinHeight": 3rem, "Gap": wu-space(3)),
+  );
+
+  @each $size, $spec in $wu-btn-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --wu-btn--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- icon-only shapes ----
+  // Square/circle collapse horizontal padding and lock the box to MinHeight so
+  // a lone icon renders as a square, not a wide pill.
+
+  @include m(square, circle) {
+    --wu-btn--PaddingInline: 0;
+    --wu-btn--Gap: 0;
+
+    inline-size: wu-var("btn", "MinHeight");
+    padding-inline: 0;
+  }
+
+  @include m(circle) {
+    --wu-btn--BorderRadius: #{wu-radius(full)};
+  }
+
+  // ---- states ----
+
+  @include when(block) {
+    display: flex;
+    width: 100%;
+  }
+
+  @include when(loading) {
+    cursor: progress;
+    pointer-events: none;
+  }
+
+  @include when(active) {
+    --wu-btn--BackgroundColor: var(--wu-bg-alternate);
+    --wu-btn--BorderColor: var(--wu-border-regular);
+  }
+
+  &:disabled,
+  &.is-disabled {
+    opacity: wu-var("btn", "disabled--Opacity");
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+@keyframes wu-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Button group
+@include b(btn-group) {
+  display: inline-flex;
+  align-items: center;
+  gap: wu-space(2);
+
+  @include m(attached) {
+    gap: 0;
+
+    // The later selectors reach one level into a <Woven::Dropdown>, which wraps
+    // its trigger, and into the span that carries a disabled button's tooltip.
+    > .wu-btn:not(:first-child),
+    > .wu-dropdown:not(:first-child) > .wu-btn,
+    > [data-tooltip]:not(:first-child) > .wu-btn {
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
+    }
+
+    > .wu-btn:not(:last-child),
+    > .wu-dropdown:not(:last-child) > .wu-btn,
+    > [data-tooltip]:not(:last-child) > .wu-btn {
+      border-start-end-radius: 0;
+      border-end-end-radius: 0;
+    }
+
+    // Border overlap sits on the group flex child, not the nested button, or
+    // the seam doubles.
+    > :not(:last-child) {
+      margin-inline-end: -1px;
+    }
+  }
+}

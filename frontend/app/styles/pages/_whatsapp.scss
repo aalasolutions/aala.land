@@ -1,8 +1,8 @@
 // The only page that fills the content area edge to edge, instead of scrolling inside it.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
-// No NuvoUI size token covers these.
+// No WovenUI size token covers these.
 $wa-sidebar-width: clamp(22.5rem, 35%, 26.25rem);
 $wa-message-max-width: 70%;
 $wa-media-width: 18rem;
@@ -18,17 +18,17 @@ $wa-tray-max-height: 16rem;
 }
 
 .wa-shell {
-  --wa-bar-bg: var(--nu-bg-alternate);
-  --wa-row-hover: var(--nu-bg-base);
-  --wa-row-active: color-mix(in srgb, var(--nu-brand) 8%, var(--nu-bg-alternate));
-  --wa-thread-bg: color-mix(in srgb, var(--nu-brand) 6%, var(--nu-border-regular));
-  --wa-thread-dot: #{nu-tint(brand, 14%)};
-  --wa-bubble-in: var(--nu-bg-surface);
-  --wa-bubble-out: var(--nu-brand-50);
-  --wa-bubble-ai: var(--nu-info-100);
-  --wa-meta: color-mix(in srgb, var(--nu-text-muted) 70%, var(--nu-text-regular));
-  --wa-accent: var(--nu-brand);
-  --wa-accent-text: var(--nu-brand-800);
+  --wa-bar-bg: var(--wu-bg-alternate);
+  --wa-row-hover: var(--wu-bg-base);
+  --wa-row-active: color-mix(in srgb, var(--wu-brand) 8%, var(--wu-bg-alternate));
+  --wa-thread-bg: color-mix(in srgb, var(--wu-brand) 6%, var(--wu-border-regular));
+  --wa-thread-dot: #{wu-tint(brand, 14%)};
+  --wa-bubble-in: var(--wu-bg-surface);
+  --wa-bubble-out: var(--wu-brand-50);
+  --wa-bubble-ai: var(--wu-info-100);
+  --wa-meta: color-mix(in srgb, var(--wu-text-muted) 70%, var(--wu-text-regular));
+  --wa-accent: var(--wu-brand);
+  --wa-accent-text: var(--wu-brand-800);
 
   display: flex;
   flex-direction: column;
@@ -39,8 +39,8 @@ $wa-tray-max-height: 16rem;
 // Outside the scroll panes, so header supplies its own gutter now content-area has none.
 .wa-shell__header {
   flex-shrink: 0;
-  padding: nu-space(4) nu-space(6);
-  border-block-end: 1px solid var(--nu-border-regular);
+  padding: wu-space(4) wu-space(6);
+  border-block-end: 1px solid var(--wu-border-regular);
 }
 
 // A strip, not a sidebar card: must read on a page with no connection and no chats.
@@ -48,10 +48,10 @@ $wa-tray-max-height: 16rem;
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: nu-space(2);
-  padding: nu-space(2) nu-space(6);
-  background: var(--nu-bg-surface);
-  border-block-end: 1px solid var(--nu-border-regular);
+  gap: wu-space(2);
+  padding: wu-space(2) wu-space(6);
+  background: var(--wu-bg-surface);
+  border-block-end: 1px solid var(--wu-border-regular);
 }
 
 .wa-connection__text {
@@ -59,19 +59,19 @@ $wa-tray-max-height: 16rem;
   flex: 1;
   min-inline-size: 0;
   align-items: baseline;
-  gap: nu-space(2);
+  gap: wu-space(2);
   flex-wrap: wrap;
 }
 
 .wa-connection__label {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-regular);
 }
 
 .wa-connection__detail {
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .wa-connection__cta {
@@ -83,7 +83,7 @@ $wa-tray-max-height: 16rem;
   flex: 1;
   min-block-size: 0;
   overflow: hidden;
-  background: var(--nu-bg-base);
+  background: var(--wu-bg-base);
 }
 
 .wa-sidebar {
@@ -91,36 +91,36 @@ $wa-tray-max-height: 16rem;
   flex-direction: column;
   inline-size: $wa-sidebar-width;
   flex-shrink: 0;
-  background: var(--nu-bg-surface);
-  border-inline-end: 1px solid var(--nu-border-regular);
+  background: var(--wu-bg-surface);
+  border-inline-end: 1px solid var(--wu-border-regular);
 }
 
 .wa-sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: nu-space(2);
+  gap: wu-space(2);
   min-block-size: 3.75rem;
-  padding: nu-space(2) nu-space(4);
+  padding: wu-space(2) wu-space(4);
   background: var(--wa-bar-bg);
-  border-block-end: 1px solid var(--nu-border-regular);
-  font-size: nu-font-size(md);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  border-block-end: 1px solid var(--wu-border-regular);
+  font-size: wu-font-size(md);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .wa-sidebar-actions {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
+  gap: wu-space(2);
 }
 
 .wa-credit-usage {
-  padding: nu-space(1) nu-space(4) nu-space(2);
-  background: var(--nu-bg-surface);
-  border-block-end: 1px solid var(--nu-border-regular);
-  font-size: nu-font-size(2xs);
-  color: var(--nu-text-muted);
+  padding: wu-space(1) wu-space(4) wu-space(2);
+  background: var(--wu-bg-surface);
+  border-block-end: 1px solid var(--wu-border-regular);
+  font-size: wu-font-size(2xs);
+  color: var(--wu-text-muted);
 }
 
 .wa-chat-list {
@@ -132,16 +132,16 @@ $wa-tray-max-height: 16rem;
 .wa-chat-item {
   display: flex;
   align-items: center;
-  gap: nu-space(3);
+  gap: wu-space(3);
   inline-size: 100%;
-  padding-inline: nu-space(4);
+  padding-inline: wu-space(4);
   text-align: start;
   background: transparent;
   border: 0;
   border-inline-start: 3px solid transparent;
   border-radius: 0;
   cursor: pointer;
-  transition: background nu-duration(fast) $nu-ease;
+  transition: background wu-duration(fast) $wu-ease;
 
   @include reduced-motion {
     transition: none;
@@ -153,32 +153,32 @@ $wa-tray-max-height: 16rem;
 
   &.is-active {
     background: var(--wa-row-active);
-    border-inline-start-color: var(--nu-brand);
+    border-inline-start-color: var(--wu-brand);
   }
 
   // Inset, because the list clips anything drawn outside a full-width row.
   &:focus-visible {
     outline: none;
-    box-shadow: inset 0 0 0 3px nu-tint(brand, 35%);
+    box-shadow: inset 0 0 0 3px wu-tint(brand, 35%);
   }
 }
 
 // Placeholder avatars stay neutral so the fill never reads as a status colour.
-.wa-shell .nu-avatar {
-  --nu-avatar--BackgroundColor: color-mix(
+.wa-shell .wu-avatar {
+  --wu-avatar--BackgroundColor: color-mix(
     in srgb,
-    var(--nu-text-muted) 25%,
-    var(--nu-bg-surface)
+    var(--wu-text-muted) 25%,
+    var(--wu-bg-surface)
   );
-  --nu-avatar--Color: var(--wa-meta);
+  --wu-avatar--Color: var(--wa-meta);
 }
 
 // Carries the divider so it starts after the avatar, not at the row edge.
 .wa-chat-body {
   flex: 1;
   min-inline-size: 0;
-  padding-block: nu-space(3);
-  border-block-end: 1px solid var(--nu-border-regular);
+  padding-block: wu-space(3);
+  border-block-end: 1px solid var(--wu-border-regular);
 
   .wa-chat-item:hover &,
   .wa-chat-item.is-active & {
@@ -190,36 +190,36 @@ $wa-tray-max-height: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: nu-font-size(md);
-  font-weight: nu-font-weight(normal);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(md);
+  font-weight: wu-font-weight(normal);
+  color: var(--wu-text-regular);
 }
 
 .wa-chat-time {
   flex-shrink: 0;
-  margin-inline-start: nu-space(2);
-  font-size: nu-font-size(xs);
+  margin-inline-start: wu-space(2);
+  font-size: wu-font-size(xs);
   color: var(--wa-meta);
 }
 
 .wa-chat-window {
-  margin-inline-end: nu-space(1);
+  margin-inline-end: wu-space(1);
   vertical-align: middle;
 
   &.is-open {
-    color: var(--nu-success);
+    color: var(--wu-success);
   }
 
   &.is-closed {
-    color: var(--nu-warning-600);
+    color: var(--wu-warning-600);
   }
 }
 
 .wa-chat-preview-row {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
-  margin-block-start: nu-space(1);
+  gap: wu-space(2);
+  margin-block-start: wu-space(1);
 }
 
 .wa-chat-unread {
@@ -232,7 +232,7 @@ $wa-tray-max-height: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: nu-font-size(sm);
+  font-size: wu-font-size(sm);
   color: var(--wa-meta);
 }
 
@@ -242,7 +242,7 @@ $wa-tray-max-height: 16rem;
   }
 
   .wa-chat-preview {
-    color: var(--nu-text-regular);
+    color: var(--wu-text-regular);
   }
 }
 
@@ -252,26 +252,26 @@ $wa-tray-max-height: 16rem;
   flex-direction: column;
   min-inline-size: 0;
   overflow: hidden;
-  background: var(--nu-bg-base);
+  background: var(--wu-bg-base);
 }
 
 // No chat selected: the pane reads as one placeholder panel, not a card on the page.
-.wa-chat-area > .nu-empty-state {
-  --nu-empty-state--BorderRadius: 0;
-  --nu-empty-state--BackgroundColor: var(--wa-bar-bg);
+.wa-chat-area > .wu-empty-state {
+  --wu-empty-state--BorderRadius: 0;
+  --wu-empty-state--BackgroundColor: var(--wa-bar-bg);
 
-  border-block-end: nu-space(1) solid var(--wa-accent);
+  border-block-end: wu-space(1) solid var(--wa-accent);
 }
 
 .wa-chat-header {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: nu-space(3);
+  gap: wu-space(3);
   min-block-size: 3.75rem;
-  padding: nu-space(2) nu-space(4);
+  padding: wu-space(2) wu-space(4);
   background: var(--wa-bar-bg);
-  border-block-end: 1px solid var(--nu-border-regular);
+  border-block-end: 1px solid var(--wu-border-regular);
 }
 
 .wa-chat-header-text {
@@ -285,13 +285,13 @@ $wa-tray-max-height: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: nu-font-size(md);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(md);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .wa-chat-header-id {
-  font-size: nu-font-size(xs);
+  font-size: wu-font-size(xs);
   color: var(--wa-meta);
 }
 
@@ -300,9 +300,9 @@ $wa-tray-max-height: 16rem;
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: nu-space(1);
-  padding-block: nu-space(5);
-  padding-inline: clamp(#{nu-space(4)}, 5%, #{nu-space(16)});
+  gap: wu-space(1);
+  padding-block: wu-space(5);
+  padding-inline: clamp(#{wu-space(4)}, 5%, #{wu-space(16)});
   overflow-y: auto;
   overflow-anchor: none;
   overscroll-behavior: contain;
@@ -317,7 +317,7 @@ $wa-tray-max-height: 16rem;
 
   &.is-dropping {
     outline: 2px dashed var(--wa-accent);
-    outline-offset: calc(-1 * #{nu-space(2)});
+    outline-offset: calc(-1 * #{wu-space(2)});
   }
 }
 
@@ -329,23 +329,23 @@ $wa-tray-max-height: 16rem;
   display: flex;
   align-items: center;
   align-self: center;
-  gap: nu-space(2);
-  padding: nu-space(1) nu-space(3);
-  border-radius: nu-radius(lg);
+  gap: wu-space(2);
+  padding: wu-space(1) wu-space(3);
+  border-radius: wu-radius(lg);
   background: var(--wa-bubble-in);
-  box-shadow: nu-shadow(sm);
-  font-size: nu-font-size(xs);
+  box-shadow: wu-shadow(sm);
+  font-size: wu-font-size(xs);
   color: var(--wa-meta);
 }
 
 .wa-unread-divider {
   align-self: center;
-  padding: nu-space(1) nu-space(3);
-  border-radius: nu-radius(lg);
+  padding: wu-space(1) wu-space(3);
+  border-radius: wu-radius(lg);
   background: var(--wa-bubble-in);
-  box-shadow: nu-shadow(sm);
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(medium);
+  box-shadow: wu-shadow(sm);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(medium);
   color: var(--wa-accent-text);
 }
 
@@ -357,13 +357,13 @@ $wa-tray-max-height: 16rem;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  column-gap: nu-space(2);
+  column-gap: wu-space(2);
   max-inline-size: $wa-message-max-width;
-  padding-block: nu-space(2) nu-space(1);
-  padding-inline: nu-space(3) nu-space(2);
-  border-radius: nu-radius(lg);
+  padding-block: wu-space(2) wu-space(1);
+  padding-inline: wu-space(3) wu-space(2);
+  border-radius: wu-radius(lg);
   background: var(--wa-fill);
-  box-shadow: nu-shadow(sm);
+  box-shadow: wu-shadow(sm);
 
   // Tail: a triangle off the square top corner, drawn only at the start of a run.
   &::before {
@@ -396,12 +396,12 @@ $wa-tray-max-height: 16rem;
   }
 
   &.m-notice {
-    --wa-fill: var(--nu-bg-alternate);
+    --wa-fill: var(--wu-bg-alternate);
 
     align-self: center;
     align-items: center;
-    font-size: nu-font-size(xs);
-    color: var(--nu-text-muted);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
 
     &::before {
       content: none;
@@ -409,11 +409,11 @@ $wa-tray-max-height: 16rem;
   }
 
   &.m-incoming + &.m-incoming {
-    border-start-start-radius: nu-radius(lg);
+    border-start-start-radius: wu-radius(lg);
   }
 
   &.m-outgoing + &.m-outgoing {
-    border-start-end-radius: nu-radius(lg);
+    border-start-end-radius: wu-radius(lg);
   }
 
   &.m-incoming + &.m-incoming::before,
@@ -423,23 +423,23 @@ $wa-tray-max-height: 16rem;
 
   &.m-incoming + &.m-outgoing,
   &.m-outgoing + &.m-incoming {
-    margin-block-start: nu-space(2);
+    margin-block-start: wu-space(2);
   }
 
   // The info fill plus the stripe keeps AI replies apart from the team's primary-tinted ones.
   &.m-ai {
     --wa-fill: var(--wa-bubble-ai);
 
-    border-inline-start: 2px solid var(--nu-info);
+    border-inline-start: 2px solid var(--wu-info);
   }
 }
 
 // Without min-inline-size, a long unbroken string overflows the bubble.
 .wa-bubble {
   min-inline-size: 0;
-  font-size: nu-font-size(sm);
+  font-size: wu-font-size(sm);
   line-height: 1.4;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
   overflow-wrap: break-word;
   white-space: pre-wrap;
 }
@@ -450,15 +450,15 @@ $wa-tray-max-height: 16rem;
   word-break: break-all;
 }
 
-// Code never reflows with the message direction, matching nu-code-block.
-.wa-bubble .nu-code {
+// Code never reflows with the message direction, matching wu-code-block.
+.wa-bubble .wu-code {
   direction: ltr;
   unicode-bidi: isolate;
 }
 
 .wa-message-pre {
   display: block;
-  margin-block: nu-space(1);
+  margin-block: wu-space(1);
   text-align: start;
 }
 
@@ -466,7 +466,7 @@ $wa-tray-max-height: 16rem;
 .wa-bubble.is-deleted {
   display: flex;
   align-items: center;
-  gap: nu-space(1);
+  gap: wu-space(1);
   color: var(--wa-meta);
   font-style: italic;
   white-space: normal;
@@ -504,7 +504,7 @@ $wa-tray-max-height: 16rem;
   min-inline-size: 0;
 
   &.has-action:is(.m-document, .m-audio) {
-    padding-inline-end: nu-space(8);
+    padding-inline-end: wu-space(8);
   }
 }
 
@@ -516,19 +516,19 @@ $wa-tray-max-height: 16rem;
   aspect-ratio: 4 / 3;
   padding: 0;
   border: 0;
-  border-radius: nu-radius(md);
+  border-radius: wu-radius(md);
   overflow: hidden;
-  background: color-mix(in srgb, var(--nu-text-regular) 8%, transparent);
+  background: color-mix(in srgb, var(--wu-text-regular) 8%, transparent);
   cursor: pointer;
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
+    box-shadow: wu-focus-ring();
   }
 
   &.m-video {
     aspect-ratio: 16 / 9;
-    background: var(--nu-black);
+    background: var(--wu-black);
   }
 
   &.is-static {
@@ -554,21 +554,21 @@ $wa-tray-max-height: 16rem;
   inline-size: $wa-media-play-size;
   block-size: $wa-media-play-size;
   margin: auto;
-  border-radius: nu-radius(full);
-  background: nu-scrim(55%);
-  color: var(--nu-white);
-  font-size: nu-font-size(xl);
+  border-radius: wu-radius(full);
+  background: wu-scrim(55%);
+  color: var(--wu-white);
+  font-size: wu-font-size(xl);
   pointer-events: none;
 }
 
-// Placement and poster contrast only; the chip itself is Nuvo::Badge.
-.nu-badge.wa-media__badge {
-  --nu-badge--BackgroundColor: #{nu-scrim(55%)};
-  --nu-badge--Color: var(--nu-white);
+// Placement and poster contrast only; the chip itself is Woven::Badge.
+.wu-badge.wa-media__badge {
+  --wu-badge--BackgroundColor: #{wu-scrim(55%)};
+  --wu-badge--Color: var(--wu-white);
 
   position: absolute;
-  inset-block-end: nu-space(1);
-  inset-inline-end: nu-space(1);
+  inset-block-end: wu-space(1);
+  inset-inline-end: wu-space(1);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -592,7 +592,7 @@ $wa-tray-max-height: 16rem;
   display: flex;
   flex: 1;
   align-items: center;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 0;
 }
 
@@ -605,8 +605,8 @@ $wa-tray-max-height: 16rem;
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
-    border-radius: nu-radius(full);
+    box-shadow: wu-focus-ring();
+    border-radius: wu-radius(full);
   }
 
   &:disabled {
@@ -621,11 +621,11 @@ $wa-tray-max-height: 16rem;
 // Hidden until the row is hovered or focused; touch screens have no hover, so it stays visible there.
 .wa-media__delete {
   position: absolute;
-  inset-block-start: nu-space(1);
-  inset-inline-end: nu-space(1);
-  background: var(--nu-bg-surface);
+  inset-block-start: wu-space(1);
+  inset-inline-end: wu-space(1);
+  background: var(--wu-bg-surface);
   opacity: 0;
-  transition: opacity nu-duration(fast) $nu-ease;
+  transition: opacity wu-duration(fast) $wu-ease;
 
   .wa-message:hover &,
   .wa-message:focus-within & {
@@ -637,25 +637,25 @@ $wa-tray-max-height: 16rem;
   }
 }
 
-// Nuvo::Modal at full size, re-themed dark through its own tokens.
-.nu-backdrop:has(> .wa-viewer) {
-  --nu-backdrop--Padding: 0;
-  --nu-backdrop--BackgroundColor: #{nu-scrim(90%)};
+// Woven::Modal at full size, re-themed dark through its own tokens.
+.wu-backdrop:has(> .wa-viewer) {
+  --wu-backdrop--Padding: 0;
+  --wu-backdrop--BackgroundColor: #{wu-scrim(90%)};
 }
 
 // Compound selectors: the kit declares its tokens on the same element, so these must outrank it.
-.nu-modal.wa-viewer {
-  --nu-modal--BackgroundColor: transparent;
-  --nu-modal--BorderWidth: 0;
-  --nu-modal--BoxShadow: none;
-  --nu-modal--Padding: #{nu-space(4)};
-  --nu-modal--Gap: #{nu-space(2)};
-  --nu-bg-alternate: #{nu-tint(white, 15%)};
-  --nu-border-regular: #{nu-tint(white, 15%)};
-  --nu-text-regular: var(--nu-white);
-  --nu-text-muted: #{nu-tint(white, 75%)};
-  --wa-accent: var(--nu-white);
-  --wa-meta: #{nu-tint(white, 75%)};
+.wu-modal.wa-viewer {
+  --wu-modal--BackgroundColor: transparent;
+  --wu-modal--BorderWidth: 0;
+  --wu-modal--BoxShadow: none;
+  --wu-modal--Padding: #{wu-space(4)};
+  --wu-modal--Gap: #{wu-space(2)};
+  --wu-bg-alternate: #{wu-tint(white, 15%)};
+  --wu-border-regular: #{wu-tint(white, 15%)};
+  --wu-text-regular: var(--wu-white);
+  --wu-text-muted: #{wu-tint(white, 75%)};
+  --wa-accent: var(--wu-white);
+  --wa-meta: #{wu-tint(white, 75%)};
 }
 
 // Fit to screen: the media never overflows the viewport.
@@ -677,45 +677,45 @@ $wa-tray-max-height: 16rem;
   line-height: 1;
 
   &.is-read {
-    color: var(--nu-info);
+    color: var(--wu-info);
   }
 
   &.is-failed {
-    color: var(--nu-danger);
+    color: var(--wu-danger);
   }
 }
 
 .wa-sender-tag {
   flex-basis: 100%;
-  margin-block-end: nu-space(1);
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
+  margin-block-end: wu-space(1);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
   color: var(--wa-accent-text);
 }
 
 .wa-meta {
   display: flex;
   align-items: center;
-  gap: nu-space(1);
+  gap: wu-space(1);
   margin-inline-start: auto;
-  font-size: nu-font-size(2xs);
+  font-size: wu-font-size(2xs);
   white-space: nowrap;
   color: var(--wa-meta);
 
   // The kit's -50 chip fill matches the tinted bubbles, so the author chips sit on white.
-  .nu-tag {
-    --nu-tag--BackgroundColor: var(--nu-bg-surface);
+  .wu-tag {
+    --wu-tag--BackgroundColor: var(--wu-bg-surface);
   }
 }
 
 .wa-input-area {
   flex-shrink: 0;
-  padding: nu-space(3) nu-space(4);
+  padding: wu-space(3) wu-space(4);
   background: var(--wa-bar-bg);
 
   &.is-dropping {
     outline: 2px dashed var(--wa-accent);
-    outline-offset: calc(-1 * #{nu-space(1)});
+    outline-offset: calc(-1 * #{wu-space(1)});
   }
 }
 
@@ -723,24 +723,24 @@ $wa-tray-max-height: 16rem;
 .wa-tray {
   display: flex;
   flex-direction: column;
-  gap: nu-space(2);
-  margin-block-end: nu-space(2);
+  gap: wu-space(2);
+  margin-block-end: wu-space(2);
 }
 
 .wa-tray__list {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   max-block-size: $wa-tray-max-height;
   overflow-y: auto;
 }
 
 .wa-tray__item {
-  --nu-list-item--PaddingBlock: #{nu-space(2)};
-  --nu-list-item--PaddingInline: #{nu-space(3)};
+  --wu-list-item--PaddingBlock: #{wu-space(2)};
+  --wu-list-item--PaddingInline: #{wu-space(3)};
 
   &.is-error {
-    --nu-list-item--BorderColor: var(--nu-danger-600);
+    --wu-list-item--BorderColor: var(--wu-danger-600);
   }
 }
 
@@ -749,15 +749,15 @@ $wa-tray-max-height: 16rem;
   flex-shrink: 0;
   inline-size: $wa-tray-thumb-size;
   block-size: $wa-tray-thumb-size;
-  border-radius: nu-radius(md);
+  border-radius: wu-radius(md);
   object-fit: cover;
-  background: color-mix(in srgb, var(--nu-text-regular) 8%, transparent);
+  background: color-mix(in srgb, var(--wu-text-regular) 8%, transparent);
 
   &.m-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--nu-text-muted);
+    color: var(--wu-text-muted);
   }
 }
 
@@ -766,7 +766,7 @@ $wa-tray-max-height: 16rem;
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 0;
 }
 
@@ -778,24 +778,24 @@ $wa-tray-max-height: 16rem;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: nu-space(2);
+  gap: wu-space(2);
 }
 
 // Sits above the composer so window state is read before typing, not after a send is refused.
 .wa-window {
   display: flex;
   align-items: center;
-  gap: nu-space(1);
-  margin-block-end: nu-space(2);
-  font-size: nu-font-size(2xs);
-  color: var(--nu-text-muted);
+  gap: wu-space(1);
+  margin-block-end: wu-space(2);
+  font-size: wu-font-size(2xs);
+  color: var(--wu-text-muted);
 
   &.is-open {
-    color: var(--nu-success-700);
+    color: var(--wu-success-700);
   }
 
   &.is-closed {
-    color: var(--nu-warning-700);
+    color: var(--wu-warning-700);
   }
 }
 
@@ -806,14 +806,14 @@ $wa-tray-max-height: 16rem;
 .wa-input-row {
   display: flex;
   align-items: flex-end;
-  gap: nu-space(2);
+  gap: wu-space(2);
 }
 
 // Kit textarea defaults to form-field size; composer needs one line that grows to a few.
-.wa-input-row .nu-textarea {
-  --nu-input--BackgroundColor: var(--nu-bg-surface);
-  --nu-input--BorderColor: transparent;
-  --nu-input--BorderRadius: #{nu-radius(lg)};
+.wa-input-row .wu-textarea {
+  --wu-input--BackgroundColor: var(--wu-bg-surface);
+  --wu-input--BorderColor: transparent;
+  --wu-input--BorderRadius: #{wu-radius(lg)};
 
   flex: 1;
   min-block-size: 2.5rem;
@@ -822,6 +822,6 @@ $wa-tray-max-height: 16rem;
 
   // The kit's disabled fill matches the bar, so the field would vanish.
   &:disabled {
-    background-color: var(--nu-bg-surface);
+    background-color: var(--wu-bg-surface);
   }
 }

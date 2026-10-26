@@ -1,9 +1,9 @@
 packages:
-  - "nuvoui"
+  - "wovenui"
 
 allowBuilds:
   "@parcel/watcher": true
   core-js: false
 
 minimumReleaseAgeExclude:
-  - '@nuvoui/core@2.1.1'
+  - '@wovenui/core@2.2.1'

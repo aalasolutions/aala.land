@@ -107,21 +107,21 @@ module('Integration | Template | leads', function (hooks) {
       '[data-test-data-table-row="lead-limited"] [data-test-lead-row]',
     );
 
-    assert.dom('[data-test-nu-modal-title]').hasText('Omar H.');
-    assert.dom('[data-test-nu-modal] [data-test-limited-badge]').exists();
+    assert.dom('[data-test-wu-modal-title]').hasText('Omar H.');
+    assert.dom('[data-test-wu-modal] [data-test-limited-badge]').exists();
     assert
-      .dom('[data-test-nu-modal] [data-test-lead-phone]')
+      .dom('[data-test-wu-modal] [data-test-lead-phone]')
       .hasText('+971 50 *** **67');
-    assert.dom('[data-test-nu-modal] [data-test-lead-email]').doesNotExist();
-    assert.dom('[data-test-nu-modal] [data-test-wa-link]').doesNotExist();
-    assert.dom('[data-test-nu-modal]').doesNotContainText('Email');
+    assert.dom('[data-test-wu-modal] [data-test-lead-email]').doesNotExist();
+    assert.dom('[data-test-wu-modal] [data-test-wa-link]').doesNotExist();
+    assert.dom('[data-test-wu-modal]').doesNotContainText('Email');
   });
 
   test('New Lead opens the lead drawer in create mode', async function (assert) {
     await renderLeads(this, 'list');
     await click('[data-test-add-lead]');
 
-    assert.dom('[data-test-nu-drawer-title]').hasText('New Lead');
+    assert.dom('[data-test-wu-drawer-title]').hasText('New Lead');
     assert.dom('#lead-form [data-test-contact-picker]').exists();
   });
 
@@ -129,7 +129,7 @@ module('Integration | Template | leads', function (hooks) {
     await renderLeads(this, 'list');
     await click('[data-test-data-table-row="lead-full"] [data-test-edit-lead]');
 
-    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Lead');
+    assert.dom('[data-test-wu-drawer-title]').hasText('Edit Lead');
     assert.dom('#lead-form').containsText('Sara Khan');
     assert.dom('#lead-form [data-test-contact-picker]').doesNotExist();
   });

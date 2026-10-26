@@ -1,0 +1,24 @@
+{{! Always rendered with one reserved line, so a message never shifts the layout. }}
+<div class="wu-field__message" aria-live="polite" data-test-wu-field-message>
+  {{#if @error}}
+    <span class="wu-field__error" id={{@errorId}} data-test-wu-field-error>
+      <Woven::Icon
+        @icon="warning-circle"
+        class="wu-field__message-icon"
+        aria-hidden="true"
+      />
+      {{@error}}
+    </span>
+  {{else if @hint}}
+    <span class={{this.hintClasses}} id={{@hintId}} data-test-wu-field-hint>
+      {{#if this.hintIcon}}
+        <Woven::Icon
+          @icon={{this.hintIcon}}
+          class="wu-field__message-icon"
+          aria-hidden="true"
+        />
+      {{/if}}
+      {{@hint}}
+    </span>
+  {{/if}}
+</div>

@@ -23,10 +23,10 @@ module.exports = function (environment) {
       PADDLE_ENVIRONMENT: process.env.PADDLE_ENVIRONMENT || 'sandbox',
     },
 
-    // Prefix for kit UI state kept in localStorage (Nuvo::DataTable layouts).
+    // Prefix for kit UI state kept in localStorage (Woven::DataTable layouts).
     // Change it freely; keys are namespaced under it, per signed-in user.
-    nuvoStorage: {
-      keyPrefix: process.env.NUVO_STORAGE_PREFIX || 'nuvo-',
+    wovenStorage: {
+      keyPrefix: process.env.WOVEN_STORAGE_PREFIX || 'woven-',
     },
   };
 

@@ -1,12 +1,12 @@
 {{page-title (if @model.lease this.tenantName "Lease")}}
 
 <div data-test-lease-detail class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title={{if @model.lease this.tenantName "Lease"}}
     @subtitle={{this.subtitle}}
   >
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{array (hash label="Lease Agreements" route="leases.index")}}
         @compact={{true}}
         @parentsOnly={{true}}
@@ -16,13 +16,13 @@
     <:meta>
       {{#if @model.lease}}
         <div class="flex gap-1 wrap">
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-lease-{{lowercase @model.lease.status}}"
             @text={{@model.lease.status}}
             data-test-lease-status
           />
           {{#if @model.lease.deletedAt}}
-            <Nuvo::Tag
+            <Woven::Tag
               @variant="secondary"
               @text="Archived"
               data-test-lease-archived
@@ -35,7 +35,7 @@
       {{#if this.canManage}}
         <div class="flex gap-2 wrap">
           {{#if this.canTerminate}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="danger"
               @subtle={{true}}
               @icon="x-circle"
@@ -45,7 +45,7 @@
             />
           {{/if}}
           {{#if this.canRenew}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="secondary"
               @icon="arrows-clockwise"
               @text="Renew"
@@ -53,7 +53,7 @@
               {{on "click" (fn this.openDrawer "renew")}}
             />
           {{/if}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @icon="pencil-simple"
             @text="Edit"
@@ -63,7 +63,7 @@
         </div>
       {{/if}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.lease}}
     <RegionNotice @regionCode={{@model.lease.regionCode}} @noun="lease" />
@@ -83,7 +83,7 @@
           <div class="flex between x-center">
             <h2 class="text-md font-bold">Documents</h2>
             {{#if panel.canUpload}}
-              <Nuvo::Button
+              <Woven::Button
                 @variant="primary"
                 @size="sm"
                 @icon="upload-simple"
@@ -98,13 +98,13 @@
     </section>
 
     {{#if this.canViewHistory}}
-      <Nuvo::Card @title="History" data-test-lease-history-card>
+      <Woven::Card @title="History" data-test-lease-history-card>
         <RecordHistoryList
           @entityType="Lease"
           @entityId={{@model.lease.id}}
           @reloadKey={{@model.lease}}
         />
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
 
     {{#if this.canManage}}
@@ -124,11 +124,11 @@
       />
     {{/if}}
   {{else}}
-    <Nuvo::Card>
-      <Nuvo::EmptyState
+    <Woven::Card>
+      <Woven::EmptyState
         @description="Lease not found."
         data-test-lease-not-found
       />
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 </div>

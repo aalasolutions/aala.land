@@ -1,46 +1,46 @@
-// nu-kanban is page-level, not kit, since it has no Ember component; kept the `nu-` prefix.
-@use "@nuvoui/ember/styles/mixins/bem" as *;
-@use "@nuvoui/ember/styles/mixins/var" as *;
-@use "@nuvoui/ember/styles/common/var" as *;
+// wu-kanban is page-level, not kit, since it has no Ember component; kept the `wu-` prefix.
+@use "@wovenui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/mixins/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 @include b(kanban) {
-  @include nu-root("kanban", (
-    "Gap": nu-space(4),
+  @include wu-root("kanban", (
+    "Gap": wu-space(4),
     "ColumnWidth": 18rem,
-    "PaddingBlockEnd": nu-space(4),
+    "PaddingBlockEnd": wu-space(4),
   ));
 
   // Stretch so every column is as tall as the board and its full height takes a drop.
   display: flex;
   align-items: stretch;
-  gap: nu-var("kanban", "Gap");
-  padding-block-end: nu-var("kanban", "PaddingBlockEnd");
+  gap: wu-var("kanban", "Gap");
+  padding-block-end: wu-var("kanban", "PaddingBlockEnd");
   overflow-x: auto;
 
   @include e(column) {
-    @include nu-root-el("kanban", "column", (
-      "Width": nu-var("kanban", "ColumnWidth"),
-      "Gap": nu-space(3),
-      "Padding": nu-space(3),
-      "BackgroundColor": var(--nu-bg-alternate),
+    @include wu-root-el("kanban", "column", (
+      "Width": wu-var("kanban", "ColumnWidth"),
+      "Gap": wu-space(3),
+      "Padding": wu-space(3),
+      "BackgroundColor": var(--wu-bg-alternate),
       "BorderWidth": 1px,
       "BorderStyle": dashed,
       "BorderColor": transparent,
-      "BorderRadius": nu-radius(xl),
-      "TransitionDuration": nu-duration(fast),
+      "BorderRadius": wu-radius(xl),
+      "TransitionDuration": wu-duration(fast),
     ));
 
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    gap: nu-var-el("kanban", "column", "Gap");
-    inline-size: nu-var-el("kanban", "column", "Width");
-    padding: nu-var-el("kanban", "column", "Padding");
-    background-color: nu-var-el("kanban", "column", "BackgroundColor");
-    border: nu-var-el("kanban", "column", "BorderWidth") nu-var-el("kanban", "column", "BorderStyle") nu-var-el("kanban", "column", "BorderColor");
-    border-radius: nu-var-el("kanban", "column", "BorderRadius");
-    transition: border-color nu-var-el("kanban", "column", "TransitionDuration") $nu-ease,
-      background-color nu-var-el("kanban", "column", "TransitionDuration") $nu-ease;
+    gap: wu-var-el("kanban", "column", "Gap");
+    inline-size: wu-var-el("kanban", "column", "Width");
+    padding: wu-var-el("kanban", "column", "Padding");
+    background-color: wu-var-el("kanban", "column", "BackgroundColor");
+    border: wu-var-el("kanban", "column", "BorderWidth") wu-var-el("kanban", "column", "BorderStyle") wu-var-el("kanban", "column", "BorderColor");
+    border-radius: wu-var-el("kanban", "column", "BorderRadius");
+    transition: border-color wu-var-el("kanban", "column", "TransitionDuration") $wu-ease,
+      background-color wu-var-el("kanban", "column", "TransitionDuration") $wu-ease;
 
     @include reduced-motion {
       transition: none;
@@ -48,37 +48,37 @@
   }
 
   @include e(column-header) {
-    @include nu-root-el("kanban", "column-header", (
-      "focus--BoxShadow": nu-focus-ring(),
+    @include wu-root-el("kanban", "column-header", (
+      "focus--BoxShadow": wu-focus-ring(),
     ));
 
     display: flex;
     align-items: center;
-    gap: nu-space(2);
+    gap: wu-space(2);
     inline-size: 100%;
-    padding: 0 nu-space(1);
+    padding: 0 wu-space(1);
     font: inherit;
     color: inherit;
     text-align: start;
     background: none;
     border: 0;
-    border-radius: nu-radius(md);
+    border-radius: wu-radius(md);
     cursor: pointer;
 
-    &:hover .nu-kanban__column-toggle {
-      color: var(--nu-brand);
+    &:hover .wu-kanban__column-toggle {
+      color: var(--wu-brand);
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var-el("kanban", "column-header", "focus--BoxShadow");
+      box-shadow: wu-var-el("kanban", "column-header", "focus--BoxShadow");
     }
   }
 
   @include e(column-toggle) {
     flex-shrink: 0;
-    color: var(--nu-text-muted);
-    transition: color nu-duration(fast) $nu-ease;
+    color: var(--wu-text-muted);
+    transition: color wu-duration(fast) $wu-ease;
 
     @include reduced-motion {
       transition: none;
@@ -89,31 +89,31 @@
     display: flex;
     flex: 1;
     align-items: center;
-    gap: nu-space(2);
+    gap: wu-space(2);
     min-inline-size: 0;
     margin: 0;
-    font-size: nu-font-size(sm);
-    font-weight: nu-font-weight(semibold);
-    color: var(--nu-text-regular);
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
   }
 
   @include e(column-accent) {
-    @include nu-root-el("kanban", "column-accent", (
+    @include wu-root-el("kanban", "column-accent", (
       "Size": 0.5rem,
-      "Color": var(--nu-border-regular),
+      "Color": var(--wu-border-regular),
     ));
 
     flex-shrink: 0;
-    inline-size: nu-var-el("kanban", "column-accent", "Size");
-    block-size: nu-var-el("kanban", "column-accent", "Size");
-    background-color: nu-var-el("kanban", "column-accent", "Color");
-    border-radius: nu-radius(full);
+    inline-size: wu-var-el("kanban", "column-accent", "Size");
+    block-size: wu-var-el("kanban", "column-accent", "Size");
+    background-color: wu-var-el("kanban", "column-accent", "Color");
+    border-radius: wu-radius(full);
   }
 
   @include e(column-count) {
-    @include nu-root-el("kanban", "column-count", (
-      "Color": var(--nu-text-muted),
-      "BackgroundColor": var(--nu-bg-surface),
+    @include wu-root-el("kanban", "column-count", (
+      "Color": var(--wu-text-muted),
+      "BackgroundColor": var(--wu-bg-surface),
     ));
 
     display: inline-flex;
@@ -121,67 +121,67 @@
     justify-content: center;
     min-inline-size: 1.5rem;
     block-size: 1.5rem;
-    padding-inline: nu-space(1);
-    font-size: nu-font-size(xs);
-    font-weight: nu-font-weight(semibold);
-    color: nu-var-el("kanban", "column-count", "Color");
-    background-color: nu-var-el("kanban", "column-count", "BackgroundColor");
-    border-radius: nu-radius(full);
+    padding-inline: wu-space(1);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    color: wu-var-el("kanban", "column-count", "Color");
+    background-color: wu-var-el("kanban", "column-count", "BackgroundColor");
+    border-radius: wu-radius(full);
   }
 
   @include e(column-body) {
-    @include nu-root-el("kanban", "column-body", (
-      "Gap": nu-space(3),
+    @include wu-root-el("kanban", "column-body", (
+      "Gap": wu-space(3),
       "MinBlockSize": 4rem,
       "MaxBlockSize": 32rem,
     ));
 
     display: flex;
     flex-direction: column;
-    gap: nu-var-el("kanban", "column-body", "Gap");
-    min-block-size: nu-var-el("kanban", "column-body", "MinBlockSize");
-    max-block-size: nu-var-el("kanban", "column-body", "MaxBlockSize");
+    gap: wu-var-el("kanban", "column-body", "Gap");
+    min-block-size: wu-var-el("kanban", "column-body", "MinBlockSize");
+    max-block-size: wu-var-el("kanban", "column-body", "MaxBlockSize");
     overflow-y: auto;
   }
 
   @include e(card) {
-    @include nu-root-el("kanban", "card", (
-      "Padding": nu-space(3),
-      "Gap": nu-space(2),
-      "BackgroundColor": var(--nu-bg-surface),
+    @include wu-root-el("kanban", "card", (
+      "Padding": wu-space(3),
+      "Gap": wu-space(2),
+      "BackgroundColor": var(--wu-bg-surface),
       "BorderWidth": 1px,
-      "BorderColor": var(--nu-border-regular),
-      "BorderRadius": nu-radius(lg),
-      "BoxShadow": nu-shadow(sm),
-      "TransitionDuration": nu-duration(fast),
-      "hover--BoxShadow": nu-shadow(md),
-      "focus--BoxShadow": nu-focus-ring(),
+      "BorderColor": var(--wu-border-regular),
+      "BorderRadius": wu-radius(lg),
+      "BoxShadow": wu-shadow(sm),
+      "TransitionDuration": wu-duration(fast),
+      "hover--BoxShadow": wu-shadow(md),
+      "focus--BoxShadow": wu-focus-ring(),
     ));
 
     display: flex;
     flex-direction: column;
-    gap: nu-var-el("kanban", "card", "Gap");
-    padding: nu-var-el("kanban", "card", "Padding");
-    background-color: nu-var-el("kanban", "card", "BackgroundColor");
-    border: nu-var-el("kanban", "card", "BorderWidth") solid nu-var-el("kanban", "card", "BorderColor");
-    border-radius: nu-var-el("kanban", "card", "BorderRadius");
-    box-shadow: nu-var-el("kanban", "card", "BoxShadow");
+    gap: wu-var-el("kanban", "card", "Gap");
+    padding: wu-var-el("kanban", "card", "Padding");
+    background-color: wu-var-el("kanban", "card", "BackgroundColor");
+    border: wu-var-el("kanban", "card", "BorderWidth") solid wu-var-el("kanban", "card", "BorderColor");
+    border-radius: wu-var-el("kanban", "card", "BorderRadius");
+    box-shadow: wu-var-el("kanban", "card", "BoxShadow");
     cursor: grab;
-    transition: box-shadow nu-var-el("kanban", "card", "TransitionDuration") $nu-ease,
-      opacity nu-var-el("kanban", "card", "TransitionDuration") $nu-ease,
-      transform nu-var-el("kanban", "card", "TransitionDuration") $nu-ease;
+    transition: box-shadow wu-var-el("kanban", "card", "TransitionDuration") $wu-ease,
+      opacity wu-var-el("kanban", "card", "TransitionDuration") $wu-ease,
+      transform wu-var-el("kanban", "card", "TransitionDuration") $wu-ease;
 
     @include reduced-motion {
       transition: none;
     }
 
     &:hover {
-      box-shadow: nu-var-el("kanban", "card", "hover--BoxShadow");
+      box-shadow: wu-var-el("kanban", "card", "hover--BoxShadow");
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var-el("kanban", "card", "focus--BoxShadow");
+      box-shadow: wu-var-el("kanban", "card", "focus--BoxShadow");
     }
 
     &:active {
@@ -191,55 +191,55 @@
 
   @include e(card-title) {
     margin: 0;
-    font-size: nu-font-size(sm);
-    font-weight: nu-font-weight(semibold);
-    color: var(--nu-text-regular);
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
   }
 
   @include e(card-meta) {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: nu-space(2);
-    font-size: nu-font-size(xs);
-    color: var(--nu-text-muted);
+    gap: wu-space(2);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
   }
 
   @include e(card-footer) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: nu-space(2);
-    margin-block-start: nu-space(1);
-    padding-block-start: nu-space(2);
-    border-block-start: 1px solid var(--nu-border-regular);
+    gap: wu-space(2);
+    margin-block-start: wu-space(1);
+    padding-block-start: wu-space(2);
+    border-block-start: 1px solid var(--wu-border-regular);
   }
 }
 
 // Column accent colour variants are uniform, so looped.
 
-@each $variant in $nu-variants {
-  .nu-kanban__column.m-#{$variant} {
-    --nu-kanban__column--BorderColor: var(--nu-#{nu-role($variant)}-200);
-    --nu-kanban__column--BackgroundColor: var(--nu-#{nu-role($variant)}-50);
+@each $variant in $wu-variants {
+  .wu-kanban__column.m-#{$variant} {
+    --wu-kanban__column--BorderColor: var(--wu-#{wu-role($variant)}-200);
+    --wu-kanban__column--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
 
     // Accent/count re-declare these; an inherited value from the column would lose.
-    .nu-kanban__column-accent {
-      --nu-kanban__column-accent--Color: var(--nu-#{nu-role($variant)});
+    .wu-kanban__column-accent {
+      --wu-kanban__column-accent--Color: var(--wu-#{wu-role($variant)});
     }
 
-    .nu-kanban__column-count {
-      --nu-kanban__column-count--Color: var(--nu-#{nu-role($variant)}-700);
-      --nu-kanban__column-count--BackgroundColor: var(--nu-#{nu-role($variant)}-100);
+    .wu-kanban__column-count {
+      --wu-kanban__column-count--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-kanban__column-count--BackgroundColor: var(--wu-#{wu-role($variant)}-100);
     }
   }
 }
 
-.nu-kanban__column.is-collapsed {
-  --nu-kanban__column--Width: 3rem;
-  --nu-kanban__column--Padding: #{nu-space(1)};
+.wu-kanban__column.is-collapsed {
+  --wu-kanban__column--Width: 3rem;
+  --wu-kanban__column--Padding: #{wu-space(1)};
 
-  > :not(.nu-kanban__column-header) {
+  > :not(.wu-kanban__column-header) {
     display: none;
   }
 
@@ -247,22 +247,22 @@
     display: none;
   }
 
-  .nu-kanban__column-header {
+  .wu-kanban__column-header {
     flex: 1;
     flex-direction: column;
-    padding-block: nu-space(3);
+    padding-block: wu-space(3);
     padding-inline: 0;
   }
 
-  .nu-kanban__column-count {
+  .wu-kanban__column-count {
     order: -2;
   }
 
-  .nu-kanban__column-toggle {
+  .wu-kanban__column-toggle {
     order: -1;
   }
 
-  .nu-kanban__column-title {
+  .wu-kanban__column-title {
     flex: 0 1 auto;
     min-block-size: 0;
     overflow: hidden;
@@ -271,11 +271,11 @@
   }
 }
 
-.nu-kanban__drag-image {
+.wu-kanban__drag-image {
   position: fixed;
   inset-block-start: -200vh;
   inset-inline-start: 0;
-  padding: nu-space(3);
+  padding: wu-space(3);
   pointer-events: none;
 
   > * {
@@ -284,13 +284,13 @@
   }
 }
 
-.nu-kanban__card.is-dragging {
+.wu-kanban__card.is-dragging {
   opacity: 0.5;
   transform: scale(1.03);
 }
 
-// Keys off [draggable] because lead cards render as panels, not `.nu-kanban__card`.
-.nu-kanban__column [draggable="true"] {
+// Keys off [draggable] because lead cards render as panels, not `.wu-kanban__card`.
+.wu-kanban__column [draggable="true"] {
   cursor: grab;
 
   &:active {
@@ -299,44 +299,44 @@
 }
 
 // Targets the column, not the board: element vars set on an ancestor lose.
-.nu-kanban.is-dragging .nu-kanban__column {
-  --nu-kanban__column--BorderColor: #{nu-tint(brand, 45%)};
+.wu-kanban.is-dragging .wu-kanban__column {
+  --wu-kanban__column--BorderColor: #{wu-tint(brand, 45%)};
 }
 
-.nu-kanban__column.is-drag-over {
-  --nu-kanban__column--BorderColor: var(--nu-brand);
-  --nu-kanban__column--BackgroundColor: #{nu-tint(brand, 8%)};
+.wu-kanban__column.is-drag-over {
+  --wu-kanban__column--BorderColor: var(--wu-brand);
+  --wu-kanban__column--BackgroundColor: #{wu-tint(brand, 8%)};
 }
 
 // Later than the rule above at equal specificity, so hover stays strongest.
-.nu-kanban.is-dragging .nu-kanban__column.is-drag-over {
-  --nu-kanban__column--BorderColor: var(--nu-brand);
+.wu-kanban.is-dragging .wu-kanban__column.is-drag-over {
+  --wu-kanban__column--BorderColor: var(--wu-brand);
 }
 
 // `--kanban-drag-height` is the dragged card's height, set on the board at dragstart.
-$kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "column", "Gap")});
+$kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{wu-var-el("kanban", "column", "Gap")});
 
-.nu-kanban__column [draggable="true"] {
+.wu-kanban__column [draggable="true"] {
   transition:
-    box-shadow nu-duration(fast) $nu-ease,
-    border-color nu-duration(fast) $nu-ease,
-    transform nu-duration(fast) $nu-ease,
-    margin-block nu-duration(normal) $nu-ease,
-    opacity nu-duration(fast) $nu-ease;
+    box-shadow wu-duration(fast) $wu-ease,
+    border-color wu-duration(fast) $wu-ease,
+    transform wu-duration(fast) $wu-ease,
+    margin-block wu-duration(normal) $wu-ease,
+    opacity wu-duration(fast) $wu-ease;
 
   @include reduced-motion {
     transition: none;
   }
 }
 
-.nu-kanban__column [data-lead-id].is-drop-before {
+.wu-kanban__column [data-lead-id].is-drop-before {
   margin-block-start: $kanban-drag-gap;
 }
 
-.nu-kanban__column [draggable="true"].is-drag-source {
+.wu-kanban__column [draggable="true"].is-drag-source {
   background-color: transparent;
   border-style: dashed;
-  border-color: #{nu-tint(brand, 45%)};
+  border-color: #{wu-tint(brand, 45%)};
   box-shadow: none;
   transform: none;
 
@@ -346,48 +346,48 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{nu-var-el("kanban", "
 }
 
 // Once the gap opens elsewhere the origin slot folds away; later cards slide up over it.
-.nu-kanban__column [draggable="true"].is-drag-source.is-collapsed {
+.wu-kanban__column [draggable="true"].is-drag-source.is-collapsed {
   margin-block-end: calc(-1 * #{$kanban-drag-gap});
   opacity: 0;
   pointer-events: none;
 }
 
 // Always present at zero size, so the end-of-column gap can animate open.
-.nu-kanban__column::after {
+.wu-kanban__column::after {
   flex-shrink: 0;
   block-size: 0;
-  margin-block-start: calc(-1 * #{nu-var-el("kanban", "column", "Gap")});
+  margin-block-start: calc(-1 * #{wu-var-el("kanban", "column", "Gap")});
   content: "";
   transition:
-    block-size nu-duration(normal) $nu-ease,
-    margin-block-start nu-duration(normal) $nu-ease;
+    block-size wu-duration(normal) $wu-ease,
+    margin-block-start wu-duration(normal) $wu-ease;
 
   @include reduced-motion {
     transition: none;
   }
 }
 
-.nu-kanban__column.is-drop-end::after {
+.wu-kanban__column.is-drop-end::after {
   block-size: var(--kanban-drag-height, 4rem);
   margin-block-start: 0;
 }
 
-.nu-kanban.is-dragging,
-.nu-kanban.is-hover-suppressed {
-  .nu-panel.m-interactive:hover {
-    --nu-panel--BoxShadow: #{nu-shadow(none)};
-    --nu-panel--BorderColor: var(--nu-border-regular);
+.wu-kanban.is-dragging,
+.wu-kanban.is-hover-suppressed {
+  .wu-panel.m-interactive:hover {
+    --wu-panel--BoxShadow: #{wu-shadow(none)};
+    --wu-panel--BorderColor: var(--wu-border-regular);
 
     transform: none;
   }
 }
 
-.nu-kanban__column.is-empty {
-  .nu-kanban__column-body {
+.wu-kanban__column.is-empty {
+  .wu-kanban__column-body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--nu-text-subtle);
-    font-size: nu-font-size(xs);
+    color: var(--wu-text-subtle);
+    font-size: wu-font-size(xs);
   }
 }

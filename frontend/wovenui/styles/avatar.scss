@@ -1,0 +1,143 @@
+// wu-avatar - user/entity image or initials representation
+@use "sass:map";
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(avatar) {
+  @include wu-root("avatar", (
+    "Size": 2.5rem,
+    "FontSize": wu-font-size(sm),
+    "Color": var(--wu-text-inverted),
+    "BackgroundColor": var(--wu-info),
+    "BorderRadius": wu-radius(full),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "StatusSize": 0.625rem,
+    "StatusBorderColor": var(--wu-bg-surface),
+    "StatusColor": var(--wu-success),
+  ));
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: wu-var("avatar", "Size");
+  block-size: wu-var("avatar", "Size");
+  font-size: wu-var("avatar", "FontSize");
+  font-weight: wu-font-weight(semibold);
+  color: wu-var("avatar", "Color");
+  background-color: wu-var("avatar", "BackgroundColor");
+  border: wu-var("avatar", "BorderWidth") solid wu-var("avatar", "BorderColor");
+  border-radius: wu-var("avatar", "BorderRadius");
+  overflow: hidden;
+  vertical-align: middle;
+
+  // A status dot sits half-outside the circle, so the avatar must not clip.
+  // The image clips itself instead (see __image below).
+  &:has(> .wu-avatar__status) {
+    overflow: visible;
+  }
+
+  // ---- elements ----
+
+  @include e(image) {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+
+    // Clips itself so the avatar can stay overflow:visible for the status dot.
+    border-radius: inherit;
+  }
+
+  @include e(initials) {
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+
+  @include e(status) {
+    @include wu-root-el("avatar", "status", (
+      "TransitionDuration": wu-duration(fast),
+    ));
+
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    inline-size: wu-var("avatar", "StatusSize");
+    block-size: wu-var("avatar", "StatusSize");
+    background-color: wu-var("avatar", "StatusColor");
+    border: 2px solid wu-var("avatar", "StatusBorderColor");
+    border-radius: wu-radius(full);
+    transition: background-color wu-var-el("avatar", "status", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // ---- shape ----
+
+  @include m(square) {
+    --wu-avatar--BorderRadius: #{wu-radius(md)};
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $wu-avatar-sizes: (
+    "xs": ("Size": 1.5rem, "FontSize": wu-font-size(xs), "StatusSize": 0.5rem),
+    "sm": ("Size": 2rem, "FontSize": wu-font-size(xs), "StatusSize": 0.5625rem),
+    "md": ("Size": 2.5rem, "FontSize": wu-font-size(sm), "StatusSize": 0.625rem),
+    "lg": ("Size": 3rem, "FontSize": wu-font-size(md), "StatusSize": 0.75rem),
+    "xl": ("Size": 4rem, "FontSize": wu-font-size(xl), "StatusSize": 0.875rem),
+  );
+
+  @each $size, $spec in $wu-avatar-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --wu-avatar--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- status color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    &.m-status-#{$variant} {
+      --wu-avatar--StatusColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+}
+
+// Overlapping horizontal stack of avatars
+@include b(avatar-group) {
+  @include wu-root("avatar-group", (
+    "Overlap": -0.625rem,
+    "BorderColor": var(--wu-bg-surface),
+  ));
+
+  display: inline-flex;
+  align-items: center;
+
+  .wu-avatar {
+    border-color: wu-var("avatar-group", "BorderColor");
+    margin-inline-start: wu-var("avatar-group", "Overlap");
+
+    &:first-child {
+      margin-inline-start: 0;
+    }
+  }
+
+  @include m(compact) {
+    --wu-avatar-group--Overlap: -1rem;
+  }
+}

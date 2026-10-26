@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Vendor" "New Vendor"}}
   @placement="end"
@@ -7,13 +7,13 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="vendor-form" class="nu-form" novalidate {{on "submit" this.save}}>
+    <form id="vendor-form" class="wu-form" novalidate {{on "submit" this.save}}>
       {{#if this.showRegionField}}
-        <Nuvo::Field
+        <Woven::Field
           @label="Region"
           @tooltip="The region this vendor works in. Staff in other regions cannot find or assign them."
         >
-          <Nuvo::Dropdown
+          <Woven::Dropdown
             id="vendor-region"
             @align="start"
             @value={{this.form.formRegionCode}}
@@ -22,15 +22,15 @@
             @placeholder="Select region..."
             data-test-region-select
           />
-        </Nuvo::Field>
+        </Woven::Field>
       {{/if}}
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Name"
         @required={{true}}
         @error={{this.fieldErrors.formName}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="v-name"
           type="text"
           placeholder="Ahmed Al-Rashid"
@@ -39,9 +39,9 @@
           required={{true}}
           data-test-vendor-name
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::FieldGroup
+      <Woven::FieldGroup
         @label="Specialty (select one or more)"
         @required={{true}}
         @error={{this.fieldErrors.formSpecialties}}
@@ -50,7 +50,7 @@
           {{#each this.specialtyOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable vendor-specialty-chip tag-trade-{{lowercase
+              class="wu-tag m-pill m-selectable vendor-specialty-chip tag-trade-{{lowercase
                   opt.value
                 }}
                 {{if
@@ -67,11 +67,11 @@
             >{{opt.label}}</button>
           {{/each}}
         </div>
-      </Nuvo::FieldGroup>
+      </Woven::FieldGroup>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Email">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Email">
+          <Woven::Input
             id="v-email"
             type="email"
             placeholder="vendor@example.com"
@@ -79,9 +79,9 @@
             @onInput={{fn this.setField "formEmail"}}
             data-test-vendor-email
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Phone">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Phone">
+          <Woven::Input
             id="v-phone"
             type="text"
             placeholder="+971501234567"
@@ -89,12 +89,12 @@
             @onInput={{fn this.setField "formPhone"}}
             data-test-vendor-phone
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Company Name">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Company Name">
+          <Woven::Input
             id="v-company"
             type="text"
             placeholder="Al-Rashid Maintenance LLC"
@@ -102,9 +102,9 @@
             @onInput={{fn this.setField "formCompanyName"}}
             data-test-vendor-company
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Hourly Rate">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Hourly Rate">
+          <Woven::Input
             id="v-rate"
             type="number"
             placeholder="150"
@@ -114,12 +114,12 @@
             step="0.01"
             data-test-vendor-rate
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Address">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Address">
+          <Woven::Input
             id="v-address"
             type="text"
             placeholder="e.g. Industrial Area, Karachi"
@@ -127,9 +127,9 @@
             @onInput={{fn this.setField "formAddress"}}
             data-test-vendor-address
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Rating (1-5)">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Rating (1-5)">
+          <Woven::Input
             id="v-rating"
             type="number"
             placeholder="5"
@@ -140,11 +140,11 @@
             step="1"
             data-test-vendor-rating
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
-      <Nuvo::Field @label="Notes">
-        <Nuvo::Textarea
+      <Woven::Field @label="Notes">
+        <Woven::Textarea
           id="v-notes"
           placeholder="Additional notes about this vendor..."
           rows="3"
@@ -152,7 +152,7 @@
           @onInput={{fn this.setField "formNotes"}}
           data-test-vendor-notes
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.errorMsg}}
         <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
@@ -160,17 +160,17 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @onClick={{this.close}}
       data-test-cancel-vendor-form
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="vendor-form"
       @loading={{this.isSaving}}
       data-test-save-vendor
-    >{{this.submitLabel}}</Nuvo::Button>
+    >{{this.submitLabel}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

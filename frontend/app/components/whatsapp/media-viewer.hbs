@@ -1,4 +1,4 @@
-<Nuvo::Modal
+<Woven::Modal
   class="wa-viewer"
   @open={{if this.message true false}}
   @size="full"
@@ -7,27 +7,27 @@
 >
   <:header as |titleId|>
     <div class="flex col grow min-w-0p">
-      <Nuvo::Text
+      <Woven::Text
         id={{titleId}}
         @tag="span"
         @size="sm"
         @weight="semibold"
         @truncate={{true}}
         data-test-wa-viewer-title
-      ><bdi>{{this.title}}</bdi></Nuvo::Text>
+      ><bdi>{{this.title}}</bdi></Woven::Text>
       {{#if this.sizeLabel}}
-        <Nuvo::Text
+        <Woven::Text
           @tag="span"
           @size="xs"
           @muted={{true}}
           data-test-wa-viewer-size
-        >{{this.sizeLabel}}</Nuvo::Text>
+        >{{this.sizeLabel}}</Woven::Text>
       {{/if}}
     </div>
     <div class="flex x-center gap-1">
       {{#if this.url}}
         <a
-          class="nu-btn m-ghost m-circle"
+          class="wu-btn m-ghost m-circle"
           href={{this.url}}
           download
           target="_blank"
@@ -36,9 +36,9 @@
           title="Download"
           data-test-wa-viewer-download
           {{on "click" this.onDownloadClick}}
-        ><Nuvo::Icon @icon="download-simple" aria-hidden="true" /></a>
+        ><Woven::Icon @icon="download-simple" aria-hidden="true" /></a>
       {{/if}}
-      <Nuvo::Button
+      <Woven::Button
         @variant="ghost"
         @shape="circle"
         @icon="x"
@@ -57,9 +57,9 @@
     >
       {{#if this.loadFailed}}
         <div class="flex x-center gap-2" data-test-wa-viewer-load-failed>
-          <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
-          <Nuvo::Text @tag="span" @size="sm">Could not load</Nuvo::Text>
-          <Nuvo::Button
+          <Woven::Icon @icon="warning-circle" aria-hidden="true" />
+          <Woven::Text @tag="span" @size="sm">Could not load</Woven::Text>
+          <Woven::Button
             @variant="secondary"
             @size="sm"
             @text="Retry"
@@ -99,8 +99,8 @@
           />
         {{/if}}
       {{else}}
-        <Nuvo::Spinner @size="sm" data-test-wa-viewer-loading />
+        <Woven::Spinner @size="sm" data-test-wa-viewer-loading />
       {{/if}}
     </div>
   </:body>
-</Nuvo::Modal>
+</Woven::Modal>

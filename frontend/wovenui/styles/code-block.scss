@@ -1,0 +1,208 @@
+// wu-code - inline and block code display, clipboard copy control
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+$wu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+
+// Inline code span
+@include b(code) {
+  @include wu-root("code", (
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-alternate),
+    "PaddingBlock": 0.125rem,
+    "PaddingInline": wu-space(1),
+    "FontSize": wu-font-size(sm),
+    "BorderRadius": wu-radius(sm),
+  ));
+
+  padding-block: wu-var("code", "PaddingBlock");
+  padding-inline: wu-var("code", "PaddingInline");
+  font-family: $wu-code-font-stack;
+  font-size: wu-var("code", "FontSize");
+  color: wu-var("code", "Color");
+  background-color: wu-var("code", "BackgroundColor");
+  border-radius: wu-var("code", "BorderRadius");
+
+  @each $variant in $wu-variants {
+    @include m(#{$variant}) {
+      --wu-code--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-code--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+    }
+  }
+}
+
+// Pre-formatted code block
+@include b(code-block) {
+  @include wu-root("code-block", (
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-alternate),
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "FontSize": wu-font-size(sm),
+    "MaxHeight": none,
+  ));
+
+  display: block;
+  overflow: hidden;
+  color: wu-var("code-block", "Color");
+  background-color: wu-var("code-block", "BackgroundColor");
+  border: 1px solid wu-var("code-block", "BorderColor");
+  border-radius: wu-var("code-block", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: wu-space(3);
+    padding-block: wu-space(2);
+    padding-inline: wu-space(4);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
+    border-block-end: 1px solid wu-var("code-block", "BorderColor");
+  }
+
+  @include e(content) {
+    margin: 0;
+    overflow: auto;
+    padding: wu-space(4);
+    font-family: $wu-code-font-stack;
+    font-size: wu-var("code-block", "FontSize");
+    line-height: 1.6;
+    white-space: pre;
+    // Source code never reflows with the page direction.
+    direction: ltr;
+    text-align: start;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    flex-shrink: 0;
+  }
+
+  // ---- modifiers ----
+
+  @include m(scrollable) {
+    --wu-code-block--MaxHeight: 20rem;
+
+    @include en(content) {
+      max-block-size: wu-var("code-block", "MaxHeight");
+    }
+  }
+
+  // Line-numbering hook: consumer wraps each line in this element
+  @include e(line) {
+    display: block;
+    padding-inline-start: wu-space(3);
+  }
+
+  // The counter lives here, not on __line, so a block that renders __line
+  // without opting in stays unnumbered.
+  @include m(numbered) {
+    @include en(content) {
+      counter-reset: wu-code-line;
+    }
+
+    @include en(line) {
+      counter-increment: wu-code-line;
+
+      &::before {
+        display: inline-block;
+        inline-size: wu-space(6);
+        margin-inline-end: wu-space(3);
+        color: var(--wu-text-subtle);
+        content: counter(wu-code-line);
+        text-align: end;
+      }
+    }
+  }
+}
+
+// Input + button clipboard copy control
+@include b(clipboard-copy) {
+  @include wu-root("clipboard-copy", (
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(md),
+    "Color": var(--wu-text-regular),
+    "FontSize": wu-font-size(sm),
+    "TransitionDuration": wu-duration(fast),
+    "focus--BoxShadow": wu-focus-ring(),
+    "feedback--Color": var(--wu-success),
+  ));
+
+  display: inline-flex;
+  align-items: center;
+  gap: wu-space(2);
+  padding-inline: wu-space(1);
+  background-color: wu-var("clipboard-copy", "BackgroundColor");
+  border: 1px solid wu-var("clipboard-copy", "BorderColor");
+  border-radius: wu-var("clipboard-copy", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(input) {
+    flex: 1;
+    min-inline-size: 0;
+    padding-block: wu-space(2);
+    padding-inline: wu-space(2);
+    font-family: $wu-code-font-stack;
+    font-size: wu-var("clipboard-copy", "FontSize");
+    color: wu-var("clipboard-copy", "Color");
+    background-color: transparent;
+    border: none;
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("clipboard-copy", "focus--BoxShadow");
+    }
+  }
+
+  @include e(button) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    padding: 0;
+    color: var(--wu-text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: wu-radius(sm);
+    cursor: pointer;
+    transition: color wu-var("clipboard-copy", "TransitionDuration") $wu-ease,
+      background-color wu-var("clipboard-copy", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--wu-text-regular);
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("clipboard-copy", "focus--BoxShadow");
+    }
+  }
+
+  @include e(feedback) {
+    font-size: wu-font-size(xs);
+    color: wu-var("clipboard-copy", "feedback--Color");
+  }
+
+  // ---- states ----
+
+  @include when(copied) {
+    @include en(button) {
+      color: wu-var("clipboard-copy", "feedback--Color");
+    }
+  }
+}

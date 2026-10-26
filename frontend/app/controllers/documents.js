@@ -84,7 +84,7 @@ export default class DocumentsController extends PaginatedController {
     ].filter(Boolean).length;
   }
 
-  // Nuvo::Dropdown calls onSelect with the value.
+  // Woven::Dropdown calls onSelect with the value.
   @action setCategory(value) {
     this.category = value;
     this.page = 1;

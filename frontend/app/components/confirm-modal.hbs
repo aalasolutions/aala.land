@@ -1,4 +1,4 @@
-<Nuvo::Modal
+<Woven::Modal
   @open={{@open}}
   @title={{@title}}
   @size="sm"
@@ -14,14 +14,14 @@
   </:body>
 
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       data-test-confirm-modal-cancel
       {{on "click" this.close}}
     >
       {{this.cancelText}}
-    </Nuvo::Button>
-    <Nuvo::Button
+    </Woven::Button>
+    <Woven::Button
       @variant={{if @confirmVariant @confirmVariant "primary"}}
       @disabled={{@isConfirming}}
       @loading={{@isConfirming}}
@@ -33,6 +33,6 @@
       {{else}}
         {{@confirmText}}
       {{/if}}
-    </Nuvo::Button>
+    </Woven::Button>
   </:footer>
-</Nuvo::Modal>
+</Woven::Modal>

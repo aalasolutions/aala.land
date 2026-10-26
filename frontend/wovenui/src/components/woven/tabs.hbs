@@ -1,0 +1,43 @@
+{{! Block param is `tab`, safe (not an HTML element name). }}
+<div
+  data-test-wu-tabs
+  {{did-insert this.registerRoot}}
+  ...attributes
+>
+  <div
+    class={{this.classes}}
+    role="tablist"
+    aria-orientation={{if @vertical "vertical" "horizontal"}}
+    {{on "keydown" this.handleKeydown}}
+  >
+    {{#each this.tabs key="id" as |tab|}}
+      <button
+        type="button"
+        class="wu-tabs__trigger {{if tab.active 'is-active'}} {{if tab.disabled 'is-disabled'}}"
+        role="tab"
+        aria-selected={{if tab.active "true" "false"}}
+        disabled={{tab.disabled}}
+        tabindex={{if tab.active "0" "-1"}}
+        data-tab-id={{tab.id}}
+        data-test-wu-tabs-trigger={{tab.id}}
+        {{on "click" (fn this.selectTab tab)}}
+      >
+        {{#if (has-block "icon")}}
+          {{yield tab to="icon"}}
+        {{else if tab.icon}}
+          <Woven::Icon @icon={{tab.icon}} class="wu-tabs__icon" aria-hidden="true" />
+        {{/if}}
+        <span class="wu-tabs__label">{{tab.label}}</span>
+        {{#if tab.count}}
+          <span class="wu-tabs__count">{{tab.count}}</span>
+        {{/if}}
+      </button>
+    {{/each}}
+  </div>
+
+  {{#if (has-block)}}
+    <div class="wu-tabs__panel" role="tabpanel" tabindex="0" data-test-wu-tabs-panel={{this.currentTab}}>
+      {{yield this.currentTab}}
+    </div>
+  {{/if}}
+</div>

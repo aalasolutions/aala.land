@@ -1,0 +1,391 @@
+// wu-dropdown - positioning wrapper for a trigger + floating menu panel
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(dropdown) {
+  position: relative;
+  display: inline-block;
+
+  // The trigger's caret flips while the menu is open. Scoped to __caret so a
+  // custom :trigger block can opt in by using the same class.
+  @include e(caret) {
+    display: inline-flex;
+    transition: transform wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include when(open) {
+    .wu-dropdown__caret {
+      transform: rotate(180deg);
+    }
+  }
+
+  // In a bounded container a long selected label ellipsizes and the caret keeps
+  // its size. The full label is in the trigger `title`.
+  max-inline-size: 100%;
+
+  > .wu-btn {
+    max-inline-size: 100%;
+  }
+
+  > .wu-btn .wu-btn__label {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    min-inline-size: 0;
+  }
+
+  // Min-content stays the full label so wrapping rows keep it whole; a flex item
+  // that must shrink below it needs its own `min-inline-size: 0`.
+  @include e(value) {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.25;
+  }
+
+  > .wu-btn .wu-dropdown__caret {
+    flex-shrink: 0;
+  }
+
+  // Trigger text alignment. Default centres (button behaviour); m-align-start
+  // reads like a select field, with the caret pushed to the far end.
+  @include m(align-start, align-end, align-center) {
+    inline-size: 100%;
+
+    .wu-btn {
+      inline-size: 100%;
+    }
+
+    // The menu is at LEAST as wide as the trigger, so the two read as one
+    // control, but grows to fit its longest option. A hard `inline-size: 100%`
+    // here truncated every option to the width of the selected one: pick a
+    // short value and the menu shrinks with the trigger, so "Approved" renders
+    // as "Ap...". Capped so one long option cannot run off the viewport.
+    .wu-menu {
+      inline-size: max-content;
+      min-inline-size: 100%;
+      max-inline-size: min(24rem, 90vw);
+    }
+
+    // The label holds the text plus the caret. The caret is pinned to the far
+    // edge so label alignment moves only the text.
+    .wu-btn__label {
+      display: flex;
+      align-items: center;
+      gap: wu-space(2);
+      inline-size: 100%;
+    }
+
+    .wu-dropdown__value {
+      flex: 1 1 auto;
+      text-align: start;
+    }
+
+    .wu-dropdown__caret {
+      margin-inline-start: auto;
+    }
+  }
+
+  // Trigger label alignment. The caret is pushed to the far edge so the label
+  // can sit wherever it likes without the caret following it.
+  @include m(align-start) {
+    .wu-btn__label {
+      justify-content: flex-start;
+    }
+  }
+
+  @include m(align-center) {
+    .wu-btn__label {
+      justify-content: center;
+    }
+
+    .wu-dropdown__value {
+      text-align: center;
+    }
+  }
+
+  @include m(align-end) {
+    .wu-btn__label {
+      justify-content: flex-end;
+    }
+
+    .wu-dropdown__value {
+      text-align: end;
+    }
+  }
+
+  // Option alignment is a SEPARATE axis from the trigger. A [...] action menu
+  // may want centred options while a select-like dropdown keeps them at start
+  // (the default). Never couple the two.
+  // Group indent is a start-edge affordance, so it is cancelled when options
+  // are deliberately centred or end-aligned.
+  @include m(options-center) {
+    .wu-menu__item {
+      justify-content: center;
+      text-align: center;
+      padding-inline-start: wu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  @include m(options-end) {
+    .wu-menu__item {
+      justify-content: flex-end;
+      text-align: end;
+      padding-inline-start: wu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  // ---- placement modifiers ----
+
+  @include m(start) {
+    .wu-menu {
+      inset-inline-start: 0;
+      inset-inline-end: auto;
+    }
+  }
+
+  @include m(end) {
+    .wu-menu {
+      inset-inline-start: auto;
+      inset-inline-end: 0;
+    }
+  }
+
+  @include m(up) {
+    .wu-menu {
+      inset-block-end: 100%;
+      inset-block-start: auto;
+      margin-block-end: wu-space(1);
+      margin-block-start: 0;
+    }
+  }
+}
+
+@include b(menu) {
+  @include wu-root("menu", (
+    "MinWidth": 12rem,
+    "MaxHeight": 20rem,
+    "PaddingBlock": wu-space(2),
+    "PaddingInline": wu-space(2),
+    "Gap": 0,
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "BoxShadow": wu-shadow(lg),
+    "ZIndex": wu-z(dropdown),
+    "TransitionDuration": wu-duration(fast),
+    "focus--BoxShadow": wu-focus-ring(),
+  ));
+
+  // Inline fallback position; the anchor modifier overrides it with fixed
+  // viewport coordinates when the menu is hosted on .wu-layer.
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: wu-var("menu", "ZIndex");
+  display: none;
+  flex-direction: column;
+  gap: wu-var("menu", "Gap");
+  inline-size: max-content;
+  min-inline-size: wu-var("menu", "MinWidth");
+  max-inline-size: min(24rem, 90vw);
+  max-block-size: wu-var("menu", "MaxHeight");
+  margin-block-start: wu-space(1);
+  padding-block: wu-var("menu", "PaddingBlock");
+  padding-inline: wu-var("menu", "PaddingInline");
+  overflow-y: auto;
+  background-color: wu-var("menu", "BackgroundColor");
+  border: wu-var("menu", "BorderWidth") solid wu-var("menu", "BorderColor");
+  border-radius: wu-var("menu", "BorderRadius");
+  box-shadow: wu-var("menu", "BoxShadow");
+  opacity: 0;
+  // display must be in the transition list with allow-discrete, otherwise the
+  // opacity fade never runs: the element is leaving display: none in the same frame.
+  transition:
+    opacity wu-var("menu", "TransitionDuration") $wu-ease,
+    display wu-var("menu", "TransitionDuration") $wu-ease allow-discrete;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include e(item) {
+    @include wu-root-el("menu", "item", (
+      "Gap": wu-space(2),
+      "PaddingBlock": wu-space(2),
+      "PaddingInline": wu-space(3),
+      "FontSize": wu-font-size(sm),
+      "Color": var(--wu-text-regular),
+      "BackgroundColor": transparent,
+      "BorderRadius": wu-radius(md),
+      "hover--BackgroundColor": var(--wu-bg-alternate),
+      "active--BackgroundColor": var(--wu-brand-50),
+      "active--Color": var(--wu-brand-700),
+    ));
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    inline-size: 100%;
+    text-align: start;
+    gap: wu-var-el("menu", "item", "Gap");
+    padding-block: wu-var-el("menu", "item", "PaddingBlock");
+    padding-inline: wu-var-el("menu", "item", "PaddingInline");
+    font-size: wu-var-el("menu", "item", "FontSize");
+    color: wu-var-el("menu", "item", "Color");
+    background-color: wu-var-el("menu", "item", "BackgroundColor");
+    border-radius: wu-var-el("menu", "item", "BorderRadius");
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    transition: background-color wu-var("menu", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(.is-disabled) {
+      --wu-menu__item--BackgroundColor: var(--wu-menu__item--hover--BackgroundColor);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("menu", "focus--BoxShadow");
+    }
+  }
+
+  @include e(item-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+    color: var(--wu-text-muted);
+  }
+
+  @include e(item-label) {
+    flex: 1;
+    min-inline-size: 0;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @include e(group-label) {
+    padding-block: wu-space(1);
+    padding-inline: wu-space(3);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    // Breathing room above a new group, except the first one.
+    &:not(:first-child) {
+      margin-block-start: wu-space(2);
+    }
+  }
+
+  // A menu that has groups indents ALL its options so the hierarchy reads.
+  // Uses :has() rather than a sibling selector, which would keep indenting
+  // past the next group label.
+  &:has(.wu-menu__group-label) {
+    .wu-menu__item {
+      padding-inline-start: wu-space(5);
+    }
+  }
+
+  @include e(separator) {
+    block-size: 1px;
+    margin-block: wu-space(1);
+    margin-inline: wu-space(1);
+    background-color: var(--wu-border-regular);
+  }
+
+  @include e(search) {
+    padding-block: wu-space(1);
+    padding-inline: wu-space(1);
+    margin-block-end: wu-space(1);
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+
+  @include e(empty) {
+    padding-block: wu-space(4);
+    padding-inline: wu-space(3);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+    text-align: center;
+  }
+
+  // ---- item states ----
+
+  .wu-menu__item.is-active {
+    --wu-menu__item--BackgroundColor: var(--wu-menu__item--active--BackgroundColor);
+    --wu-menu__item--Color: var(--wu-menu__item--active--Color);
+  }
+
+  .wu-menu__item.is-highlighted {
+    --wu-menu__item--BackgroundColor: var(--wu-bg-alternate);
+  }
+
+  .wu-menu__item.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .wu-menu__item.m-danger {
+    --wu-menu__item--Color: var(--wu-danger);
+    --wu-menu__item--hover--BackgroundColor: var(--wu-danger-50);
+    --wu-menu__item--active--BackgroundColor: var(--wu-danger-50);
+    --wu-menu__item--active--Color: var(--wu-danger-700);
+  }
+
+  .wu-menu__item.m-create {
+    --wu-menu__item--Color: var(--wu-brand);
+    --wu-menu__item--hover--BackgroundColor: var(--wu-brand-50);
+    font-weight: wu-font-weight(medium);
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+
+  // ---- option alignment, on the menu itself (it may be hosted away from its
+  // .wu-dropdown root) ----
+
+  @include m(options-center) {
+    .wu-menu__item {
+      justify-content: center;
+      text-align: center;
+      padding-inline-start: wu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  @include m(options-end) {
+    .wu-menu__item {
+      justify-content: flex-end;
+      text-align: end;
+      padding-inline-start: wu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  // ---- menu open state ----
+
+  @include when(open) {
+    display: flex;
+    opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}

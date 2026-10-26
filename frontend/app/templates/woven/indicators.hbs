@@ -1,0 +1,133 @@
+<WovenDocs::Page
+  @id="indicators"
+  @title="Dot, Spinner, Skeleton"
+  @subtitle="Presence, loading and placeholder indicators."
+  @components="Woven::Dot, Woven::Spinner, Woven::Skeleton"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Three stateless indicators. A dot marks presence or status beside
+      text, a spinner marks an in-flight request, and a skeleton holds the
+      shape of content that has not arrived yet. Use a skeleton when the
+      layout is known and a spinner when it is not.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Dot: six colours, four sizes, pulse and ring decorations.</li>
+      <li class="wu-list__item">Spinner: six colours, four sizes, announced as a status region.</li>
+      <li class="wu-list__item">Skeleton: text, title, circle and rect shapes, fractional widths, multi-line groups.</li>
+      <li class="wu-list__item">Every animation honours prefers-reduced-motion.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Dot variants" @id="dot-variants">
+    {{#each this.dotVariantExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Dot @variant={{example.variant}} />
+        <span class="wu-text m-sm">{{example.title}}</span>
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Dot sizes and decorations" @id="dot-sizes">
+    {{#each this.dotSizeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Dot @variant="primary" @size={{example.size}} />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Ring"
+      @note="A static halo that separates the dot from a busy background, such as an avatar corner."
+      @code={{this.code.ring}}
+    >
+      <Woven::Dot @variant="success" @ring={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Pulse"
+      @note="An animated pulse for live activity: recording, streaming, an incoming call. Stops under reduced motion."
+      @code={{this.code.pulse}}
+    >
+      <Woven::Dot @variant="danger" @pulse={{true}} />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Dot arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.dotArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Spinner variants" @id="spinner-variants">
+    {{#each this.spinnerVariantExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Spinner @variant={{example.variant}} />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Spinner sizes" @id="spinner-sizes">
+    {{#each this.spinnerSizeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Spinner @size={{example.size}} />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <h3 class="woven-subtitle">Spinner arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.spinnerArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Skeleton shapes" @id="skeleton-shapes">
+    {{#each this.shapeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Woven::Skeleton @shape={{example.shape}} />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Skeleton widths and lines" @id="skeleton-widths">
+    {{#each this.widthExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Woven::Skeleton @shape="text" @width={{example.width}} />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Multiple lines"
+      @note="lines above 1 renders a group of text lines with the last one shorter, standing in for a paragraph."
+      @layout="block"
+      @code={{this.code.lines}}
+    >
+      <Woven::Skeleton @shape="text" @lines={{3}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Composed placeholder"
+      @note="Combine shapes to mirror the real layout: a circle for the avatar, a title bar, then text lines. Swap it for the content in place so nothing jumps."
+      @layout="block"
+      @code={{this.code.composed}}
+    >
+      <div class="woven-row">
+        <Woven::Skeleton @shape="circle" />
+        <Woven::Skeleton @shape="title" @width="50" />
+      </div>
+      <Woven::Skeleton @shape="text" @lines={{2}} />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Skeleton arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.skeletonArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Spinner renders role="status" with the label "Loading"; pass aria-label to describe what is loading.</li>
+      <li class="wu-list__item">Dot and Skeleton are decorative spans with no role. Pair a dot with visible text; hide a skeleton once real content renders.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">The skeleton shimmer is an x-axis keyframe and runs mirrored under dir="rtl". Dot and spinner are symmetric.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

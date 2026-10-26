@@ -121,7 +121,7 @@ export default class ChequesController extends PaginatedController {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
-  // Nuvo inputs call onInput/onChange as (value, event).
+  // Woven inputs call onInput/onChange as (value, event).
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
     if (REASON_FIELDS.includes(fieldName)) this.reasonError = '';

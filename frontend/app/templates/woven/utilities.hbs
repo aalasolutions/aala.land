@@ -1,0 +1,133 @@
+<WovenDocs::Page
+  @id="utilities"
+  @title="Utilities"
+  @subtitle="Logical-direction classes that fill the one gap in core."
+  @components="utilities.scss"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Core ships physical alignment and margin utilities (text-left, ml-*),
+      which pin to the viewport rather than the reading direction under RTL.
+      The kit adds the logical equivalents and nothing more. Use these in
+      new markup; every other utility comes from core unchanged. Switch the
+      page to RTL while reading this page to see each one mirror.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Logical text alignment.</li>
+      <li class="wu-list__item">Inline-start and inline-end margin and padding on the core spacing scale.</li>
+      <li class="wu-list__item">A mirror class for glyphs that the font does not bidi-mirror.</li>
+      <li class="wu-list__item">Loaded last, so a utility on a component wins over the component's own alignment.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Text alignment" @id="alignment">
+    <WovenDocs::Example
+      @title="text-start"
+      @note="Aligns to the reading start: left in LTR, right in RTL. The default for prose and labels."
+      @layout="block"
+      @code={{this.code.start}}
+    >
+      <Woven::Panel class="text-start">text-start</Woven::Panel>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="text-end"
+      @note="Aligns to the reading end, for numbers and amounts in a column."
+      @layout="block"
+      @code={{this.code.end}}
+    >
+      <Woven::Panel class="text-end">text-end</Woven::Panel>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="text-center (core)"
+      @note="Centre needs no logical twin; core's class is the one to use."
+      @layout="block"
+      @code={{this.code.center}}
+    >
+      <Woven::Panel class="text-center">text-center (core)</Woven::Panel>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Inline margin" @id="margin">
+    <WovenDocs::Example
+      @title="ms-{n}"
+      @note="margin-inline-start, for indenting from the reading edge, such as a nested item."
+      @layout="block"
+      @code={{this.code.ms}}
+    >
+      <Woven::Panel class="ms-8">ms-8</Woven::Panel>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="me-{n}"
+      @note="margin-inline-end, for spacing before a trailing control."
+      @layout="block"
+      @code={{this.code.me}}
+    >
+      <Woven::Panel class="me-8">me-8</Woven::Panel>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Inline padding" @id="padding">
+    <WovenDocs::Example
+      @title="ps-{n}"
+      @note="padding-inline-start, for content that must clear a leading icon or rail."
+      @layout="block"
+      @code={{this.code.ps}}
+    >
+      <Woven::Panel class="ps-8">ps-8</Woven::Panel>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="pe-{n}"
+      @note="padding-inline-end, for content that must clear a trailing control."
+      @layout="block"
+      @code={{this.code.pe}}
+    >
+      <Woven::Panel class="pe-8">pe-8</Woven::Panel>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Mirrored glyphs" @id="flip">
+    <WovenDocs::Example
+      @title="flip-rtl on a glyph"
+      @note="A plain span with a glyph the font does not mirror; the class flips it with scaleX(-1) under RTL so it keeps pointing along the reading direction."
+      @code={{this.code.flipGlyph}}
+    >
+      <span class="flip-rtl wu-title m-lg" data-test-woven-flip-glyph>▸</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Automatic on icons"
+      @note="Woven::Icon adds flip-rtl to any icon named left or right, so this arrow mirrors with no extra class."
+      @code={{this.code.flipIcon}}
+    >
+      <Woven::Icon @icon="arrow-right" @size="24px" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Classes" @id="classes">
+    <WovenDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Spacing scale" @id="scale">
+    <p class="woven-note">Keys for <code>ms-</code>, <code>me-</code>, <code>ps-</code> and <code>pe-</code>, straight from core's spacing map.</p>
+    <WovenDocs::Table @kind="api" @rows={{this.spacingRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">These classes affect layout only; they carry no semantics and need no ARIA.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">These classes exist for RTL. Reach for them instead of text-left, text-right, ml-* or mr-* whenever the side depends on reading direction.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

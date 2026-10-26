@@ -1,0 +1,144 @@
+<WovenDocs::Page
+  @id="code"
+  @title="Code"
+  @subtitle="Inline code, code blocks and a clipboard-copy control, as raw markup classes."
+  @components="code-block.scss"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      These are stylesheet-only surfaces consumed as markup; every snippet
+      on this site is a
+      <code class="wu-code">wu-code-block</code>. Code content is pinned to
+      left-to-right inside the block because source never reflows with the
+      page direction.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Inline code with six tinted variants.</li>
+      <li class="wu-list__item">Block with optional header and actions, scroll cap, and opt-in line numbers.</li>
+      <li class="wu-list__item">Clipboard-copy group with a copied state and feedback slot.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Inline code" @id="inline">
+    <WovenDocs::Example
+      @title="Default"
+      @note="A code span inside prose for commands, paths and identifiers."
+      @code={{this.code.inline}}
+    >
+      <span>Run <code class="wu-code">pnpm install</code> first.</span>
+    </WovenDocs::Example>
+
+    {{#each this.variantExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <code class="wu-code m-{{example.variant}}">wu-code m-{{example.variant}}</code>
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Code block" @id="block">
+    <WovenDocs::Example
+      @title="Plain block"
+      @note="A bordered container around a pre element; whitespace is preserved and long lines scroll sideways."
+      @layout="block"
+      @code={{this.code.block}}
+    >
+      <div class="wu-code-block">
+        <pre class="wu-code-block__content">this.route('woven', function () {
+  this.route('button');
+});</pre>
+      </div>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Header with actions"
+      @note="A caption bar names the file and holds controls such as a copy button."
+      @layout="block"
+      @code={{this.code.header}}
+    >
+      <div class="wu-code-block">
+        <div class="wu-code-block__header">
+          <span>app/router.js</span>
+          <div class="wu-code-block__actions">
+            <Woven::Button @variant="ghost" @size="xs" @text="Copy" />
+          </div>
+        </div>
+        <pre class="wu-code-block__content">this.route('woven', function () {
+  this.route('button');
+});</pre>
+      </div>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Scrollable"
+      @note="m-scrollable caps the height at 20rem, for long logs and generated output."
+      @layout="block"
+      @code={{this.code.scrollable}}
+    >
+      <div class="wu-code-block m-scrollable">
+        <pre class="wu-code-block__content">{{#each this.scrollLines as |line|}}{{line}}
+{{/each}}</pre>
+      </div>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Numbered lines"
+      @note="Wrap each line in wu-code-block__line and add m-numbered; the counter lives on the modifier, so a block without it stays unnumbered."
+      @layout="block"
+      @code={{this.code.numbered}}
+    >
+      <div class="wu-code-block m-numbered">
+        <pre class="wu-code-block__content">{{#each this.numberedLines as |line|}}<span class="wu-code-block__line">{{line}}</span>{{/each}}</pre>
+      </div>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Clipboard copy" @id="clipboard">
+    <WovenDocs::Example
+      @title="Copy a value"
+      @note="A read-only input beside a copy button; writes to the clipboard through navigator.clipboard and shows the copied state for a moment. For keys, ids and links."
+      @code={{this.code.copy}}
+    >
+      <div class={{this.copyClasses}} data-test-woven-clipboard>
+        <input
+          class="wu-clipboard-copy__input"
+          value={{this.apiKey}}
+          readonly
+          aria-label="API key"
+          data-test-woven-clipboard-input
+        />
+        {{#if this.copied}}
+          <span class="wu-clipboard-copy__feedback" data-test-woven-clipboard-feedback>Copied</span>
+        {{/if}}
+        <button
+          type="button"
+          class="wu-clipboard-copy__button"
+          aria-label="Copy API key"
+          data-test-woven-clipboard-button
+          {{on "click" this.copyKey}}
+        >
+          <Woven::Icon @icon="copy" />
+        </button>
+      </div>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Classes" @id="classes">
+    <WovenDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Use a real pre element for block content so whitespace is preserved for assistive technology too.</li>
+      <li class="wu-list__item">The copy button is icon-only; give it an aria-label and announce the copied feedback in text.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">wu-code-block__content sets direction: ltr and text-align: start, so code reads correctly inside an RTL page while the surrounding header still mirrors.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

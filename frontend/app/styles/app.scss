@@ -1,7 +1,7 @@
-@use "nuvoui" as *;
+@use "wovenui" as *;
 @use "sass:color";
-@use "@nuvoui/ember/styles/index" as *;
-@use "./nuvo-showcase";
+@use "@wovenui/ember/styles/index" as *;
+@use "./woven-showcase";
 
 // Shared domain vocabulary. Read-only to page agents.
 @use "./pages/tags";

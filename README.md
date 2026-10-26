@@ -57,7 +57,7 @@ Everything below is for running, deploying and contributing to the code.
 | Layer | Technology |
 | --- | --- |
 | Backend | NestJS 11, TypeScript, TypeORM |
-| Frontend | Ember.js 6, NuvoUI SCSS |
+| Frontend | Ember.js 6, WovenUI SCSS |
 | Database | PostgreSQL 18 |
 | Cache and queues | Valkey (Redis-compatible), BullMQ |
 | Storage | Any S3-compatible bucket |
@@ -184,7 +184,7 @@ cd frontend && pnpm test
 Contributions are welcome. By submitting a pull request, you agree that your contribution will be licensed under the same terms as the project.
 
 1. Fork the repository and branch from `main`.
-2. Follow the conventions: NuvoUI SCSS for styling (no Tailwind, no inline styles), class-validator DTOs on every endpoint, `companyId` scoping on every query, `data-test-*` attributes on interactive elements.
+2. Follow the conventions: WovenUI SCSS for styling (no Tailwind, no inline styles), class-validator DTOs on every endpoint, `companyId` scoping on every query, `data-test-*` attributes on interactive elements.
 3. Include tests for new functionality.
 4. Open a pull request with a clear description.
 

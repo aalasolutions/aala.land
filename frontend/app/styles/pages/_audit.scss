@@ -1,59 +1,59 @@
 // Bespoke expandable log list; Accordion couldn't carry this markup, so it's hand-rolled.
-@use "@nuvoui/ember/styles/mixins/var" as *;
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 .audit-list {
   display: flex;
   flex-direction: column;
-  gap: nu-space(3);
+  gap: wu-space(3);
 }
 
 .audit-item {
-  background: var(--nu-bg-surface);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(lg);
+  background: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(lg);
   overflow: hidden;
 }
 
 .audit-summary {
   display: flex;
   align-items: center;
-  gap: nu-space(3);
-  padding: nu-space(4);
+  gap: wu-space(3);
+  padding: wu-space(4);
   cursor: pointer;
-  transition: background nu-duration(fast);
+  transition: background wu-duration(fast);
 
   &:hover {
-    background: var(--nu-bg-alternate);
+    background: var(--wu-bg-alternate);
   }
 }
 
 .audit-entity {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .audit-entity-id {
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
   font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
 }
 
 .audit-user {
   margin-inline-start: auto;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .audit-date {
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .audit-summary .chevron {
   flex-shrink: 0;
-  transition: transform nu-duration(fast);
+  transition: transform wu-duration(fast);
 
   &.expanded {
     transform: rotate(180deg);
@@ -61,12 +61,12 @@
 }
 
 .audit-details {
-  padding-block: nu-space(4);
-  padding-inline: nu-space(5);
-  border-block-start: 1px solid var(--nu-border-regular);
-  background: var(--nu-bg-alternate);
+  padding-block: wu-space(4);
+  padding-inline: wu-space(5);
+  border-block-start: 1px solid var(--wu-border-regular);
+  background: var(--wu-bg-alternate);
 }
 
 .audit-detail-section {
-  margin-block-start: nu-space(4);
+  margin-block-start: wu-space(4);
 }

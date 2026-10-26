@@ -7,7 +7,7 @@
 }}
 
 <div data-test-property-detail class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title={{if
       @model.assets.length
       (get (get @model.assets "0") "locality.name")
@@ -15,7 +15,7 @@
     }}
   >
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{array (hash label="Properties" route="properties")}}
         @compact={{true}}
         @parentsOnly={{true}}
@@ -23,26 +23,26 @@
       />
     </:breadcrumb>
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         data-test-new-asset
         @icon="plus"
         {{on "click" this.openCreateAsset}}
       >
         New Asset
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   <div class="flex end x-center gap-3 wrap" data-test-detail-toolbar>
-    <Nuvo::Dropdown
+    <Woven::Dropdown
       @size="xs"
       @value={{this.archivedFilterValue}}
       @onSelect={{this.setArchivedFilter}}
       @options={{this.archivedFilterOptions}}
       data-test-archived-filter
     />
-    <Nuvo::Segmented
+    <Woven::Segmented
       @options={{this.detailViewOptions}}
       @value={{this.currentDetailView}}
       @onChange={{this.switchDetailView}}
@@ -56,7 +56,7 @@
     {{#if (eq this.currentDetailView "cards")}}
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
-          <Nuvo::Card data-test-asset-card>
+          <Woven::Card data-test-asset-card>
             <div class="flex between x-center">
               <div class="flex col gap-1">
                 <h4 class="text-lg font-bold flex x-center gap-2"><Ui::Ph
@@ -67,7 +67,7 @@
                 <p class="text-muted text-sm">{{asset.units.length}} Properties</p>
               </div>
               <div class="flex gap-2">
-                <Nuvo::Button
+                <Woven::Button
                   data-test-edit-asset
                   @variant="secondary"
                   @size="sm"
@@ -75,8 +75,8 @@
                   {{on "click" (fn this.openEditAsset asset)}}
                 >
                   Edit
-                </Nuvo::Button>
-                <Nuvo::Button
+                </Woven::Button>
+                <Woven::Button
                   data-test-add-unit
                   @variant="primary"
                   @size="sm"
@@ -84,7 +84,7 @@
                   {{on "click" (fn this.openCreateUnit asset.id)}}
                 >
                   Add Property
-                </Nuvo::Button>
+                </Woven::Button>
               </div>
             </div>
             {{#if asset.units.length}}
@@ -104,7 +104,7 @@
                         </div>
                         <p class="font-bold text-md">{{unit.unitNumber}}</p>
                       </div>
-                      <Nuvo::Tag
+                      <Woven::Tag
                         class="tag-proptype-{{lowercase unit.propertyType}}"
                         @text={{property-type-label unit.propertyType}}
                       />
@@ -113,13 +113,13 @@
                     <div class="flex between x-center">
                       <p class="text-muted text-sm flex x-center gap-1">
                         {{#if unit.deletedAt}}
-                          <Nuvo::Tag
+                          <Woven::Tag
                             @variant="secondary"
                             @text="Archived"
                             data-test-archived-badge
                           />
                         {{/if}}
-                        <Nuvo::Tag
+                        <Woven::Tag
                           class="tag-unit-{{lowercase unit.status}}"
                           @text={{capitalize unit.status}}
                         />
@@ -159,7 +159,7 @@
                     <Unit::AmenitiesPrint @amenities={{unit.amenities}} />
 
                     <div class="flex gap-2 pt-1">
-                      <Nuvo::Button
+                      <Woven::Button
                         @variant="primary"
                         @size="sm"
                         @route="properties.unit"
@@ -168,9 +168,9 @@
                         data-test-view-unit
                       >
                         View Details
-                      </Nuvo::Button>
+                      </Woven::Button>
                       {{#unless unit.deletedAt}}
-                        <Nuvo::Button
+                        <Woven::Button
                           @variant="secondary"
                           @size="sm"
                           aria-label="Edit property"
@@ -185,13 +185,13 @@
                 {{/each}}
               </div>
             {{else}}
-              <Nuvo::EmptyState
+              <Woven::EmptyState
                 @title="No properties yet"
                 @description="Start by adding the first property to this asset."
               >
                 <:icon><Ui::Ph @icon="house-line" /></:icon>
                 <:actions>
-                  <Nuvo::Button
+                  <Woven::Button
                     data-test-add-unit
                     @variant="primary"
                     @size="sm"
@@ -199,15 +199,15 @@
                     {{on "click" (fn this.openCreateUnit asset.id)}}
                   >
                     Add First Property
-                  </Nuvo::Button>
+                  </Woven::Button>
                 </:actions>
-              </Nuvo::EmptyState>
+              </Woven::EmptyState>
             {{/if}}
-          </Nuvo::Card>
+          </Woven::Card>
         {{/each}}
       </div>
     {{else}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.unitColumns}}
         @rows={{this.unitRows}}
         @tree={{true}}
@@ -233,13 +233,13 @@
           {{#if cell.depth}}
             <div class="flex x-center gap-1">
               {{#if cell.row.deletedAt}}
-                <Nuvo::Tag
+                <Woven::Tag
                   @variant="secondary"
                   @text="Archived"
                   data-test-archived-badge
                 />
               {{/if}}
-              <Nuvo::Tag
+              <Woven::Tag
                 class="tag-unit-{{lowercase cell.value}}"
                 @text={{capitalize cell.value}}
               />
@@ -247,7 +247,7 @@
           {{/if}}
         {{else if (eq cell.key "propertyType")}}
           {{#if cell.value}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-proptype-{{lowercase cell.value}}"
               @text={{property-type-label cell.value}}
             />
@@ -263,15 +263,15 @@
         {{else if (eq cell.key "id")}}
           {{#if cell.depth}}
             <div class="flex gap-1">
-              <Nuvo::Button
+              <Woven::Button
                 data-test-view-unit
                 @variant="primary"
                 @size="xs"
                 @route="properties.unit"
                 @models={{array @model.localityId cell.row.id}}
-              >View</Nuvo::Button>
+              >View</Woven::Button>
               {{#unless cell.row.deletedAt}}
-                <Nuvo::Button
+                <Woven::Button
                   @variant="secondary"
                   @size="xs"
                   data-test-edit-unit
@@ -279,40 +279,40 @@
                     "click"
                     (fn this.openEditUnit cell.row.unit cell.row.assetId)
                   }}
-                >Edit</Nuvo::Button>
+                >Edit</Woven::Button>
               {{/unless}}
             </div>
           {{else if (eq cell.row.unitCount 0)}}
-            <Nuvo::Button
+            <Woven::Button
               data-test-add-unit
               @variant="primary"
               @size="xs"
               @icon="plus"
               {{on "click" (fn this.openCreateUnit cell.row.assetId)}}
-            >Add First Property</Nuvo::Button>
+            >Add First Property</Woven::Button>
           {{/if}}
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{/if}}
   {{else}}
-    <Nuvo::EmptyState
+    <Woven::EmptyState
       @title="No assets found"
       @description="There are no assets or properties in this location yet."
     >
       <:icon><Ui::Ph @icon="buildings" /></:icon>
       <:actions>
-        <Nuvo::Button
+        <Woven::Button
           data-test-new-asset-empty
           @variant="primary"
           @icon="plus"
           {{on "click" this.openCreateAsset}}
         >
           Create First Asset
-        </Nuvo::Button>
+        </Woven::Button>
       </:actions>
-    </Nuvo::EmptyState>
+    </Woven::EmptyState>
   {{/if}}
 </div>
 

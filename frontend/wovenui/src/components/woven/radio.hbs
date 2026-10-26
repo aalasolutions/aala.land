@@ -1,0 +1,18 @@
+<label class={{this.labelClasses}} data-test-wu-radio ...attributes>
+  <input
+    type="radio"
+    class={{this.classes}}
+    checked={{@checked}}
+    value={{@value}}
+    name={{@name}}
+    disabled={{@disabled}}
+    aria-describedby={{@describedBy}}
+    data-test-wu-radio-input
+    {{on "change" this.handleChange}}
+  />
+  {{#if (has-block)}}
+    <span data-test-wu-radio-label>{{yield}}</span>
+  {{else if @label}}
+    <span data-test-wu-radio-label>{{@label}}</span>
+  {{/if}}
+</label>

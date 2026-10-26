@@ -152,7 +152,7 @@ module('Integration | Component | contact/picker', function (hooks) {
       hbs`<Contact::Picker @onSelectContact={{this.onSelectContact}} />`,
     );
 
-    await fillIn('[data-test-nu-dropdown-filter]', 'om');
+    await fillIn('[data-test-wu-dropdown-filter]', 'om');
 
     assert.deepEqual(
       calls.map((c) => c.path),
@@ -163,7 +163,7 @@ module('Integration | Component | contact/picker', function (hooks) {
       'opening lists the first page, typing searches',
     );
     const item = document.querySelector(
-      '.nu-menu.is-open [data-test-nu-dropdown-item]:not(.m-create)',
+      '.wu-menu.is-open [data-test-wu-dropdown-item]:not(.m-create)',
     );
     assert.dom(item).hasText('Omar H.');
 
@@ -178,10 +178,10 @@ module('Integration | Component | contact/picker', function (hooks) {
     this.contact = CONTACT;
     await render(hbs`<Contact::Picker @contact={{this.contact}} />`);
 
-    await focus('[data-test-nu-dropdown-filter]');
+    await focus('[data-test-wu-dropdown-filter]');
 
     const items = document.querySelectorAll(
-      '.nu-menu.is-open [data-test-nu-dropdown-item]',
+      '.wu-menu.is-open [data-test-wu-dropdown-item]',
     );
     assert.dom(items[0]).hasText('Ahmed Al-Rashid');
     assert.dom(items[0]).hasAttribute('aria-selected', 'true');

@@ -1,0 +1,228 @@
+// Layout and helpers for the /woven documentation routes only, not part of the shipped kit.
+@use "@wovenui/ember/styles/common/var" as *;
+
+// wu-sidebar is position:fixed, so main region reserves space via margin, not flex flow.
+.woven-shell {
+  min-block-size: 100vh;
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    margin-inline-start: 240px;
+    transition: margin-inline-start 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    &__main {
+      margin-inline-start: 0;
+    }
+  }
+}
+
+// Follows the collapsed sidebar width.
+.woven-shell:has(.wu-sidebar.is-collapsed) .woven-shell__main {
+  margin-inline-start: 60px;
+}
+
+@media (max-width: 768px) {
+  .woven-shell:has(.wu-sidebar.is-collapsed) .woven-shell__main {
+    margin-inline-start: 0;
+  }
+}
+
+.woven-page {
+  inline-size: 100%;
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: wu-space(8) wu-space(6);
+}
+
+// One documentation page: header, intro, sections.
+.woven-doc {
+  &__header {
+    margin-block-end: wu-space(8);
+  }
+
+  &__intro {
+    max-inline-size: 48rem;
+    margin-block: 0 wu-space(8);
+    font-size: wu-font-size(md);
+    line-height: 1.6;
+    color: var(--wu-text-muted);
+  }
+
+  // Reference tables wrap their description column instead of scrolling.
+  &__table {
+    margin-block-end: wu-space(4);
+
+    .wu-table {
+      min-inline-size: 100%;
+    }
+
+    td {
+      vertical-align: top;
+    }
+
+    th:first-child,
+    td:first-child {
+      white-space: nowrap;
+    }
+  }
+}
+
+.woven-section {
+  margin-block-end: wu-space(10);
+  scroll-margin-block-start: wu-space(6);
+
+  &__title {
+    margin-block-end: wu-space(5);
+    padding-block-end: wu-space(2);
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+}
+
+// Live preview box with the invocation snippet attached underneath.
+.woven-example {
+  margin-block-end: wu-space(6);
+
+  &__preview {
+    padding: wu-space(5);
+    background-color: var(--wu-bg-surface);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(lg);
+
+    &.has-code {
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+      border-block-end: none;
+    }
+
+    &.m-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: wu-space(3);
+    }
+
+    // Narrow column for form controls.
+    &.m-stack {
+      display: flex;
+      flex-direction: column;
+      gap: wu-space(3);
+
+      > * {
+        max-inline-size: 26rem;
+      }
+    }
+
+    // Full-width column for panels, alerts and headers.
+    &.m-block {
+      display: flex;
+      flex-direction: column;
+      gap: wu-space(4);
+    }
+  }
+
+  &__code {
+    --wu-code-block--BorderRadius: 0 0 #{wu-radius(lg)} #{wu-radius(lg)};
+  }
+}
+
+// Overview page index of every documented page.
+.woven-toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: wu-space(2);
+  margin-block-end: wu-space(6);
+
+  &__link {
+    display: block;
+    padding: wu-space(2) wu-space(3);
+    color: var(--wu-text-regular);
+    text-decoration: none;
+    background-color: var(--wu-bg-surface);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(md);
+
+    &:hover {
+      color: var(--wu-brand);
+      border-color: var(--wu-brand);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+}
+
+.woven-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: wu-space(3);
+
+  // Gives a vertical divider demo room to show its full height.
+  &--full-height {
+    block-size: wu-space(16);
+  }
+}
+
+.woven-stack {
+  display: flex;
+  flex-direction: column;
+  gap: wu-space(3);
+  max-inline-size: 26rem;
+}
+
+.woven-note {
+  margin-block: 0 wu-space(2);
+  color: var(--wu-text-muted);
+  font-size: wu-font-size(sm);
+
+  code {
+    padding-inline: wu-space(1);
+    border-radius: wu-radius(sm);
+    background: var(--wu-bg-alternate);
+    font-size: 0.9em;
+  }
+}
+
+.woven-subtitle {
+  margin-block: wu-space(6) wu-space(2);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// Sort control inside a raw wu-table header cell; inherits the cell's type styles.
+.woven-sort-button {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+// A demo that must show a scrolling body or sticky header inside a bounded box.
+.woven-scroll-box {
+  max-block-size: 14rem;
+  overflow: auto;
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(lg);
+}

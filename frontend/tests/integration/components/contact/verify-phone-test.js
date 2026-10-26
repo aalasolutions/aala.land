@@ -30,7 +30,7 @@ module('Integration | Component | contact/verify-phone', function (hooks) {
       },
     ]);
     assert.strictEqual(this.verifiedWith, full);
-    assert.dom('[data-test-nu-field-error]').doesNotExist();
+    assert.dom('[data-test-wu-field-error]').doesNotExist();
   });
 
   test('a miss shows the fixed message and nothing else', async function (assert) {
@@ -40,7 +40,7 @@ module('Integration | Component | contact/verify-phone', function (hooks) {
 
     assert.strictEqual(this.verifiedWith, undefined);
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('The number does not match');
   });
 
@@ -54,7 +54,7 @@ module('Integration | Component | contact/verify-phone', function (hooks) {
 
     assert.strictEqual(this.verifiedWith, undefined);
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('Too many attempts, try again later');
   });
 

@@ -25,7 +25,7 @@ Browser / Mobile (Capacitor)
                                Meta Cloud API (WhatsApp)
 ```
 
-**Frontend** (`frontend/`) — Ember.js single-page app. Glimmer components, Handlebars templates, NuvoUI SCSS (no Tailwind). State lives in Ember Data + services.
+**Frontend** (`frontend/`) — Ember.js single-page app. Glimmer components, Handlebars templates, WovenUI SCSS (no Tailwind). State lives in Ember Data + services.
 
 **Backend** (`backend/src/`) — NestJS modular monolith. One folder per domain under `modules/`. Shared cross-cutting concerns (guards, interceptors, decorators) live in `shared/`.
 

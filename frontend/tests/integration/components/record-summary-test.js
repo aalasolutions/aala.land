@@ -7,7 +7,7 @@ module('Integration | Component | record-summary', function (hooks) {
   setupRenderingTest(hooks);
 
   function rows() {
-    return findAll('.nu-desc-list__group').map((g) => [
+    return findAll('.wu-desc-list__group').map((g) => [
       g.querySelector('dt').textContent.trim(),
       g.querySelector('dd').textContent.trim(),
     ]);

@@ -13,13 +13,13 @@
   @onClose={{this.close}}
   @onConfirm={{this.confirm}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="lease-terminate-reason"
       rows="2"
       maxlength="500"
@@ -30,5 +30,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

@@ -3,21 +3,21 @@
 }}
 
 <div data-test-unit-detail class="flex col gap-6">
-  <Nuvo::PageHeader>
+  <Woven::PageHeader>
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{this.crumbs}}
         @compact={{true}}
         @parentsOnly={{true}}
         data-test-breadcrumb
       />
     </:breadcrumb>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.unit}}
     <RegionNotice @regionCode={{@model.unit.regionCode}} @noun="property" />
     {{#if this.isArchived}}
-      <Nuvo::Alert
+      <Woven::Alert
         @variant="warning"
         @title="Archived"
         @description="This property is archived and read-only. Photos and documents can still be removed."
@@ -25,7 +25,7 @@
       >
         <:actions>
           {{#if this.canArchiveUnit}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="secondary"
               @size="sm"
               @icon="arrow-counter-clockwise"
@@ -33,10 +33,10 @@
               {{on "click" (fn this.openUnitAction "unarchive")}}
             >
               Unarchive
-            </Nuvo::Button>
+            </Woven::Button>
           {{/if}}
         </:actions>
-      </Nuvo::Alert>
+      </Woven::Alert>
     {{/if}}
 
     <div class="unit-detail-grid">
@@ -80,13 +80,13 @@
         {{#unless this.isArchived}}
           <div class="unit-media__tools">
             <label
-              class="nu-btn m-primary m-circle {{if this.isUploading 'is-disabled'}}"
+              class="wu-btn m-primary m-circle {{if this.isUploading 'is-disabled'}}"
               data-tooltip="Add photo"
               data-tooltip-position="start"
               data-test-upload-photo-btn
             >
               {{#if this.isUploading}}
-                <Nuvo::Spinner @size="sm" />
+                <Woven::Spinner @size="sm" />
               {{else}}
                 <Ui::Ph @icon="camera-plus" />
               {{/if}}
@@ -129,7 +129,7 @@
                 ></button>
                 <div class="unit-thumb-actions">
                   {{#unless (or media.isPrimary this.isArchived)}}
-                    <Nuvo::Button
+                    <Woven::Button
                       @variant="secondary"
                       @shape="circle"
                       @size="xs"
@@ -140,7 +140,7 @@
                       {{on "click" (fn this.setPrimaryPhoto media)}}
                     />
                   {{/unless}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @variant="danger"
                     @shape="circle"
                     @size="xs"
@@ -171,22 +171,22 @@
         {{/if}}
       </div>
 
-      <Nuvo::Card>
+      <Woven::Card>
         <div class="unit-summary">
           <div class="flex between x-center gap-2 wrap">
             <div class="flex gap-1 wrap" data-test-unit-badges>
-              <Nuvo::Tag class="tag-unit-{{lowercase @model.unit.status}}">
+              <Woven::Tag class="tag-unit-{{lowercase @model.unit.status}}">
                 {{capitalize @model.unit.status}}
-              </Nuvo::Tag>
-              <Nuvo::Tag
+              </Woven::Tag>
+              <Woven::Tag
                 class="tag-proptype-{{lowercase @model.unit.propertyType}}"
               >
                 {{property-type-label @model.unit.propertyType}}
-              </Nuvo::Tag>
+              </Woven::Tag>
             </div>
             <div class="flex gap-2 wrap">
               {{#unless this.isArchived}}
-                <Nuvo::Button
+                <Woven::Button
                   @variant="secondary"
                   @size="sm"
                   @icon="pencil-simple"
@@ -194,9 +194,9 @@
                   {{on "click" this.openEdit}}
                 >
                   Edit
-                </Nuvo::Button>
+                </Woven::Button>
                 {{#if this.canArchiveUnit}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @variant="secondary"
                     @size="sm"
                     @icon="archive"
@@ -204,11 +204,11 @@
                     {{on "click" (fn this.openUnitAction "archive")}}
                   >
                     Archive
-                  </Nuvo::Button>
+                  </Woven::Button>
                 {{/if}}
               {{/unless}}
               {{#if this.canDeleteUnit}}
-                <Nuvo::Button
+                <Woven::Button
                   @variant="danger"
                   @outline={{true}}
                   @size="sm"
@@ -217,7 +217,7 @@
                   {{on "click" (fn this.openUnitAction "delete")}}
                 >
                   Delete
-                </Nuvo::Button>
+                </Woven::Button>
               {{/if}}
             </div>
           </div>
@@ -280,10 +280,10 @@
           {{/if}}
 
           {{#if @model.unit.owner}}
-            <div class="nu-info-row" data-test-unit-owner>
-              <span class="nu-info-row__label"><Ui::Ph @icon="user" />
+            <div class="wu-info-row" data-test-unit-owner>
+              <span class="wu-info-row__label"><Ui::Ph @icon="user" />
                 Owner</span>
-              <span class="nu-info-row__value">
+              <span class="wu-info-row__value">
                 <LinkTo
                   data-test-owner-link
                   @route="contacts.detail"
@@ -305,15 +305,15 @@
             </div>
           {{/if}}
         </div>
-      </Nuvo::Card>
+      </Woven::Card>
     </div>
 
     {{#if @model.unit.description}}
-      <Nuvo::Card data-test-description>
+      <Woven::Card data-test-description>
         <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
           Description</h2>
         <p class="text-muted">{{@model.unit.description}}</p>
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
 
     <section data-test-unit-documents>
@@ -333,7 +333,7 @@
             <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
               Documents</h2>
             {{#if panel.canUpload}}
-              <Nuvo::Button
+              <Woven::Button
                 @variant="primary"
                 @size="sm"
                 @icon="upload-simple"
@@ -341,18 +341,18 @@
                 {{on "click" panel.openUpload}}
               >
                 Upload
-              </Nuvo::Button>
+              </Woven::Button>
             {{/if}}
           </div>
         </:header>
       </Documents::Panel>
     </section>
 
-    <Nuvo::Card data-test-lease-history>
+    <Woven::Card data-test-lease-history>
       <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
         Lease History</h2>
       {{#if @model.leases.length}}
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.leaseColumns}}
           @rows={{@model.leases}}
           @pinColumns={{true}}
@@ -375,11 +375,11 @@
             <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
           {{else if (eq cell.key "status")}}
             <div class="flex gap-1 wrap">
-              <Nuvo::Tag class="tag-lease-{{lowercase cell.value}}">
+              <Woven::Tag class="tag-lease-{{lowercase cell.value}}">
                 {{cell.value}}
-              </Nuvo::Tag>
+              </Woven::Tag>
               {{#if cell.row.deletedAt}}
-                <Nuvo::Tag
+                <Woven::Tag
                   @variant="secondary"
                   @text="Archived"
                   data-test-lease-archived-badge
@@ -389,14 +389,14 @@
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </Nuvo::DataTable>
+        </Woven::DataTable>
       {{else}}
         <p class="text-muted text-sm">No lease history for this property.</p>
       {{/if}}
-    </Nuvo::Card>
+    </Woven::Card>
 
     {{#if this.canViewHistory}}
-      <Nuvo::Card data-test-unit-history>
+      <Woven::Card data-test-unit-history>
         <h2 class="text-md font-bold mb-3"><Ui::Ph
             @icon="clock-counter-clockwise"
           />
@@ -406,22 +406,22 @@
           @entityId={{@model.unit.id}}
           @reloadKey={{this.isArchived}}
         />
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
   {{else}}
-    <Nuvo::EmptyState
+    <Woven::EmptyState
       @title="Property not found"
       data-test-unit-not-found
     >
       <:icon><Ui::Ph @icon="warning" /></:icon>
       <:actions>
-        <Nuvo::Button
+        <Woven::Button
           @variant="primary"
           @route="properties"
           data-test-not-found-back
-        >Back to Properties</Nuvo::Button>
+        >Back to Properties</Woven::Button>
       </:actions>
-    </Nuvo::EmptyState>
+    </Woven::EmptyState>
   {{/if}}
 </div>
 
@@ -456,7 +456,7 @@
   @onClose={{this.closeUnitAction}}
   @onConfirm={{this.confirmUnitAction}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label={{if
       this.unitActionConfig.reasonRequired
@@ -466,7 +466,7 @@
     @required={{this.unitActionConfig.reasonRequired}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       rows="2"
       maxlength="500"
       placeholder="e.g. Sold, no longer managed"
@@ -475,5 +475,5 @@
       @invalid={{if this.reasonError true false}}
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

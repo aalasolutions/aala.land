@@ -1,0 +1,191 @@
+<WovenDocs::Page
+  @id="segmented"
+  @title="Segmented"
+  @subtitle="Single- or multi-choice control rendered as one joined switch."
+  @components="Woven::Segmented"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      A segmented control sets a value. Unlike Tabs, which navigate between
+      panels, it behaves as a radio group in single mode and as a set of
+      checkboxes in multiple mode, and announces itself that way. Use it for
+      two to five short choices that change a view or a filter at once.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Icon plus label, icon only, or label only per option.</li>
+      <li class="wu-list__item">Single or multiple selection; controlled or uncontrolled.</li>
+      <li class="wu-list__item">Two extra sizes and a fill layout.</li>
+      <li class="wu-list__item">Arrow, Home and End keys; disabled options are skipped.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Options" @id="options">
+    <WovenDocs::Example
+      @title="Icon and label"
+      @note="Each option carries a Phosphor icon and a label. The richest form, for view switchers at the top of a page."
+      @layout="block"
+      @code={{this.code.icons}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Custom icons with the :icon slot"
+      @note="Icons come from the option objects, so the :icon block yields the option back and the host draws what it likes per option. Without the block, option.icon renders as a Phosphor name."
+      @layout="block"
+      @code={{this.code.iconSlot}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      >
+        <:icon as |option|>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <rect x="1" y="1" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </:icon>
+      </Woven::Segmented>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Icon only"
+      @note="Labels hide but remain as titles and accessible names; for toolbars where the icons are universally understood."
+      @layout="block"
+      @code={{this.code.iconOnly}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+        @iconOnly={{true}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Label only with a disabled option"
+      @note="Plain text segments; a disabled option stays visible so the user knows the choice exists."
+      @layout="block"
+      @code={{this.code.plain}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="value keys"
+      @note="Options keyed by value instead of id work the same, so an existing options array drops in unchanged."
+      @layout="block"
+      @code={{this.code.valueKeyed}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedValueKeyed}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Modes" @id="modes">
+    <WovenDocs::Example
+      @title="Uncontrolled"
+      @note="Without value the control starts on the first enabled option and keeps its own state."
+      @layout="block"
+      @code={{this.code.uncontrolled}}
+    >
+      <Woven::Segmented @options={{this.segmentedPlain}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Multiple"
+      @note="Several segments raised at once; the value is an array and each segment is a checkbox. For filters such as amenities."
+      @layout="block"
+      @code={{this.code.multiple}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedAmenityOptions}}
+        @value={{this.segmentedAmenities}}
+        @onChange={{this.updateSegmentedAmenities}}
+        @multiple={{true}}
+      />
+      <span class="wu-text m-sm m-muted" data-test-woven-segmented-values>Selected: {{this.segmentedAmenities}}</span>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Sizes and layout" @id="sizes">
+    <WovenDocs::Example
+      @title="Small"
+      @note="Matches sm buttons in toolbars and card headers."
+      @layout="block"
+      @code={{this.code.sm}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="sm"
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Large"
+      @note="For a prominent mode switch at the top of a screen."
+      @layout="block"
+      @code={{this.code.lg}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="lg"
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Fill"
+      @note="Segments split the container width equally, for phones and narrow cards."
+      @layout="block"
+      @code={{this.code.fill}}
+    >
+      <Woven::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @fill={{true}}
+      />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Callbacks" @id="callbacks">
+    <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Single mode renders role="radiogroup" with role="radio" buttons; multiple mode renders role="group" with role="checkbox" buttons. Both set aria-checked.</li>
+      <li class="wu-list__item">Single mode uses a roving tabindex and moves the value with focus; multiple mode keeps every segment tabbable and only moves focus, so Space toggles.</li>
+      <li class="wu-list__item">Icon-only segments keep their label in the title attribute; icons are aria-hidden.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Arrow keys follow the reading direction, as in Tabs.</li>
+      <li class="wu-list__item">Segment borders and radii are logical, so the rounded ends stay on the outer segments in both directions.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

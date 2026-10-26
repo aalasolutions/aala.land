@@ -55,7 +55,7 @@ module('Integration | Component | vendors/vendor-drawer', function (hooks) {
     await click('[data-test-save-vendor]');
 
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('Choose a specialty');
     assert.notOk(sent(this.calls, 'POST'));
   });

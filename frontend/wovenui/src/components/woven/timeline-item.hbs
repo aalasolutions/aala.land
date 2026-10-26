@@ -1,0 +1,40 @@
+<li class={{this.classes}} data-test-wu-timeline-item ...attributes>
+  <span class="wu-timeline__marker" aria-hidden="true"></span>
+  <span class="wu-timeline__connector" aria-hidden="true"></span>
+  <div class="wu-timeline__content">
+    {{#if (or @title @timestamp (has-block "icon"))}}
+      <div class="wu-timeline__heading">
+        {{#if (has-block "icon")}}
+          <span class="wu-timeline__icon" aria-hidden="true">{{yield to="icon"}}</span>
+        {{/if}}
+
+        {{#if @title}}
+          <h5
+            class="wu-timeline__title"
+            data-test-wu-timeline-title
+          >{{@title}}</h5>
+        {{/if}}
+
+        {{#if @timestamp}}
+          <span
+            class="wu-timeline__timestamp"
+            data-test-wu-timeline-timestamp
+          >{{@timestamp}}</span>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    {{#if (has-block)}}
+      {{yield}}
+    {{else if @description}}
+      <p
+        class="wu-timeline__description"
+        data-test-wu-timeline-description
+      >{{@description}}</p>
+    {{/if}}
+
+    {{#if @meta}}
+      <span class="wu-timeline__meta" data-test-wu-timeline-meta>{{@meta}}</span>
+    {{/if}}
+  </div>
+</li>

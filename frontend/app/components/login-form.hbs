@@ -8,27 +8,27 @@
           reset link.
         </p>
       </div>
-      <Nuvo::Button
+      <Woven::Button
         @variant="link"
         data-test-back-to-login
         {{on "click" this.toggleForgotPassword}}
       >
         Sign in
-      </Nuvo::Button>
+      </Woven::Button>
     </div>
   {{else}}
     <form
       data-test-forgot-password-form
-      class="nu-form w-full"
+      class="wu-form w-full"
       novalidate
       {{on "submit" this.submitForgotPassword}}
     >
-      <Nuvo::Field
+      <Woven::Field
         @label="Email"
         @required={{true}}
         @error={{this.fieldErrors.resetEmail}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="reset-email"
           type="email"
           placeholder="you@company.com"
@@ -38,49 +38,49 @@
           @onInput={{fn this.setFieldValue "resetEmail"}}
           data-test-reset-email-input
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.resetError}}
-        <Nuvo::Alert
+        <Woven::Alert
           @variant="danger"
           @description={{this.resetError}}
           data-test-reset-error
         />
       {{/if}}
 
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @type="submit"
         @loading={{this.resetLoading}}
         data-test-reset-submit
       >
         {{if this.resetLoading "Sending..." "Send Reset Link"}}
-      </Nuvo::Button>
+      </Woven::Button>
 
       <div class="text-center text-muted">
-        <Nuvo::Button
+        <Woven::Button
           @variant="link"
           data-test-back-to-login
           {{on "click" this.toggleForgotPassword}}
         >
           Back to Sign In
-        </Nuvo::Button>
+        </Woven::Button>
       </div>
     </form>
   {{/if}}
 {{else}}
   <form
     data-test-login-form
-    class="nu-form w-full"
+    class="wu-form w-full"
     novalidate
     {{on "submit" this.submit}}
   >
-    <Nuvo::Field
+    <Woven::Field
       @label="Email"
       @required={{true}}
       @error={{this.fieldErrors.email}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="login-email"
         type="email"
         placeholder="you@company.com"
@@ -90,14 +90,14 @@
         @onInput={{fn this.setFieldValue "email"}}
         data-test-email-input
       />
-    </Nuvo::Field>
+    </Woven::Field>
 
-    <Nuvo::Field
+    <Woven::Field
       @label="Password"
       @required={{true}}
       @error={{this.fieldErrors.password}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="login-password"
         type="password"
         placeholder="••••••••"
@@ -107,37 +107,37 @@
         @onInput={{fn this.setFieldValue "password"}}
         data-test-password-input
       />
-    </Nuvo::Field>
+    </Woven::Field>
 
     {{#if this.errorMessage}}
-      <Nuvo::Alert
+      <Woven::Alert
         @variant="danger"
         @description={{this.errorMessage}}
         data-test-error-message
       />
     {{/if}}
 
-    <Nuvo::Button
+    <Woven::Button
       @variant="primary"
       @type="submit"
       @loading={{this.isLoading}}
       data-test-submit-button
     >
       {{if this.isLoading "Signing in..." "Sign In"}}
-    </Nuvo::Button>
+    </Woven::Button>
 
     <div class="text-center">
-      <Nuvo::Button
+      <Woven::Button
         @variant="link"
         data-test-forgot-password-link
         {{on "click" this.toggleForgotPassword}}
       >
         Forgot Password?
-      </Nuvo::Button>
+      </Woven::Button>
     </div>
 
     {{#if this.googleAuth.isConfigured}}
-      <Nuvo::Divider @label="OR" />
+      <Woven::Divider @label="OR" />
 
       <div
         class="google-signin-section

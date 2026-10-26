@@ -12,7 +12,7 @@ export function toItems(payload, mapItem) {
   return mapItem ? items.map((item) => mapItem(item)) : items;
 }
 
-// URL transport for Nuvo::Autocomplete: the kit owns the UI, the app owns fetching.
+// URL transport for Woven::Autocomplete: the kit owns the UI, the app owns fetching.
 // @listUrl preloads the whole list and filters it locally; @searchUrl queries per keystroke.
 export default class RemoteAutocompleteComponent extends Component {
   @service auth;

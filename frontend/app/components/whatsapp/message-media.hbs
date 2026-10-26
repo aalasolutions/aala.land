@@ -7,9 +7,9 @@
     {{#if this.isStored}}
       {{#if this.loadFailed}}
         <div class="flex x-center gap-1 wrap" data-test-wa-media-load-failed>
-          <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
-          <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>Could not load</Nuvo::Text>
-          <Nuvo::Button
+          <Woven::Icon @icon="warning-circle" aria-hidden="true" />
+          <Woven::Text @tag="span" @size="sm" @muted={{true}}>Could not load</Woven::Text>
+          <Woven::Button
             @variant="ghost"
             @size="xs"
             @text="Retry"
@@ -70,11 +70,11 @@
               {{on "error" this.onMediaError}}
             ></video>
           {{/if}}
-          <span class="wa-media__play" aria-hidden="true"><Nuvo::Icon
+          <span class="wa-media__play" aria-hidden="true"><Woven::Icon
               @icon="play"
             /></span>
           {{#if this.videoDurationLabel}}
-            <Nuvo::Badge
+            <Woven::Badge
               class="wa-media__badge"
               @size="sm"
               @text={{this.videoDurationLabel}}
@@ -93,25 +93,25 @@
           />
         </div>
       {{else}}
-        <Nuvo::ListItem
+        <Woven::ListItem
           data-test-wa-media-document
           {{this.observeMedia this.loadUrl}}
         >
           <:main>
-            <Nuvo::Icon
+            <Woven::Icon
               @icon={{this.typeIcon}}
               @size="1.5rem"
               aria-hidden="true"
             />
             <div class="flex col min-w-0p">
-              <Nuvo::Text
+              <Woven::Text
                 @tag="span"
                 @size="sm"
                 @truncate={{true}}
                 data-test-wa-media-file-name
-              ><bdi>{{this.fileName}}</bdi></Nuvo::Text>
+              ><bdi>{{this.fileName}}</bdi></Woven::Text>
               {{#if this.sizeLabel}}
-                <Nuvo::Badge
+                <Woven::Badge
                   @size="sm"
                   @quiet={{true}}
                   @text={{this.sizeLabel}}
@@ -122,7 +122,7 @@
           </:main>
           <:actions>
             <a
-              class="nu-btn m-ghost m-sm m-circle"
+              class="wu-btn m-ghost m-sm m-circle"
               href={{this.url}}
               download
               target="_blank"
@@ -131,13 +131,13 @@
               title="Download"
               data-test-wa-media-download
               {{on "click" this.onDownloadClick}}
-            ><Nuvo::Icon @icon="download-simple" aria-hidden="true" /></a>
+            ><Woven::Icon @icon="download-simple" aria-hidden="true" /></a>
           </:actions>
-        </Nuvo::ListItem>
+        </Woven::ListItem>
       {{/if}}
 
       {{#if this.showsSizeBadge}}
-        <Nuvo::Badge
+        <Woven::Badge
           @size="sm"
           @quiet={{true}}
           @text={{this.sizeLabel}}
@@ -146,7 +146,7 @@
       {{/if}}
 
       {{#if this.canDelete}}
-        <Nuvo::Button
+        <Woven::Button
           class="wa-media__delete"
           @variant="ghost"
           @shape="circle"
@@ -159,13 +159,13 @@
         />
       {{/if}}
     {{else if (eq this.status "DELETED")}}
-      <Nuvo::Text
+      <Woven::Text
         class="break-words"
         @size="xs"
         @muted={{true}}
         data-test-wa-media-record
       >
-        <Nuvo::Icon @icon="trash" aria-hidden="true" />
+        <Woven::Icon @icon="trash" aria-hidden="true" />
         <bdi>{{this.fileName}}</bdi>
         {{#if this.sizeLabel}}
           ·
@@ -182,46 +182,46 @@
         {{else}}
           Media deleted
         {{/if}}
-      </Nuvo::Text>
+      </Woven::Text>
     {{else if (eq this.status "FAILED")}}
       <div class="flex x-center gap-1" data-test-wa-media-failed>
-        <Nuvo::Icon @icon="warning-circle" aria-hidden="true" />
-        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>Media could not be
-          received</Nuvo::Text>
+        <Woven::Icon @icon="warning-circle" aria-hidden="true" />
+        <Woven::Text @tag="span" @size="sm" @muted={{true}}>Media could not be
+          received</Woven::Text>
       </div>
     {{else if (eq this.status "TOO_LARGE")}}
       <div class="flex x-center gap-1" data-test-wa-media-too-large>
-        <Nuvo::Icon @icon="file-x" aria-hidden="true" />
-        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>File too large to
-          receive</Nuvo::Text>
+        <Woven::Icon @icon="file-x" aria-hidden="true" />
+        <Woven::Text @tag="span" @size="sm" @muted={{true}}>File too large to
+          receive</Woven::Text>
       </div>
     {{else if (eq this.status "UNSUPPORTED")}}
       <div class="flex x-center gap-1" data-test-wa-media-unsupported>
-        <Nuvo::Icon @icon="device-mobile" aria-hidden="true" />
-        <Nuvo::Text @tag="span" @size="sm" @muted={{true}}>This message can't be
-          shown here. Open WhatsApp on your phone to see it.</Nuvo::Text>
+        <Woven::Icon @icon="device-mobile" aria-hidden="true" />
+        <Woven::Text @tag="span" @size="sm" @muted={{true}}>This message can't be
+          shown here. Open WhatsApp on your phone to see it.</Woven::Text>
       </div>
     {{else}}
       <div class="flex x-center gap-1 wrap" data-test-wa-media-pending>
-        <Nuvo::Spinner @size="xs" />
-        <Nuvo::Text
+        <Woven::Spinner @size="xs" />
+        <Woven::Text
           @tag="span"
           @size="sm"
           @muted={{true}}
-        >{{this.typeLabel}}</Nuvo::Text>
+        >{{this.typeLabel}}</Woven::Text>
         {{#if this.sizeLabel}}
-          <Nuvo::Badge
+          <Woven::Badge
             @size="sm"
             @quiet={{true}}
             @text={{this.sizeLabel}}
             data-test-wa-media-size
           />
         {{/if}}
-        <Nuvo::Text
+        <Woven::Text
           @tag="span"
           @size="xs"
           @muted={{true}}
-        >Receiving</Nuvo::Text>
+        >Receiving</Woven::Text>
       </div>
     {{/if}}
   </div>

@@ -1,0 +1,265 @@
+// wu-table - data table with sortable headers, density, and scroll wrapper
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(table-wrapper) {
+  @include wu-root("table-wrapper", (
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+  ));
+
+  display: block;
+  background-color: wu-var("table-wrapper", "BackgroundColor");
+  border: wu-var("table-wrapper", "BorderWidth") solid wu-var("table-wrapper", "BorderColor");
+  border-radius: wu-var("table-wrapper", "BorderRadius");
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+
+  @include m(with-footer) {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    border-block-end: none;
+  }
+
+  // ---- footer / pagination ----
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: wu-space(4);
+    padding-block: wu-space(3);
+    padding-inline: wu-space(4);
+    background-color: var(--wu-bg-surface);
+    border-block-start: 1px solid var(--wu-border-regular);
+  }
+
+  @include e(footer-status) {
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+  }
+
+  @include e(footer-controls) {
+    display: inline-flex;
+    align-items: center;
+    gap: wu-space(2);
+    flex-shrink: 0;
+  }
+}
+
+@include b(table) {
+  @include wu-root("table", (
+    "FontSize": wu-font-size(sm),
+    "Color": var(--wu-text-regular),
+    "BorderColor": var(--wu-border-regular),
+    "HeadBackgroundColor": var(--wu-bg-surface),
+    "HeadColor": var(--wu-text-muted),
+    "CellPaddingBlock": wu-space(2),
+    "CellPaddingInline": wu-space(4),
+    "RowBorderColor": var(--wu-border-regular),
+    "hover--RowBackgroundColor": var(--wu-bg-alternate),
+    "selected--RowBackgroundColor": #{wu-tint(brand, 8%)},
+    "selected--RowBorderColor": var(--wu-brand),
+    "sort--Color": var(--wu-text-regular),
+    "focus--BoxShadow": inset 0 0 0 2px var(--wu-brand),
+    "TransitionDuration": wu-duration(fast),
+  ));
+
+  inline-size: 100%;
+  min-inline-size: max-content;
+  font-size: wu-var("table", "FontSize");
+  color: wu-var("table", "Color");
+  border-collapse: collapse;
+
+  // ---- header ----
+
+  thead {
+    background-color: wu-var("table", "HeadBackgroundColor");
+
+    th {
+      padding-block: wu-var("table", "CellPaddingBlock");
+      padding-inline: wu-var("table", "CellPaddingInline");
+      font-size: wu-font-size(xs);
+      font-weight: wu-font-weight(normal);
+      color: wu-var("table", "HeadColor");
+      text-align: start;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-block-end: 1px solid wu-var("table", "BorderColor");
+      white-space: nowrap;
+    }
+  }
+
+  // ---- sortable header ----
+
+  th.is-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: color wu-var("table", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: wu-var("table", "sort--Color");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("table", "focus--BoxShadow");
+    }
+  }
+
+  th.is-sorted {
+    color: wu-var("table", "sort--Color");
+  }
+
+  // ---- body ----
+
+  tbody tr {
+    border-block-end: 1px solid wu-var("table", "RowBorderColor");
+    transition: background-color wu-var("table", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:last-child {
+      border-block-end: none;
+    }
+  }
+
+  tbody tr.is-clickable {
+    cursor: pointer;
+  }
+
+  tbody tr.is-selected {
+    background-color: wu-var("table", "selected--RowBackgroundColor");
+    box-shadow: inset 2px 0 0 wu-var("table", "selected--RowBorderColor");
+
+    [dir="rtl"] & {
+      box-shadow: inset -2px 0 0 wu-var("table", "selected--RowBorderColor");
+    }
+  }
+
+  tbody td {
+    padding-block: wu-var("table", "CellPaddingBlock");
+    padding-inline: wu-var("table", "CellPaddingInline");
+    color: wu-var("table", "Color");
+    vertical-align: middle;
+
+    .wu-badge {
+      --wu-badge--FontWeight: #{wu-font-weight(normal)};
+    }
+
+    .wu-btn.m-secondary,
+    .wu-btn.m-ghost,
+    .wu-btn.m-link {
+      --wu-btn--FontWeight: #{wu-font-weight(normal)};
+    }
+  }
+
+  // ---- footer (tfoot) ----
+
+  tfoot td {
+    padding-block: wu-var("table", "CellPaddingBlock");
+    padding-inline: wu-var("table", "CellPaddingInline");
+    font-weight: wu-font-weight(semibold);
+    color: wu-var("table", "Color");
+    border-block-start: 1px solid wu-var("table", "BorderColor");
+  }
+
+  // ---- empty state ----
+
+  tbody tr.wu-table__empty-row td {
+    padding-block: wu-space(10);
+    color: var(--wu-text-muted);
+    text-align: center;
+  }
+
+  // ---- sticky header ----
+
+  @include m(sticky-head) {
+    thead th {
+      position: sticky;
+      inset-block-start: 0;
+      z-index: wu-z(sticky);
+    }
+  }
+
+  // ---- alignment helpers ----
+
+  th.m-align-start,
+  td.m-align-start {
+    text-align: start;
+  }
+
+  th.m-align-center,
+  td.m-align-center {
+    text-align: center;
+  }
+
+  th.m-align-end,
+  td.m-align-end {
+    text-align: end;
+  }
+
+  // Numeric column: money, counts, percentages and dates. Aligned to the
+  // logical end so digits line up by place value, with fixed-width figures.
+  // DataTable sets it from the column option `numeric: true`.
+  th.m-numeric,
+  td.m-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ---- striped ----
+
+  @include m(striped) {
+    tbody tr:nth-child(even) {
+      background-color: color-mix(
+        in srgb,
+        var(--wu-bg-alternate) 50%,
+        transparent
+      );
+    }
+
+    tbody tr.is-selected {
+      background-color: wu-var("table", "selected--RowBackgroundColor");
+    }
+  }
+
+  tbody tr.is-hoverable:hover {
+    background-color: wu-var("table", "hover--RowBackgroundColor");
+  }
+
+  // ---- bordered ----
+
+  @include m(bordered) {
+    th,
+    td {
+      border-inline-end: 1px solid wu-var("table", "BorderColor");
+
+      &:last-child {
+        border-inline-end: none;
+      }
+    }
+  }
+
+  // ---- density ----
+
+  @include m(compact) {
+    --wu-table--CellPaddingBlock: #{wu-space(1)};
+    --wu-table--CellPaddingInline: #{wu-space(3)};
+  }
+
+  @include m(comfortable) {
+    --wu-table--CellPaddingBlock: #{wu-space(4)};
+    --wu-table--CellPaddingInline: #{wu-space(5)};
+  }
+}

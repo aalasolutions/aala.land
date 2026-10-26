@@ -1,6 +1,6 @@
 // App shell holds only app-specific glue; sidebar/topbar are kit components with `m-plain`.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 $shell-sidebar-width: 15rem;
 $shell-sidebar-collapsed: 3.75rem;
@@ -22,14 +22,14 @@ $shell-background-image: radial-gradient(
   min-height: 100vh;
 }
 
-// `.nu-sidebar` is position:fixed, so main column carries its own offset, not a flex sibling.
+// `.wu-sidebar` is position:fixed, so main column carries its own offset, not a flex sibling.
 .app-shell__main {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-inline-size: 0;
   margin-inline-start: $shell-sidebar-width;
-  transition: margin-inline-start nu-duration(normal) $nu-ease;
+  transition: margin-inline-start wu-duration(normal) $wu-ease;
 
   @include reduced-motion {
     transition: none;
@@ -43,26 +43,26 @@ $shell-background-image: radial-gradient(
 .app-shell__user-full {
   display: flex;
   align-items: center;
-  gap: nu-space(3);
+  gap: wu-space(3);
   min-inline-size: 0;
-  padding: nu-space(2);
-  margin-inline: calc(-1 * nu-space(2));
-  border-radius: nu-radius(lg);
-  color: var(--nu-text-inverted);
+  padding: wu-space(2);
+  margin-inline: calc(-1 * wu-space(2));
+  border-radius: wu-radius(lg);
+  color: var(--wu-text-inverted);
   text-decoration: none;
-  transition: background-color nu-duration(fast) $nu-ease;
+  transition: background-color wu-duration(fast) $wu-ease;
 
   @include reduced-motion {
     transition: none;
   }
 
   &:hover {
-    background-color: color-mix(in srgb, var(--nu-text-inverted) 10%, transparent);
+    background-color: color-mix(in srgb, var(--wu-text-inverted) 10%, transparent);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
+    box-shadow: wu-focus-ring();
   }
 }
 
@@ -73,17 +73,17 @@ $shell-background-image: radial-gradient(
 }
 
 .app-shell__user-name {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
   line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .app-shell__user-role {
-  font-size: nu-font-size(xs);
+  font-size: wu-font-size(xs);
   line-height: 1.3;
-  color: color-mix(in srgb, var(--nu-text-inverted) 72%, transparent);
+  color: color-mix(in srgb, var(--wu-text-inverted) 72%, transparent);
 }
 
 .app-shell__user-compact {
@@ -95,69 +95,69 @@ $shell-background-image: radial-gradient(
   display: flex;
   padding: 0;
   border: none;
-  border-radius: nu-radius(full);
+  border-radius: wu-radius(full);
   background: none;
   cursor: pointer;
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
+    box-shadow: wu-focus-ring();
   }
 }
 
 .app-shell__user-menu {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 12rem;
 }
 
 .app-shell__user-menu-name {
   margin: 0;
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .app-shell__user-menu-meta {
   margin: 0;
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .app-shell__user-menu-link {
-  margin-block-start: nu-space(2);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-brand);
+  margin-block-start: wu-space(2);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-brand);
 }
 
-.app-shell__user .nu-avatar {
+.app-shell__user .wu-avatar {
   border: none;
 }
 
 // The shell paints the rail dark; kit sidebar tokens assume a light surface.
-.app-shell > .nu-sidebar {
-  --app-rail-text: color-mix(in srgb, var(--nu-text-inverted) 72%, transparent);
-  --app-rail-disabled: color-mix(in srgb, var(--nu-text-inverted) 40%, transparent);
-  --app-rail-hover: color-mix(in srgb, var(--nu-text-inverted) 10%, transparent);
-  --nu-sidebar__link--Color: var(--app-rail-text);
-  --nu-sidebar__link--hover--Color: var(--nu-text-inverted);
-  --nu-sidebar__link--hover--BackgroundColor: var(--app-rail-hover);
-  --nu-sidebar__group-toggle--Color: var(--app-rail-text);
+.app-shell > .wu-sidebar {
+  --app-rail-text: color-mix(in srgb, var(--wu-text-inverted) 72%, transparent);
+  --app-rail-disabled: color-mix(in srgb, var(--wu-text-inverted) 40%, transparent);
+  --app-rail-hover: color-mix(in srgb, var(--wu-text-inverted) 10%, transparent);
+  --wu-sidebar__link--Color: var(--app-rail-text);
+  --wu-sidebar__link--hover--Color: var(--wu-text-inverted);
+  --wu-sidebar__link--hover--BackgroundColor: var(--app-rail-hover);
+  --wu-sidebar__group-toggle--Color: var(--app-rail-text);
 
-  .nu-sidebar__link.is-disabled,
-  .nu-sidebar__link.is-disabled:hover {
-    --nu-sidebar__link--Color: var(--app-rail-disabled);
+  .wu-sidebar__link.is-disabled,
+  .wu-sidebar__link.is-disabled:hover {
+    --wu-sidebar__link--Color: var(--app-rail-disabled);
   }
 
-  .nu-sidebar__group-toggle:hover {
-    --nu-sidebar__group-toggle--Color: var(--nu-text-inverted);
-    --nu-sidebar__group-toggle--BackgroundColor: var(--app-rail-hover);
+  .wu-sidebar__group-toggle:hover {
+    --wu-sidebar__group-toggle--Color: var(--wu-text-inverted);
+    --wu-sidebar__group-toggle--BackgroundColor: var(--app-rail-hover);
   }
 
-  .nu-sidebar__group.is-active-group > .nu-sidebar__group-toggle.is-active {
-    --nu-sidebar__group-toggle--Color: var(--nu-text-inverted);
+  .wu-sidebar__group.is-active-group > .wu-sidebar__group-toggle.is-active {
+    --wu-sidebar__group-toggle--Color: var(--wu-text-inverted);
   }
 
   .app-shell__collapse {
@@ -165,25 +165,25 @@ $shell-background-image: radial-gradient(
 
     &:hover {
       background-color: var(--app-rail-hover);
-      color: var(--nu-text-inverted);
+      color: var(--wu-text-inverted);
     }
   }
 }
 
 // Sublinks on the rail; the collapsed flyout keeps the kit's light surface.
-.app-shell > .nu-sidebar:not(.is-collapsed) .nu-sidebar__sublink,
-.app-shell > .nu-sidebar.is-collapsed .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
+.app-shell > .wu-sidebar:not(.is-collapsed) .wu-sidebar__sublink,
+.app-shell > .wu-sidebar.is-collapsed .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
   &:not(.active, .is-active) {
     color: var(--app-rail-text);
   }
 
   &:not(.active, .is-active):hover {
-    color: var(--nu-text-inverted);
+    color: var(--wu-text-inverted);
     background-color: var(--app-rail-hover);
   }
 }
 
-.nu-sidebar.is-collapsed {
+.wu-sidebar.is-collapsed {
   .app-shell__user {
     padding-inline: 0;
     justify-content: center;
@@ -198,20 +198,20 @@ $shell-background-image: radial-gradient(
     display: block;
   }
 
-  .app-shell__user-trigger .nu-avatar {
+  .app-shell__user-trigger .wu-avatar {
     inline-size: 2.25rem;
     block-size: 2.25rem;
-    font-size: nu-font-size(xs);
+    font-size: wu-font-size(xs);
   }
 
   // On the rail, count badges sit on the icon's corner so they are not clipped.
-  .nu-sidebar__link,
-  .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
+  .wu-sidebar__link,
+  .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
     position: relative;
   }
 
-  .nu-sidebar__link .nu-badge-count,
-  .nu-sidebar__group.is-active-group .nu-sidebar__sublink .nu-badge-count {
+  .wu-sidebar__link .wu-badge-count,
+  .wu-sidebar__group.is-active-group .wu-sidebar__sublink .wu-badge-count {
     position: absolute;
     inset-block-start: 0.25rem;
     inset-inline-start: 0.875rem;
@@ -223,23 +223,23 @@ $shell-background-image: radial-gradient(
   }
 
   // Collapsed, the active group shows its items inline; the capsule ties them to their parent icon.
-  .nu-sidebar__group.is-active-group {
+  .wu-sidebar__group.is-active-group {
     outline: 1px solid #ffffff40;
     border-radius: 50px;
     overflow: hidden;
   }
 
   // Only the active group's inline icons are pills; flyout rows keep the kit radius.
-  .nu-sidebar__group.is-active-group .nu-sidebar__sublink {
+  .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
     border-radius: 9999px;
   }
 
-  .nu-sidebar__link {
+  .wu-sidebar__link {
     padding: 0.65rem;
     border-radius: 9999px;
   }
 
-  .nu-sidebar__group-toggle {
+  .wu-sidebar__group-toggle {
     padding: 0.65rem;
     border-radius: 9999px;
   }
@@ -254,28 +254,28 @@ $shell-background-image: radial-gradient(
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-block-start: nu-space(2);
-  padding: nu-space(2);
-  border-radius: nu-radius(md);
+  margin-block-start: wu-space(2);
+  padding: wu-space(2);
+  border-radius: wu-radius(md);
   background: none;
-  color: var(--nu-text-muted);
+  color: var(--wu-text-muted);
   cursor: pointer;
   transition:
-    background-color nu-duration(fast) $nu-ease,
-    color nu-duration(fast) $nu-ease;
+    background-color wu-duration(fast) $wu-ease,
+    color wu-duration(fast) $wu-ease;
 
   @include reduced-motion {
     transition: none;
   }
 
   &:hover {
-    background-color: var(--nu-bg-alternate);
-    color: var(--nu-text-regular);
+    background-color: var(--wu-bg-alternate);
+    color: var(--wu-text-regular);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
+    box-shadow: wu-focus-ring();
   }
 }
 
@@ -285,50 +285,50 @@ $shell-background-image: radial-gradient(
   position: relative;
   overflow: auto;
   min-inline-size: 0;
-  padding-block: nu-space(6);
-  padding-inline: nu-space(8);
+  padding-block: wu-space(6);
+  padding-inline: wu-space(8);
 
   background: #f9fcfe;
-  border-start-start-radius: nu-radius(lg);
+  border-start-start-radius: wu-radius(lg);
   box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.35)
 }
 
-// `.nu-topbar-menu` is absolute; trigger must be the containing block or it anchors to viewport.
+// `.wu-topbar-menu` is absolute; trigger must be the containing block or it anchors to viewport.
 .region-switcher,
 .notification-wrapper,
-.nu-topbar__search {
+.wu-topbar__search {
   position: relative;
 }
 
 .app-shell__region-btn {
   display: inline-flex;
   align-items: center;
-  gap: nu-space(2);
+  gap: wu-space(2);
   block-size: 2.25rem;
-  padding-inline: nu-space(3);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(full);
-  background-color: var(--nu-bg-surface);
-  color: var(--nu-text-regular);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
+  padding-inline: wu-space(3);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(full);
+  background-color: var(--wu-bg-surface);
+  color: var(--wu-text-regular);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
   cursor: pointer;
   transition:
-    background-color nu-duration(fast) $nu-ease,
-    border-color nu-duration(fast) $nu-ease;
+    background-color wu-duration(fast) $wu-ease,
+    border-color wu-duration(fast) $wu-ease;
 
   @include reduced-motion {
     transition: none;
   }
 
   &:hover {
-    background-color: var(--nu-bg-alternate);
-    border-color: var(--nu-brand-300);
+    background-color: var(--wu-bg-alternate);
+    border-color: var(--wu-brand-300);
   }
 
   &:focus-visible {
     outline: none;
-    box-shadow: nu-focus-ring();
+    box-shadow: wu-focus-ring();
   }
 }
 
@@ -341,7 +341,7 @@ $shell-background-image: radial-gradient(
   border: 0;
   background: transparent;
   cursor: default;
-  z-index: nu-z(sticky);
+  z-index: wu-z(sticky);
 }
 
 .app-shell__menu-list {
@@ -350,11 +350,11 @@ $shell-background-image: radial-gradient(
 }
 
 .app-shell__menu-label {
-  padding-block: nu-space(2);
-  padding-inline: nu-space(4);
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-subtle);
+  padding-block: wu-space(2);
+  padding-inline: wu-space(4);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-subtle);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -362,30 +362,30 @@ $shell-background-image: radial-gradient(
 // Holds the count badge and currency tag, and carries the auto margin.
 .region-meta {
   display: flex;
-  gap: nu-space(2);
+  gap: wu-space(2);
   align-items: center;
   margin-inline-start: auto;
 }
 
 .region-unit-count {
-  padding-block: nu-space(1);
-  padding-inline: nu-space(2);
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
+  padding-block: wu-space(1);
+  padding-inline: wu-space(2);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
   line-height: 1;
-  color: var(--nu-brand);
-  background-color: nu-tint(brand, 12%);
-  border-radius: nu-radius(full);
+  color: var(--wu-brand);
+  background-color: wu-tint(brand, 12%);
+  border-radius: wu-radius(full);
 
   &.is-zero {
-    color: var(--nu-text-muted);
-    background-color: var(--nu-bg-alternate);
+    color: var(--wu-text-muted);
+    background-color: var(--wu-bg-alternate);
   }
 }
 
 .region-currency-tag {
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .region-name {
@@ -393,12 +393,12 @@ $shell-background-image: radial-gradient(
 }
 
 // Every row reserves the edge so reading one does not shift its content.
-.notification-wrapper .nu-topbar-menu__item {
+.notification-wrapper .wu-topbar-menu__item {
   border-inline-start: 3px solid transparent;
   border-radius: 0;
 
   &.unread {
-    border-inline-start-color: var(--nu-brand);
+    border-inline-start-color: var(--wu-brand);
   }
 }
 
@@ -408,72 +408,72 @@ $shell-background-image: radial-gradient(
   justify-content: center;
   inline-size: 2rem;
   block-size: 2rem;
-  border-radius: nu-radius(full);
-  background-color: var(--nu-bg-alternate);
-  color: var(--nu-text-muted);
+  border-radius: wu-radius(full);
+  background-color: var(--wu-bg-alternate);
+  color: var(--wu-text-muted);
   flex-shrink: 0;
 
   // Per-type colour keyed off `notification-icon {{notif.type}}`; SYSTEM stays neutral.
   &.LEAD_ASSIGNED,
   &.LEAD_UNASSIGNED,
   &.LEAD_STATUS_CHANGED {
-    background-color: var(--nu-brand-50);
-    color: var(--nu-brand-700);
+    background-color: var(--wu-brand-50);
+    color: var(--wu-brand-700);
   }
 
   &.CHEQUE_BOUNCED {
-    background-color: var(--nu-danger-50);
-    color: var(--nu-danger-700);
+    background-color: var(--wu-danger-50);
+    color: var(--wu-danger-700);
   }
 
   &.CHEQUE_DUE,
   &.CHEQUE_OVERDUE,
   &.CHEQUE_DELAYED,
   &.LEASE_EXPIRING {
-    background-color: var(--nu-warning-50);
-    color: var(--nu-warning-700);
+    background-color: var(--wu-warning-50);
+    color: var(--wu-warning-700);
   }
 
   &.CHEQUE_DEPOSITED,
   &.PAYMENT_RECEIVED {
-    background-color: var(--nu-success-50);
-    color: var(--nu-success-700);
+    background-color: var(--wu-success-50);
+    color: var(--wu-success-700);
   }
 
   &.MAINTENANCE_UPDATE {
-    background-color: var(--nu-info-50);
-    color: var(--nu-info-700);
+    background-color: var(--wu-info-50);
+    color: var(--wu-info-700);
   }
 }
 
 .notification-content {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 0;
   flex: 1;
   text-align: start;
 }
 
 .notification-title {
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .notification-message {
-  color: var(--nu-text-muted);
-  font-size: nu-font-size(xs);
+  color: var(--wu-text-muted);
+  font-size: wu-font-size(xs);
   overflow-wrap: anywhere;
 }
 
 .notification-time,
 .notification-region {
-  color: var(--nu-text-subtle);
-  font-size: nu-font-size(xs);
+  color: var(--wu-text-subtle);
+  font-size: wu-font-size(xs);
 }
 
 // The menu is wider than the kit default: notification bodies are prose, not menu labels.
-.notification-wrapper .nu-topbar-menu {
+.notification-wrapper .wu-topbar-menu {
   inline-size: 22rem;
 }
 
@@ -481,21 +481,21 @@ $shell-background-image: radial-gradient(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-block: nu-space(2);
-  padding-inline: nu-space(8);
-  background: var(--nu-warning-50);
-  border-block-end: 2px solid var(--nu-warning-200);
-  color: var(--nu-warning-800);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
+  padding-block: wu-space(2);
+  padding-inline: wu-space(8);
+  background: var(--wu-warning-50);
+  border-block-end: 2px solid var(--wu-warning-200);
+  color: var(--wu-warning-800);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
 }
 
 .tenant-lock-banner {
   border-radius: 0;
-  padding-block: nu-space(2);
-  padding-inline: nu-space(8);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
+  padding-block: wu-space(2);
+  padding-inline: wu-space(8);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
 }
 
 @include media-down(md) {
@@ -508,15 +508,15 @@ $shell-background-image: radial-gradient(
   }
 
   // As a drawer it slides over light content, so it carries the shell surface above the scrim and topbar.
-  .nu-sidebar {
+  .wu-sidebar {
     inset-inline-start: -#{$shell-sidebar-width};
-    transition: inset-inline-start nu-duration(normal) $nu-ease;
-    z-index: nu-z(sticky) + 1;
+    transition: inset-inline-start wu-duration(normal) $wu-ease;
+    z-index: wu-z(sticky) + 1;
     background-color: $shell-background-color;
     background-image: $shell-background-image;
   }
 
-  .nu-sidebar.is-open {
+  .wu-sidebar.is-open {
     inset-inline-start: 0;
   }
 }

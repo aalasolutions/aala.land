@@ -1,0 +1,192 @@
+// wu-drawer - slide-in side panel
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(drawer) {
+  @include wu-root("drawer", (
+    "ZIndex": wu-z(modal),
+    "Width": 24rem,
+    "Height": 24rem,
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "BoxShadow": wu-shadow(xl),
+    "TransitionDuration": wu-duration(normal),
+    "TranslateX": 100%,
+    "TranslateY": 100%,
+    "focus--BoxShadow": wu-focus-ring(),
+  ));
+
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: wu-var("drawer", "ZIndex");
+  display: flex;
+  flex-direction: column;
+  inline-size: wu-var("drawer", "Width");
+  max-inline-size: 100vw;
+  background-color: wu-var("drawer", "BackgroundColor");
+  border-inline-start: 1px solid wu-var("drawer", "BorderColor");
+  box-shadow: wu-var("drawer", "BoxShadow");
+  // translateX is physical; --wu-drawer--Dir flips the sign in RTL.
+  transform: translateX(calc(var(--wu-drawer--Dir, 1) * wu-var("drawer", "TranslateX")));
+  transition: transform wu-var("drawer", "TransitionDuration") $wu-ease;
+
+  [dir="rtl"] & {
+    --wu-drawer--Dir: -1;
+  }
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: wu-var("drawer", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: wu-space(3);
+    padding-block: wu-space(3);
+    padding-inline: wu-space(5);
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: wu-font-size(lg);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--wu-text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: wu-radius(md);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--wu-text-regular);
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("drawer", "focus--BoxShadow");
+    }
+  }
+
+  @include e(body) {
+    flex: 1;
+    overflow-y: auto;
+    padding: wu-space(5);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: wu-space(2);
+    padding-block: wu-space(3);
+    padding-inline: wu-space(5);
+    border-block-start: 1px solid var(--wu-border-regular);
+  }
+
+  // ---- placement modifiers ----
+
+  @include m(start) {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+    border-inline-end: 1px solid var(--wu-border-regular);
+    border-inline-start: none;
+    --wu-drawer--TranslateX: -100%;
+  }
+
+  @include m(top) {
+    inset-inline: 0;
+    inset-block-end: auto;
+    inline-size: 100%;
+    block-size: wu-var("drawer", "Height");
+    max-block-size: 100vh;
+    border-block-end: 1px solid var(--wu-border-regular);
+    border-inline-start: none;
+    --wu-drawer--TranslateY: -100%;
+
+    transform: translateY(wu-var("drawer", "TranslateY"));
+  }
+
+  @include m(bottom) {
+    inset-inline: 0;
+    inset-block-start: auto;
+    inline-size: 100%;
+    block-size: wu-var("drawer", "Height");
+    max-block-size: 100vh;
+    border-block-start: 1px solid var(--wu-border-regular);
+    border-inline-start: none;
+    --wu-drawer--TranslateY: 100%;
+
+    transform: translateY(wu-var("drawer", "TranslateY"));
+  }
+
+  // ---- size modifiers ----
+
+  $wu-drawer-sizes: (
+    "sm": ("Width": 18rem, "Height": 16rem),
+    "md": ("Width": 24rem, "Height": 24rem),
+    "lg": ("Width": 32rem, "Height": 32rem),
+  );
+
+  @each $size, $spec in $wu-drawer-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --wu-drawer--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- states ----
+
+  @include when(open) {
+    --wu-drawer--TranslateX: 0;
+    --wu-drawer--TranslateY: 0;
+  }
+}
+
+// Backdrop, shown alongside an open drawer
+@include b(drawer-backdrop) {
+  @include wu-root("drawer-backdrop", (
+    "ZIndex": wu-z(modal),
+    "BackgroundColor": #{wu-scrim(50%)},
+    "TransitionDuration": wu-duration(normal),
+  ));
+
+  position: fixed;
+  inset: 0;
+  z-index: calc(wu-var("drawer-backdrop", "ZIndex") - 1);
+  background-color: wu-var("drawer-backdrop", "BackgroundColor");
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity wu-var("drawer-backdrop", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  @include when(open) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

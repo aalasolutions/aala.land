@@ -1,0 +1,286 @@
+<WovenDocs::Page
+  @id="card"
+  @title="Card, Stat, Info row, List item"
+  @subtitle="Surfaces and rows that group related content."
+  @components="Woven::Card, Woven::Stat, Woven::InfoRow, Woven::ListItem"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Card is the general surface with optional header, body and footer
+      slots. Stat is a KPI tile, InfoRow a label/value line inside a card,
+      and ListItem a row with main content and trailing actions. Reach for
+      Panel instead of Card when the region is a plain container such as a
+      filter block.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Card header from arguments or a named block; body from a named or default block; footer slot.</li>
+      <li class="wu-list__item">Compact, flat, raised, interactive, accent and selected styles.</li>
+      <li class="wu-list__item">Stat with icon well, label, value and delta in six colours.</li>
+      <li class="wu-list__item">InfoRow value from an argument or a block.</li>
+      <li class="wu-list__item">ListItem with main and actions slots.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Card: header and slots" @id="card-slots">
+    <WovenDocs::Example
+      @title="Title"
+      @note="A title alone renders the header; the default block becomes the body. The everyday card."
+      @code={{this.code.title}}
+    >
+      <Woven::Card @title="Marina Tower">
+        <p class="wu-text m-sm m-muted">Sea-facing unit, fully furnished.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Title and subtitle"
+      @note="The subtitle carries a secondary fact under the title, such as the unit or the period."
+      @code={{this.code.subtitle}}
+    >
+      <Woven::Card @title="Marina Tower" @subtitle="Unit 204 · 2BR">
+        <p class="wu-text m-sm m-muted">
+          Sea-facing unit, fully furnished, tenant on a 12-month lease.
+        </p>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Header block"
+      @note="Replaces the title area with your own markup when the header needs a badge, an avatar or a menu."
+      @code={{this.code.headerBlock}}
+    >
+      <Woven::Card>
+        <:header>
+          <Woven::Title @tag="h3" @size="md" @text="Custom header" />
+          <Woven::Badge @variant="success" @text="Active" />
+        </:header>
+        <:body>Body content.</:body>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Body and footer blocks"
+      @note="Named body and footer slots give actions a fixed place at the bottom; the footer aligns them to the end."
+      @code={{this.code.slots}}
+    >
+      <Woven::Card @title="Occupancy" @subtitle="This month">
+        <:body>
+          <p class="wu-text m-sm m-muted">Named-block body content.</p>
+        </:body>
+        <:footer>
+          <Woven::Button @variant="secondary" @size="sm" @text="View report" />
+        </:footer>
+      </Woven::Card>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Card: density and elevation" @id="card-styles">
+    <WovenDocs::Example
+      @title="Compact"
+      @note="Tighter padding for dense grids and sidebars."
+      @code={{this.code.compact}}
+    >
+      <Woven::Card @title="Compact" @compact={{true}}>
+        <p class="wu-text m-sm m-muted">Tighter padding for dense lists.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Flat"
+      @note="Border only, no shadow, for cards nested inside another surface."
+      @code={{this.code.flat}}
+    >
+      <Woven::Card @title="Flat" @flat={{true}}>
+        <p class="wu-text m-sm m-muted">No shadow, border only.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Raised"
+      @note="Elevated shadow for a card that floats over a busy background, such as a summary above a table."
+      @code={{this.code.raised}}
+    >
+      <Woven::Card @title="Raised" @raised={{true}}>
+        <p class="wu-text m-sm m-muted">Elevated shadow, stands off the page.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Card: states" @id="card-states">
+    <WovenDocs::Example
+      @title="Interactive"
+      @note="Hover and focus affordance for a card that is one clickable unit. Style only: wrap it in a link or put the action in the footer."
+      @code={{this.code.interactive}}
+    >
+      <Woven::Card @title="Interactive" @interactive={{true}}>
+        <p class="wu-text m-sm m-muted">Hover/focus affordance, clickable card.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Selected"
+      @note="Primary ring for the chosen card in a set, such as the current plan."
+      @code={{this.code.selected}}
+    >
+      <Woven::Card @title="Selected" @selected={{true}}>
+        <p class="wu-text m-sm m-muted">Primary-ring border, chosen state.</p>
+      </Woven::Card>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Card: accents" @id="card-accents">
+    {{#each this.accentExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Card @title={{example.title}} @accent={{example.accent}}>
+          <p class="wu-text m-sm m-muted">Tinted surface.</p>
+        </Woven::Card>
+      </WovenDocs::Example>
+    {{/each}}
+
+    <h3 class="woven-subtitle">Card arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.cardArgRows}} />
+    <h3 class="woven-subtitle">Card blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.cardBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Stat" @id="stat">
+    {{#each this.statExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Stat @variant={{example.variant}} @icon="🏠" @label="Occupied units" @value="184" @delta="+4 this month" />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Icon block"
+      @note="A block in the icon well for a Phosphor icon instead of a glyph."
+      @code={{this.code.statIconBlock}}
+    >
+      <Woven::Stat @variant="primary" @label="Occupancy rate" @value="94%" @delta="+2.1%">
+        <:icon><Woven::Icon @icon="buildings" /></:icon>
+      </Woven::Stat>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Label and value only"
+      @note="Icon and delta are optional; the value is always rendered."
+      @code={{this.code.statBare}}
+    >
+      <Woven::Stat @label="Leases" @value="37" />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Stat arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.statArgRows}} />
+    <h3 class="woven-subtitle">Stat blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.statBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Info row" @id="info-row">
+    <WovenDocs::Example
+      @title="Label and value"
+      @note="One fact per row inside a card, for summaries and detail panels."
+      @layout="block"
+      @code={{this.code.infoRow}}
+    >
+      <Woven::Card @title="Lease Summary">
+        <Woven::InfoRow @label="Tenant" @value="Ahmed Khalid" />
+        <Woven::InfoRow @label="Unit" @value="Marina Tower, 204" />
+        <Woven::InfoRow @label="Rent" @value="AED 8,500/mo" />
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block value"
+      @note="A block replaces the plain value with a badge, a link or a button."
+      @layout="block"
+      @code={{this.code.infoRowBlock}}
+    >
+      <Woven::Card @title="Lease">
+        <Woven::InfoRow @label="Lease ends">
+          <Woven::Badge @variant="warning" @text="42 days left" />
+        </Woven::InfoRow>
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Stacked and borderless"
+      @note="Two stylesheet modifiers with no argument: stacked puts the label above the value for long text, borderless drops the divider for the last row."
+      @layout="block"
+      @code={{this.code.infoRowClasses}}
+    >
+      <Woven::Card @title="Modifiers">
+        <Woven::InfoRow @label="Stacked" @value="Label above the value" class="m-stacked" />
+        <Woven::InfoRow @label="Borderless" @value="No divider" class="m-borderless" />
+      </Woven::Card>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Info row arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.infoRowArgRows}} />
+    <h3 class="woven-subtitle">Info row blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.infoRowBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="List item" @id="list-item">
+    <WovenDocs::Example
+      @title="Main and actions"
+      @note="A row with content that fills and controls that trail, for pick lists and assignment panels."
+      @layout="block"
+      @code={{this.code.listItem}}
+    >
+      {{#each this.units as |unit|}}
+        <Woven::ListItem>
+          <:main>
+            <div>
+              <p class="wu-text m-sm">{{unit.name}}</p>
+              <p class="wu-text m-xs m-muted">{{unit.tenant}} · {{unit.rent}}</p>
+            </div>
+          </:main>
+          <:actions>
+            <Woven::Button
+              @variant={{if (eq this.selectedUnitId unit.id) "primary" "secondary"}}
+              @size="sm"
+              @text={{if (eq this.selectedUnitId unit.id) "Selected" "Select"}}
+              @onClick={{fn this.selectUnit unit.id}}
+              data-test-woven-select-unit={{unit.id}}
+            />
+          </:actions>
+        </Woven::ListItem>
+      {{/each}}
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Hoverable, raised, plain"
+      @note="Stylesheet modifiers passed through class: hoverable for clickable rows, raised for a highlighted row, plain for a row inside a card that already has a border."
+      @layout="block"
+      @code={{this.code.listItemClasses}}
+    >
+      <Woven::ListItem class="m-hoverable"><:main>Hoverable</:main></Woven::ListItem>
+      <Woven::ListItem class="m-raised"><:main>Raised</:main></Woven::ListItem>
+      <Woven::ListItem class="m-plain"><:main>Plain</:main></Woven::ListItem>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">List item blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.listItemBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Raw classes" @id="classes">
+    <p class="woven-note">Modifiers the stylesheets ship with no matching argument. Pass them through <code>class</code>.</p>
+    <WovenDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The card title is an h3. Keep one h2 above a group of cards so the heading outline stays in order.</li>
+      <li class="wu-list__item">An interactive card is styled only; wrap it in a link or button, or put the action in the footer, for keyboard access.</li>
+      <li class="wu-list__item">The stat icon well is aria-hidden; the label and value carry the meaning.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Header, InfoRow and ListItem are flex rows with logical gaps, so labels lead and actions trail in both directions.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

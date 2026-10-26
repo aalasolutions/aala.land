@@ -1,0 +1,177 @@
+<WovenDocs::Page
+  @id="form"
+  @title="Form"
+  @subtitle="Every form state on one page: spacing, validation, floating labels, horizontal and custom controls."
+  @components="Woven::Field, Woven::FieldGroup, Woven::Input, Woven::Select, Woven::Textarea"
+>
+  <WovenDocs::Section @title="Full form" @id="full-form">
+    <p class="woven-doc__intro">
+      A New Property form with gap-1 between fields. Press Save with the form empty to see every error at once;
+      typing in a field clears its own error.
+    </p>
+
+    {{#if this.saved}}
+      <Woven::Alert @variant="success" @icon="✓" @title="Saved (demo only)" data-test-woven-form-saved />
+    {{/if}}
+
+    <Woven::Card @title="New property">
+      <form class="wu-form" novalidate data-test-woven-form {{on "submit" this.save}}>
+        <Woven::Field @label="City" @required={{true}} @error={{this.errors.city}}>
+          <Woven::Input @value={{this.fields.city}} @onInput={{fn this.setField "city"}} data-test-woven-form-city />
+        </Woven::Field>
+
+        <Woven::Field @label="Location" @required={{true}} @error={{this.errors.location}}>
+          <Woven::Input @value={{this.fields.location}} @onInput={{fn this.setField "location"}} data-test-woven-form-location />
+        </Woven::Field>
+
+        <Woven::Field @label="Property number" @required={{true}} @error={{this.errors.propertyNumber}}>
+          <Woven::Input @value={{this.fields.propertyNumber}} @onInput={{fn this.setField "propertyNumber"}} data-test-woven-form-number />
+        </Woven::Field>
+
+        <Woven::Field @label="Property kind" @required={{true}} @error={{this.errors.kind}}>
+          <Woven::Select
+            @options={{this.kindOptions}}
+            @placeholder="Choose the property kind"
+            @value={{this.fields.kind}}
+            @onChange={{fn this.setField "kind"}}
+            data-test-woven-form-kind
+          />
+        </Woven::Field>
+
+        <Woven::Field @label="Price" @hint="Monthly rent in the region currency" @error={{this.errors.price}}>
+          <Woven::Input
+            @type="number"
+            @value={{this.fields.price}}
+            @onInput={{fn this.setField "price"}}
+            data-test-woven-form-price
+          />
+        </Woven::Field>
+
+        <div class="flex gap-4">
+          <Woven::Field @label="Bedrooms">
+            <Woven::Input @type="number" @value={{this.fields.bedrooms}} @onInput={{fn this.setField "bedrooms"}} data-test-woven-form-bedrooms />
+          </Woven::Field>
+          <Woven::Field @label="Bathrooms">
+            <Woven::Input @type="number" @value={{this.fields.bathrooms}} @onInput={{fn this.setField "bathrooms"}} data-test-woven-form-bathrooms />
+          </Woven::Field>
+        </div>
+
+        <Woven::Field @label="Description">
+          <Woven::Textarea @value={{this.fields.description}} @onInput={{fn this.setField "description"}} data-test-woven-form-description />
+        </Woven::Field>
+
+        <Woven::FieldGroup @label="Status" @required={{true}} @error={{this.errors.status}}>
+          <div class="wu-check-group">
+            <Woven::Radio @name="form-status" @value="available" @label="Available" @checked={{eq this.fields.status "available"}} @onChange={{fn this.setField "status"}} data-test-woven-form-status-available />
+            <Woven::Radio @name="form-status" @value="rented" @label="Rented" @checked={{eq this.fields.status "rented"}} @onChange={{fn this.setField "status"}} data-test-woven-form-status-rented />
+            <Woven::Radio @name="form-status" @value="maintenance" @label="Maintenance" @checked={{eq this.fields.status "maintenance"}} @onChange={{fn this.setField "status"}} data-test-woven-form-status-maintenance />
+          </div>
+        </Woven::FieldGroup>
+
+        <Woven::FieldGroup @label="Features">
+          <div class="wu-check-group">
+            <Woven::Checkbox @label="Pool" @checked={{this.fields.featPool}} @onChange={{fn this.setField "featPool"}} data-test-woven-form-feature-pool />
+            <Woven::Checkbox @label="Gym" @checked={{this.fields.featGym}} @onChange={{fn this.setField "featGym"}} data-test-woven-form-feature-gym />
+            <Woven::Checkbox @label="Parking" @checked={{this.fields.featParking}} @onChange={{fn this.setField "featParking"}} data-test-woven-form-feature-parking />
+          </div>
+        </Woven::FieldGroup>
+
+        <Woven::Field @label="Publish listing">
+          <Woven::Toggle @checked={{this.fields.publish}} @onChange={{fn this.setField "publish"}} data-test-woven-form-publish />
+        </Woven::Field>
+
+        <Woven::FormActions>
+          <Woven::Button @variant="primary" @type="submit" @text="Save" data-test-woven-form-save />
+          <Woven::Button @variant="secondary" @text="Reset" @onClick={{this.reset}} data-test-woven-form-reset />
+        </Woven::FormActions>
+      </form>
+    </Woven::Card>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Statuses" @id="statuses">
+    <p class="woven-doc__intro">Error, warning, success, hint only, and nothing (the empty line is still reserved).</p>
+    <div class="flex col gap-1">
+      <Woven::Field @label="Monthly rent" @error="Enter a price greater than 0">
+        <Woven::Input @value="-100" data-test-woven-form-status-error />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @status="warning" @hint="Above the area average; check the amount">
+        <Woven::Input @value="400000" data-test-woven-form-status-warning />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @status="success" @hint="Matches the signed lease">
+        <Woven::Input @value="85000" data-test-woven-form-status-success />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @hint="Monthly rent in the region currency">
+        <Woven::Input @value="85000" data-test-woven-form-status-hint />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent">
+        <Woven::Input @value="85000" data-test-woven-form-status-none />
+      </Woven::Field>
+    </div>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Floating labels" @id="floating">
+    <p class="woven-doc__intro">
+      Fill sets values from the controller; Clear programmatically empties them. A label stuck above an empty control is the bug to look for.
+    </p>
+    <div class="wu-form">
+      <div class="flex gap-4">
+        <Woven::Button @variant="primary" @text="Fill" @onClick={{this.fillFloating}} data-test-woven-form-fill />
+        <Woven::Button @variant="secondary" @text="Clear programmatically" @onClick={{this.clearFloating}} data-test-woven-form-clear />
+      </div>
+      <Woven::Field @placeholder="Property name (sm)" @hint="Shown to tenants">
+        <Woven::Input @size="sm" @value={{this.floating.small}} @onInput={{fn this.setFloating "small"}} data-test-woven-form-float-sm />
+      </Woven::Field>
+      <Woven::Field @placeholder="Property name (default)" @hint="Shown to tenants">
+        <Woven::Input @value={{this.floating.medium}} @onInput={{fn this.setFloating "medium"}} data-test-woven-form-float-md />
+      </Woven::Field>
+      <Woven::Field @placeholder="Property name (lg)" @hint="Shown to tenants">
+        <Woven::Input @size="lg" @value={{this.floating.large}} @onInput={{fn this.setFloating "large"}} data-test-woven-form-float-lg />
+      </Woven::Field>
+      <Woven::Field @placeholder="Search area">
+        <Woven::Input @prefixIcon="⌕" @value={{this.floating.search}} @onInput={{fn this.setFloating "search"}} data-test-woven-form-float-prefix />
+      </Woven::Field>
+      <Woven::Field @placeholder="Notes">
+        <Woven::Textarea @value={{this.floating.notes}} @onInput={{fn this.setFloating "notes"}} data-test-woven-form-float-textarea />
+      </Woven::Field>
+      <Woven::Field @placeholder="Property kind" as |f|>
+        <Woven::Select
+          @options={{this.kindOptions}}
+          @placeholder={{f.placeholder}}
+          @value={{this.floating.kind}}
+          @onChange={{fn this.setFloating "kind"}}
+          data-test-woven-form-float-select
+        />
+      </Woven::Field>
+    </div>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Horizontal" @id="horizontal">
+    <p class="woven-doc__intro">Label and control side by side, with one error.</p>
+    <div class="flex col gap-1">
+      <Woven::Field @label="City" @horizontal={{true}}>
+        <Woven::Input @value="Dubai" data-test-woven-form-horizontal-city />
+      </Woven::Field>
+      <Woven::Field @label="Property kind" @horizontal={{true}}>
+        <Woven::Select @options={{this.kindOptions}} @placeholder="Choose the property kind" data-test-woven-form-horizontal-kind />
+      </Woven::Field>
+      <Woven::Field @label="Price" @horizontal={{true}} @error="Enter a price greater than 0">
+        <Woven::Input @type="number" @value="0" data-test-woven-form-horizontal-price />
+      </Woven::Field>
+    </div>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Dropdown and autocomplete in a Field" @id="dropdown">
+    <p class="woven-doc__intro">Combobox controls take the Field label, hint and error like native inputs.</p>
+    <div class="wu-form">
+      <div class="flex gap-4">
+        <Woven::Button @variant="secondary" @text="Toggle error" @onClick={{this.toggleDropdownError}} data-test-woven-form-dropdown-error />
+      </div>
+      <Woven::Field @label="Property kind" @hint="Pick one" @error={{if this.dropdownError "Choose the property kind"}}>
+        <Woven::Dropdown @options={{this.kindOptions}} @placeholder="Choose the property kind" data-test-woven-form-dropdown />
+      </Woven::Field>
+      <Woven::Field @label="Building" @hint="Type to search" @error={{if this.dropdownError "Choose a building"}}>
+        <Woven::Autocomplete @options={{this.buildings}} @placeholder="Search buildings" data-test-woven-form-autocomplete />
+      </Woven::Field>
+    </div>
+  </WovenDocs::Section>
+</WovenDocs::Page>

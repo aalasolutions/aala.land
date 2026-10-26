@@ -1,14 +1,14 @@
 {{page-title "System"}}
 
 <div class="flex col gap-6">
-  <Nuvo::PageHeader @title="System" @subtitle="Billing health and price catalogue.">
-  </Nuvo::PageHeader>
+  <Woven::PageHeader @title="System" @subtitle="Billing health and price catalogue.">
+  </Woven::PageHeader>
 
-  <Nuvo::Card data-test-system-price-health>
+  <Woven::Card data-test-system-price-health>
     <div class="flex between x-center mb-4">
       <div class="flex x-center gap-3">
         <h3 class="text-lg font-bold">Price catalogue</h3>
-        <Nuvo::Tag
+        <Woven::Tag
           class={{this.healthBadge.cls}}
           @text={{this.healthBadge.text}}
           data-test-system-price-status
@@ -16,18 +16,18 @@
       </div>
       <div class="flex x-center gap-2">
         {{#if this.needsFix}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @loading={{this.fixing}}
             data-test-system-price-fix
             {{on "click" this.fix}}
-          >{{if this.fixing "Syncing…" "Fix"}}</Nuvo::Button>
+          >{{if this.fixing "Syncing…" "Fix"}}</Woven::Button>
         {{/if}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="primary"
           data-test-system-price-add
           {{on "click" this.openAdd}}
-        >Add price</Nuvo::Button>
+        >Add price</Woven::Button>
       </div>
     </div>
 
@@ -38,7 +38,7 @@
     {{/if}}
 
     {{#if this.rows.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -61,31 +61,31 @@
           {{format-money cell.value currency=cell.row.currency minor=true}}
         {{else if (eq cell.key "status")}}
           {{#if (eq cell.value "registered")}}
-            <Nuvo::Tag class="tag-sub-active" @text="Registered" />
+            <Woven::Tag class="tag-sub-active" @text="Registered" />
           {{else if (eq cell.value "missing")}}
-            <Nuvo::Tag class="tag-sub-incomplete" @text="Not yet registered" />
+            <Woven::Tag class="tag-sub-incomplete" @text="Not yet registered" />
           {{else if (eq cell.value "pending")}}
             <div class="flex col gap-2" data-test-system-price-pending>
-              <Nuvo::Tag class="tag-sub-incomplete" @text="Change pending" />
+              <Woven::Tag class="tag-sub-incomplete" @text="Change pending" />
               <p class="text-sm text-muted">Still selling at the previous price
                 until the provider registers this one. Use Fix to retry.</p>
               {{#if cell.row.lastError}}
-                <Nuvo::Alert @variant="danger" data-test-system-price-error>
+                <Woven::Alert @variant="danger" data-test-system-price-error>
                   <p class="text-sm">{{cell.row.lastError}}</p>
-                </Nuvo::Alert>
+                </Woven::Alert>
               {{/if}}
             </div>
           {{else}}
             <div class="flex col gap-2">
-              <Nuvo::Tag class="tag-sub-unpaid" @text="Failed" />
+              <Woven::Tag class="tag-sub-unpaid" @text="Failed" />
               {{#if cell.row.lastError}}
-                <Nuvo::Alert @variant="danger" data-test-system-price-error>
+                <Woven::Alert @variant="danger" data-test-system-price-error>
                   <p class="text-sm">{{cell.row.lastError}}</p>
                   {{#if cell.row.lastErrorAt}}
                     <p class="text-xs text-muted mt-1">Failed
                       {{format-date-time cell.row.lastErrorAt}}</p>
                   {{/if}}
-                </Nuvo::Alert>
+                </Woven::Alert>
               {{/if}}
             </div>
           {{/if}}
@@ -107,37 +107,37 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       <p class="text-muted">No active price rows.</p>
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 
-  <Nuvo::Modal
+  <Woven::Modal
     @open={{this.addOpen}}
     @title="Add price"
     @onClose={{this.closePriceModal}}
     data-test-system-price-add-modal
   >
     <:body>
-      <div class="nu-form">
-        <Nuvo::Field @label="Kind" @flush={{true}}>
-          <Nuvo::Select
+      <div class="wu-form">
+        <Woven::Field @label="Kind" @flush={{true}}>
+          <Woven::Select
             @value={{this.addKind}}
             @options={{this.kindOptions}}
             @onChange={{this.setAddKind}}
             data-test-system-price-kind
           />
-        </Nuvo::Field>
-        <div class="nu-field-row">
-          <Nuvo::Field
+        </Woven::Field>
+        <div class="wu-field-row">
+          <Woven::Field
             @label="Currency"
             @tooltip="Three letter code such as USD."
             @error={{this.fieldErrors.addCurrency}}
             @flush={{true}}
-            class="nu-field-row__narrow"
+            class="wu-field-row__narrow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="price-currency"
               type="text"
               maxlength="3"
@@ -146,14 +146,14 @@
               data-test-system-price-currency
               {{on "input" (fn this.setPriceField "addCurrency")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Monthly amount"
             @error={{this.fieldErrors.addAmount}}
             @flush={{true}}
             class="grow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="price-amount"
               type="number"
               min="1"
@@ -162,15 +162,15 @@
               data-test-system-price-amount
               {{on "input" (fn this.setPriceField "addAmount")}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
-        <Nuvo::Field
+        <Woven::Field
           @label="Countries"
           @tooltip="Leave empty for the base price. For a custom price, list 2-letter country codes separated by commas, such as PK, IN."
           @error={{this.fieldErrors.addCountries}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="price-countries"
             type="text"
             placeholder="PK, IN"
@@ -178,11 +178,11 @@
             data-test-system-price-countries-input
             {{on "input" (fn this.setPriceField "addCountries")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
         {{#if this.showTax}}
           {{#if this.addIsBase}}
             <div class="flex col gap-1">
-              <Nuvo::Checkbox
+              <Woven::Checkbox
                 id="price-tax-inclusive"
                 @checked={{this.addTaxInclusive}}
                 @label="Price includes tax"
@@ -200,7 +200,7 @@
         <p class="text-sm text-muted">The price syncs to the billing provider
           immediately.</p>
         {{#if this.priceError}}
-          <Nuvo::Alert
+          <Woven::Alert
             @variant="danger"
             @description={{this.priceError}}
             data-test-system-price-modal-error
@@ -209,29 +209,29 @@
       </div>
     </:body>
     <:footer>
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         data-test-system-price-add-cancel
         {{on "click" this.closePriceModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
+      >Cancel</Woven::Button>
+      <Woven::Button
         @variant="primary"
         @loading={{this.priceBusy}}
         @disabled={{this.priceBusy}}
         data-test-system-price-add-submit
         {{on "click" this.submitAdd}}
-      >{{if this.priceBusy "Saving…" "Add price"}}</Nuvo::Button>
+      >{{if this.priceBusy "Saving…" "Add price"}}</Woven::Button>
     </:footer>
-  </Nuvo::Modal>
+  </Woven::Modal>
 
-  <Nuvo::Modal
+  <Woven::Modal
     @open={{if this.amountRow true false}}
     @title="Change price for {{this.amountRow.label}}"
     @onClose={{this.closePriceModal}}
     data-test-system-price-amount-modal
   >
     <:body>
-      <div class="nu-form">
+      <div class="wu-form">
         <p class="text-sm">Current amount:
           {{format-money
             this.amountRow.unitAmount
@@ -239,12 +239,12 @@
             minor=true
             compact=false
           }}</p>
-        <Nuvo::Field
+        <Woven::Field
           @label="New monthly amount"
           @error={{this.fieldErrors.newAmount}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="price-new-amount"
             type="number"
             min="1"
@@ -253,10 +253,10 @@
             data-test-system-price-new-amount
             {{on "input" (fn this.setPriceField "newAmount")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
         {{#if this.showNewTax}}
           <div class="flex col gap-1">
-            <Nuvo::Checkbox
+            <Woven::Checkbox
               id="price-new-tax-inclusive"
               @checked={{this.newTaxInclusive}}
               @label="Price includes tax"
@@ -277,7 +277,7 @@
           </div>
         </div>
         {{#if this.priceError}}
-          <Nuvo::Alert
+          <Woven::Alert
             @variant="danger"
             @description={{this.priceError}}
             data-test-system-price-modal-error
@@ -286,20 +286,20 @@
       </div>
     </:body>
     <:footer>
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         data-test-system-price-amount-cancel
         {{on "click" this.closePriceModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
+      >Cancel</Woven::Button>
+      <Woven::Button
         @variant="primary"
         @loading={{this.priceBusy}}
         @disabled={{this.priceBusy}}
         data-test-system-price-amount-submit
         {{on "click" this.submitAmount}}
-      >{{if this.priceBusy "Saving…" "Change price"}}</Nuvo::Button>
+      >{{if this.priceBusy "Saving…" "Change price"}}</Woven::Button>
     </:footer>
-  </Nuvo::Modal>
+  </Woven::Modal>
 
   <ConfirmModal
     @open={{if this.deactivateRow true false}}
@@ -313,7 +313,7 @@
     @onClose={{this.closePriceModal}}
   >
     {{#if this.priceError}}
-      <Nuvo::Alert
+      <Woven::Alert
         @variant="danger"
         @description={{this.priceError}}
         class="mt-3"

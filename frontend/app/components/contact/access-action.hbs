@@ -1,12 +1,12 @@
 {{#if this.isPending}}
-  <Nuvo::Badge
+  <Woven::Badge
     @variant="warning"
     @text="Access pending"
     data-test-access-pending
     ...attributes
   />
 {{else}}
-  <Nuvo::Button
+  <Woven::Button
     @variant="primary"
     @outline={{true}}
     @size={{if @size @size "sm"}}

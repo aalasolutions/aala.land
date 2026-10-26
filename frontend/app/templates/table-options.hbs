@@ -2,7 +2,7 @@
 
 {{! Development-only copy of the contacts list: every DataTable option in one place. }}
 <div data-test-table-options class="flex col gap-4">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Table Options"
     @subtitle="DataTable showcase on live contacts. A: all options on. B: defaults. C: RTL with fake rows and every editor type."
   >
@@ -11,19 +11,19 @@
           · {{this.selection.length}} selected{{/if}}</p>
     </:meta>
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @icon="plus"
         data-test-new-contact
         {{on "click" this.openCreate}}
       >
         New Contact
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   <div class="flex x-center gap-3 wrap" data-test-table-options-toolbar>
-    <Nuvo::Segmented
+    <Woven::Segmented
       @options={{this.roleTabs}}
       @value={{this.tag}}
       @onChange={{this.setTag}}
@@ -32,8 +32,8 @@
     <FiltersButton @count={{this.activeFilterCount}}>
       <div class="flex col gap-4">
         <div class="flex gap-3 wrap">
-          <Nuvo::Field class="grow" @label="Search">
-            <Nuvo::Input
+          <Woven::Field class="grow" @label="Search">
+            <Woven::Input
               type="text"
               autocomplete="off"
               placeholder="Search name, email, phone..."
@@ -42,12 +42,12 @@
               {{on "input" (fn this.updateFilter "search")}}
               data-test-contacts-search
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
         <div class="flex gap-3 wrap x-end">
-          <Nuvo::Field class="grow" @label="Assigned agent">
-            <Nuvo::Dropdown
+          <Woven::Field class="grow" @label="Assigned agent">
+            <Woven::Dropdown
               id="contacts-agent-filter"
               @align="start"
               @value={{this.agentId}}
@@ -55,9 +55,9 @@
               @options={{this.agentOptions}}
               data-test-agent-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field class="grow" @label="Company">
-            <Nuvo::Input
+          </Woven::Field>
+          <Woven::Field class="grow" @label="Company">
+            <Woven::Input
               type="text"
               autocomplete="off"
               placeholder="e.g. Emaar Properties"
@@ -65,9 +65,9 @@
               {{on "input" (fn this.updateFilter "company")}}
               data-test-company-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field class="grow" @label="Nationality">
-            <Nuvo::Input
+          </Woven::Field>
+          <Woven::Field class="grow" @label="Nationality">
+            <Woven::Input
               type="text"
               autocomplete="off"
               placeholder="e.g. Emirati"
@@ -75,38 +75,38 @@
               {{on "input" (fn this.updateFilter "nationality")}}
               data-test-nationality-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Added from">
+          </Woven::Field>
+          <Woven::Field @label="Added from">
             <input
               type="date"
-              class="nu-input"
+              class="wu-input"
               aria-label="Added from"
               value={{this.dateFrom}}
               {{on "change" this.setDateFrom}}
               data-test-date-from-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Added to">
+          </Woven::Field>
+          <Woven::Field @label="Added to">
             <input
               type="date"
-              class="nu-input"
+              class="wu-input"
               aria-label="Added to"
               value={{this.dateTo}}
               {{on "change" this.setDateTo}}
               data-test-date-to-filter
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
         <div class="flex gap-3 x-center between">
-          <Nuvo::Toggle
+          <Woven::Toggle
             @checked={{this.isWhatsapp}}
             @onChange={{this.toggleWhatsappFilter}}
             data-test-whatsapp-filter
           >
             Has WhatsApp
-          </Nuvo::Toggle>
-          <Nuvo::Button
+          </Woven::Toggle>
+          <Woven::Button
             @variant="secondary"
             @size="sm"
             @icon="x"
@@ -115,15 +115,15 @@
             data-test-clear-filters
           >
             Clear filters
-          </Nuvo::Button>
+          </Woven::Button>
         </div>
       </div>
     </FiltersButton>
   </div>
 
-  <Nuvo::Card @compact={{true}}>
+  <Woven::Card @compact={{true}}>
     {{#if @model.contacts.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{@model.contacts}}
         @selection={{this.selection}}
@@ -147,7 +147,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -170,7 +170,7 @@
             </span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @size="xs"
             @icon="pencil-simple"
@@ -178,25 +178,25 @@
             {{on "click" (fn this.openEdit cell.row)}}
           >
             Edit
-          </Nuvo::Button>
+          </Woven::Button>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       {{#if @model.total}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
         />
       {{else}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No contacts match these filters."
         />
       {{/if}}
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="contacts-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -207,12 +207,12 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 
   {{! TEMP DataTable variation demo, remove after review. }}
-  <Nuvo::Card @compact={{true}}>
-    <h3 class="nu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
-    <Nuvo::DataTable
+  <Woven::Card @compact={{true}}>
+    <h3 class="wu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
+    <Woven::DataTable
       @columns={{this.columns}}
       @rows={{@model.contacts}}
       @selection={{this.demoSelectionB}}
@@ -231,7 +231,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -254,7 +254,7 @@
             </span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @size="xs"
             @icon="pencil-simple"
@@ -262,17 +262,17 @@
             {{on "click" (fn this.openEdit cell.row)}}
           >
             Edit
-          </Nuvo::Button>
+          </Woven::Button>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-    </Nuvo::DataTable>
+    </Woven::DataTable>
     <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
-  </Nuvo::Card>
+  </Woven::Card>
 
-  <Nuvo::Card @compact={{true}}>
-    <h3 class="nu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
-    <Nuvo::DataTable
+  <Woven::Card @compact={{true}}>
+    <h3 class="wu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
+    <Woven::DataTable
       @columns={{this.demoColumns}}
       @rows={{this.demoRtlRows}}
       @onCellEdit={{this.saveDemoCell}}
@@ -298,7 +298,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -321,7 +321,7 @@
             </span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @size="xs"
             @icon="pencil-simple"
@@ -329,16 +329,16 @@
             {{on "click" (fn this.openEdit cell.row)}}
           >
             Edit
-          </Nuvo::Button>
+          </Woven::Button>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-    </Nuvo::DataTable>
+    </Woven::DataTable>
     <p class="text-muted text-sm">{{this.demoSelectionRtl.length}} selected</p>
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{this.showModal}}
   @title={{if this.editContact "Edit Contact" "New Contact"}}
   @placement="end"
@@ -349,12 +349,12 @@
   <:body>
     <form
       id="contact-form"
-      class="nu-form"
+      class="wu-form"
       {{on "submit" this.saveContact}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="First Name">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="First Name">
+          <Woven::Input
             id="c-fname"
             type="text"
             placeholder="Ahmed"
@@ -362,9 +362,9 @@
             @onInput={{fn this.setFieldValue "formFirstName"}}
             data-test-input-first-name
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Last Name">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Last Name">
+          <Woven::Input
             id="c-lname"
             type="text"
             placeholder="Al-Rashid"
@@ -372,12 +372,12 @@
             @onInput={{fn this.setFieldValue "formLastName"}}
             data-test-input-last-name
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Email">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Email">
+          <Woven::Input
             id="c-email"
             type="email"
             placeholder="ahmed@example.com"
@@ -385,9 +385,9 @@
             @onInput={{fn this.setFieldValue "formEmail"}}
             data-test-input-email
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Nationality">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Nationality">
+          <Woven::Input
             id="c-nationality"
             type="text"
             placeholder="e.g. Emirati"
@@ -395,12 +395,12 @@
             @onInput={{fn this.setFieldValue "formNationality"}}
             data-test-input-nationality
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Phone">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Phone">
+          <Woven::Input
             id="c-phone"
             type="text"
             placeholder="+971501234567"
@@ -408,9 +408,9 @@
             @onInput={{fn this.setFieldValue "formPhone"}}
             data-test-input-phone
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="National ID">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="National ID">
+          <Woven::Input
             id="c-national-id"
             type="text"
             placeholder="EID / passport number"
@@ -418,10 +418,10 @@
             @onInput={{fn this.setFieldValue "formNationalId"}}
             data-test-input-national-id
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
-      <Nuvo::Checkbox
+      <Woven::Checkbox
         @checked={{this.formIsWhatsapp}}
         @label="This phone number is on WhatsApp"
         @onChange={{fn this.setFieldValue "formIsWhatsapp"}}
@@ -429,8 +429,8 @@
       />
 
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Company">
-          <Nuvo::Input
+        <Woven::Field class="grow" @label="Company">
+          <Woven::Input
             id="c-company"
             type="text"
             placeholder="Emaar Properties"
@@ -438,9 +438,9 @@
             @onInput={{fn this.setFieldValue "formContactCompany"}}
             data-test-input-company
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Job Title">
-          <Nuvo::Input
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Job Title">
+          <Woven::Input
             id="c-job"
             type="text"
             placeholder="Property Manager"
@@ -448,11 +448,11 @@
             @onInput={{fn this.setFieldValue "formJobTitle"}}
             data-test-input-job-title
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
-      <Nuvo::Field @label="Address">
-        <Nuvo::Input
+      <Woven::Field @label="Address">
+        <Woven::Input
           id="c-address"
           type="text"
           placeholder="e.g. Gulberg, Lahore"
@@ -460,10 +460,10 @@
           @onInput={{fn this.setFieldValue "formAddress"}}
           data-test-input-address
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field @label="Notes">
-        <Nuvo::Textarea
+      <Woven::Field @label="Notes">
+        <Woven::Textarea
           id="c-notes"
           placeholder="Additional notes..."
           rows="3"
@@ -471,7 +471,7 @@
           @onInput={{fn this.setFieldValue "formNotes"}}
           data-test-input-notes
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.errorMsg}}
         <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
@@ -479,12 +479,12 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @onClick={{this.closeModal}}
       data-test-cancel-contact-form
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="contact-form"
@@ -494,9 +494,9 @@
         this.isSaving
         "Saving..."
         (if this.editContact "Update" "Create Contact")
-      }}</Nuvo::Button>
+      }}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}
@@ -509,8 +509,8 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
-    <Nuvo::Textarea
+  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Woven::Textarea
       id="contact-delete-reason"
       rows="2"
       maxlength="500"
@@ -521,5 +521,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

@@ -1,20 +1,20 @@
 {{page-title "Dashboard"}}
 
 <div data-test-dashboard class="dashboard-page">
-  <Nuvo::PageHeader class="dashboard-header" @title="Command Center" @subtitle="Live overview of your property operation.">
+  <Woven::PageHeader class="dashboard-header" @title="Command Center" @subtitle="Live overview of your property operation.">
     <:actions>
-      <Nuvo::Tag class="dashboard-region-badge">
+      <Woven::Tag class="dashboard-region-badge">
         <Ui::Ph @icon="globe" @size="14px" />
         {{this.regionLabel}}
-      </Nuvo::Tag>
+      </Woven::Tag>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.kpis}}
     {{! Three tiers: what needs acting on, what it earned, what is merely true. }}
     <div class="kpi-layout">
       <div class="kpi-action">
-        <Nuvo::Stat
+        <Woven::Stat
           data-test-kpi="pending-cheques"
           @route="cheques"
           @variant="warning"
@@ -23,7 +23,7 @@
           @value={{format-number @model.kpis.pendingCheques}}
           @delta="Needs action"
         />
-        <Nuvo::Stat
+        <Woven::Stat
           data-test-kpi="open-leads"
           @route="leads"
           @variant="secondary"
@@ -34,7 +34,7 @@
         />
       </div>
 
-      <Nuvo::Stat
+      <Woven::Stat
         class="kpi-outcome"
         data-test-kpi="monthly-revenue"
         @contentBleed={{true}}
@@ -48,34 +48,34 @@
             @caption="Completed revenue by month"
           />
         </:content>
-      </Nuvo::Stat>
+      </Woven::Stat>
 
       <div class="kpi-status">
-        <Nuvo::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
-        <Nuvo::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
-        <Nuvo::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{this.occupancyRate}}%" />
-        <Nuvo::Stat data-test-kpi="total-contacts" @row={{true}} @label="CRM Contacts" @value={{format-number @model.kpis.totalContacts}} />
+        <Woven::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
+        <Woven::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
+        <Woven::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{this.occupancyRate}}%" />
+        <Woven::Stat data-test-kpi="total-contacts" @row={{true}} @label="CRM Contacts" @value={{format-number @model.kpis.totalContacts}} />
       </div>
     </div>
   {{else if this.loadFailed}}
-    <Nuvo::Panel class="p-8 text-center">
-      <Nuvo::EmptyState
+    <Woven::Panel class="p-8 text-center">
+      <Woven::EmptyState
         data-test-dashboard-error
         @title="Could not load the dashboard"
         @description="Reload the page to try again."
       />
-    </Nuvo::Panel>
+    </Woven::Panel>
   {{else}}
-    <Nuvo::Panel class="p-8 text-center">
+    <Woven::Panel class="p-8 text-center">
       <p class="text-muted">Loading KPIs...</p>
-    </Nuvo::Panel>
+    </Woven::Panel>
   {{/if}}
 
   <div class="dashboard-panels">
-    <Nuvo::Panel class="dashboard-panel">
+    <Woven::Panel class="dashboard-panel">
       <:header>
         <div class="ownership-header">
-          <h3 class="nu-panel__title">
+          <h3 class="wu-panel__title">
             Lead Pipeline</h3>
           <p class="ownership-caption">All open leads by stage.</p>
         </div>
@@ -98,7 +98,7 @@
               </div>
             </div>
           {{else}}
-            <Nuvo::EmptyState @description="No leads in pipeline" />
+            <Woven::EmptyState @description="No leads in pipeline" />
           {{/each}}
         </div>
 
@@ -133,12 +133,12 @@
           <span class="dashboard-strip-action">Assign</span>
         </LinkTo>
       </:body>
-    </Nuvo::Panel>
+    </Woven::Panel>
 
-    <Nuvo::Panel class="dashboard-panel">
+    <Woven::Panel class="dashboard-panel">
       <:header>
         <div class="ownership-header">
-          <h3 class="nu-panel__title">
+          <h3 class="wu-panel__title">
             Lead Ownership</h3>
           <p class="ownership-caption">Open leads by agent. Won and lost from
             the last 30 days.</p>
@@ -155,7 +155,7 @@
                 aria-label={{agent.label}}
               >
                 <span class="ownership-row-head">
-                  <Nuvo::Avatar @initials={{agent.initials}} @size="sm" />
+                  <Woven::Avatar @initials={{agent.initials}} @size="sm" />
                   <span class="ownership-name">{{agent.agentName}}</span>
                   <span class="ownership-open">{{format-number agent.openTotal}}
                     open</span>
@@ -188,15 +188,15 @@
               aria-label={{this.idleLabel}}
             >
               <span class="dashboard-strip-label">
-                <Nuvo::AvatarGroup>
+                <Woven::AvatarGroup>
                   {{#each this.visibleIdleAgents as |agent|}}
-                    <Nuvo::Avatar
+                    <Woven::Avatar
                       @initials={{agent.initials}}
                       @size="xs"
                       data-tooltip={{agent.agentName}}
                     />
                   {{/each}}
-                </Nuvo::AvatarGroup>
+                </Woven::AvatarGroup>
                 {{#if this.hiddenIdleCount}}
                   <span class="idle-overflow">+{{this.hiddenIdleCount}}</span>
                 {{/if}}
@@ -226,9 +226,9 @@
           </div>
 
         {{else}}
-          <Nuvo::EmptyState @description="No agents yet" />
+          <Woven::EmptyState @description="No agents yet" />
         {{/if}}
       </:body>
-    </Nuvo::Panel>
+    </Woven::Panel>
   </div>
 </div>

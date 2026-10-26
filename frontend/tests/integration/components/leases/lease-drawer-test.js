@@ -67,9 +67,9 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
   });
 
   async function pickUnit(number = '101') {
-    await click('#lease-unit-id [data-test-nu-dropdown-trigger]');
+    await click('#lease-unit-id [data-test-wu-dropdown-trigger]');
     const item = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].find((el) => el.textContent.includes(`Property ${number}`));
     await click(item);
   }
@@ -144,9 +144,9 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await pickUnit();
 
     assert
-      .dom('#lease-type [data-test-nu-dropdown-trigger]')
+      .dom('#lease-type [data-test-wu-dropdown-trigger]')
       .hasText(/Commercial/);
-    assert.dom('#lease-type [data-test-nu-dropdown-trigger]').isDisabled();
+    assert.dom('#lease-type [data-test-wu-dropdown-trigger]').isDisabled();
   });
 
   test('editing prefills the lease and patches it with the picked tenant id', async function (assert) {
@@ -194,7 +194,7 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await renderDrawer(this, 'create');
     await pickUnit('202');
 
-    assert.dom('#lease-type [data-test-nu-dropdown-trigger]').isNotDisabled();
+    assert.dom('#lease-type [data-test-wu-dropdown-trigger]').isNotDisabled();
   });
 
   test('a typed tenant is sent as an identity, and cheques must be 1 or more', async function (assert) {
@@ -210,7 +210,7 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await fillIn('#lease-cheques', '');
     await click('[data-test-save-lease]');
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('Enter the number of cheques, 1 or more');
     assert.notOk(sent(this.calls, 'POST'));
 
@@ -228,11 +228,11 @@ module('Integration | Component | leases/lease-drawer', function (hooks) {
     await renderDrawer(this, 'edit', LEASE);
     await fillIn('#lease-cheques', '');
     await click('[data-test-save-lease]');
-    assert.dom('#lease-form [data-test-nu-field-error]').exists();
+    assert.dom('#lease-form [data-test-wu-field-error]').exists();
 
     this.set('mode', 'create');
     this.set('lease', null);
-    assert.dom('#lease-form [data-test-nu-field-error]').doesNotExist();
+    assert.dom('#lease-form [data-test-wu-field-error]').doesNotExist();
   });
 
   test('an archived unit warns on edit even without a unit relation', async function (assert) {

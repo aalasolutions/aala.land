@@ -1,0 +1,59 @@
+// Component CSS-variable mechanism.
+//
+// Modifiers reassign variables; the base rule is the only consumer.
+// PatternFly's approach, adapted to WovenUI naming.
+@use "sass:map";
+@use "sass:string";
+@use "../common/var" as *;
+
+// Declare a component's full token surface.
+//   @include wu-root("btn", ("BackgroundColor": var(--wu-brand), ...));
+// emits --wu-btn--BackgroundColor: var(--wu-brand);
+@mixin wu-root($block, $tokens) {
+  @each $name, $value in $tokens {
+    --#{$wu-prefix}-#{$block}--#{$name}: #{$value};
+  }
+}
+
+// Declare tokens for a sub-element.
+//   @include wu-root-el("btn", "icon", ("MarginInlineEnd": 0.5rem));
+// emits --wu-btn__icon--MarginInlineEnd: 0.5rem;
+@mixin wu-root-el($block, $element, $tokens) {
+  @each $name, $value in $tokens {
+    --#{$wu-prefix}-#{$block}__#{$element}--#{$name}: #{$value};
+  }
+}
+
+// Reference a component token.
+//   background-color: wu-var("btn", "BackgroundColor");
+@function wu-var($block, $name, $fallback: null) {
+  $var-name: "--#{$wu-prefix}-#{$block}--#{$name}";
+  @if $fallback != null {
+    @return var(#{$var-name}, #{$fallback});
+  }
+  @return var(#{$var-name});
+}
+
+// Reference a sub-element token.
+@function wu-var-el($block, $element, $name, $fallback: null) {
+  $var-name: "--#{$wu-prefix}-#{$block}__#{$element}--#{$name}";
+  @if $fallback != null {
+    @return var(#{$var-name}, #{$fallback});
+  }
+  @return var(#{$var-name});
+}
+
+// Point a base token at one of its own sub-tokens.
+//   @include wu-set("btn", "BackgroundColor", "m-primary");
+// emits --wu-btn--BackgroundColor: var(--wu-btn--m-primary--BackgroundColor);
+@mixin wu-set($block, $name, $scope) {
+  --#{$wu-prefix}-#{$block}--#{$name}: #{wu-var($block, "#{$scope}--#{$name}")};
+}
+
+// Bulk version of wu-set for a whole variant/state scope.
+//   @include wu-set-all("btn", "m-primary", ("Color", "BackgroundColor"));
+@mixin wu-set-all($block, $scope, $names) {
+  @each $name in $names {
+    @include wu-set($block, $name, $scope);
+  }
+}

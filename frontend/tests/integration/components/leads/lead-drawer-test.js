@@ -77,10 +77,10 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
   }
 
   async function pickOption(id, text) {
-    await click(`#${id} [data-test-nu-dropdown-trigger]`);
+    await click(`#${id} [data-test-wu-dropdown-trigger]`);
     const item = [
       ...document.querySelectorAll(
-        '.nu-menu.is-open [data-test-nu-dropdown-item]',
+        '.wu-menu.is-open [data-test-wu-dropdown-item]',
       ),
     ].find((el) => el.textContent.trim() === text);
     await click(item);
@@ -88,12 +88,12 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
 
   async function pickContact(name) {
     await fillIn(
-      '[data-test-contact-search] [data-test-nu-dropdown-filter]',
+      '[data-test-contact-search] [data-test-wu-dropdown-filter]',
       '',
     );
     const item = [
       ...document.querySelectorAll(
-        '.nu-menu.is-open [data-test-nu-dropdown-item]:not(.m-create)',
+        '.wu-menu.is-open [data-test-wu-dropdown-item]:not(.m-create)',
       ),
     ].find((el) => el.textContent.trim() === name);
     await click(item);
@@ -106,7 +106,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
         (c) => c.path === '/locations/company/localities?regionCode=DXB',
       ),
     );
-    assert.dom('[data-test-nu-drawer-title]').hasText('New Lead');
+    assert.dom('[data-test-wu-drawer-title]').hasText('New Lead');
     assert.dom('[data-test-save-lead]').hasText('Create Lead');
   });
 
@@ -233,7 +233,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
 
   test('editing prefills the lead, loads its units and patches only changes', async function (assert) {
     await renderDrawer(this, LEAD);
-    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Lead');
+    assert.dom('[data-test-wu-drawer-title]').hasText('Edit Lead');
     assert.dom('[data-test-contact-picker]').doesNotExist();
     assert.dom('#lead-form').containsText('Test User');
     assert.ok(
@@ -244,10 +244,10 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
       ),
     );
     assert
-      .dom('#lead-status [data-test-nu-dropdown-trigger]')
+      .dom('#lead-status [data-test-wu-dropdown-trigger]')
       .containsText('Contacted');
     assert
-      .dom('#lead-unit [data-test-nu-dropdown-trigger]')
+      .dom('#lead-unit [data-test-wu-dropdown-trigger]')
       .containsText('Property 101');
     assert.dom('[data-test-save-lead]').hasText('Update');
 
@@ -299,7 +299,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
     this.set('lead', { ...LEAD, id: 'lead-2', temperature: 'WARM' });
 
     assert
-      .dom('#lead-temp [data-test-nu-dropdown-trigger]')
+      .dom('#lead-temp [data-test-wu-dropdown-trigger]')
       .containsText('Warm');
   });
 

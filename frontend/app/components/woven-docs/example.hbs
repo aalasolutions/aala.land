@@ -1,0 +1,22 @@
+<div class="woven-example" data-test-woven-example ...attributes>
+  {{#if @title}}
+    <h3 class="woven-subtitle">{{@title}}</h3>
+  {{/if}}
+
+  {{#if @note}}
+    <p class="woven-note">{{@note}}</p>
+  {{/if}}
+
+  <div class={{this.previewClasses}} data-test-woven-example-preview>
+    {{yield}}
+  </div>
+
+  {{#if @code}}
+    <div class="wu-code-block woven-example__code">
+      <pre
+        class="wu-code-block__content"
+        data-test-woven-example-code
+      >{{@code}}</pre>
+    </div>
+  {{/if}}
+</div>

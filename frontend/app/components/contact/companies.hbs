@@ -1,16 +1,16 @@
-<Nuvo::Card
+<Woven::Card
   data-test-contact-companies
   ...attributes
   {{this.reloadOnRegion this.region.regionCode @allRegions}}
 >
   {{#if this.isLoading}}
     <div class="flex center py-8">
-      <Nuvo::Spinner />
+      <Woven::Spinner />
     </div>
   {{else if this.error}}
     <p class="text-danger" data-test-contact-companies-error>{{this.error}}</p>
   {{else if this.companies.length}}
-    <Nuvo::DataTable
+    <Woven::DataTable
       @columns={{this.columns}}
       @rows={{this.companies}}
       @pinColumns={{true}}
@@ -41,16 +41,16 @@
       {{else}}
         <span class="text-muted">{{cell.value}}</span>
       {{/if}}
-    </Nuvo::DataTable>
+    </Woven::DataTable>
   {{else}}
-    <Nuvo::EmptyState
+    <Woven::EmptyState
       @description="No contact in this region has a company yet."
       data-test-contact-companies-empty
     />
   {{/if}}
 
   {{#if this.total}}
-    <Nuvo::Pagination
+    <Woven::Pagination
       @selectId="contact-companies-limit"
       @page={{this.page}}
       @limit={{this.limit}}
@@ -62,4 +62,4 @@
       @onPageChange={{this.goToPage}}
     />
   {{/if}}
-</Nuvo::Card>
+</Woven::Card>

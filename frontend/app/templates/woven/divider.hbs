@@ -1,0 +1,117 @@
+<WovenDocs::Page
+  @id="divider"
+  @title="Divider"
+  @subtitle="Horizontal or vertical rule, plain, dashed or labelled."
+  @components="Woven::Divider"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      A separator with an optional label. The horizontal form takes the
+      full inline size and splits groups of content; the vertical form
+      stretches to the height of its flex row and splits controls in a
+      toolbar. Prefer spacing over a divider when the groups are already
+      visually distinct.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Solid or dashed line.</li>
+      <li class="wu-list__item">Centred, start or end label from an argument or a block.</li>
+      <li class="wu-list__item">Vertical variant for toolbars and inline groups.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Line styles" @id="styles">
+    <WovenDocs::Example
+      @title="Solid"
+      @note="The default rule between sections of a card or form."
+      @layout="stack"
+      @code={{this.code.plain}}
+    >
+      <Woven::Divider />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Dashed"
+      @note="A softer break for optional or draft content, such as between saved and unsaved items."
+      @layout="stack"
+      @code={{this.code.dashed}}
+    >
+      <Woven::Divider @dashed={{true}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Labels" @id="labels">
+    <WovenDocs::Example
+      @title="Centred label"
+      @note="Short text on the line, for alternatives such as OR between two sign-in methods."
+      @layout="stack"
+      @code={{this.code.label}}
+    >
+      <Woven::Divider @label="OR" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Label at the start"
+      @note="Reads as a section heading with a rule running to the end, for lists grouped by date or category."
+      @layout="stack"
+      @code={{this.code.start}}
+    >
+      <Woven::Divider @labelPosition="start" @label="Section start" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Label at the end"
+      @note="Trailing label, for a count or a status closing a group."
+      @layout="stack"
+      @code={{this.code.end}}
+    >
+      <Woven::Divider @labelPosition="end" @label="Section end" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block label"
+      @note="A block replaces the label text, for an icon beside the words."
+      @layout="stack"
+      @code={{this.code.block}}
+    >
+      <Woven::Divider><Woven::Icon @icon="clock" /> Earlier today</Woven::Divider>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Orientation" @id="orientation">
+    <WovenDocs::Example
+      @title="Vertical"
+      @note="Fills the height of a flex row to split toolbar groups. It has no label form."
+      @layout="block"
+      @code={{this.code.vertical}}
+    >
+      <div class="woven-row woven-row--full-height">
+        <span class="wu-text m-sm">Start</span>
+        <Woven::Divider @vertical={{true}} />
+        <span class="wu-text m-sm">End</span>
+      </div>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Renders role="separator". A label is read as part of the page text.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Start and end label positions are logical and swap with the reading direction.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

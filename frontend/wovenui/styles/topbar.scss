@@ -1,0 +1,343 @@
+// wu-topbar - top app bar with search, actions and user menu
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(topbar) {
+  @include wu-root("topbar", (
+    "Height": 3.5rem,
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "PaddingInline": wu-space(8),
+    "Gap": wu-space(4),
+  ));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: wu-var("topbar", "Gap");
+  block-size: wu-var("topbar", "Height");
+  padding-inline: wu-var("topbar", "PaddingInline");
+  background-color: wu-var("topbar", "BackgroundColor");
+  border-block-end: 1px solid wu-var("topbar", "BorderColor");
+
+  // Sits on the shell background instead of carrying its own surface. Pairs
+  // with `.wu-sidebar.m-plain`.
+  @include m(plain) {
+    --wu-topbar--BackgroundColor: transparent;
+    --wu-topbar--BorderColor: transparent;
+  }
+
+  // ---- elements ----
+
+  @include e(toggle) {
+    @include wu-root-el("topbar", "toggle", (
+      "Color": var(--wu-text-muted),
+      "hover--Color": var(--wu-text-regular),
+      "hover--BackgroundColor": var(--wu-bg-alternate),
+    ));
+
+    // Hidden on desktop, where the sidebar rail is always on screen. Shown at
+    // the same breakpoint that takes the rail off-canvas, so it is the only way
+    // to reach navigation there.
+    display: none;
+
+    @include media-down(md) {
+      display: inline-flex;
+    }
+
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    flex-shrink: 0;
+    padding: 0;
+    border: none;
+    border-radius: wu-radius(md);
+    color: wu-var-el("topbar", "toggle", "Color");
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: wu-var-el("topbar", "toggle", "hover--Color");
+      background-color: wu-var-el("topbar", "toggle", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  @include e(brand) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    font-size: wu-font-size(md);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+  }
+
+  @include e(search) {
+    flex: 1;
+    max-inline-size: 20rem;
+    position: relative;
+  }
+
+  @include e(search-input) {
+    inline-size: 100%;
+    padding-block: wu-space(2);
+    padding-inline: wu-space(4);
+    background-color: var(--wu-bg-base);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(lg);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-regular);
+    transition: border-color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &::placeholder {
+      color: $wu-placeholder-color;
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--wu-brand);
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    margin-inline-start: auto;
+  }
+
+  @include e(icon-btn) {
+    @include wu-root-el("topbar", "icon-btn", (
+      "Color": var(--wu-text-muted),
+      "BackgroundColor": transparent,
+      "hover--Color": var(--wu-text-regular),
+      "hover--BackgroundColor": var(--wu-bg-alternate),
+    ));
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border: none;
+    border-radius: wu-radius(md);
+    color: wu-var-el("topbar", "icon-btn", "Color");
+    background-color: wu-var-el("topbar", "icon-btn", "BackgroundColor");
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: wu-var-el("topbar", "icon-btn", "hover--Color");
+      background-color: wu-var-el("topbar", "icon-btn", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  @include e(badge) {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    min-inline-size: 1.125rem;
+    block-size: 1.125rem;
+    padding-inline: wu-space(1);
+    border-radius: wu-radius(full);
+    background-color: var(--wu-danger);
+    color: var(--wu-text-inverted);
+    // deliberately a step above 2xs, pending an xs- scale alias
+    font-size: 0.6875rem;
+    font-weight: wu-font-weight(bold);
+    line-height: 1.125rem;
+    text-align: center;
+  }
+
+  @include e(divider) {
+    inline-size: 1px;
+    block-size: 1.5rem;
+    background-color: var(--wu-border-regular);
+  }
+
+  @include e(user) {
+    @include wu-root-el("topbar", "user", (
+      "hover--BackgroundColor": var(--wu-bg-alternate),
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    padding-block: wu-space(1);
+    padding-inline: wu-space(2);
+    border: none;
+    border-radius: wu-radius(lg);
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      background-color: wu-var-el("topbar", "user", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  @include e(avatar) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border-radius: wu-radius(full);
+    background-color: var(--wu-brand);
+    color: var(--wu-text-inverted);
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    flex-shrink: 0;
+  }
+
+  @include e(user-details) {
+    display: none;
+    flex-direction: column;
+    min-inline-size: 0;
+  }
+
+  @include e(user-name) {
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @include e(user-role) {
+    // deliberately a step above 2xs, pending an xs- scale alias
+    font-size: 0.6875rem;
+    color: var(--wu-text-muted);
+  }
+
+  // ---- modifiers ----
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: wu-z(sticky);
+  }
+}
+
+// Dropdown surface anchored under topbar triggers (notifications, region, search, user menu)
+@include b(topbar-menu) {
+  @include wu-root("topbar-menu", (
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(xl),
+    "BoxShadow": wu-shadow(lg),
+  ));
+
+  position: absolute;
+  inset-block-start: calc(100% + #{wu-space(1)});
+  inset-inline-end: 0;
+  min-inline-size: 14rem;
+  max-block-size: calc(100vh - #{wu-var("topbar", "Height")} - #{wu-space(4)});
+  background-color: wu-var("topbar-menu", "BackgroundColor");
+  border: 1px solid wu-var("topbar-menu", "BorderColor");
+  border-radius: wu-var("topbar-menu", "BorderRadius");
+  box-shadow: wu-var("topbar-menu", "BoxShadow");
+  z-index: wu-z(dropdown);
+  overflow-y: auto;
+
+  // dvh so a mobile URL bar cannot push the menu bottom off screen.
+  @supports (max-block-size: 1dvh) {
+    max-block-size: calc(
+      100dvh - #{wu-var("topbar", "Height")} - #{wu-space(4)}
+    );
+  }
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: wu-space(4);
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+
+  @include e(divider) {
+    block-size: 1px;
+    margin-block: wu-space(1);
+    background-color: var(--wu-border-regular);
+  }
+
+  @include e(item) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(3);
+    inline-size: 100%;
+    padding-block: wu-space(3);
+    padding-inline: wu-space(4);
+    border: none;
+    background-color: transparent;
+    color: var(--wu-text-regular);
+    font-size: wu-font-size(sm);
+    text-align: start;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 2px var(--wu-brand);
+    }
+
+    &.is-active {
+      color: var(--wu-brand);
+      font-weight: wu-font-weight(semibold);
+    }
+  }
+
+  @include e(empty) {
+    padding: wu-space(8);
+    text-align: center;
+    color: var(--wu-text-muted);
+    font-size: wu-font-size(sm);
+  }
+}

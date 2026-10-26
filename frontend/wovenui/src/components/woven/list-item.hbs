@@ -1,0 +1,13 @@
+<div class="wu-list-item" data-test-wu-list-item ...attributes>
+  {{#if (has-block "main")}}
+    <div class="wu-list-item__main" data-test-wu-list-item-main>
+      {{yield to="main"}}
+    </div>
+  {{/if}}
+
+  {{#if (has-block "actions")}}
+    <div class="wu-list-item__actions" data-test-wu-list-item-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</div>

@@ -1,0 +1,211 @@
+// wu-toast - transient stacked notification with region placement and entry animation
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@keyframes wu-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(wu-space(2));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@include b(toast-region) {
+  @include wu-root("toast-region", (
+    "Position": fixed,
+    "InsetBlockStart": auto,
+    "InsetBlockEnd": wu-space(6),
+    "InsetInlineStart": auto,
+    "InsetInlineEnd": wu-space(6),
+    "Gap": wu-space(3),
+    "ZIndex": wu-z(toast),
+    "MaxInlineSize": 400px,
+  ));
+
+  position: wu-var("toast-region", "Position");
+  inset-block-start: wu-var("toast-region", "InsetBlockStart");
+  inset-block-end: wu-var("toast-region", "InsetBlockEnd");
+  inset-inline-start: wu-var("toast-region", "InsetInlineStart");
+  inset-inline-end: wu-var("toast-region", "InsetInlineEnd");
+  z-index: wu-var("toast-region", "ZIndex");
+  display: flex;
+  flex-direction: column;
+  gap: wu-var("toast-region", "Gap");
+  max-inline-size: wu-var("toast-region", "MaxInlineSize");
+  pointer-events: none;
+
+  // ---- placement modifiers ----
+
+  @include m(top-start) {
+    --wu-toast-region--InsetBlockStart: #{wu-space(6)};
+    --wu-toast-region--InsetBlockEnd: auto;
+    --wu-toast-region--InsetInlineStart: #{wu-space(6)};
+    --wu-toast-region--InsetInlineEnd: auto;
+  }
+
+  @include m(top-end) {
+    --wu-toast-region--InsetBlockStart: #{wu-space(6)};
+    --wu-toast-region--InsetBlockEnd: auto;
+    --wu-toast-region--InsetInlineStart: auto;
+    --wu-toast-region--InsetInlineEnd: #{wu-space(6)};
+  }
+
+  @include m(bottom-start) {
+    --wu-toast-region--InsetBlockStart: auto;
+    --wu-toast-region--InsetBlockEnd: #{wu-space(6)};
+    --wu-toast-region--InsetInlineStart: #{wu-space(6)};
+    --wu-toast-region--InsetInlineEnd: auto;
+  }
+
+  @include m(bottom-end) {
+    --wu-toast-region--InsetBlockStart: auto;
+    --wu-toast-region--InsetBlockEnd: #{wu-space(6)};
+    --wu-toast-region--InsetInlineStart: auto;
+    --wu-toast-region--InsetInlineEnd: #{wu-space(6)};
+  }
+}
+
+@include b(toast) {
+  @include wu-root("toast", (
+    "Display": flex,
+    "AlignItems": flex-start,
+    "Gap": wu-space(3),
+    "PaddingBlock": wu-space(4),
+    "PaddingInline": wu-space(4),
+    "BorderRadius": wu-radius(lg),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BoxShadow": #{wu-shadow(lg)},
+    "IconColor": var(--wu-text-muted),
+    "TitleFontSize": wu-font-size(sm),
+    "ContentColor": var(--wu-text-muted),
+    "AnimationDuration": wu-duration(normal),
+    "ProgressColor": var(--wu-brand),
+  ));
+
+  position: relative;
+  display: wu-var("toast", "Display");
+  align-items: wu-var("toast", "AlignItems");
+  gap: wu-var("toast", "Gap");
+  padding-block: wu-var("toast", "PaddingBlock");
+  padding-inline: wu-var("toast", "PaddingInline");
+  overflow: hidden;
+  color: wu-var("toast", "Color");
+  background-color: wu-var("toast", "BackgroundColor");
+  border: wu-var("toast", "BorderWidth") solid wu-var("toast", "BorderColor");
+  border-radius: wu-var("toast", "BorderRadius");
+  box-shadow: wu-var("toast", "BoxShadow");
+  pointer-events: auto;
+  animation: wu-toast-in wu-var("toast", "AnimationDuration") $wu-ease;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: wu-font-size(lg);
+    line-height: 1;
+    color: wu-var("toast", "IconColor");
+  }
+
+  @include e(content) {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  @include e(title) {
+    font-size: wu-var("toast", "TitleFontSize");
+    font-weight: wu-font-weight(semibold);
+    line-height: 1.4;
+  }
+
+  @include e(description) {
+    margin-block-start: wu-space(1);
+    color: wu-var("toast", "ContentColor");
+    font-size: wu-font-size(sm);
+    line-height: 1.5;
+  }
+
+  @include e(close) {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: wu-space(6);
+    block-size: wu-space(6);
+    padding: 0;
+    color: wu-var("toast", "IconColor");
+    background-color: transparent;
+    border: none;
+    border-radius: wu-radius(sm);
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // Visual size stays 24px; ::before pads the hit area to the 32px floor.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - 1rem);
+      inset-inline-start: calc(50% - 1rem);
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
+
+    &:hover {
+      color: wu-var("toast", "Color");
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  @include e(progress) {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    block-size: 3px;
+    background-color: wu-tint(brand, 15%);
+
+    &::after {
+      content: "";
+      display: block;
+      block-size: 100%;
+      background-color: wu-var("toast", "ProgressColor");
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-toast--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-toast--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+      --wu-toast--BorderColor: var(--wu-#{wu-role($variant)}-200);
+      --wu-toast--IconColor: var(--wu-#{wu-role($variant)});
+      --wu-toast--ContentColor: var(--wu-#{wu-role($variant)}-700);
+      --wu-toast--ProgressColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+}

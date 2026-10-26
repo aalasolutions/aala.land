@@ -1,0 +1,92 @@
+// wu-divider - horizontal or vertical separator, with optional centered label
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(divider) {
+  @include wu-root("divider", (
+    "Color": var(--wu-border-regular),
+    "Thickness": 1px,
+    "Style": solid,
+    "MarginBlock": wu-space(4),
+    "Gap": wu-space(3),
+    "LabelColor": var(--wu-text-muted),
+    "LabelFontSize": wu-font-size(xs),
+    "LabelFontWeight": wu-font-weight(medium),
+  ));
+
+  display: flex;
+  align-items: center;
+  block-size: wu-var("divider", "Thickness");
+  margin-block: wu-var("divider", "MarginBlock");
+  border-block-start: wu-var("divider", "Thickness") wu-var("divider", "Style") wu-var("divider", "Color");
+
+  @include e(label) {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: wu-var("divider", "LabelFontSize");
+    font-weight: wu-var("divider", "LabelFontWeight");
+    color: wu-var("divider", "LabelColor");
+    white-space: nowrap;
+  }
+
+  // ---- label placement (default: centered, rules on both sides) ----
+
+  &:has(.wu-divider__label) {
+    border-block-start: none;
+    gap: wu-var("divider", "Gap");
+
+    &::before,
+    &::after {
+      content: "";
+      flex: 1 1 auto;
+      block-size: wu-var("divider", "Thickness");
+      background-color: wu-var("divider", "Color");
+    }
+  }
+
+  @include m(start) {
+    &::before {
+      flex-grow: 0;
+      inline-size: wu-space(4);
+    }
+  }
+
+  @include m(end) {
+    &::after {
+      flex-grow: 0;
+      inline-size: wu-space(4);
+    }
+  }
+
+  // ---- style ----
+
+  @include m(dashed) {
+    --wu-divider--Style: dashed;
+  }
+
+  // ---- orientation ----
+
+  @include m(vertical) {
+    display: inline-flex;
+    flex-direction: column;
+    align-self: stretch;
+    inline-size: wu-var("divider", "Thickness");
+    block-size: auto;
+    margin-block: 0;
+    margin-inline: wu-var("divider", "MarginBlock");
+    border-block-start: none;
+    border-inline-start: wu-var("divider", "Thickness") wu-var("divider", "Style") wu-var("divider", "Color");
+
+    &:has(.wu-divider__label) {
+      border-inline-start: none;
+    }
+
+    &:has(.wu-divider__label)::before,
+    &:has(.wu-divider__label)::after {
+      inline-size: wu-var("divider", "Thickness");
+      block-size: auto;
+    }
+  }
+}

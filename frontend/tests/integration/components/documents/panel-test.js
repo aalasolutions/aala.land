@@ -108,7 +108,7 @@ function row(id) {
 function menuItem(text) {
   const items = [
     ...document.querySelectorAll(
-      '.nu-menu.is-open [data-test-nu-dropdown-item]',
+      '.wu-menu.is-open [data-test-wu-dropdown-item]',
     ),
   ];
   return items.find((el) => el.textContent.trim() === text);
@@ -117,7 +117,7 @@ function menuItem(text) {
 // A menu opened while the drawer still slides in is re-clamped inside its ResizeObserver callback.
 async function drawerSettled() {
   await waitUntil(() => {
-    const drawer = document.querySelector('[data-test-nu-drawer]');
+    const drawer = document.querySelector('[data-test-wu-drawer]');
     return (
       drawer?.classList.contains('is-open') &&
       drawer.getAnimations().length === 0
@@ -126,7 +126,7 @@ async function drawerSettled() {
 }
 
 async function chooseOption(triggerScope, text) {
-  await click(`${triggerScope} [data-test-nu-dropdown-trigger]`);
+  await click(`${triggerScope} [data-test-wu-dropdown-trigger]`);
   await click(menuItem(text));
 }
 
@@ -265,7 +265,7 @@ module('Integration | Component | documents/panel', function (hooks) {
   function openMenuLabels() {
     return [
       ...document.querySelectorAll(
-        '.nu-menu.is-open [data-test-nu-dropdown-item]',
+        '.wu-menu.is-open [data-test-wu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
   }
@@ -277,12 +277,12 @@ module('Integration | Component | documents/panel', function (hooks) {
 
     await click('[data-test-documents-upload]');
     await drawerSettled();
-    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    await click('[data-test-field-category] [data-test-wu-dropdown-trigger]');
     assert.strictEqual(openMenuLabels().length, 10, 'library only offers all');
-    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    await click('[data-test-field-category] [data-test-wu-dropdown-trigger]');
 
     await chooseOption('[data-test-field-related-type]', 'Work Order');
-    await click('[data-test-field-category] [data-test-nu-dropdown-trigger]');
+    await click('[data-test-field-category] [data-test-wu-dropdown-trigger]');
     assert.deepEqual(openMenuLabels(), [
       'Invoice',
       'Maintenance & Snagging',
@@ -303,7 +303,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await chooseOption('[data-test-field-related-type]', 'Work Order');
 
     assert
-      .dom('[data-test-field-category] [data-test-nu-dropdown-trigger]')
+      .dom('[data-test-field-category] [data-test-wu-dropdown-trigger]')
       .includesText('Other Documents');
   });
 
@@ -353,7 +353,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await drawerSettled();
     await chooseOption('[data-test-field-related-type]', 'Work Order');
     await focus(
-      '[data-test-field-related-record] [data-test-nu-dropdown-filter]',
+      '[data-test-field-related-record] [data-test-wu-dropdown-filter]',
     );
     await click(menuItem('Paint lobby'));
 
@@ -396,7 +396,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await click('[data-test-save-btn]');
 
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('Choose a lease or pick Library only');
     assert.notOk(
       this.calls.some((c) => c.path.startsWith('/documents/upload')),
@@ -414,7 +414,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await drawerSettled();
     await chooseOption('[data-test-field-related-type]', 'Work Order');
     await focus(
-      '[data-test-field-related-record] [data-test-nu-dropdown-filter]',
+      '[data-test-field-related-record] [data-test-wu-dropdown-filter]',
     );
     await click(menuItem('Replace pump'));
     await click('[data-test-save-btn]');
@@ -508,10 +508,10 @@ module('Integration | Component | documents/panel', function (hooks) {
 
     await click('[data-test-documents-upload]');
     await drawerSettled();
-    await click('[data-test-field-access] [data-test-nu-dropdown-trigger]');
+    await click('[data-test-field-access] [data-test-wu-dropdown-trigger]');
     const labels = [
       ...document.querySelectorAll(
-        '.nu-menu.is-open [data-test-nu-dropdown-item]',
+        '.wu-menu.is-open [data-test-wu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
     assert.deepEqual(labels, ['Share with Team', 'Share with Admin']);
@@ -574,7 +574,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     );
     await waitFor('[data-test-documents-pagination]');
 
-    await click('[data-test-nu-pagination-page="2"]');
+    await click('[data-test-wu-pagination-page="2"]');
     assert.deepEqual(this.pages, [2]);
     const listCalls = this.calls.filter((c) =>
       c.path.startsWith('/documents?'),

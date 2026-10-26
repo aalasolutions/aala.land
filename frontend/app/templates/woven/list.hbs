@@ -1,0 +1,170 @@
+<WovenDocs::Page
+  @id="list"
+  @title="List and Description list"
+  @subtitle="Ordered, unordered and term/description lists from data or markup."
+  @components="Woven::List, Woven::DescList"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Both components render from an
+      <code class="wu-code">@items</code>
+      array or from a block of hand-written items. The data form is quickest
+      for plain text; the block form is for items that hold badges, links or
+      other components. For rows with actions use ListItem instead.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Ordered or unordered; plain, inline, bordered and compact styles.</li>
+      <li class="wu-list__item">Items as strings or label/icon objects.</li>
+      <li class="wu-list__item">Description list in stacked or horizontal layout.</li>
+      <li class="wu-list__item">Block form for custom item markup.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="List: data" @id="list-data">
+    <WovenDocs::Example
+      @title="Strings"
+      @note="An array of strings becomes a bulleted list. The quickest way to show a few facts."
+      @layout="stack"
+      @code={{this.code.strings}}
+    >
+      <Woven::List @items={{this.unitList}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Objects with icons"
+      @note="Objects with label and icon put a glyph before each item, usually with plain so the icon replaces the bullet."
+      @layout="stack"
+      @code={{this.code.icons}}
+    >
+      <Woven::List @items={{this.iconList}} @plain={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block items"
+      @note="Write the li elements yourself, with the wu-list__item class, when items need badges or links."
+      @layout="stack"
+      @code={{this.code.block}}
+    >
+      <Woven::List @plain={{true}}>
+        <li class="wu-list__item"><Woven::Badge @variant="success" @text="Paid" /> March rent</li>
+        <li class="wu-list__item"><Woven::Badge @variant="warning" @text="Due" /> April rent</li>
+      </Woven::List>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="List: styles" @id="list-styles">
+    <WovenDocs::Example
+      @title="Ordered"
+      @note="Numbered steps, rendered as an ol so the order is announced."
+      @layout="stack"
+      @code={{this.code.ordered}}
+    >
+      <Woven::List @items={{this.unitList}} @ordered={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Plain"
+      @note="No markers, for lists that are already visually grouped or carry their own icons."
+      @layout="stack"
+      @code={{this.code.plain}}
+    >
+      <Woven::List @items={{this.unitList}} @plain={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Inline"
+      @note="Items flow on one line, for short attribute lists in a header or a card."
+      @layout="block"
+      @code={{this.code.inline}}
+    >
+      <Woven::List @items={{this.unitList}} @inline={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Bordered"
+      @note="A divider between items, for lists of records rather than prose bullets."
+      @layout="stack"
+      @code={{this.code.bordered}}
+    >
+      <Woven::List @items={{this.unitList}} @plain={{true}} @bordered={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Compact"
+      @note="Tighter spacing for sidebars and dense summaries."
+      @layout="stack"
+      @code={{this.code.compact}}
+    >
+      <Woven::List @items={{this.unitList}} @compact={{true}} />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">List arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.listArgRows}} />
+    <h3 class="woven-subtitle">List blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.listBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Description list" @id="desc-list">
+    <WovenDocs::Example
+      @title="Stacked"
+      @note="Term above description, for detail panels read top to bottom."
+      @layout="stack"
+      @code={{this.code.desc}}
+    >
+      <Woven::DescList @items={{this.leaseDescItems}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Horizontal"
+      @note="Term beside description in two columns, for wider summaries."
+      @layout="stack"
+      @code={{this.code.descHorizontal}}
+    >
+      <Woven::DescList @items={{this.leaseDescItems}} @horizontal={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Compact"
+      @note="Tighter group spacing for sidebars."
+      @layout="stack"
+      @code={{this.code.descCompact}}
+    >
+      <Woven::DescList @items={{this.leaseDescItems}} @compact={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block groups"
+      @note="Write the groups yourself when a description holds a badge or a link."
+      @layout="stack"
+      @code={{this.code.descBlock}}
+    >
+      <Woven::DescList @horizontal={{true}}>
+        <div class="wu-desc-list__group">
+          <dt class="wu-desc-list__term">Status</dt>
+          <dd class="wu-desc-list__description"><Woven::Badge @variant="success" @text="Active" /></dd>
+        </div>
+      </Woven::DescList>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Description list arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.descArgRows}} />
+    <h3 class="woven-subtitle">Description list blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.descBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Real ul, ol and dl elements, so list semantics and item counts are announced.</li>
+      <li class="wu-list__item">Item icons are aria-hidden; the label carries the meaning.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Markers, icon spacing and the horizontal description layout use inline paddings and margins, so they mirror with the reading direction.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

@@ -144,9 +144,9 @@ module('Acceptance | leases/detail', function (hooks) {
     await visit('/leases/lease-1');
     await waitFor('[data-test-lease-documents] [data-test-data-table-row]');
 
-    assert.dom('[data-test-nu-page-header-title]').hasText('Test Tenant');
+    assert.dom('[data-test-wu-page-header-title]').hasText('Test Tenant');
     assert
-      .dom('[data-test-breadcrumb-leases] [data-test-nu-breadcrumb-link]')
+      .dom('[data-test-breadcrumb-leases] [data-test-wu-breadcrumb-link]')
       .hasAttribute('href', '/leases');
     assert.dom('[data-test-lease-unit-link]').hasText('Bay Tower - 101');
     assert.deepEqual(documentListCalls(this.calls), [
@@ -209,7 +209,7 @@ module('Acceptance | leases/detail', function (hooks) {
 
     await click('[data-test-edit-lease]');
     await waitFor('#lease-rent');
-    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Lease');
+    assert.dom('[data-test-wu-drawer-title]').hasText('Edit Lease');
     assert.dom('#lease-rent').hasValue('5000.00');
   });
 
@@ -273,9 +273,9 @@ module('Acceptance | maintenance/detail', function (hooks) {
       '[data-test-work-order-documents] [data-test-data-table-row]',
     );
 
-    assert.dom('[data-test-nu-page-header-title]').hasText('Fix AC');
+    assert.dom('[data-test-wu-page-header-title]').hasText('Fix AC');
     assert
-      .dom('[data-test-breadcrumb-maintenance] [data-test-nu-breadcrumb-link]')
+      .dom('[data-test-breadcrumb-maintenance] [data-test-wu-breadcrumb-link]')
       .hasAttribute('href', '/maintenance');
     assert.deepEqual(documentListCalls(this.calls), [
       '/documents?page=1&limit=20&workOrderId=wo-1',
@@ -310,7 +310,7 @@ module('Acceptance | maintenance/detail', function (hooks) {
     await click('[data-test-edit-work-order]');
     await waitFor('#wo-title');
     assert.dom('#wo-title').hasValue('Fix AC');
-    assert.dom('[data-test-nu-drawer-title]').hasText('Edit Work Order');
+    assert.dom('[data-test-wu-drawer-title]').hasText('Edit Work Order');
   });
 
   test('saving the drawer patches the work order', async function (assert) {

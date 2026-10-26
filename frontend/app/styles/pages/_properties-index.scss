@@ -1,11 +1,11 @@
 // Only the browse toolbar and the grid/list tile are bespoke; everything else resolves to a kit component.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 @use "../variables" as vars;
 
 .browse-toolbar {
   display: flex;
-  gap: nu-space(4);
+  gap: wu-space(4);
   align-items: flex-end;
   justify-content: space-between;
 
@@ -18,14 +18,14 @@
 .browse-toolbar__controls {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(3);
+  gap: wu-space(3);
   align-items: center;
 }
 
-// Label inline, not stacked: <Nuvo::Field>'s margin pushes the direction button out of line.
+// Label inline, not stacked: <Woven::Field>'s margin pushes the direction button out of line.
 .browse-toolbar__sort {
   display: flex;
-  gap: nu-space(2);
+  gap: wu-space(2);
   align-items: center;
 }
 
@@ -36,7 +36,7 @@
 
 // Columns follow the width the sidebar leaves: tiles of at least 17.5rem, at most five per row.
 .browse-unit-grid {
-  --browse-grid-gap: #{nu-space(6)};
+  --browse-grid-gap: #{wu-space(6)};
 
   display: grid;
   grid-template-columns: repeat(
@@ -46,7 +46,7 @@
       1fr
     )
   );
-  gap: nu-space(8) var(--browse-grid-gap);
+  gap: wu-space(8) var(--browse-grid-gap);
 }
 
 .unit-browse-card {
@@ -57,19 +57,19 @@
     "title price"
     "place place"
     "meta meta";
-  gap: nu-space(1) nu-space(3);
+  gap: wu-space(1) wu-space(3);
   align-items: baseline;
   color: inherit;
   text-decoration: none;
-  border-radius: nu-radius(2xl);
+  border-radius: wu-radius(2xl);
 
   &:focus-visible {
-    outline: 2px solid var(--nu-brand);
-    outline-offset: nu-space(1);
+    outline: 2px solid var(--wu-brand);
+    outline-offset: wu-space(1);
   }
 
   &:hover .unit-browse-card__photo {
-    box-shadow: nu-shadow(lg);
+    box-shadow: wu-shadow(lg);
     transform: translateY(-3px);
   }
 }
@@ -78,15 +78,15 @@
   position: relative;
   grid-area: photo;
   aspect-ratio: 4 / 3;
-  margin-block-end: nu-space(2);
+  margin-block-end: wu-space(2);
   overflow: hidden;
   background: vars.$empty-photo-tint;
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(2xl);
-  box-shadow: nu-shadow(sm);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(2xl);
+  box-shadow: wu-shadow(sm);
   transition:
-    transform nu-duration(normal) $nu-ease,
-    box-shadow nu-duration(normal) $nu-ease;
+    transform wu-duration(normal) $wu-ease,
+    box-shadow wu-duration(normal) $wu-ease;
 
   @include reduced-motion {
     transition: none;
@@ -104,66 +104,66 @@
   inset: 0;
   display: grid;
   place-items: center;
-  padding-inline: nu-space(4);
+  padding-inline: wu-space(4);
   overflow: hidden;
   font-size: 3.5rem;
-  font-weight: nu-font-weight(bold);
+  font-weight: wu-font-weight(bold);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--nu-brand-200);
+  color: var(--wu-brand-200);
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
 
 .unit-browse-card__state {
-  z-index: nu-z(base);
+  z-index: wu-z(base);
   display: flex;
   flex-wrap: wrap;
   grid-area: photo;
-  gap: nu-space(1);
+  gap: wu-space(1);
   justify-content: flex-end;
   align-self: start;
   justify-self: end;
-  margin: nu-space(3);
+  margin: wu-space(3);
 }
 
 .unit-browse-card__title {
   grid-area: title;
   margin: 0;
-  font-size: nu-font-size(md);
-  font-weight: nu-font-weight(bold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(md);
+  font-weight: wu-font-weight(bold);
+  color: var(--wu-text-regular);
 }
 
 .unit-browse-card__price {
   grid-area: price;
   margin: 0;
-  font-size: nu-font-size(md);
-  font-weight: nu-font-weight(bold);
+  font-size: wu-font-size(md);
+  font-weight: wu-font-weight(bold);
   font-variant-numeric: tabular-nums;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 .unit-browse-card__place {
   grid-area: place;
   margin: 0;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .unit-browse-card__meta {
   display: flex;
   flex-wrap: wrap;
   grid-area: meta;
-  gap: nu-space(1) nu-space(3);
-  margin-block-start: nu-space(1);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  gap: wu-space(1) wu-space(3);
+  margin-block-start: wu-space(1);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .unit-browse-card__stats {
   display: flex;
-  gap: nu-space(3);
+  gap: wu-space(3);
   white-space: nowrap;
 }
 
@@ -176,9 +176,9 @@
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  background: var(--nu-bg-surface);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(2xl);
+  background: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(2xl);
 
   .unit-browse-card {
     grid-template-columns:
@@ -187,12 +187,12 @@
     grid-template-areas:
       "photo title stats owner state price"
       "photo place stats owner state price";
-    gap: 0 nu-space(4);
+    gap: 0 wu-space(4);
     align-items: center;
-    padding: nu-space(3) nu-space(4);
-    border-block-end: 1px solid var(--nu-border-regular);
+    padding: wu-space(3) wu-space(4);
+    border-block-end: 1px solid var(--wu-border-regular);
     border-radius: 0;
-    transition: background-color nu-duration(fast) $nu-ease;
+    transition: background-color wu-duration(fast) $wu-ease;
 
     @include reduced-motion {
       transition: none;
@@ -203,7 +203,7 @@
     }
 
     &:hover {
-      background: var(--nu-bg-alternate);
+      background: var(--wu-bg-alternate);
     }
 
     &:focus-visible {
@@ -218,16 +218,16 @@
 
   .unit-browse-card__photo {
     margin-block-end: 0;
-    border: 1px solid var(--nu-border-regular);
-    border-radius: nu-radius(md);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(md);
     box-shadow: none;
   }
 
   .unit-browse-card__mark {
     padding: 0;
-    font-size: nu-font-size(lg);
-    font-weight: nu-font-weight(normal);
-    color: var(--nu-brand-600);
+    font-size: wu-font-size(lg);
+    font-weight: wu-font-weight(normal);
+    color: var(--wu-brand-600);
   }
 
   .unit-browse-card__state {
@@ -240,7 +240,7 @@
 
   .unit-browse-card__title {
     align-self: end;
-    font-size: nu-font-size(sm);
+    font-size: wu-font-size(sm);
   }
 
   .unit-browse-card__place {
@@ -249,8 +249,8 @@
 
   .unit-browse-card__price {
     align-self: center;
-    font-size: nu-font-size(sm);
-    color: var(--nu-text-regular);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-regular);
     text-align: end;
   }
 
@@ -260,7 +260,7 @@
 
   .unit-browse-card__stats {
     grid-area: stats;
-    font-size: nu-font-size(sm);
+    font-size: wu-font-size(sm);
   }
 
   .unit-stat.is-unset {
@@ -272,8 +272,8 @@
     grid-area: owner;
     margin: 0;
     overflow: hidden;
-    font-size: nu-font-size(sm);
-    color: var(--nu-text-muted);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
   }

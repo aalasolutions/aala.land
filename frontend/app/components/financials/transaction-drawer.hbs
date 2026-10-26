@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Transaction" "New Transaction"}}
   @placement="end"
@@ -9,18 +9,18 @@
   <:body>
     <form
       id="transaction-form"
-      class="nu-form"
+      class="wu-form"
       novalidate
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           @label="Payment Method"
           @required={{true}}
           @tooltip="A cheque here is one you paid out. Cheques you receive are recorded on the Cheques Received page."
           class="grow"
         >
-          <Nuvo::Dropdown
+          <Woven::Dropdown
             id="tx-payment"
             @align="start"
             @value={{this.form.paymentMethod}}
@@ -29,14 +29,14 @@
             @placeholder="Select payment method..."
             data-test-tx-payment
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           @label="Category"
           @required={{true}}
           @error={{this.categoryError}}
           class="grow"
         >
-          <Nuvo::Dropdown
+          <Woven::Dropdown
             id="tx-category"
             @align="start"
             @value={{this.form.category}}
@@ -45,12 +45,12 @@
             @placeholder="Select category..."
             data-test-tx-category
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
       <div class="flex gap-4">
-        <Nuvo::Field @label="Payment Type" @required={{true}} class="grow">
+        <Woven::Field @label="Payment Type" @required={{true}} class="grow">
           {{! Readonly when the category or the payment method already decides it. }}
-          <Nuvo::Dropdown
+          <Woven::Dropdown
             id="tx-type"
             @align="start"
             @value={{this.form.type}}
@@ -60,14 +60,14 @@
             @disabled={{this.typeLocked}}
             data-test-tx-type
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           @label="Amount"
           @required={{true}}
           @error={{this.amountError}}
           class="grow"
         >
-          <Nuvo::Input
+          <Woven::Input
             id="tx-amount"
             type="number"
             min="0"
@@ -78,10 +78,10 @@
             required={{true}}
             data-test-tx-amount
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
-      <Nuvo::Field @label="Description">
-        <Nuvo::Input
+      <Woven::Field @label="Description">
+        <Woven::Input
           id="tx-desc"
           type="text"
           placeholder="e.g. Monthly rent payment"
@@ -89,15 +89,15 @@
           @onInput={{fn this.setField "description"}}
           data-test-tx-desc
         />
-      </Nuvo::Field>
+      </Woven::Field>
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           @label={{this.dateLabel}}
           @required={{this.dateRequired}}
           @error={{this.dateError}}
           class="grow"
         >
-          <Nuvo::Input
+          <Woven::Input
             id="tx-date"
             type="date"
             min={{this.dateWindow.earliest}}
@@ -106,9 +106,9 @@
             @onInput={{fn this.setField "date"}}
             data-test-tx-date
           />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Status" @required={{true}} class="grow">
-          <Nuvo::Dropdown
+        </Woven::Field>
+        <Woven::Field @label="Status" @required={{true}} class="grow">
+          <Woven::Dropdown
             id="tx-status"
             @align="start"
             @value={{this.form.status}}
@@ -117,7 +117,7 @@
             @placeholder="Select status..."
             data-test-tx-status
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
       {{#if this.errorMsg}}
         <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
@@ -125,17 +125,17 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @onClick={{this.close}}
       data-test-cancel-transaction
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="transaction-form"
       @loading={{this.isSaving}}
       data-test-save-transaction
-    >{{this.submitLabel}}</Nuvo::Button>
+    >{{this.submitLabel}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

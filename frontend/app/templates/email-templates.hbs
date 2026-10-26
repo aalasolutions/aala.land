@@ -1,7 +1,7 @@
 {{page-title "Email Templates"}}
 
 <div data-test-email-templates class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Email Templates"
     @subtitle="Reusable email content for client communication."
   >
@@ -9,19 +9,19 @@
       <p class="text-muted">{{format-number @model.total unit="template"}}</p>
     </:meta>
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @icon="plus"
         data-test-new-template
         {{on "click" this.openCreate}}
       >
         New Template
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   <div class="flex gap-3">
-    <Nuvo::Dropdown
+    <Woven::Dropdown
       id="email-template-category-filter"
       @align="start"
       @value={{this.category}}
@@ -35,7 +35,7 @@
   {{#if @model.templates.length}}
     <div class="grid cols-2 gap-4">
       {{#each @model.templates as |template|}}
-        <Nuvo::Card data-test-template-card class="flex col gap-3">
+        <Woven::Card data-test-template-card class="flex col gap-3">
           <div class="flex between x-center">
             <div class="flex x-center gap-2">
               <Ui::Ph @icon="envelope-simple" />
@@ -43,9 +43,9 @@
             </div>
             <div class="flex gap-1 x-center">
               {{#unless template.isActive}}
-                <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
+                <Woven::Tag class="tag-enabled-inactive" @text="Inactive" />
               {{/unless}}
-              <Nuvo::Tag
+              <Woven::Tag
                 class="tag-email-{{lowercase template.category}}"
                 @text={{template.category}}
               />
@@ -55,12 +55,12 @@
           {{#if template.variables.length}}
             <div class="flex gap-1 wrap">
               {{#each template.variables as |v|}}
-                <Nuvo::Tag @text={{v}} />
+                <Woven::Tag @text={{v}} />
               {{/each}}
             </div>
           {{/if}}
           <div class="flex gap-2 email-template-card__actions">
-            <Nuvo::Button
+            <Woven::Button
               @variant="secondary"
               @size="sm"
               @icon="eye"
@@ -68,8 +68,8 @@
               {{on "click" (fn this.openPreview template)}}
             >
               Preview
-            </Nuvo::Button>
-            <Nuvo::Button
+            </Woven::Button>
+            <Woven::Button
               @variant="secondary"
               @size="sm"
               @icon="pencil-simple"
@@ -77,8 +77,8 @@
               {{on "click" (fn this.openEdit template)}}
             >
               Edit
-            </Nuvo::Button>
-            <Nuvo::Button
+            </Woven::Button>
+            <Woven::Button
               @variant="danger"
               @size="sm"
               @icon="trash"
@@ -86,15 +86,15 @@
               {{on "click" (fn this.openDelete template)}}
             />
           </div>
-        </Nuvo::Card>
+        </Woven::Card>
       {{/each}}
     </div>
   {{else}}
-    <Nuvo::Card class="text-center">
-      <Ui::Ph @icon="envelope-simple" @size="48px" @color="var(--nu-text-muted)" />
+    <Woven::Card class="text-center">
+      <Ui::Ph @icon="envelope-simple" @size="48px" @color="var(--wu-text-muted)" />
       <p class="text-muted mt-3">No email templates yet. Create your first
         template above.</p>
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 </div>
 
@@ -106,7 +106,7 @@
   @onSaved={{this.refresh}}
 />
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showPreview}}
   @title="Template Preview"
   @onClose={{this.closePreview}}
@@ -127,13 +127,13 @@
       >{{this.previewBody}}</pre>
     </div>
   </div>
-  <Nuvo::FormActions @align="end">
-    <Nuvo::Button
+  <Woven::FormActions @align="end">
+    <Woven::Button
       @variant="secondary"
       {{on "click" this.closePreview}}
-    >Close</Nuvo::Button>
-  </Nuvo::FormActions>
-</Nuvo::Modal>
+    >Close</Woven::Button>
+  </Woven::FormActions>
+</Woven::Modal>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}

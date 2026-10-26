@@ -220,17 +220,17 @@ module('Integration | Template | company billing', function (hooks) {
     });
     assert.dom('[data-test-refund-terms]').exists();
     assert
-      .dom('[data-test-refund-terms] [data-test-nu-checkbox-input]')
+      .dom('[data-test-refund-terms] [data-test-wu-checkbox-input]')
       .isNotChecked();
     assert
-      .dom('[data-test-refund-terms] [data-test-nu-checkbox-label]')
+      .dom('[data-test-refund-terms] [data-test-wu-checkbox-label]')
       .hasText(
         'I agree that the days I have already used are not refunded. If I leave, only the unused part of my billing period is returned.',
       );
     assert.dom('[data-test-upgrade-pro]').isDisabled();
-    await click('[data-test-refund-terms] [data-test-nu-checkbox-input]');
+    await click('[data-test-refund-terms] [data-test-wu-checkbox-input]');
     assert.dom('[data-test-upgrade-pro]').isNotDisabled();
-    await click('[data-test-refund-terms] [data-test-nu-checkbox-input]');
+    await click('[data-test-refund-terms] [data-test-wu-checkbox-input]');
     assert.dom('[data-test-upgrade-pro]').isDisabled();
   });
 
@@ -240,7 +240,7 @@ module('Integration | Template | company billing', function (hooks) {
       billing: { tier: 'FREE' },
       respond: () => ({ data: {} }),
     });
-    await click('[data-test-refund-terms] [data-test-nu-checkbox-input]');
+    await click('[data-test-refund-terms] [data-test-wu-checkbox-input]');
     await click('[data-test-upgrade-pro]');
     assert.strictEqual(calls.length, 1);
     assert.strictEqual(calls[0].path, '/billing/checkout');
@@ -255,7 +255,7 @@ module('Integration | Template | company billing', function (hooks) {
       respond: () =>
         httpError(400, { message: 'Refund terms must be accepted' }),
     });
-    await click('[data-test-refund-terms] [data-test-nu-checkbox-input]');
+    await click('[data-test-refund-terms] [data-test-wu-checkbox-input]');
     await click('[data-test-upgrade-pro]');
     assert.deepEqual(toasts, [
       { type: 'error', message: 'Refund terms must be accepted' },
@@ -478,7 +478,7 @@ module('Integration | Template | company billing', function (hooks) {
   });
 
   test('the consent label drops the return sentence outside delayed_refund', async function (assert) {
-    const label = '[data-test-refund-terms] [data-test-nu-checkbox-label]';
+    const label = '[data-test-refund-terms] [data-test-wu-checkbox-label]';
     await renderBilling(this, {
       tier: 'FREE',
       billing: { tier: 'FREE', cancelMode: 'period_end' },
@@ -492,7 +492,7 @@ module('Integration | Template | company billing', function (hooks) {
   test('a missing cancelMode shows the short consent label', async function (assert) {
     await renderBilling(this, { tier: 'FREE', billing: { tier: 'FREE' } });
     assert
-      .dom('[data-test-refund-terms] [data-test-nu-checkbox-label]')
+      .dom('[data-test-refund-terms] [data-test-wu-checkbox-label]')
       .hasText('I agree that the days I have already used are not refunded.');
   });
 });

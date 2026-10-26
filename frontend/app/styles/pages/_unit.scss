@@ -1,12 +1,12 @@
 // Only the photo gallery and the summary rail are bespoke; everything else resolves to a kit component.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 @use "../variables" as vars;
 
 .unit-detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: nu-space(6);
+  gap: wu-space(6);
 
   @include media-down(lg) {
     grid-template-columns: minmax(0, 1fr);
@@ -18,8 +18,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: nu-radius(2xl);
-  box-shadow: nu-shadow(md);
+  border-radius: wu-radius(2xl);
+  box-shadow: wu-shadow(md);
 
   &:has(.unit-photo-placeholder) {
     box-shadow: none;
@@ -28,17 +28,17 @@
 
 .unit-media__tools {
   position: absolute;
-  inset-block-start: nu-space(3);
-  inset-inline-end: nu-space(3);
-  z-index: nu-z(base);
+  inset-block-start: wu-space(3);
+  inset-inline-end: wu-space(3);
+  z-index: wu-z(base);
 
-  .nu-btn {
-    box-shadow: nu-shadow(md);
+  .wu-btn {
+    box-shadow: wu-shadow(md);
   }
 
-  .nu-spinner {
-    --nu-spinner--SpinColor: var(--nu-text-inverted);
-    --nu-spinner--TrackColor: #{nu-tint(text-inverted, 35%)};
+  .wu-spinner {
+    --wu-spinner--SpinColor: var(--wu-text-inverted);
+    --wu-spinner--TrackColor: #{wu-tint(text-inverted, 35%)};
   }
 }
 
@@ -47,10 +47,10 @@
   inset-block-end: 0;
   inset-inline: 0;
   display: flex;
-  gap: nu-space(2);
-  padding: nu-space(10) nu-space(3) nu-space(3);
+  gap: wu-space(2);
+  padding: wu-space(10) wu-space(3) wu-space(3);
   overflow-x: auto;
-  background: linear-gradient(to top, nu-scrim(75%), transparent);
+  background: linear-gradient(to top, wu-scrim(75%), transparent);
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -61,23 +61,23 @@
     flex-shrink: 0;
     inline-size: 5.5rem;
     block-size: 4rem;
-    border-color: var(--nu-bg-surface);
-    box-shadow: nu-shadow(sm);
+    border-color: var(--wu-bg-surface);
+    box-shadow: wu-shadow(sm);
   }
 
   .unit-thumb-primary {
-    border-color: var(--nu-brand);
+    border-color: var(--wu-brand);
   }
 
   .unit-thumb.is-active {
-    box-shadow: 0 0 0 2px var(--nu-brand);
+    box-shadow: 0 0 0 2px var(--wu-brand);
   }
 }
 
 .unit-summary {
   display: flex;
   flex-direction: column;
-  gap: nu-space(3);
+  gap: wu-space(3);
 
   > p {
     margin: 0;
@@ -87,7 +87,7 @@
 .unit-summary__heading {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
 
   > * {
     margin: 0;
@@ -95,51 +95,51 @@
 }
 
 .unit-summary__price {
-  font-size: nu-font-size(2xl);
-  font-weight: nu-font-weight(bold);
+  font-size: wu-font-size(2xl);
+  font-weight: wu-font-weight(bold);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
-  color: var(--nu-success);
+  color: var(--wu-success);
 }
 
 .unit-summary__specs {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  padding-block: nu-space(3);
+  padding-block: wu-space(3);
   margin: 0;
-  border-block: 1px solid var(--nu-border-regular);
+  border-block: 1px solid var(--wu-border-regular);
 }
 
 .unit-summary__spec {
   display: flex;
   flex-direction: column-reverse;
-  gap: nu-space(1);
-  padding-inline: nu-space(4);
+  gap: wu-space(1);
+  padding-inline: wu-space(4);
 
   &:first-child {
     padding-inline-start: 0;
   }
 
   & + & {
-    border-inline-start: 1px solid var(--nu-border-regular);
+    border-inline-start: 1px solid var(--wu-border-regular);
   }
 
   dt {
     display: flex;
-    gap: nu-space(1);
+    gap: wu-space(1);
     align-items: center;
-    font-size: nu-font-size(xs);
-    color: var(--nu-text-muted);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
   }
 
   dd {
     margin: 0;
-    font-size: nu-font-size(lg);
-    font-weight: nu-font-weight(semibold);
+    font-size: wu-font-size(lg);
+    font-weight: wu-font-weight(semibold);
     font-variant-numeric: tabular-nums;
     line-height: 1.2;
-    color: var(--nu-text-regular);
+    color: var(--wu-text-regular);
   }
 }
 
@@ -148,7 +148,7 @@
   inline-size: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--nu-bg-alternate);
+  background: var(--wu-bg-alternate);
 
   img {
     inline-size: 100%;
@@ -161,11 +161,11 @@
   position: relative;
   inline-size: 80px;
   block-size: 60px;
-  border-radius: #{nu-radius(sm)};
+  border-radius: #{wu-radius(sm)};
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color #{nu-duration(fast)};
+  transition: border-color #{wu-duration(fast)};
 
   img {
     inline-size: 100%;
@@ -174,7 +174,7 @@
   }
 
   &:hover {
-    border-color: var(--nu-brand);
+    border-color: var(--wu-brand);
   }
 
   &:hover .unit-thumb-actions {
@@ -183,11 +183,11 @@
 }
 
 .unit-thumb-primary {
-  border-color: var(--nu-brand);
+  border-color: var(--wu-brand);
 }
 
 .unit-thumb.is-active {
-  box-shadow: 0 0 0 2px var(--nu-brand);
+  box-shadow: 0 0 0 2px var(--wu-brand);
 }
 
 .unit-thumb__select {
@@ -200,7 +200,7 @@
   cursor: pointer;
 
   &:focus-visible {
-    outline: 2px solid var(--nu-brand);
+    outline: 2px solid var(--wu-brand);
     outline-offset: -2px;
   }
 }
@@ -216,8 +216,8 @@
 
 .upload-preview-thumb {
   opacity: 0.7;
-  border: 2px dashed var(--nu-brand);
-  border-radius: #{nu-radius(md)};
+  border: 2px dashed var(--wu-brand);
+  border-radius: #{wu-radius(md)};
   overflow: hidden;
   pointer-events: none;
 
@@ -230,7 +230,7 @@
 
 .upload-preview-active {
   position: relative;
-  border-radius: #{nu-radius(2xl)};
+  border-radius: #{wu-radius(2xl)};
   overflow: hidden;
 
   img {
@@ -244,7 +244,7 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.15);
-    border-radius: #{nu-radius(2xl)};
+    border-radius: #{wu-radius(2xl)};
   }
 }
 
@@ -256,10 +256,10 @@
   text-align: center;
   flex: 1 1 auto;
   aspect-ratio: 4 / 3;
-  border: 2px dashed var(--nu-border-regular);
-  border-radius: #{nu-radius(2xl)};
+  border: 2px dashed var(--wu-border-regular);
+  border-radius: #{wu-radius(2xl)};
   background: vars.$empty-photo-tint;
-  color: var(--nu-text-muted);
+  color: var(--wu-text-muted);
   font-size: 64px;
 }
 

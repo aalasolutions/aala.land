@@ -1,0 +1,7 @@
+<div class={{this.classes}} role="separator" data-test-wu-divider ...attributes>
+  {{#if (has-block)}}
+    <span class="wu-divider__label" data-test-wu-divider-label>{{yield}}</span>
+  {{else if @label}}
+    <span class="wu-divider__label" data-test-wu-divider-label>{{@label}}</span>
+  {{/if}}
+</div>

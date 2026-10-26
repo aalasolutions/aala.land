@@ -1,7 +1,7 @@
 {{page-title "Cheques Received"}}
 
 <div data-test-cheques-page class="flex col gap-4">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Cheques Received"
     @subtitle="Track incoming post-dated cheques and their collection schedule."
   >
@@ -13,28 +13,28 @@
     </:meta>
     <:actions>
       {{#if this.canWriteCheques}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="primary"
           data-test-new-cheque
           @icon="plus"
           {{on "click" this.openCreate}}
         >
           New Cheque
-        </Nuvo::Button>
+        </Woven::Button>
       {{/if}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
-  <Nuvo::Segmented
+  <Woven::Segmented
     @options={{this.tabs}}
     @value={{this.activeTab}}
     @onChange={{this.setTab}}
   />
 
   {{#if (eq this.activeTab "cheques")}}
-    <Nuvo::Card @compact={{true}}>
+    <Woven::Card @compact={{true}}>
       {{#if @model.cheques.length}}
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.columns}}
           @rows={{@model.cheques}}
           @pinColumns={{true}}
@@ -63,19 +63,19 @@
           {{else if (eq cell.key "dueDate")}}
             {{format-date cell.value}}
           {{else if (eq cell.key "type")}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-cheque-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
           {{else if (eq cell.key "status")}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-chequestate-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
             <div class="flex">
               {{#if this.canWriteCheques}}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
@@ -92,7 +92,7 @@
                   )
                 }}
                   {{#if (eq cell.row.status "PENDING")}}
-                    <Nuvo::Button
+                    <Woven::Button
                       @subtle={{true}}
                       @variant="success"
                       @size="xs"
@@ -103,7 +103,7 @@
                       {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
                     />
                   {{/if}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="success"
                     @size="xs"
@@ -113,7 +113,7 @@
                     data-tooltip="Clear"
                     {{on "click" (fn this.openClear cell.row)}}
                   />
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="danger"
                     @size="xs"
@@ -125,7 +125,7 @@
                   />
                 {{/if}}
                 {{#if (eq cell.row.status "BOUNCED")}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
@@ -139,7 +139,7 @@
                 {{#if
                   (and (eq cell.row.status "CLEARED") this.canDeleteCheque)
                 }}
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
@@ -157,7 +157,7 @@
                     (eq cell.row.status "BOUNCED")
                   )
                 }}
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="secondary"
                     @size="xs"
@@ -172,7 +172,7 @@
               {{#if
                 (and this.canDeleteCheque (not (eq cell.row.status "CLEARED")))
               }}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="danger"
                   @size="xs"
@@ -187,21 +187,21 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </Nuvo::DataTable>
+        </Woven::DataTable>
       {{else}}
         {{#if @model.total}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="No cheques on this page. Navigate to find cheques or adjust filters."
           />
         {{else}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="No cheques yet. Add your first cheque record."
           />
         {{/if}}
       {{/if}}
 
       {{#if @model.total}}
-        <Nuvo::Pagination
+        <Woven::Pagination
           @selectId="cheques-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -212,7 +212,7 @@
           @onPageChange={{this.goToPage}}
         />
       {{/if}}
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 
   {{#if (eq this.activeTab "schedule")}}
@@ -228,7 +228,7 @@
   @onSaved={{this.refresh}}
 />
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showBounceModal}}
   @title="Bounce Cheque"
   @onClose={{this.closeBounceModal}}
@@ -236,8 +236,8 @@
   <p class="text-muted">Mark cheque
     {{this.bounceChequeItem.chequeNumber}}
     as bounced?</p>
-  <Nuvo::Field @label="Reason (optional)">
-    <Nuvo::Input
+  <Woven::Field @label="Reason (optional)">
+    <Woven::Input
       id="bounce-reason"
       type="text"
       placeholder="e.g. Insufficient funds"
@@ -245,22 +245,22 @@
       @onInput={{fn this.setFieldValue "formBounceReason"}}
       data-test-input-bounce-reason
     />
-  </Nuvo::Field>
-  <Nuvo::FormActions @align="end">
-    <Nuvo::Button
+  </Woven::Field>
+  <Woven::FormActions @align="end">
+    <Woven::Button
       @variant="secondary"
       data-test-cancel-bounce
       @onClick={{this.closeBounceModal}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="danger"
       data-test-confirm-bounce
       {{on "click" this.confirmBounce}}
-    >Confirm Bounce</Nuvo::Button>
-  </Nuvo::FormActions>
-</Nuvo::Modal>
+    >Confirm Bounce</Woven::Button>
+  </Woven::FormActions>
+</Woven::Modal>
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showClearModal}}
   @title="Clear Cheque"
   @onClose={{this.closeClearModal}}
@@ -272,24 +272,24 @@
     {{this.clearChequeItem.currency}}. This records the payment as income on the
     day it cleared.</p>
   {{#if this.clearWindowUnusable}}
-    <Nuvo::Alert
+    <Woven::Alert
       @variant="warning"
       @description={{this.clearBlockedMessage}}
       data-test-clear-blocked
     />
   {{else}}
     <div class="flex gap-4">
-      <Nuvo::Field @label="Added" class="grow">
-        <Nuvo::Input
+      <Woven::Field @label="Added" class="grow">
+        <Woven::Input
           id="cheque-added-date"
           type="date"
           readonly={{true}}
           @value={{this.chequeAddedDate}}
           data-test-input-added-date
         />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Deposited" class="grow">
-        <Nuvo::Input
+      </Woven::Field>
+      <Woven::Field @label="Deposited" class="grow">
+        <Woven::Input
           id="cheque-deposit-date"
           type="date"
           readonly={{this.depositDateReadonly}}
@@ -299,14 +299,14 @@
           @onInput={{fn this.setFieldValue "clearDepositDate"}}
           data-test-input-deposit-date
         />
-      </Nuvo::Field>
+      </Woven::Field>
     </div>
-    <Nuvo::Field
+    <Woven::Field
       @label="Date it cleared"
       @required={{true}}
       @error={{this.clearError}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="cheque-cleared-date"
         type="date"
         min={{this.clearDateWindow.earliest}}
@@ -316,23 +316,23 @@
         @invalid={{if this.clearError true false}}
         data-test-input-cleared-date
       />
-    </Nuvo::Field>
+    </Woven::Field>
   {{/if}}
-  <Nuvo::FormActions @align="end">
-    <Nuvo::Button
+  <Woven::FormActions @align="end">
+    <Woven::Button
       @variant="secondary"
       data-test-cancel-clear
       @onClick={{this.closeClearModal}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="success"
       @loading={{this.isClearing}}
       @disabled={{this.clearWindowUnusable}}
       data-test-confirm-clear
       {{on "click" this.confirmClear}}
-    >Clear and record payment</Nuvo::Button>
-  </Nuvo::FormActions>
-</Nuvo::Modal>
+    >Clear and record payment</Woven::Button>
+  </Woven::FormActions>
+</Woven::Modal>
 
 <ConfirmModal
   @open={{this.showUnclearModal}}
@@ -345,13 +345,13 @@
   @onClose={{this.closeUnclearModal}}
   @onConfirm={{this.confirmUnclear}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="cheque-unclear-reason"
       rows="2"
       maxlength="500"
@@ -362,7 +362,7 @@
       aria-label="Reason"
       data-test-unclear-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>
 
 <ConfirmModal
@@ -376,13 +376,13 @@
   @onClose={{this.closeCancelModal}}
   @onConfirm={{this.confirmCancel}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="cheque-cancel-reason"
       rows="2"
       maxlength="500"
@@ -393,7 +393,7 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>
 
 <ConfirmModal
@@ -407,13 +407,13 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="cheque-delete-reason"
       rows="2"
       maxlength="500"
@@ -424,5 +424,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

@@ -435,7 +435,7 @@ export default class DocumentsPanelComponent extends Component {
     this.uploadProgress = null;
   }
 
-  // Nuvo inputs and dropdowns report the value, not the DOM event.
+  // Woven inputs and dropdowns report the value, not the DOM event.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
     if (fieldName === 'formName') this.dropFieldErrors('name');

@@ -1,14 +1,14 @@
 {{page-title "Audit Log"}}
 
 <div data-test-audit-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Audit Logs" @subtitle="Track all changes across your account" />
+  <Woven::PageHeader @title="Audit Logs" @subtitle="Track all changes across your account" />
 
-  <Nuvo::Card>
+  <Woven::Card>
     <:header>
-      <Nuvo::Toolbar class="flex-wrap">
-        <Nuvo::Field>
-          <span class="nu-field__label-spacer" aria-hidden="true"></span>
-          <Nuvo::Dropdown
+      <Woven::Toolbar class="flex-wrap">
+        <Woven::Field>
+          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <Woven::Dropdown
             @searchable={{true}}
             @align="start"
             @value={{this.filterAction}}
@@ -16,11 +16,11 @@
             @options={{this.model.auditActions}}
             @placeholder="All Actions"
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <Nuvo::Field>
-          <span class="nu-field__label-spacer" aria-hidden="true"></span>
-          <Nuvo::Dropdown
+        <Woven::Field>
+          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <Woven::Dropdown
             @searchable={{true}}
             @align="start"
             @value={{this.filterEntityType}}
@@ -28,32 +28,32 @@
             @options={{this.model.entityTypes}}
             @placeholder="All Entities"
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
         {{#if (or this.filterAction this.filterEntityType)}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @text="Clear Filters"
             {{on "click" this.clearFilters}}
           />
         {{/if}}
 
-        <Nuvo::Button
+        <Woven::Button
           @variant="danger"
           @icon="trash"
           {{on "click" this.openPurge}}
           data-test-purge-btn
         >
           Purge Old Logs
-        </Nuvo::Button>
-      </Nuvo::Toolbar>
+        </Woven::Button>
+      </Woven::Toolbar>
     </:header>
 
     <:body>
       {{#if this.model.forbidden}}
-        <Nuvo::Alert @variant="danger">
+        <Woven::Alert @variant="danger">
           You don't have permission to view audit logs.
-        </Nuvo::Alert>
+        </Woven::Alert>
       {{else}}
         {{#if (gt this.model.logs.length 0)}}
           <div class="audit-list">
@@ -63,7 +63,7 @@
                   class="audit-summary"
                   {{on "click" (fn this.toggleExpand log.id)}}
                 >
-                  <Nuvo::Tag
+                  <Woven::Tag
                     class="tag-audit-{{lowercase log.action}}"
                     @text={{log.action}}
                   />
@@ -84,15 +84,15 @@
                 </div>
                 {{#if (eq this.expandedLogId log.id)}}
                   <div class="audit-details">
-                    <Nuvo::InfoRow @label="IP Address:" @value={{log.ipAddress}} />
-                    <Nuvo::InfoRow @label="User Agent:">
+                    <Woven::InfoRow @label="IP Address:" @value={{log.ipAddress}} />
+                    <Woven::InfoRow @label="User Agent:">
                       <span class="text-muted">{{log.userAgent}}</span>
-                    </Nuvo::InfoRow>
+                    </Woven::InfoRow>
                     {{#if log.oldValue}}
                       <div class="audit-detail-section">
-                        <span class="nu-info-row__label">Old Value:</span>
-                        <div class="nu-code-block">
-                          <pre class="nu-code-block__content">{{this.formatJson
+                        <span class="wu-info-row__label">Old Value:</span>
+                        <div class="wu-code-block">
+                          <pre class="wu-code-block__content">{{this.formatJson
                               log.oldValue
                             }}</pre>
                         </div>
@@ -100,9 +100,9 @@
                     {{/if}}
                     {{#if log.newValue}}
                       <div class="audit-detail-section">
-                        <span class="nu-info-row__label">New Value:</span>
-                        <div class="nu-code-block">
-                          <pre class="nu-code-block__content">{{this.formatJson
+                        <span class="wu-info-row__label">New Value:</span>
+                        <div class="wu-code-block">
+                          <pre class="wu-code-block__content">{{this.formatJson
                               log.newValue
                             }}</pre>
                         </div>
@@ -114,13 +114,13 @@
             {{/each}}
           </div>
         {{else}}
-          <Nuvo::EmptyState @title="No audit logs found" />
+          <Woven::EmptyState @title="No audit logs found" />
         {{/if}}
       {{/if}}
     </:body>
-  </Nuvo::Card>
+  </Woven::Card>
 
-  <Nuvo::Modal
+  <Woven::Modal
     @open={{this.showPurgeModal}}
     @title="Purge Audit Logs"
     @onClose={{this.closePurge}}
@@ -130,23 +130,23 @@
       <p class="text-muted">Permanently delete audit logs older than the
         specified number of days. Minimum retention is 30 days.</p>
 
-      <Nuvo::Field @label="Delete logs older than (days)">
-        <Nuvo::Input
+      <Woven::Field @label="Delete logs older than (days)">
+        <Woven::Input
           @type="number"
           min="30"
           @value={{this.purgeDays}}
           {{on "input" (fn this.setField "purgeDays")}}
           data-test-purge-days
         />
-      </Nuvo::Field>
+      </Woven::Field>
     </:body>
     <:footer>
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         @text="Cancel"
         {{on "click" this.closePurge}}
       />
-      <Nuvo::Button
+      <Woven::Button
         @variant="danger"
         @text={{if this.isPurging "Purging..." "Purge"}}
         disabled={{this.isPurging}}
@@ -154,5 +154,5 @@
         data-test-purge-confirm
       />
     </:footer>
-  </Nuvo::Modal>
+  </Woven::Modal>
 </div>

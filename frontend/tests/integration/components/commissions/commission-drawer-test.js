@@ -39,10 +39,10 @@ module(
     }
 
     async function pickOption(id, text) {
-      await click(`#${id} [data-test-nu-dropdown-trigger]`);
+      await click(`#${id} [data-test-wu-dropdown-trigger]`);
       const item = [
         ...document.querySelectorAll(
-          '.nu-menu.is-open [data-test-nu-dropdown-item]',
+          '.wu-menu.is-open [data-test-wu-dropdown-item]',
         ),
       ].find((el) => el.textContent.trim() === text);
       await click(item);
@@ -54,13 +54,13 @@ module(
       await fillIn('#commission-rate', '2');
       await click('[data-test-save-commission]');
 
-      assert.dom('[data-test-nu-field-error]').hasText('Choose an agent');
+      assert.dom('[data-test-wu-field-error]').hasText('Choose an agent');
       assert.strictEqual(this.calls.length, 0);
     });
 
     test('create posts the commission and hands off to the page', async function (assert) {
       await renderDrawer();
-      assert.dom('[data-test-nu-drawer-title]').hasText('New Commission');
+      assert.dom('[data-test-wu-drawer-title]').hasText('New Commission');
       await pickOption('commission-agent', 'Other Agent');
       await pickOption('commission-type', 'Rental');
       await fillIn('#commission-gross', '50000');
@@ -121,13 +121,13 @@ module(
       await fillIn('#commission-gross', '100');
       await fillIn('#commission-rate', '1');
       await click('[data-test-save-commission]');
-      assert.dom('[data-test-nu-field-error]').hasText('Choose an agent');
+      assert.dom('[data-test-wu-field-error]').hasText('Choose an agent');
 
       await click('[data-test-cancel-commission]');
       this.set('open', true);
       await waitFor('#commission-form');
 
-      assert.dom('[data-test-nu-field-error]').doesNotExist();
+      assert.dom('[data-test-wu-field-error]').doesNotExist();
       assert.dom('#commission-gross').hasValue('');
     });
   },

@@ -50,10 +50,10 @@ export default class CategoryChartComponent extends ChartBase {
   }
 
   get config() {
-    const income = token('--nu-brand');
-    const expense = token('--nu-danger');
-    const muted = token('--nu-text-muted');
-    const border = token('--nu-border-regular');
+    const income = token('--wu-brand');
+    const expense = token('--wu-danger');
+    const muted = token('--wu-text-muted');
+    const border = token('--wu-border-regular');
     const compact = this.compact;
 
     return {

@@ -1,0 +1,82 @@
+// wu-dot - status indicator dot
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(dot) {
+  @include wu-root("dot", (
+    "Size": 0.5rem,
+    "Color": var(--wu-text-muted),
+    "RingColor": transparent,
+    "RingWidth": 3px,
+  ));
+
+  display: inline-block;
+  flex-shrink: 0;
+  inline-size: wu-var("dot", "Size");
+  block-size: wu-var("dot", "Size");
+  border-radius: wu-radius(full);
+  background-color: wu-var("dot", "Color");
+  box-shadow: 0 0 0 wu-var("dot", "RingWidth") wu-var("dot", "RingColor");
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-dot--Color: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  // ---- sizes ----
+
+  @include m(xs) {
+    --wu-dot--Size: 0.375rem;
+  }
+
+  @include m(sm) {
+    --wu-dot--Size: 0.5rem;
+  }
+
+  @include m(md) {
+    --wu-dot--Size: 0.625rem;
+  }
+
+  @include m(lg) {
+    --wu-dot--Size: 0.875rem;
+  }
+
+  // ---- halo ring ----
+
+  @include m(ring) {
+    --wu-dot--RingColor: #{wu-tint(brand, 25%)};
+  }
+
+  @each $variant in $wu-variants {
+    &.m-ring.m-#{$variant} {
+      --wu-dot--RingColor: #{wu-tint(wu-role($variant), 25%)};
+    }
+  }
+
+  // ---- pulse animation ----
+
+  @include m(pulse) {
+    position: relative;
+    animation: wu-dot-pulse wu-duration(slow) $wu-ease infinite;
+
+    @include reduced-motion {
+      animation: none;
+    }
+  }
+}
+
+@keyframes wu-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 wu-var("dot", "Color");
+  }
+  70% {
+    box-shadow: 0 0 0 wu-var("dot", "RingWidth") transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}

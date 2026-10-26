@@ -27,7 +27,7 @@
               aria-hidden="true"
               data-test-wa-pending-video
             ></video>
-            <span class="wa-media__play" aria-hidden="true"><Nuvo::Icon
+            <span class="wa-media__play" aria-hidden="true"><Woven::Icon
                 @icon="play"
               /></span>
           </div>
@@ -42,7 +42,7 @@
           </div>
         {{/if}}
         {{#unless (eq this.item.kind "sticker")}}
-          <Nuvo::Badge
+          <Woven::Badge
             @size="sm"
             @quiet={{true}}
             @text={{format-bytes this.item.file.size}}
@@ -52,18 +52,18 @@
       </div>
       {{#if this.isFailed}}
         <div class="flex x-center gap-1">
-          <Nuvo::Text
+          <Woven::Text
             class="grow"
             @tag="span"
             @size="xs"
             @variant="danger"
             role="alert"
             data-test-wa-pending-error
-          >{{this.item.error}}</Nuvo::Text>
+          >{{this.item.error}}</Woven::Text>
           <Whatsapp::PendingActions @onRetry={{@onRetry}} @onRemove={{@onRemove}} />
         </div>
       {{else}}
-        <Nuvo::Progress
+        <Woven::Progress
           @size="sm"
           @value={{this.item.progress}}
           aria-label="Upload progress"
@@ -71,20 +71,20 @@
         />
       {{/if}}
     {{else}}
-      <Nuvo::ListItem>
+      <Woven::ListItem>
         <:main>
           <span class="wa-pending__thumb m-icon" data-test-wa-pending-icon>
-            <Nuvo::Icon @icon={{this.icon}} @size="1.5rem" aria-hidden="true" />
+            <Woven::Icon @icon={{this.icon}} @size="1.5rem" aria-hidden="true" />
           </span>
           <div class="wa-pending__body">
             <div class="flex x-center gap-2 min-w-0p">
-              <Nuvo::Text
+              <Woven::Text
                 @tag="span"
                 @size="sm"
                 @truncate={{true}}
                 data-test-wa-pending-name
-              ><bdi>{{this.item.file.name}}</bdi></Nuvo::Text>
-              <Nuvo::Badge
+              ><bdi>{{this.item.file.name}}</bdi></Woven::Text>
+              <Woven::Badge
                 @size="sm"
                 @quiet={{true}}
                 @text={{format-bytes this.item.file.size}}
@@ -92,15 +92,15 @@
               />
             </div>
             {{#if this.isFailed}}
-              <Nuvo::Text
+              <Woven::Text
                 @tag="span"
                 @size="xs"
                 @variant="danger"
                 role="alert"
                 data-test-wa-pending-error
-              >{{this.item.error}}</Nuvo::Text>
+              >{{this.item.error}}</Woven::Text>
             {{else}}
-              <Nuvo::Progress
+              <Woven::Progress
                 @size="sm"
                 @value={{this.item.progress}}
                 aria-label="Upload progress"
@@ -114,7 +114,7 @@
             <Whatsapp::PendingActions @onRetry={{@onRetry}} @onRemove={{@onRemove}} />
           {{/if}}
         </:actions>
-      </Nuvo::ListItem>
+      </Woven::ListItem>
     {{/if}}
     {{#if this.item.caption}}
       <div

@@ -1,0 +1,142 @@
+<WovenDocs::Page
+  @id="tag"
+  @title="Tag"
+  @subtitle="Compact label for categories and filters, optionally removable or selectable."
+  @components="Woven::Tag"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      A tag is a label span with an optional remove button. Selection is
+      not part of the component: a selectable chip is a real button carrying
+      the
+      <code class="wu-code">m-selectable</code>
+      and
+      <code class="wu-code">is-selected</code>
+      classes, so it stays keyboard-operable. Use tags for things a user
+      attaches to a record; use a Badge for a state the system reports.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Six colour variants plus a neutral default.</li>
+      <li class="wu-list__item">Outline style and two extra sizes.</li>
+      <li class="wu-list__item">Closable form with a labelled remove button.</li>
+      <li class="wu-list__item">Disabled state blocks the remove callback.</li>
+      <li class="wu-list__item">Pill and selectable classes for chip groups built on native buttons.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Variants" @id="variants">
+    {{#each this.variantExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Tag @variant={{example.variant}} @text={{example.title}} />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Styles and sizes" @id="styles">
+    <WovenDocs::Example
+      @title="Outline"
+      @note="Coloured border on a transparent background, for a lighter tag beside filled ones."
+      @code={{this.code.outline}}
+    >
+      <Woven::Tag @variant="primary" @outline={{true}} @text="Outline" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Small"
+      @note="For table cells and dense chip rows."
+      @code={{this.code.sm}}
+    >
+      <Woven::Tag @variant="success" @size="sm" @text="Small" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Large"
+      @note="For headers and filter summaries where the tag is a primary signal."
+      @code={{this.code.lg}}
+    >
+      <Woven::Tag @variant="success" @size="lg" @text="Large" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block content"
+      @note="A block replaces text, for an icon before the label."
+      @code={{this.code.block}}
+    >
+      <Woven::Tag @variant="primary">
+        <Woven::Icon @icon="car" /> Parking
+      </Woven::Tag>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Removal" @id="removal">
+    <WovenDocs::Example
+      @title="Closable"
+      @note="Adds a labelled remove button and reports through onClose; the caller drops the tag from its list. For editable attribute sets and active filter chips."
+      @code={{this.code.closable}}
+    >
+      <Woven::Tag
+        @variant="info"
+        @closable={{true}}
+        @text="Closable"
+        @onClose={{fn this.noteClose "Closable"}}
+      />
+      <span class="wu-text m-sm m-muted" data-test-woven-tag-closed>Last closed: {{this.lastClosed}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Disabled"
+      @note="Keeps the tag visible but disables the remove button and blocks the callback, for tags the current user may not change."
+      @code={{this.code.disabled}}
+    >
+      <Woven::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Selectable chips" @id="chips">
+    <WovenDocs::Example
+      @title="Chip group"
+      @note="Multi-select filters built on native buttons with the pill and selectable classes; is-selected drives the state and aria-pressed announces it. Choose this over checkboxes when the choices are short words."
+      @code={{this.code.chips}}
+    >
+      {{#each this.chipOptions as |chip|}}
+        <button
+          type="button"
+          class="wu-tag m-pill m-selectable
+            {{if (includes this.selectedChips chip) 'is-selected'}}"
+          aria-pressed={{if (includes this.selectedChips chip) "true" "false"}}
+          data-test-woven-chip={{chip}}
+          {{on "click" (fn this.toggleChip chip)}}
+        >{{chip}}</button>
+      {{/each}}
+    </WovenDocs::Example>
+    <WovenDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Callbacks" @id="callbacks">
+    <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The remove control is a native button labelled "Remove tag" and carries the disabled attribute when the tag is disabled.</li>
+      <li class="wu-list__item">Selectable chips are native buttons; set aria-pressed from the same state that sets is-selected.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Label and remove button sit in a flex row spaced by gap, so the button trails the label in both directions.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

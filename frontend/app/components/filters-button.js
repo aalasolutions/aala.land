@@ -25,7 +25,7 @@ export default class FiltersButtonComponent extends Component {
         if (!button.disabled) return;
         const active = document.activeElement;
         if (active && active !== document.body && !active.disabled) return;
-        drawer.querySelector('.nu-drawer__close')?.focus();
+        drawer.querySelector('.wu-drawer__close')?.focus();
       },
       0,
     );

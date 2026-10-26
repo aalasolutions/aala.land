@@ -1,11 +1,11 @@
 // Names distinct from `_owners.scss`, which owns similar classes for a different tile.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 .grid-cols-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: nu-space(4);
+  gap: wu-space(4);
 
   @include media-down(lg) {
     grid-template-columns: repeat(2, 1fr);
@@ -18,35 +18,35 @@
 
 // No kit component covers this compound tile, so it stays bespoke, built from card tokens.
 .unit-card-premium {
-  background-color: var(--nu-bg-surface);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(xl);
-  padding: nu-space(4);
-  box-shadow: nu-shadow(sm);
-  transition: box-shadow nu-duration(fast) $nu-ease;
+  background-color: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(xl);
+  padding: wu-space(4);
+  box-shadow: wu-shadow(sm);
+  transition: box-shadow wu-duration(fast) $wu-ease;
 
   &:hover {
-    box-shadow: nu-shadow(md);
+    box-shadow: wu-shadow(md);
   }
 }
 
 .unit-card-icon-box {
-  background-color: var(--nu-bg-alternate);
-  color: var(--nu-brand);
-  padding: nu-space(2);
-  border-radius: nu-radius(lg);
+  background-color: var(--wu-bg-alternate);
+  color: var(--wu-brand);
+  padding: wu-space(2);
+  border-radius: wu-radius(lg);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .unit-amenities-strip {
-  background-color: var(--nu-bg-alternate);
-  padding: nu-space(2);
-  border-radius: nu-radius(lg);
+  background-color: var(--wu-bg-alternate);
+  padding: wu-space(2);
+  border-radius: wu-radius(lg);
   display: flex;
   justify-content: space-around;
-  gap: nu-space(4);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  gap: wu-space(4);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }

@@ -1,0 +1,12 @@
+<dl class={{this.classes}} data-test-wu-desc-list ...attributes>
+  {{#if (has-block)}}
+    {{yield}}
+  {{else}}
+    {{#each this.normalizedItems key="key" as |entry|}}
+      <div class="wu-desc-list__group" data-test-wu-desc-list-group>
+        <dt class="wu-desc-list__term" data-test-wu-desc-list-term>{{entry.term}}</dt>
+        <dd class="wu-desc-list__description" data-test-wu-desc-list-description>{{entry.description}}</dd>
+      </div>
+    {{/each}}
+  {{/if}}
+</dl>

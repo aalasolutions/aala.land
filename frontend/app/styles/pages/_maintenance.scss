@@ -1,26 +1,26 @@
 // Work order detail: status statement, progress steps, issue text.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 .wo-story {
   display: flex;
   flex-direction: column;
-  gap: nu-space(6);
+  gap: wu-space(6);
 }
 
 .wo-story__now {
   display: flex;
   flex-direction: column;
-  gap: nu-space(5);
+  gap: wu-space(5);
 }
 
 .wo-story__statement {
   max-inline-size: 60ch;
   margin: 0;
-  font-size: nu-font-size(lg);
-  font-weight: nu-font-weight(semibold);
+  font-size: wu-font-size(lg);
+  font-weight: wu-font-weight(semibold);
   line-height: 1.45;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
   text-wrap: balance;
 }
 
@@ -41,22 +41,22 @@
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
-  gap: nu-space(2);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  gap: wu-space(2);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 
   &::before {
     position: absolute;
     inset-block-start: 0.4375rem;
-    inset-inline: nu-space(2) (-1 * nu-space(2));
+    inset-inline: wu-space(2) (-1 * wu-space(2));
     block-size: 2px;
     content: "";
-    background: var(--nu-border-regular);
+    background: var(--wu-border-regular);
   }
 
   // Dot-wide so the previous segment ends on its centre.
   &:last-child {
-    flex: 0 0 nu-space(4);
+    flex: 0 0 wu-space(4);
     min-inline-size: 0;
     align-items: flex-end;
     white-space: nowrap;
@@ -67,33 +67,33 @@
   }
 
   &.is-done::before {
-    background: var(--nu-brand);
+    background: var(--wu-brand);
   }
 }
 
 .wo-story__dot {
   position: relative;
   z-index: 1;
-  inline-size: nu-space(4);
-  block-size: nu-space(4);
-  background: var(--nu-bg-surface);
-  border: 2px solid var(--nu-border-regular);
-  border-radius: nu-radius(full);
+  inline-size: wu-space(4);
+  block-size: wu-space(4);
+  background: var(--wu-bg-surface);
+  border: 2px solid var(--wu-border-regular);
+  border-radius: wu-radius(full);
 
   .is-done > & {
-    background: var(--nu-brand);
-    border-color: var(--nu-brand);
+    background: var(--wu-brand);
+    border-color: var(--wu-brand);
   }
 
   .is-current > & {
-    border-color: var(--nu-brand);
-    box-shadow: nu-focus-ring();
+    border-color: var(--wu-brand);
+    box-shadow: wu-focus-ring();
   }
 }
 
 .is-current > .wo-story__label {
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
 }
 
 .wo-story__timeline {
@@ -103,16 +103,16 @@
     display: flex;
   }
 
-  .nu-timeline__item.is-done {
-    --nu-timeline__item--ConnectorColor: var(--nu-brand);
+  .wu-timeline__item.is-done {
+    --wu-timeline__item--ConnectorColor: var(--wu-brand);
   }
 
-  .nu-timeline__item.is-todo {
-    --nu-timeline__item--MarkerColor: var(--nu-border-regular);
+  .wu-timeline__item.is-todo {
+    --wu-timeline__item--MarkerColor: var(--wu-border-regular);
 
-    .nu-timeline__title {
-      font-weight: nu-font-weight(medium);
-      color: var(--nu-text-muted);
+    .wu-timeline__title {
+      font-weight: wu-font-weight(medium);
+      color: var(--wu-text-muted);
     }
   }
 }
@@ -121,31 +121,31 @@
   max-inline-size: 70ch;
   margin: 0;
   line-height: 1.6;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
   white-space: pre-line;
 }
 
 .wo-story__meta {
-  margin: nu-space(3) 0 0;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  margin: wu-space(3) 0 0;
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .wo-story__notes {
-  margin-block-start: nu-space(5);
-  padding-block-start: nu-space(4);
-  border-block-start: 1px solid var(--nu-border-regular);
+  margin-block-start: wu-space(5);
+  padding-block-start: wu-space(4);
+  border-block-start: 1px solid var(--wu-border-regular);
 }
 
 .wo-story__notes-label {
-  margin: 0 0 nu-space(1);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-muted);
+  margin: 0 0 wu-space(1);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-muted);
 }
 
 .wo-story__notes-text {
   margin: 0;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
   white-space: pre-line;
 }

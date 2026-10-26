@@ -1,0 +1,240 @@
+// wu-accordion - collapsible content sections
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(accordion) {
+  @include wu-root("accordion", (
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  border: 1px solid wu-var("accordion", "BorderColor");
+  border-radius: wu-var("accordion", "BorderRadius");
+  overflow: hidden;
+  transition: overflow 0s linear 0s;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:has(.wu-accordion__item.is-expanded) {
+    overflow: visible;
+    transition: overflow 0s linear wu-duration(fast);
+    background: white;
+
+    box-shadow: wu-shadow(sm);
+    &:hover {
+      box-shadow: wu-shadow(md);
+      border-color: var(--wu-border-regular);
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // ---- elements ----
+
+  @include e(item) {
+    @include wu-root-el("accordion", "item", (
+      "BorderColor": var(--wu-border-regular),
+    ));
+
+    border-block-end: 1px solid wu-var-el("accordion", "item", "BorderColor");
+
+    &:last-child {
+      border-block-end: none;
+    }
+  }
+
+  @include e(trigger) {
+    @include wu-root-el("accordion", "trigger", (
+      "Display": flex,
+      "PaddingBlock": wu-space(4),
+      "PaddingInline": wu-space(4),
+      "Gap": wu-space(3),
+      "FontSize": wu-font-size(sm),
+      "FontWeight": wu-font-weight(semibold),
+      "Color": var(--wu-text-regular),
+      "BackgroundColor": transparent,
+      "TransitionDuration": wu-duration(fast),
+      "hover--BackgroundColor": var(--wu-bg-alternate),
+      "focus--BoxShadow": wu-focus-ring(),
+      "disabled--Opacity": 0.55,
+    ));
+
+    display: wu-var-el("accordion", "trigger", "Display");
+    align-items: center;
+    justify-content: space-between;
+    inline-size: 100%;
+    gap: wu-var-el("accordion", "trigger", "Gap");
+    padding-block: wu-var-el("accordion", "trigger", "PaddingBlock");
+    padding-inline: wu-var-el("accordion", "trigger", "PaddingInline");
+    font-family: inherit;
+    font-size: wu-var-el("accordion", "trigger", "FontSize");
+    font-weight: wu-var-el("accordion", "trigger", "FontWeight");
+    color: wu-var-el("accordion", "trigger", "Color");
+    background-color: wu-var-el("accordion", "trigger", "BackgroundColor");
+    border: none;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color wu-var-el("accordion", "trigger", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      background-color: wu-var-el("accordion", "trigger", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("accordion", "trigger", "focus--BoxShadow");
+      z-index: 1;
+      position: relative;
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: wu-var-el("accordion", "trigger", "disabled--Opacity");
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    @include wu-root-el("accordion", "icon", (
+      "TransitionDuration": wu-duration(fast),
+      "Color": var(--wu-text-muted),
+    ));
+
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    line-height: 1;
+    color: wu-var-el("accordion", "icon", "Color");
+    transition: transform wu-var-el("accordion", "icon", "TransitionDuration") $wu-ease;
+
+    // The glyph is not bidi-mirrored; point it at the content.
+    [dir="rtl"] & {
+      transform: scaleX(-1);
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // Open/close animates grid-template-rows rather than a max-height guess, so
+  // content of any height opens fully instead of being clipped at a ceiling.
+  @include e(panel) {
+    @include wu-root-el("accordion", "panel", (
+      "BackgroundColor": transparent,
+      "TransitionDuration": wu-duration(fast),
+    ));
+
+    display: grid;
+    grid-template-rows: 0fr;
+    background-color: wu-var-el("accordion", "panel", "BackgroundColor");
+    transition: grid-template-rows wu-var-el("accordion", "panel", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // The single child owns the clipping; the track is what animates.
+    > * {
+      overflow: hidden;
+      min-block-size: 0;
+      transition: overflow 0s linear 0s;
+
+      @include reduced-motion {
+        transition: none;
+      }
+    }
+  }
+
+  @include e(content) {
+    padding-block: wu-space(4);
+    padding-inline: wu-space(4);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+  }
+
+  // ---- item states ----
+
+  @include e(item) {
+    &.is-expanded {
+      .wu-accordion__panel {
+        grid-template-rows: 1fr;
+
+        > * {
+          overflow: visible;
+          transition: overflow 0s linear wu-var-el("accordion", "panel", "TransitionDuration");
+
+          @include reduced-motion {
+            transition: none;
+          }
+        }
+      }
+
+      .wu-accordion__icon {
+        transform: rotate(90deg);
+
+        [dir="rtl"] & {
+          transform: scaleX(-1) rotate(90deg);
+        }
+      }
+    }
+
+    &.is-disabled {
+      .wu-accordion__trigger {
+        opacity: wu-var-el("accordion", "trigger", "disabled--Opacity");
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(bordered) {
+    .wu-accordion__item {
+      --wu-accordion__item--BorderColor: var(--wu-border-regular);
+      border: 1px solid wu-var-el("accordion", "item", "BorderColor");
+      border-radius: wu-radius(md);
+      margin-block-end: wu-space(2);
+
+      &:last-child {
+        margin-block-end: 0;
+      }
+    }
+  }
+
+  @include m(flush) {
+    border: none;
+    border-radius: 0;
+
+    .wu-accordion__item {
+      --wu-accordion__item--BorderColor: transparent;
+    }
+  }
+
+  @include m(compact) {
+    .wu-accordion__trigger {
+      --wu-accordion__trigger--PaddingBlock: #{wu-space(2)};
+      --wu-accordion__trigger--FontSize: #{wu-font-size(xs)};
+    }
+
+    .wu-accordion__content {
+      padding-block-end: wu-space(2);
+      font-size: wu-font-size(xs);
+    }
+  }
+}

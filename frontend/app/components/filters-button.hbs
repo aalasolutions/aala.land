@@ -1,5 +1,5 @@
 {{! Toolbar button that opens a list page's filter fields in a drawer; @count shows how many are active. }}
-<Nuvo::Button
+<Woven::Button
   @variant="secondary"
   @size="xs"
   @icon="funnel"
@@ -11,16 +11,16 @@
 >
   Filters
   {{#if @count}}
-    <Nuvo::Badge
+    <Woven::Badge
       @count={{true}}
       @value={{@count}}
       @variant="primary"
       data-test-filters-count
     />
   {{/if}}
-</Nuvo::Button>
+</Woven::Button>
 
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{this.isOpen}}
   @title="Filters"
   @placement="end"
@@ -30,4 +30,4 @@
   {{on "click" this.keepFocusInDrawer}}
 >
   <:body>{{yield}}</:body>
-</Nuvo::Drawer>
+</Woven::Drawer>

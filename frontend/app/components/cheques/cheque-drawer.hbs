@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Cheque" "New Cheque"}}
   @placement="end"
@@ -9,19 +9,19 @@
   <:body>
     <form
       id="cheque-form"
-      class="nu-form"
+      class="wu-form"
       novalidate
       {{this.loadOnOpen}}
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           @label="Cheque Number"
           @required={{true}}
           @error={{this.fieldErrors.chequeNumber}}
           class="grow"
         >
-          <Nuvo::Input
+          <Woven::Input
             id="chq-number"
             type="text"
             placeholder="e.g. 000123"
@@ -29,9 +29,9 @@
             @onInput={{fn this.setField "chequeNumber"}}
             data-test-input-cheque-number
           />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Type" class="grow">
-          <Nuvo::Dropdown
+        </Woven::Field>
+        <Woven::Field @label="Type" class="grow">
+          <Woven::Dropdown
             id="chq-type"
             @align="start"
             @value={{this.form.type}}
@@ -40,14 +40,14 @@
             @placeholder="Select type..."
             data-test-input-type
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
-      <Nuvo::Field
+      <Woven::Field
         @label="Bank Name"
         @required={{true}}
         @error={{this.fieldErrors.bankName}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="chq-bank"
           type="text"
           placeholder="e.g. Emirates NBD"
@@ -55,13 +55,13 @@
           @onInput={{fn this.setField "bankName"}}
           data-test-input-bank
         />
-      </Nuvo::Field>
-      <Nuvo::Field
+      </Woven::Field>
+      <Woven::Field
         @label="Account Holder"
         @required={{true}}
         @error={{this.fieldErrors.accountHolder}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="chq-holder"
           type="text"
           placeholder="e.g. Ahmed Al Mansouri"
@@ -69,9 +69,9 @@
           @onInput={{fn this.setField "accountHolder"}}
           data-test-input-holder
         />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Property">
-        <Nuvo::Dropdown
+      </Woven::Field>
+      <Woven::Field @label="Property">
+        <Woven::Dropdown
           id="chq-unit"
           @align="start"
           @value={{this.form.unitId}}
@@ -80,15 +80,15 @@
           @placeholder="No property linked"
           data-test-input-unit
         />
-      </Nuvo::Field>
+      </Woven::Field>
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           @label="Amount"
           @required={{true}}
           @error={{this.fieldErrors.amount}}
           class="grow"
         >
-          <Nuvo::Input
+          <Woven::Input
             id="chq-amount"
             type="number"
             min="0"
@@ -98,8 +98,8 @@
             @onInput={{fn this.setField "amount"}}
             data-test-input-amount
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           @label="Due Date"
           @required={{true}}
           @error={{this.fieldErrors.dueDate}}
@@ -108,12 +108,12 @@
           <input
             id="chq-due"
             type="date"
-            class="nu-input"
+            class="wu-input"
             value={{this.form.dueDate}}
             data-test-input-due-date
             {{on "input" (fn this.setFieldFromEvent "dueDate")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
       {{#if this.errorMsg}}
         <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
@@ -121,17 +121,17 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       data-test-cancel-edit
       @onClick={{this.close}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="cheque-form"
       @loading={{this.isSaving}}
       data-test-save-cheque
-    >{{if this.isEdit "Update" "Create Cheque"}}</Nuvo::Button>
+    >{{if this.isEdit "Update" "Create Cheque"}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

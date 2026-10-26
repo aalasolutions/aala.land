@@ -1,0 +1,238 @@
+// wu-pagination - page navigation controls
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(pagination) {
+  @include wu-root("pagination", (
+    "Gap": wu-space(4),
+  ));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: wu-var("pagination", "Gap");
+
+  // ---- elements ----
+
+  @include e(list) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @include e(item) {
+    display: flex;
+  }
+
+  @include e(link) {
+    @include wu-root-el("pagination", "link", (
+      "MinInlineSize": 2.25rem,
+      "MinBlockSize": 2.25rem,
+      "PaddingInline": wu-space(2),
+      "FontSize": wu-font-size(sm),
+      "FontWeight": wu-font-weight(medium),
+      "Color": var(--wu-text-regular),
+      "BackgroundColor": transparent,
+      "BorderColor": transparent,
+      "BorderRadius": wu-radius(full),
+      "TransitionDuration": wu-duration(fast),
+      "hover--BackgroundColor": #{wu-tint(brand, 6%)},
+      "hover--BorderColor": transparent,
+      "focus--BoxShadow": wu-focus-ring(),
+      "active--Color": var(--wu-brand-800),
+      "active--BackgroundColor": #{wu-tint(brand, 12%)},
+      "disabled--Opacity": 0.5,
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: wu-var-el("pagination", "link", "MinInlineSize");
+    min-block-size: wu-var-el("pagination", "link", "MinBlockSize");
+    padding-inline: wu-var-el("pagination", "link", "PaddingInline");
+    padding-block: 0;
+    font-family: inherit;
+    font-size: wu-var-el("pagination", "link", "FontSize");
+    font-weight: wu-var-el("pagination", "link", "FontWeight");
+    color: wu-var-el("pagination", "link", "Color");
+    background-color: wu-var-el("pagination", "link", "BackgroundColor");
+    border: 1px solid wu-var-el("pagination", "link", "BorderColor");
+    border-radius: wu-var-el("pagination", "link", "BorderRadius");
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color wu-var-el("pagination", "link", "TransitionDuration") $wu-ease,
+      border-color wu-var-el("pagination", "link", "TransitionDuration") $wu-ease,
+      color wu-var-el("pagination", "link", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      background-color: wu-var-el("pagination", "link", "hover--BackgroundColor");
+      border-color: wu-var-el("pagination", "link", "hover--BorderColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("pagination", "link", "focus--BoxShadow");
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: wu-var-el("pagination", "link", "disabled--Opacity");
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(prev, next) {
+    display: inline-flex;
+    align-items: center;
+    gap: wu-space(1);
+  }
+
+  @include e(ellipsis) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 2.25rem;
+    min-block-size: 2.25rem;
+    color: var(--wu-text-subtle);
+  }
+
+  @include e(status) {
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+    white-space: nowrap;
+  }
+
+  @include e(per-page) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: wu-space(2);
+    white-space: nowrap;
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+  }
+
+  @include e(select) {
+    @include wu-root-el("pagination", "select", (
+      "PaddingBlock": wu-space(1),
+      "PaddingInline": wu-space(2),
+      "Color": var(--wu-text-regular),
+      "BackgroundColor": var(--wu-bg-surface),
+      "BorderColor": var(--wu-border-regular),
+      "BorderRadius": wu-radius(md),
+      "focus--BoxShadow": wu-focus-ring(),
+    ));
+
+    padding-block: wu-var-el("pagination", "select", "PaddingBlock");
+    padding-inline: wu-var-el("pagination", "select", "PaddingInline");
+    font-family: inherit;
+    font-size: wu-font-size(sm);
+    color: wu-var-el("pagination", "select", "Color");
+    background-color: wu-var-el("pagination", "select", "BackgroundColor");
+    border: 1px solid wu-var-el("pagination", "select", "BorderColor");
+    border-radius: wu-var-el("pagination", "select", "BorderRadius");
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("pagination", "select", "focus--BoxShadow");
+    }
+  }
+
+  // ---- item states ----
+
+  // The current page is a light primary tint, not a solid fill. Hover keeps the
+  // same tint so the current page never lightens under the pointer.
+  @include e(item) {
+    &.is-active {
+      .wu-pagination__link {
+        --wu-pagination__link--Color: #{wu-var-el("pagination", "link", "active--Color")};
+        --wu-pagination__link--BackgroundColor: #{wu-var-el("pagination", "link", "active--BackgroundColor")};
+        --wu-pagination__link--BorderColor: transparent;
+        --wu-pagination__link--hover--BackgroundColor: #{wu-var-el("pagination", "link", "active--BackgroundColor")};
+        --wu-pagination__link--FontWeight: #{wu-font-weight(semibold)};
+      }
+    }
+
+    &.is-disabled {
+      .wu-pagination__link {
+        opacity: wu-var-el("pagination", "link", "disabled--Opacity");
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(sm) {
+    .wu-pagination__link {
+      --wu-pagination__link--MinInlineSize: 2rem;
+      --wu-pagination__link--MinBlockSize: 2rem;
+      --wu-pagination__link--FontSize: #{wu-font-size(xs)};
+    }
+
+    .wu-pagination__ellipsis {
+      min-inline-size: 2rem;
+      min-block-size: 2rem;
+    }
+  }
+
+  @include m(xs) {
+    .wu-pagination__link {
+      --wu-pagination__link--MinInlineSize: 1.75rem;
+      --wu-pagination__link--MinBlockSize: 1.75rem;
+      --wu-pagination__link--PaddingInline: #{wu-space(1)};
+      --wu-pagination__link--FontSize: #{wu-font-size(xs)};
+    }
+
+    .wu-pagination__ellipsis {
+      min-inline-size: 1.75rem;
+      min-block-size: 1.75rem;
+    }
+
+    .wu-pagination__status,
+    .wu-pagination__per-page {
+      font-size: wu-font-size(xs);
+    }
+  }
+
+  @include m(lg) {
+    .wu-pagination__link {
+      --wu-pagination__link--MinInlineSize: 3rem;
+      --wu-pagination__link--MinBlockSize: 3rem;
+      --wu-pagination__link--PaddingInline: #{wu-space(3)};
+      --wu-pagination__link--FontSize: #{wu-font-size(md)};
+    }
+
+    .wu-pagination__ellipsis {
+      min-inline-size: 3rem;
+      min-block-size: 3rem;
+    }
+
+    .wu-pagination__status,
+    .wu-pagination__per-page {
+      font-size: wu-font-size(md);
+    }
+  }
+
+  @include m(compact) {
+    .wu-pagination__list {
+      gap: wu-space(0);
+    }
+
+    .wu-pagination__item:not(.is-active):not(:first-child):not(:last-child) {
+      display: none;
+    }
+  }
+}

@@ -1,5 +1,5 @@
 // Auth pages; Google sign-in colours are brand-locked, the one hardcoded-colour exception here.
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 .login-page {
   display: flex;
@@ -11,9 +11,9 @@
 
 // Wordmark for pages with no shell, distinct from the sidebar's brand-title class.
 .auth-brand-title {
-  font-size: nu-font-size(xl);
-  font-weight: nu-font-weight(bold);
-  color: var(--nu-brand);
+  font-size: wu-font-size(xl);
+  font-weight: wu-font-weight(bold);
+  color: var(--wu-brand);
   margin: 0;
 }
 
@@ -40,28 +40,28 @@
   align-items: center;
   gap: 0.45rem;
   padding: 0.4rem 0.7rem;
-  color: var(--nu-brand-700);
-  background: var(--nu-brand-50);
-  border: 1px solid var(--nu-brand-200);
+  color: var(--wu-brand-700);
+  background: var(--wu-brand-50);
+  border: 1px solid var(--wu-brand-200);
   border-radius: 999px;
   font-size: 0.78rem;
-  font-weight: nu-font-weight(semibold);
+  font-weight: wu-font-weight(semibold);
   line-height: 1;
 
   svg {
     flex: 0 0 auto;
-    color: var(--nu-brand);
+    color: var(--wu-brand);
   }
 }
 
 .signup-invite-note {
   margin: 0.55rem auto 0;
-  color: var(--nu-text-muted);
+  color: var(--wu-text-muted);
   font-size: 0.82rem;
   line-height: 1.35;
 }
 
-// Google sign-in styling is brand-locked: do not touch colours or turn it into <Nuvo::Button>.
+// Google sign-in styling is brand-locked: do not touch colours or turn it into <Woven::Button>.
 
 $google-logo-svg: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E";
 $google-text-color: #172033;
@@ -108,9 +108,9 @@ $google-neutral-border-hover: #c6cbd1;
   align-items: center;
   width: 100%;
   min-height: 52px;
-  border: 1px solid var(--nu-border-regular);
+  border: 1px solid var(--wu-border-regular);
   border-radius: 0.875rem;
-  background: var(--nu-bg-surface);
+  background: var(--wu-bg-surface);
   color: $google-text-color;
   cursor: pointer;
   overflow: hidden;
@@ -126,12 +126,12 @@ $google-neutral-border-hover: #c6cbd1;
     width: 30px;
     height: 30px;
     border-radius: 0.625rem;
-    background-color: var(--nu-bg-base);
+    background-color: var(--wu-bg-base);
     background-image: url($google-logo-svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 18px 18px;
-    border: 1px solid var(--nu-border-regular);
+    border: 1px solid var(--wu-border-regular);
     transform: translateY(-50%);
     z-index: 2;
     pointer-events: none;
@@ -143,19 +143,19 @@ $google-neutral-border-hover: #c6cbd1;
     z-index: 2;
     color: $google-text-color;
     font-size: 0.96rem;
-    font-weight: nu-font-weight(semibold);
+    font-weight: wu-font-weight(semibold);
     letter-spacing: 0;
     pointer-events: none;
   }
 
   &:hover {
-    background: var(--nu-bg-base);
-    border-color: var(--nu-border-regular);
+    background: var(--wu-bg-base);
+    border-color: var(--wu-border-regular);
   }
 
   &:focus-within {
-    border-color: var(--nu-brand-300);
-    box-shadow: nu-focus-ring();
+    border-color: var(--wu-brand-300);
+    box-shadow: wu-focus-ring();
   }
 
   &:focus-visible {
@@ -187,12 +187,12 @@ $google-neutral-border-hover: #c6cbd1;
   width: 100%;
   min-height: 44px;
   padding: 0.75rem 1rem;
-  background: var(--nu-bg-surface);
-  color: var(--nu-text-regular);
+  background: var(--wu-bg-surface);
+  color: var(--wu-text-regular);
   border: 1px solid $google-neutral-border;
   border-radius: 4px;
   font-size: 0.9375rem;
-  font-weight: nu-font-weight(normal);
+  font-weight: wu-font-weight(normal);
   line-height: 1;
   cursor: pointer;
   transition:
@@ -200,12 +200,12 @@ $google-neutral-border-hover: #c6cbd1;
     border-color 0.16s ease;
 
   &:hover {
-    background: var(--nu-bg-base);
+    background: var(--wu-bg-base);
     border-color: $google-neutral-border-hover;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--nu-brand-200);
+    outline: 2px solid var(--wu-brand-200);
     outline-offset: 2px;
   }
 
@@ -223,22 +223,22 @@ $google-neutral-border-hover: #c6cbd1;
 
   &::after {
     content: "Continue with Google";
-    font-weight: nu-font-weight(normal);
+    font-weight: wu-font-weight(normal);
     font-size: 0.9375rem;
-    color: var(--nu-text-regular);
+    color: var(--wu-text-regular);
     z-index: 2;
   }
 }
 
 .btn--google--blocked {
   border-color: $google-neutral-border;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 .btn--google--loading {
   pointer-events: none;
   cursor: wait;
-  background: var(--nu-bg-base);
+  background: var(--wu-bg-base);
   border-color: $google-neutral-border;
 
   &::before {
@@ -253,8 +253,8 @@ $google-neutral-border-hover: #c6cbd1;
     display: inline-block;
     width: 18px;
     height: 18px;
-    border: 2px solid var(--nu-border-regular);
-    border-top-color: var(--nu-brand);
+    border: 2px solid var(--wu-border-regular);
+    border-top-color: var(--wu-brand);
     border-radius: 50%;
     animation: auth-google-spin 0.8s linear infinite;
     margin-right: 0.5rem;
@@ -281,11 +281,11 @@ $google-neutral-border-hover: #c6cbd1;
   width: 100%;
   min-height: 46px;
   padding: 0.75rem 1rem;
-  color: var(--nu-success-700);
-  background: var(--nu-success-50);
-  border: 1px solid var(--nu-success-200);
+  color: var(--wu-success-700);
+  background: var(--wu-success-50);
+  border: 1px solid var(--wu-success-200);
   border-radius: 0.5rem;
-  font-weight: nu-font-weight(semibold);
+  font-weight: wu-font-weight(semibold);
 }
 
 .profile-connection-card {
@@ -295,8 +295,8 @@ $google-neutral-border-hover: #c6cbd1;
   padding: 0.95rem;
   margin-top: 0.25rem;
   margin-bottom: 1rem;
-  background: var(--nu-bg-base);
-  border: 1px solid var(--nu-border-regular);
+  background: var(--wu-bg-base);
+  border: 1px solid var(--wu-border-regular);
   border-radius: 0.75rem;
 }
 
@@ -313,12 +313,12 @@ $google-neutral-border-hover: #c6cbd1;
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background-color: var(--nu-bg-surface);
+  background-color: var(--wu-bg-surface);
   background-image: url($google-logo-svg);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 18px 18px;
-  border: 1px solid var(--nu-border-regular);
+  border: 1px solid var(--wu-border-regular);
 }
 
 .profile-connection-text {
@@ -326,15 +326,15 @@ $google-neutral-border-hover: #c6cbd1;
 }
 
 .profile-connection-title {
-  color: var(--nu-text-regular);
-  font-weight: nu-font-weight(semibold);
+  color: var(--wu-text-regular);
+  font-weight: wu-font-weight(semibold);
   font-size: 0.95rem;
   line-height: 1.3;
   white-space: nowrap;
 }
 
 .profile-connection-copy {
-  color: var(--nu-text-muted);
+  color: var(--wu-text-muted);
   font-size: 0.835rem;
   line-height: 1.35;
   margin: 0.15rem 0 0;
@@ -355,11 +355,11 @@ $google-neutral-border-hover: #c6cbd1;
   min-height: 38px;
   padding: 0 1rem;
   color: $google-text-color;
-  background: var(--nu-bg-surface);
-  border: 1px solid var(--nu-border-regular);
+  background: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
   border-radius: 0.55rem;
   font-size: 0.875rem;
-  font-weight: nu-font-weight(semibold);
+  font-weight: wu-font-weight(semibold);
   cursor: pointer;
   overflow: hidden;
 
@@ -369,13 +369,13 @@ $google-neutral-border-hover: #c6cbd1;
   }
 
   &:hover {
-    background: var(--nu-bg-base);
-    border-color: var(--nu-border-regular);
+    background: var(--wu-bg-base);
+    border-color: var(--wu-border-regular);
   }
 
   &:focus-within {
-    border-color: var(--nu-brand-300);
-    box-shadow: nu-focus-ring();
+    border-color: var(--wu-brand-300);
+    box-shadow: wu-focus-ring();
   }
 
   &:focus-visible {

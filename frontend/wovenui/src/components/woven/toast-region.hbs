@@ -1,0 +1,25 @@
+<div
+  class={{this.classes}}
+  role="log"
+  aria-live="polite"
+  data-test-wu-toast-region
+  ...attributes
+>
+  {{! key="id": the getter remaps objects, without it every toast replays its entry animation. }}
+  {{#each this.toasts key="id" as |toast|}}
+    <div class={{toast.classes}} data-test-toast data-test-toast-type={{toast.type}}>
+      <div class="wu-toast__content">
+        <span class="wu-toast__title">{{toast.message}}</span>
+      </div>
+      <button
+        type="button"
+        class="wu-toast__close"
+        aria-label="Dismiss"
+        data-test-toast-dismiss
+        {{on "click" (fn this.dismiss toast.id)}}
+      >
+        <Woven::Icon @icon="x" @size="14px" />
+      </button>
+    </div>
+  {{/each}}
+</div>

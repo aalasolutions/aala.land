@@ -1,0 +1,211 @@
+<WovenDocs::Page
+  @id="shell"
+  @title="Shell"
+  @subtitle="Sidebar, sidebar links and topbar: the frame around every authenticated route."
+  @components="Woven::Sidebar, Woven::SidebarLink, Woven::Topbar"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      The frame around this documentation is the live example: a fixed
+      sidebar that collapses to an icon rail and slides in on small screens,
+      and a sticky topbar with a hamburger toggle, brand, actions and user
+      block. The sidebar is position fixed, so it cannot be embedded inline;
+      the buttons below drive the real one on the left.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Collapsed rail with tooltips carrying the hidden labels.</li>
+      <li class="wu-list__item">Mobile open state with a dismiss backdrop.</li>
+      <li class="wu-list__item">Section labels, links, sublinks; router links and button links share the same classes.</li>
+      <li class="wu-list__item">Topbar with toggle, brand, search, actions and user slots.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Sidebar" @id="sidebar">
+    <WovenDocs::Example
+      @title="Brand and links"
+      @note="brandTitle and brandSubtitle render the brand block; the default block holds section labels and links. Router links are LinkTo elements with the wu-sidebar__link class, which the sidebar styles like its own active state."
+      @layout="block"
+      @code={{this.code.sidebar}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="The sidebar on the left of this page is this snippet, with one link per documented page." />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Collapsed rail"
+      @note="collapsed reduces the sidebar to icons. Labels hide, so each link carries data-tooltip with its label and position end. Use it on dense screens where the content needs the width."
+      @layout="block"
+      @code={{this.code.collapsed}}
+    >
+      <Woven::Button @variant="secondary" @size="sm" @text="Toggle the collapsed rail" @onClick={{this.collapseLayout}} data-test-woven-shell-collapse />
+      <span class="wu-text m-sm m-muted">Collapsed: {{this.layout.sidebarCollapsed}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Mobile open with backdrop"
+      @note="Below the tablet breakpoint the sidebar is off-canvas; open slides it in, dismissible adds a backdrop that calls onDismiss, and the topbar's hamburger toggles it. Narrow the window, then press this."
+      @layout="block"
+      @code={{this.code.mobile}}
+    >
+      <Woven::Button @variant="secondary" @size="sm" @text="Toggle mobile sidebar" @onClick={{this.openLayoutMobile}} data-test-woven-shell-mobile />
+      <span class="wu-text m-sm m-muted">Open: {{this.layout.sidebarOpen}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Brand block"
+      @note="The brand block replaces the title and subtitle with your own markup, for a logo image."
+      @layout="block"
+      @code={{this.code.brandBlock}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="Named blocks are all-or-nothing: with a brand or footer block the navigation goes in an explicit default block." />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Footer block"
+      @note="Pinned to the bottom of the sidebar, for a version, a plan badge or a sign-out. This site shows the page count."
+      @layout="block"
+      @code={{this.code.footer}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="See the bottom of the sidebar on this page." />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Sidebar arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.sidebarArgRows}} />
+    <h3 class="woven-subtitle">Sidebar callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.sidebarCallbackRows}} />
+    <h3 class="woven-subtitle">Sidebar blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.sidebarBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Sidebar link" @id="sidebar-link">
+    <p class="woven-note">A button form for links that run an action rather than a route transition. Its tokens live on the sidebar root, so the live form is inside a sidebar; the snippets show the three shapes.</p>
+
+    <WovenDocs::Example
+      @title="Link"
+      @note="Icon, label and an active flag, for an action such as opening a switcher. For routes use LinkTo with class wu-sidebar__link so the URL and middle-click work."
+      @layout="block"
+      @code={{this.code.link}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="Renders button.wu-sidebar__link with the icon and label spans." />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Sublink"
+      @note="sub renders wu-sidebar__sublink, the indented item inside an expanded group."
+      @layout="block"
+      @code={{this.code.sublink}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="Renders button.wu-sidebar__sublink." />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block label"
+      @note="A block replaces the label, for a count badge beside the text."
+      @layout="block"
+      @code={{this.code.linkBlock}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="The block renders inside wu-sidebar__link-label." />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Sidebar link arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.linkArgRows}} />
+    <h3 class="woven-subtitle">Sidebar link callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.linkCallbackRows}} />
+    <h3 class="woven-subtitle">Sidebar link blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.linkBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Topbar" @id="topbar">
+    <WovenDocs::Example
+      @title="Toggle, brand block, actions, user"
+      @note="Inline, non-sticky instance. The hamburger renders only because onToggle is passed; userName and userRole render the trailing user block."
+      @layout="block"
+      @code={{this.code.topbar}}
+    >
+      <Woven::Topbar @onToggle={{this.countToggle}} @userName="Test User" @userRole="Owner">
+        <:brand>
+          <span class="wu-title m-md">UI Kit</span>
+        </:brand>
+        <:actions>
+          <span class="wu-text m-sm m-muted" data-test-woven-topbar-toggles>Toggled {{this.toggleCount}} times</span>
+          <Woven::Button @variant="secondary" @size="xs" @text="Action" />
+        </:actions>
+      </Woven::Topbar>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Brand argument"
+      @note="brand renders plain text when no brand block is given. Without onToggle there is no hamburger."
+      @layout="block"
+      @code={{this.code.topbarBrandArg}}
+    >
+      <Woven::Topbar @brand="AALA.LAND">
+        <:actions></:actions>
+      </Woven::Topbar>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Search slot"
+      @note="The search slot sits between brand and actions and takes a small input."
+      @layout="block"
+      @code={{this.code.topbarSearch}}
+    >
+      <Woven::Topbar @brand="AALA.LAND">
+        <:search>
+          <Woven::Input @size="sm" @prefixIcon="⌕" @placeholder="Search" />
+        </:search>
+        <:actions>
+          <Woven::Button @variant="ghost" @shape="square" @icon="bell" aria-label="Notifications" />
+        </:actions>
+      </Woven::Topbar>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="User block"
+      @note="The user block replaces the name and role text with custom markup such as an avatar."
+      @layout="block"
+      @code={{this.code.topbarUserBlock}}
+    >
+      <Woven::Topbar @brand="AALA.LAND">
+        <:actions></:actions>
+        <:user>
+          <Woven::Avatar @initials="TU" @size="sm" />
+          <span class="wu-text m-sm">Test User</span>
+        </:user>
+      </Woven::Topbar>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Sticky"
+      @note="sticky pins the bar to the top of the scroll container; the topbar of this site is sticky."
+      @layout="block"
+      @code={{this.code.topbarSticky}}
+    >
+      <Woven::Text @size="sm" @muted={{true}} @text="Scroll this page: the topbar stays in view." />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Topbar arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.topbarArgRows}} />
+    <h3 class="woven-subtitle">Topbar callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.topbarCallbackRows}} />
+    <h3 class="woven-subtitle">Topbar blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.topbarBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The sidebar renders an aside with a nav; the topbar renders a header. The toggle is a button labelled "Toggle navigation".</li>
+      <li class="wu-list__item">In the collapsed rail the label is hidden, so each link needs data-tooltip with the label text for hover and focus.</li>
+      <li class="wu-list__item">SidebarLink is a native button; LinkTo links are anchors with hrefs, so middle-click and copy-link work.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">The sidebar sits at the inline start and the main region reserves space with margin-inline-start, so the whole shell mirrors under dir="rtl". The mobile slide uses a direction-aware transform.</li>
+      <li class="wu-list__item">Rail tooltips use data-tooltip-position="end", which resolves to the correct physical side.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

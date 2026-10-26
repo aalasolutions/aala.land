@@ -1,0 +1,291 @@
+// wu-popover - anchored content bubble, richer than a tooltip
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(popover) {
+  @include wu-root("popover", (
+    "ZIndex": wu-z(dropdown),
+    "Width": 18rem,
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "BoxShadow": wu-shadow(lg),
+    "TransitionDuration": wu-duration(fast),
+    "focus--BoxShadow": wu-focus-ring(),
+    "ArrowSize": 8px,
+    "ArrowOffset": -4px,
+  ));
+
+  position: absolute;
+  z-index: wu-var("popover", "ZIndex");
+  inline-size: wu-var("popover", "Width");
+  max-inline-size: 90vw;
+  background-color: wu-var("popover", "BackgroundColor");
+  border: 1px solid wu-var("popover", "BorderColor");
+  border-radius: wu-var("popover", "BorderRadius");
+  box-shadow: wu-var("popover", "BoxShadow");
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity wu-var("popover", "TransitionDuration") $wu-ease,
+    visibility wu-var("popover", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+    animation: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: wu-var("popover", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(arrow) {
+    position: absolute;
+    inline-size: wu-var("popover", "ArrowSize");
+    block-size: wu-var("popover", "ArrowSize");
+    background-color: wu-var("popover", "BackgroundColor");
+    border-inline-start: 1px solid wu-var("popover", "BorderColor");
+    border-block-start: 1px solid wu-var("popover", "BorderColor");
+    transform: rotate(45deg);
+
+    // Logical borders swap sides; the rotation must swap with them.
+    [dir="rtl"] & {
+      transform: rotate(-45deg);
+    }
+  }
+
+  @include e(header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: wu-space(2);
+    padding: wu-space(3) wu-space(4);
+    border-block-end: 1px solid var(--wu-border-regular);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    flex-shrink: 0;
+    padding: 0;
+    color: var(--wu-text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: wu-radius(sm);
+    cursor: pointer;
+
+    // Hit area only, lifting the 1.5rem control to the 2rem touch floor.
+    // Centred with offsets rather than a transform so RTL stays aligned.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - 1rem);
+      inset-inline-start: calc(50% - 1rem);
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
+
+    &:hover {
+      color: var(--wu-text-regular);
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("popover", "focus--BoxShadow");
+    }
+  }
+
+  @include e(body) {
+    padding: wu-space(4);
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: wu-space(2);
+    padding: wu-space(3) wu-space(4);
+    border-block-start: 1px solid var(--wu-border-regular);
+  }
+
+  // ---- placement modifiers: position body + arrow ----
+
+  // Centring transform is physical; its sign flips with the reading direction.
+  @include m(top) {
+    inset-block-end: calc(100% + #{wu-space(2)});
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+
+    [dir="rtl"] & {
+      transform: translateX(50%);
+    }
+
+    .wu-popover__arrow {
+      inset-block-end: wu-var("popover", "ArrowOffset");
+      inset-inline-start: 50%;
+      margin-inline-start: calc(-1 * wu-var("popover", "ArrowSize") / 2);
+      border-inline-start: none;
+      border-block-start: none;
+      border-inline-end: 1px solid wu-var("popover", "BorderColor");
+      border-block-end: 1px solid wu-var("popover", "BorderColor");
+    }
+  }
+
+  @include m(bottom) {
+    inset-block-start: calc(100% + #{wu-space(2)});
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+
+    [dir="rtl"] & {
+      transform: translateX(50%);
+    }
+
+    .wu-popover__arrow {
+      inset-block-start: wu-var("popover", "ArrowOffset");
+      inset-inline-start: 50%;
+      margin-inline-start: calc(-1 * wu-var("popover", "ArrowSize") / 2);
+    }
+  }
+
+  // Top/bottom only: pin the body to the trigger's end edge instead of centring,
+  // for triggers that sit at the end of a toolbar or card.
+  @include m(align-end) {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: none;
+
+    [dir="rtl"] & {
+      transform: none;
+    }
+
+    .wu-popover__arrow {
+      inset-inline-start: auto;
+      inset-inline-end: wu-space(4);
+      margin-inline-start: 0;
+    }
+  }
+
+  @include m(start) {
+    inset-inline-end: calc(100% + #{wu-space(2)});
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+
+    .wu-popover__arrow {
+      inset-inline-end: wu-var("popover", "ArrowOffset");
+      inset-block-start: 50%;
+      margin-block-start: calc(-1 * wu-var("popover", "ArrowSize") / 2);
+      border-inline-start: none;
+      border-block-start: 1px solid wu-var("popover", "BorderColor");
+      border-inline-end: 1px solid wu-var("popover", "BorderColor");
+      border-block-end: none;
+    }
+  }
+
+  @include m(end) {
+    inset-inline-start: calc(100% + #{wu-space(2)});
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+
+    .wu-popover__arrow {
+      inset-inline-start: wu-var("popover", "ArrowOffset");
+      inset-block-start: 50%;
+      margin-block-start: calc(-1 * wu-var("popover", "ArrowSize") / 2);
+      border-block-start: none;
+      border-block-end: 1px solid wu-var("popover", "BorderColor");
+    }
+  }
+
+  // ---- anchored on .wu-layer: the anchor modifier writes fixed coordinates
+  // and data-placement (physical); the arrow tracks the trigger centre ----
+
+  // Physical borders: the logical longhands above no longer decide the corner.
+  &[data-placement] .wu-popover__arrow {
+    inset: auto;
+    margin: 0;
+    border-style: solid;
+    border-color: wu-var("popover", "BorderColor");
+    transform: rotate(45deg);
+  }
+
+  &[data-placement="bottom"] .wu-popover__arrow,
+  &[data-placement="top"] .wu-popover__arrow {
+    left: clamp(
+      wu-space(3),
+      calc(var(--wu-anchor--ArrowX) - wu-var("popover", "ArrowSize") / 2),
+      calc(100% - #{wu-space(3)} - wu-var("popover", "ArrowSize"))
+    );
+  }
+
+  &[data-placement="bottom"] .wu-popover__arrow {
+    top: wu-var("popover", "ArrowOffset");
+    border-width: 1px 0 0 1px;
+  }
+
+  &[data-placement="top"] .wu-popover__arrow {
+    bottom: wu-var("popover", "ArrowOffset");
+    border-width: 0 1px 1px 0;
+  }
+
+  &[data-placement="left"] .wu-popover__arrow,
+  &[data-placement="right"] .wu-popover__arrow {
+    top: clamp(
+      wu-space(3),
+      calc(var(--wu-anchor--ArrowY) - wu-var("popover", "ArrowSize") / 2),
+      calc(100% - #{wu-space(3)} - wu-var("popover", "ArrowSize"))
+    );
+  }
+
+  &[data-placement="right"] .wu-popover__arrow {
+    left: wu-var("popover", "ArrowOffset");
+    border-width: 0 0 1px 1px;
+  }
+
+  &[data-placement="left"] .wu-popover__arrow {
+    right: wu-var("popover", "ArrowOffset");
+    border-width: 1px 1px 0 0;
+  }
+
+  // ---- states ----
+
+  @include when(visible) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    animation: wu-popover-in wu-var("popover", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      animation: none;
+    }
+  }
+}
+
+// Opacity only. Animating `transform` here would clobber the placement
+// transform (translateX(-50%) etc), making the popover render off-centre for
+// the duration of the animation and then snap into place.
+@keyframes wu-popover-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

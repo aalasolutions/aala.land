@@ -1,16 +1,16 @@
 {{#if this.rows.length}}
-  <Nuvo::Panel data-test-record-summary={{@type}} ...attributes>
+  <Woven::Panel data-test-record-summary={{@type}} ...attributes>
     {{#if this.isLimited}}
-      <Nuvo::Tag
+      <Woven::Tag
         @variant="secondary"
         @text="Limited"
         data-test-record-summary-limited
       />
     {{/if}}
-    <Nuvo::DescList
+    <Woven::DescList
       @items={{this.rows}}
       @horizontal={{true}}
       @compact={{true}}
     />
-  </Nuvo::Panel>
+  </Woven::Panel>
 {{/if}}

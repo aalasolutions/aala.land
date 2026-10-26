@@ -11,7 +11,7 @@
     @onPageSizeChange={{this.setLimit}}
   >
     <:header as |panel|>
-      <Nuvo::PageHeader
+      <Woven::PageHeader
         @title="Documents"
         @subtitle="Store and organise property paperwork."
       >
@@ -23,23 +23,23 @@
         </:meta>
         <:actions>
           {{#if panel.canUpload}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="primary"
               data-test-upload-btn
               @icon="upload-simple"
               {{on "click" panel.openUpload}}
             >
               Upload Document
-            </Nuvo::Button>
+            </Woven::Button>
           {{/if}}
         </:actions>
-      </Nuvo::PageHeader>
+      </Woven::PageHeader>
 
       <div class="flex x-center gap-3 wrap" data-test-documents-toolbar>
         <FiltersButton @count={{this.activeFilterCount}}>
           <div class="flex col gap-4">
             <div class="flex gap-3 wrap">
-              <Nuvo::Input
+              <Woven::Input
                 type="text"
                 autocomplete="off"
                 placeholder="Search document name..."
@@ -51,12 +51,12 @@
             </div>
 
             <div class="flex gap-3 wrap x-end">
-              <Nuvo::Field
+              <Woven::Field
                 class="grow"
                 @label="Related To"
                 @tooltip="Filter by the kind of record a file is linked to. Library only means no link."
               >
-                <Nuvo::Dropdown
+                <Woven::Dropdown
                   id="document-related-filter"
                   @align="start"
                   @value={{this.related}}
@@ -64,9 +64,9 @@
                   @options={{this.relatedTypes}}
                   data-test-related-filter
                 />
-              </Nuvo::Field>
-              <Nuvo::Field class="grow" @label="Category">
-                <Nuvo::Dropdown
+              </Woven::Field>
+              <Woven::Field class="grow" @label="Category">
+                <Woven::Dropdown
                   id="document-category-filter"
                   @align="start"
                   @value={{this.category}}
@@ -75,13 +75,13 @@
                   @placeholder="All Categories"
                   data-test-category-filter
                 />
-              </Nuvo::Field>
-              <Nuvo::Field
+              </Woven::Field>
+              <Woven::Field
                 class="grow"
                 @label="Access Level"
                 @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
               >
-                <Nuvo::Dropdown
+                <Woven::Dropdown
                   id="document-access-filter"
                   @align="start"
                   @value={{this.accessLevel}}
@@ -89,31 +89,31 @@
                   @options={{this.accessLevelFilterOptions}}
                   data-test-access-filter
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Uploaded from">
+              </Woven::Field>
+              <Woven::Field @label="Uploaded from">
                 <input
                   type="date"
-                  class="nu-input"
+                  class="wu-input"
                   aria-label="Uploaded from"
                   value={{this.dateFrom}}
                   {{on "change" this.setDateFrom}}
                   data-test-date-from-filter
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Uploaded to">
+              </Woven::Field>
+              <Woven::Field @label="Uploaded to">
                 <input
                   type="date"
-                  class="nu-input"
+                  class="wu-input"
                   aria-label="Uploaded to"
                   value={{this.dateTo}}
                   {{on "change" this.setDateTo}}
                   data-test-date-to-filter
                 />
-              </Nuvo::Field>
+              </Woven::Field>
             </div>
 
             <div class="flex end">
-              <Nuvo::Button
+              <Woven::Button
                 @variant="danger"
                 @size="sm"
                 @icon="x"
@@ -122,7 +122,7 @@
                 data-test-clear-filters
               >
                 Clear filters
-              </Nuvo::Button>
+              </Woven::Button>
             </div>
           </div>
         </FiltersButton>

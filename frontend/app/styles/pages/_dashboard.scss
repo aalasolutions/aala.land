@@ -1,7 +1,7 @@
-// Dashboard page: bespoke layout around Nuvo::PageHeader/Stat/Panel/Dot/Tag.
-@use "@nuvoui/ember/styles/mixins/var" as *;
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+// Dashboard page: bespoke layout around Woven::PageHeader/Stat/Panel/Dot/Tag.
+@use "@wovenui/ember/styles/mixins/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 // One height for every bar on this page: stage rows, agent rows and the closed split.
 $dashboard-bar-size: 10px;
@@ -9,16 +9,16 @@ $dashboard-bar-size: 10px;
 .dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: nu-space(6);
+  gap: wu-space(6);
 }
 
 .dashboard-region-badge {
-  --nu-tag--Color: var(--nu-brand);
-  --nu-tag--BackgroundColor: var(--nu-brand-50);
-  --nu-tag--BorderColor: transparent;
+  --wu-tag--Color: var(--wu-brand);
+  --wu-tag--BackgroundColor: var(--wu-brand-50);
+  --wu-tag--BorderColor: transparent;
   display: inline-flex;
   align-items: center;
-  gap: nu-space(1);
+  gap: wu-space(1);
 }
 
 // Action tier and outcome tier stack on the left, status rail runs down the right.
@@ -28,7 +28,7 @@ $dashboard-bar-size: 10px;
   grid-template-areas:
     "action status"
     "outcome status";
-  gap: nu-space(4);
+  gap: wu-space(4);
 
   @include media-down(lg) {
     grid-template-columns: 1fr;
@@ -43,7 +43,7 @@ $dashboard-bar-size: 10px;
   grid-area: action;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: nu-space(4);
+  gap: wu-space(4);
 
   @include media-down(sm) {
     grid-template-columns: 1fr;
@@ -55,9 +55,9 @@ $dashboard-bar-size: 10px;
 }
 
 // Headline values stay below the xl page title.
-.kpi-action .nu-stat,
+.kpi-action .wu-stat,
 .kpi-outcome {
-  --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+  --wu-stat--ValueFontSize: #{wu-font-size(lg)};
 }
 
 // Equal row heights keep the gaps on the scale instead of inflating them with leftover space.
@@ -65,7 +65,7 @@ $dashboard-bar-size: 10px;
   grid-area: status;
   display: flex;
   flex-direction: column;
-  gap: nu-space(2);
+  gap: wu-space(2);
 
   > * {
     flex: 1;
@@ -75,7 +75,7 @@ $dashboard-bar-size: 10px;
 .dashboard-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: nu-space(4);
+  gap: wu-space(4);
 
   @include media-down(md) {
     grid-template-columns: 1fr;
@@ -86,47 +86,47 @@ $dashboard-bar-size: 10px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 0;
 }
 
 .ownership-caption {
   margin: 0;
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .ownership-rows {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
 }
 
 .ownership-row {
   display: block;
-  padding: nu-space(2) nu-space(3);
-  border-radius: nu-radius(md);
+  padding: wu-space(2) wu-space(3);
+  border-radius: wu-radius(md);
   color: inherit;
   text-decoration: none;
-  transition: background nu-duration(fast);
+  transition: background wu-duration(fast);
 
   &:hover,
   &:focus-visible {
-    background: var(--nu-bg-alternate);
+    background: var(--wu-bg-alternate);
   }
 }
 
 .ownership-row-head {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
+  gap: wu-space(2);
   min-inline-size: 0;
 }
 
 .ownership-name {
   flex: 1;
   min-inline-size: 0;
-  font-size: nu-font-size(sm);
+  font-size: wu-font-size(sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -136,19 +136,19 @@ $dashboard-bar-size: 10px;
 .pipeline-stage-count,
 .ownership-open,
 .closed-counts {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
   white-space: nowrap;
 }
 
 .ownership-bar {
   display: flex;
   block-size: $dashboard-bar-size;
-  margin-block-start: nu-space(1);
-  border-radius: nu-radius(full);
-  background: var(--nu-bg-alternate);
-  box-shadow: inset 0 0 0 1px var(--nu-border-regular);
+  margin-block-start: wu-space(1);
+  border-radius: wu-radius(full);
+  background: var(--wu-bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--wu-border-regular);
   overflow: hidden;
 }
 
@@ -161,120 +161,120 @@ $dashboard-bar-size: 10px;
 
 .ownership-more {
   margin: 0;
-  padding-inline: nu-space(3);
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  padding-inline: wu-space(3);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .idle-overflow {
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-muted);
 }
 
 .closed-block {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
-  padding-block-start: nu-space(3);
-  border-block-start: 1px solid var(--nu-border-regular);
+  gap: wu-space(1);
+  padding-block-start: wu-space(3);
+  border-block-start: 1px solid var(--wu-border-regular);
 }
 
 .closed-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: nu-space(3);
-  font-size: nu-font-size(sm);
+  gap: wu-space(3);
+  font-size: wu-font-size(sm);
 }
 
 .closed-label {
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 .dashboard-panel-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: nu-space(3);
-  padding-block-start: nu-space(3);
-  border-block-start: 1px solid var(--nu-border-regular);
+  gap: wu-space(3);
+  padding-block-start: wu-space(3);
+  border-block-start: 1px solid var(--wu-border-regular);
   color: inherit;
   text-decoration: none;
 
   &:hover .dashboard-strip-action,
   &:focus-visible .dashboard-strip-action {
-    color: var(--nu-brand);
+    color: var(--wu-brand);
   }
 }
 
 .dashboard-strip-label {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  gap: wu-space(2);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
   min-inline-size: 0;
 }
 
 .dashboard-strip-action {
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-muted);
   white-space: nowrap;
-  transition: color nu-duration(fast);
+  transition: color wu-duration(fast);
 }
 
 .pipeline-bars {
   display: flex;
   flex-direction: column;
-  gap: nu-space(4);
-  padding: nu-space(4) nu-space(5);
+  gap: wu-space(4);
+  padding: wu-space(4) wu-space(5);
 }
 
 .pipeline-stage-header {
   display: flex;
   justify-content: space-between;
-  margin-block-end: nu-space(1);
-  font-size: nu-font-size(sm);
+  margin-block-end: wu-space(1);
+  font-size: wu-font-size(sm);
 }
 
 .pipeline-stage-name {
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 // Inset hairline, not a border: gives the bar an edge without changing its height.
 .pipeline-bar-track {
   block-size: $dashboard-bar-size;
-  border-radius: nu-radius(full);
-  background: var(--nu-bg-alternate);
-  box-shadow: inset 0 0 0 1px var(--nu-border-regular);
+  border-radius: wu-radius(full);
+  background: var(--wu-bg-alternate);
+  box-shadow: inset 0 0 0 1px var(--wu-border-regular);
   overflow: hidden;
 }
 
 .pipeline-bar-fill {
   block-size: 100%;
   inline-size: var(--bar-width, 0%);
-  border-radius: nu-radius(full);
-  transition: inline-size nu-duration(normal);
+  border-radius: wu-radius(full);
+  transition: inline-size wu-duration(normal);
 }
 
-@each $variant in $nu-variants {
+@each $variant in $wu-variants {
   .pipeline-bar-#{$variant} {
-    background: var(--nu-#{nu-role($variant)});
+    background: var(--wu-#{wu-role($variant)});
   }
 }
 
 // One hue deepening by stage: the theme has only five distinct variants for six stages.
-$nu-stage-steps: (
+$wu-stage-steps: (
   "new": 300,
   "contacted": 500,
   "viewing": 700,
   "negotiating": 900,
 );
 
-@each $stage, $step in $nu-stage-steps {
+@each $stage, $step in $wu-stage-steps {
   .pipeline-bar-stage-#{$stage} {
-    background: var(--nu-info-#{$step});
+    background: var(--wu-info-#{$step});
   }
 }

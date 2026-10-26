@@ -56,7 +56,7 @@ export default class CommissionsController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // Woven::Input/Select/Textarea call onInput/onChange as (value, event),
   // not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;

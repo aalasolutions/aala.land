@@ -1,0 +1,178 @@
+<WovenDocs::Page
+  @id="typography"
+  @title="Typography"
+  @subtitle="Headings and body text on the kit's type scale."
+  @components="Woven::Title, Woven::Text"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Title separates the heading level from the visual size, so the
+      document outline stays correct while the design picks the step. Text
+      is a paragraph or span with size, weight, colour, truncation and line
+      clamp. The scale comes from WovenUI core, so kit and utility sizes
+      agree.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Heading tag independent of size; seven title sizes, five text sizes.</li>
+      <li class="wu-list__item">Four weights; six colour variants plus muted and subtle.</li>
+      <li class="wu-list__item">Single-line truncation and two- or three-line clamp.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Title: tag and size" @id="title-sizes">
+    <WovenDocs::Example
+      @title="Tag independent of size"
+      @note="The tag comes from the outline, the size from the design: an h1 and an h4 can share a size without lying to assistive technology."
+      @layout="block"
+      @code={{this.code.tag}}
+    >
+      <Woven::Title @tag="h1" @size="lg" @text="An h1 at the lg size" />
+      <Woven::Title @tag="h4" @size="lg" @text="An h4 at the same size" />
+    </WovenDocs::Example>
+
+    {{#each this.titleSizeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Woven::Title @tag="h3" @size={{example.size}} @text="Title {{example.size}}" />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Title: weight, truncation, block" @id="title-styles">
+    <WovenDocs::Example
+      @title="Weight"
+      @note="Weights apply to titles as to text; semibold is the usual step down from a bold page title."
+      @layout="block"
+      @code={{this.code.titleWeight}}
+    >
+      <Woven::Title @size="xl" @weight="semibold" @text="Marina Tower" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Truncate"
+      @note="One line with an ellipsis, for record names in fixed-width headers. The full text stays in the DOM."
+      @layout="block"
+      @code={{this.code.titleTruncate}}
+    >
+      <Woven::Title
+        @size="md"
+        @tag="h4"
+        @truncate={{true}}
+        @text="A very long unit description that should truncate with an ellipsis when the container is narrow"
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Block content"
+      @note="A block replaces text, for an icon before the heading."
+      @layout="block"
+      @code={{this.code.titleBlock}}
+    >
+      <Woven::Title @size="sm" @tag="h5"><Woven::Icon @icon="buildings" /> Block content</Woven::Title>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Title arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.titleArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Text: sizes" @id="text-sizes">
+    {{#each this.textSizeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Woven::Text @size={{example.size}} @text="Text {{example.size}}" />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Inline span"
+      @note="tag span renders inline, for a value inside a sentence or a cell."
+      @code={{this.code.textTag}}
+    >
+      <span>Renewal in <Woven::Text @tag="span" @size="xs" @text="42 days" /> from today.</span>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Text: weights" @id="text-weights">
+    {{#each this.weightExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Woven::Text @weight={{example.weight}} @text="{{example.title}} text" />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Text: colours" @id="text-colours">
+    {{#each this.variantExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Woven::Text @variant={{example.variant}} @text="{{example.title}} text" />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Muted"
+      @note="Secondary copy that should not compete with the main text: timestamps, hints."
+      @layout="block"
+      @code={{this.code.muted}}
+    >
+      <Woven::Text @muted={{true}} @text="Last synced 4 minutes ago." />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Subtle"
+      @note="Lighter still, for placeholders and optional notes."
+      @layout="block"
+      @code={{this.code.subtle}}
+    >
+      <Woven::Text @subtle={{true}} @text="Optional note." />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Text: truncation and clamp" @id="text-clamp">
+    <WovenDocs::Example
+      @title="Truncate"
+      @note="One line with an ellipsis, for descriptions in table cells."
+      @layout="stack"
+      @code={{this.code.truncate}}
+    >
+      <Woven::Text @truncate={{true}} @text={{this.longText}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Clamp to two lines"
+      @note="Two lines then an ellipsis, for card previews."
+      @layout="stack"
+      @code={{this.code.clamp2}}
+    >
+      <Woven::Text @clamp="2" @text={{this.longText}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Clamp to three lines"
+      @note="Three lines for list descriptions that deserve a little more room."
+      @layout="stack"
+      @code={{this.code.clamp3}}
+    >
+      <Woven::Text @clamp="3" @text={{this.longText}} />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Text arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.textArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Choose @tag by outline position, never by appearance; one h1 per page.</li>
+      <li class="wu-list__item">Truncated and clamped text is cut visually only; the full string stays in the DOM and is read in full.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Alignment is inherited from the page direction; the ellipsis of truncated text appears at the inline end.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

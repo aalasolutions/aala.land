@@ -1,0 +1,36 @@
+{{! Block param is `crumb`, avoids shadowing HTML elements. }}
+<nav class={{this.classes}} aria-label="Breadcrumb" data-test-wu-breadcrumb ...attributes>
+  <ol class="wu-breadcrumb__list">
+    {{#each this.items key="@index" as |crumb|}}
+      <li class="wu-breadcrumb__item {{if crumb.current 'is-current'}}" data-test-wu-breadcrumb-item>
+        {{#if crumb.current}}
+          <span class="wu-breadcrumb__current" aria-current="page" data-test-wu-breadcrumb-current>
+            {{crumb.label}}
+          </span>
+        {{else if crumb.route}}
+          <LinkTo
+            @route={{crumb.route}}
+            @models={{crumb.linkModels}}
+            class="wu-breadcrumb__link"
+            data-test-wu-breadcrumb-link
+          >
+            {{crumb.label}}
+          </LinkTo>
+        {{else if crumb.onClick}}
+          <button
+            type="button"
+            class="wu-breadcrumb__link"
+            data-test-wu-breadcrumb-link
+            {{on "click" crumb.onClick}}
+          >
+            {{crumb.label}}
+          </button>
+        {{else}}
+          <a href={{if crumb.href crumb.href "#"}} class="wu-breadcrumb__link" data-test-wu-breadcrumb-link>
+            {{crumb.label}}
+          </a>
+        {{/if}}
+      </li>
+    {{/each}}
+  </ol>
+</nav>

@@ -1,22 +1,22 @@
 {{page-title "Vendors"}}
 
 <div data-test-vendors-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Vendors" @subtitle="Manage service providers and contractors.">
+  <Woven::PageHeader @title="Vendors" @subtitle="Manage service providers and contractors.">
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         data-test-new-vendor
         @variant="primary"
         @icon="plus"
         {{on "click" this.openCreate}}
       >
         New Vendor
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
-  <Nuvo::Card>
+  <Woven::Card>
     {{#if @model.vendors.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{@model.vendors}}
         @pinColumns={{true}}
@@ -31,7 +31,7 @@
         {{else if (eq cell.key "specialties")}}
           <div class="flex gap-2 wrap">
             {{#each cell.value as |sp|}}
-              <Nuvo::Tag class="tag-trade-{{lowercase sp}}" @text={{sp}} />
+              <Woven::Tag class="tag-trade-{{lowercase sp}}" @text={{sp}} />
             {{/each}}
           </div>
         {{else if (eq cell.key "hourlyRate")}}
@@ -43,7 +43,7 @@
           {{/if}}
         {{else if (eq cell.key "id")}}
           <div class="flex">
-            <Nuvo::Button
+            <Woven::Button
               data-test-edit-vendor
               @subtle={{true}}
               @variant="secondary"
@@ -53,7 +53,7 @@
               data-tooltip="Edit"
               {{on "click" (fn this.openEdit cell.row)}}
             />
-            <Nuvo::Button
+            <Woven::Button
               data-test-delete-vendor
               @subtle={{true}}
               @variant="danger"
@@ -67,21 +67,21 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       {{#if @model.total}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No vendors on page {{this.page}}. Navigate back to find vendors."
         />
       {{else}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No vendors yet. Add your first vendor above."
         />
       {{/if}}
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="vendors-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -92,7 +92,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
 <Vendors::VendorDrawer

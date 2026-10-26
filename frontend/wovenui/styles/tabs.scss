@@ -1,0 +1,273 @@
+// wu-tabs - navigation between related panels of content
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(tabs) {
+  @include wu-root("tabs", (
+    "Display": flex,
+    "Gap": wu-space(1),
+    "BackgroundColor": transparent,
+    "PaddingBlock": 0,
+    "PaddingInline": 0,
+    "BorderRadius": wu-radius(none),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+  ));
+
+  display: wu-var("tabs", "Display");
+  align-items: stretch;
+  gap: wu-var("tabs", "Gap");
+  background-color: wu-var("tabs", "BackgroundColor");
+  padding-block: wu-var("tabs", "PaddingBlock");
+  padding-inline: wu-var("tabs", "PaddingInline");
+  border-radius: wu-var("tabs", "BorderRadius");
+  border-block-end: wu-var("tabs", "BorderWidth") solid wu-var("tabs", "BorderColor");
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  // ---- elements ----
+
+  @include e(trigger) {
+    @include wu-root-el("tabs", "trigger", (
+      "Display": inline-flex,
+      "Gap": wu-space(2),
+      "PaddingBlock": wu-space(2),
+      "PaddingInline": wu-space(4),
+      "MinHeight": 2.25rem,
+      "FontSize": wu-font-size(sm),
+      "FontWeight": wu-font-weight(semibold),
+      "Color": var(--wu-text-muted),
+      "BackgroundColor": transparent,
+      "BorderRadius": wu-radius(none),
+      "BorderWidth": 2px,
+      "BorderColor": transparent,
+      "TransitionDuration": wu-duration(fast),
+      "hover--Color": var(--wu-text-regular),
+      // Inset: the strip scrolls horizontally, which clips an outer ring.
+      "focus--BoxShadow": inset 0 0 0 2px var(--wu-brand),
+    ));
+
+    display: wu-var-el("tabs", "trigger", "Display");
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    gap: wu-var-el("tabs", "trigger", "Gap");
+    padding-block: wu-var-el("tabs", "trigger", "PaddingBlock");
+    padding-inline: wu-var-el("tabs", "trigger", "PaddingInline");
+    min-block-size: wu-var-el("tabs", "trigger", "MinHeight");
+    font-family: inherit;
+    font-size: wu-var-el("tabs", "trigger", "FontSize");
+    font-weight: wu-var-el("tabs", "trigger", "FontWeight");
+    color: wu-var-el("tabs", "trigger", "Color");
+    background-color: wu-var-el("tabs", "trigger", "BackgroundColor");
+    border: none;
+    border-radius: wu-var-el("tabs", "trigger", "BorderRadius");
+    border-block-end: wu-var-el("tabs", "trigger", "BorderWidth") solid wu-var-el("tabs", "trigger", "BorderColor");
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color wu-var-el("tabs", "trigger", "TransitionDuration") $wu-ease,
+      background-color wu-var-el("tabs", "trigger", "TransitionDuration") $wu-ease,
+      border-color wu-var-el("tabs", "trigger", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      color: wu-var-el("tabs", "trigger", "hover--Color");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("tabs", "trigger", "focus--BoxShadow");
+    }
+
+    &.is-active {
+      --wu-tabs__trigger--Color: var(--wu-text-regular);
+      --wu-tabs__trigger--BorderColor: var(--wu-brand);
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+  }
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  @include e(count) {
+    @include wu-root-el("tabs", "count", (
+      "Color": var(--wu-text-muted),
+      "BackgroundColor": var(--wu-bg-alternate),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 1.25rem;
+    padding-inline: wu-space(1);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    line-height: 1.4;
+    color: wu-var-el("tabs", "count", "Color");
+    background-color: wu-var-el("tabs", "count", "BackgroundColor");
+    border-radius: wu-radius(full);
+  }
+
+  @include e(panel) {
+    @include wu-root-el("tabs", "panel", (
+      "PaddingBlock": wu-space(4),
+      "PaddingInline": 0,
+    ));
+
+    padding-block: wu-var-el("tabs", "panel", "PaddingBlock");
+    padding-inline: wu-var-el("tabs", "panel", "PaddingInline");
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("tabs", "trigger", "focus--BoxShadow");
+    }
+  }
+
+  // Not emitted by tabs.hbs today; wiring it up needs a positioned ancestor.
+  @include e(indicator) {
+    @include wu-root-el("tabs", "indicator", (
+      "BackgroundColor": var(--wu-brand),
+      "BorderRadius": wu-radius(full),
+    ));
+
+    position: absolute;
+    background-color: wu-var-el("tabs", "indicator", "BackgroundColor");
+    border-radius: wu-var-el("tabs", "indicator", "BorderRadius");
+    transition: transform wu-duration(fast) $wu-ease, inline-size wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // ---- variants: shape differs, so enumerated ----
+
+  @include m(underline) {
+    --wu-tabs--Gap: #{wu-space(1)};
+    --wu-tabs--BorderWidth: 1px;
+    --wu-tabs--BorderColor: var(--wu-border-regular);
+  }
+
+  @include m(pills) {
+    --wu-tabs--Gap: #{wu-space(1)};
+    --wu-tabs--BackgroundColor: var(--wu-bg-alternate);
+    --wu-tabs--PaddingBlock: #{wu-space(1)};
+    --wu-tabs--PaddingInline: #{wu-space(1)};
+    --wu-tabs--BorderRadius: #{wu-radius(lg)};
+
+    .wu-tabs__trigger {
+      --wu-tabs__trigger--BorderRadius: #{wu-radius(md)};
+      --wu-tabs__trigger--BorderWidth: 0;
+    }
+
+    .wu-tabs__trigger.is-active {
+      --wu-tabs__trigger--Color: var(--wu-text-regular);
+      --wu-tabs__trigger--BackgroundColor: var(--wu-bg-surface);
+    }
+  }
+
+  @include m(enclosed) {
+    --wu-tabs--Gap: 0;
+    --wu-tabs--BorderWidth: 1px;
+    --wu-tabs--BorderColor: var(--wu-border-regular);
+
+    .wu-tabs__trigger {
+      --wu-tabs__trigger--BorderWidth: 1px;
+      --wu-tabs__trigger--BorderColor: transparent;
+      --wu-tabs__trigger--BorderRadius: #{wu-radius(md)} #{wu-radius(md)} 0 0;
+
+      border: wu-var-el("tabs", "trigger", "BorderWidth") solid wu-var-el("tabs", "trigger", "BorderColor");
+      border-block-end: none;
+      margin-block-end: -1px;
+    }
+
+    .wu-tabs__trigger.is-active {
+      --wu-tabs__trigger--Color: var(--wu-text-regular);
+      --wu-tabs__trigger--BackgroundColor: var(--wu-bg-surface);
+      --wu-tabs__trigger--BorderColor: var(--wu-border-regular);
+    }
+  }
+
+  // ---- sizes: trigger height follows the control scale ----
+
+  @include m(xs) {
+    .wu-tabs__trigger {
+      --wu-tabs__trigger--Gap: #{wu-space(1)};
+      --wu-tabs__trigger--PaddingBlock: #{wu-space(1)};
+      --wu-tabs__trigger--PaddingInline: #{wu-space(2)};
+      --wu-tabs__trigger--MinHeight: 1.75rem;
+      --wu-tabs__trigger--FontSize: #{wu-font-size(xs)};
+    }
+  }
+
+  @include m(sm) {
+    .wu-tabs__trigger {
+      --wu-tabs__trigger--Gap: #{wu-space(1)};
+      --wu-tabs__trigger--PaddingBlock: #{wu-space(1)};
+      --wu-tabs__trigger--PaddingInline: #{wu-space(3)};
+      --wu-tabs__trigger--MinHeight: 2rem;
+      --wu-tabs__trigger--FontSize: #{wu-font-size(xs)};
+    }
+  }
+
+  @include m(lg) {
+    .wu-tabs__trigger {
+      --wu-tabs__trigger--PaddingBlock: #{wu-space(3)};
+      --wu-tabs__trigger--PaddingInline: #{wu-space(5)};
+      --wu-tabs__trigger--MinHeight: 3rem;
+      --wu-tabs__trigger--FontSize: #{wu-font-size(md)};
+    }
+  }
+
+  // ---- orientation / layout ----
+
+  @include m(vertical) {
+    --wu-tabs--Display: flex;
+
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-block-end: none;
+
+    .wu-tabs__trigger {
+      justify-content: flex-start;
+      --wu-tabs__trigger--BorderWidth: 2px;
+    }
+
+    &.m-underline {
+      .wu-tabs__trigger {
+        border-block-end: none;
+        border-inline-start: wu-var-el("tabs", "trigger", "BorderWidth") solid wu-var-el("tabs", "trigger", "BorderColor");
+      }
+    }
+  }
+
+  @include m(fill) {
+    .wu-tabs__trigger {
+      flex: 1 1 0%;
+    }
+  }
+}

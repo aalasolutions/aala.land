@@ -1,0 +1,25 @@
+<div class={{this.classes}} data-test-wu-empty-state ...attributes>
+  {{#if (has-block "icon")}}
+    <span class="wu-empty-state__icon" aria-hidden="true" data-test-wu-empty-state-icon>
+      {{yield to="icon"}}
+    </span>
+  {{else if @icon}}
+    <span class="wu-empty-state__icon" aria-hidden="true" data-test-wu-empty-state-icon>
+      {{@icon}}
+    </span>
+  {{/if}}
+
+  {{#if @title}}
+    <p class="wu-empty-state__title" data-test-wu-empty-state-title>{{@title}}</p>
+  {{/if}}
+
+  {{#if @description}}
+    <p class="wu-empty-state__description" data-test-wu-empty-state-description>{{@description}}</p>
+  {{/if}}
+
+  {{#if (has-block "actions")}}
+    <div class="wu-empty-state__actions" data-test-wu-empty-state-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</div>

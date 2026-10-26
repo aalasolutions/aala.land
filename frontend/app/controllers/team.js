@@ -169,7 +169,7 @@ export default class TeamController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
+  // Woven inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
     const cleared = {

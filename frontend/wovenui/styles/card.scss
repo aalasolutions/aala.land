@@ -1,0 +1,264 @@
+// wu-card - surface container
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./mixins/surface" as *;
+@use "./common/var" as *;
+
+@include b(card) {
+  @include wu-root("card", (
+    "Padding": wu-space(6),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "BoxShadow": wu-shadow(sm),
+    "TransitionDuration": wu-duration(fast),
+    "hover--BoxShadow": wu-shadow(md),
+    "hover--BorderColor": var(--wu-border-regular),
+  ));
+
+  display: block;
+  padding: wu-var("card", "Padding");
+  background-color: wu-var("card", "BackgroundColor");
+  border: wu-var("card", "BorderWidth") solid wu-var("card", "BorderColor");
+  border-radius: wu-var("card", "BorderRadius");
+  box-shadow: wu-var("card", "BoxShadow");
+  transition:
+    box-shadow wu-var("card", "TransitionDuration") $wu-ease,
+    border-color wu-var("card", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include wu-surface-elements($header-align: flex-start);
+
+  @include e(subtitle) {
+    margin: 0;
+    font-size: wu-font-size(sm);
+    color: var(--wu-text-muted);
+  }
+
+  // ---- modifiers ----
+
+  @include m(compact) {
+    --wu-card--Padding: #{wu-space(4)};
+  }
+
+  @include m(flat) {
+    --wu-card--BoxShadow: #{wu-shadow(none)};
+    --wu-card--hover--BoxShadow: #{wu-shadow(none)};
+  }
+
+  @include m(raised) {
+    --wu-card--BoxShadow: #{wu-shadow(md)};
+    --wu-card--hover--BoxShadow: #{wu-shadow(lg)};
+  }
+
+  @include m(interactive) {
+    cursor: pointer;
+
+    &:hover {
+      @include wu-set-all("card", "hover", ("BoxShadow", "BorderColor"));
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  // Accent-tinted surfaces
+  @each $variant in $wu-variants {
+    &.m-accent.m-#{$variant} {
+      --wu-card--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+      --wu-card--BorderColor: var(--wu-#{wu-role($variant)}-200);
+    }
+  }
+
+  @include when(selected) {
+    --wu-card--BorderColor: var(--wu-brand);
+    box-shadow: 0 0 0 1px var(--wu-brand);
+  }
+}
+
+// .wu-list-item lives in list.scss, which owns the tokenised definition.
+// Use `m-raised` there for this file's hover lift.
+
+// KPI / stat tile
+@include b(stat) {
+  @include wu-root("stat", (
+    "Padding": wu-space(5),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "BoxShadow": wu-shadow(sm),
+    "ValueColor": var(--wu-text-regular),
+    "ValueFontSize": wu-font-size(3xl),
+    "LabelColor": var(--wu-text-muted),
+    "IconColor": var(--wu-brand),
+    "IconBackgroundColor": #{wu-tint(brand, 10%)},
+  ));
+
+  padding: wu-var("stat", "Padding");
+  background-color: wu-var("stat", "BackgroundColor");
+  border: 1px solid wu-var("stat", "BorderColor");
+  border-radius: wu-var("stat", "BorderRadius");
+  box-shadow: wu-var("stat", "BoxShadow");
+
+  // Icon and label share the first row, so the icon adds no row of its own.
+  &:not(.m-row):has(> .wu-stat__icon) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: wu-space(2);
+
+    > * {
+      grid-column: 1 / -1;
+    }
+
+    > .wu-stat__icon {
+      grid-column: 1;
+      margin-block-end: 0;
+    }
+
+    > .wu-stat__label {
+      grid-column: 2;
+      margin-block-end: 0;
+    }
+
+    > .wu-stat__value {
+      margin-block-start: wu-space(2);
+    }
+  }
+
+  @include e(icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    margin-block-end: wu-space(3);
+    font-size: 1.25rem;
+    color: wu-var("stat", "IconColor");
+    background-color: wu-var("stat", "IconBackgroundColor");
+    border-radius: wu-radius(md);
+  }
+
+  @include e(label) {
+    margin-block-end: wu-space(1);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    color: wu-var("stat", "LabelColor");
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  @include e(value) {
+    font-size: wu-var("stat", "ValueFontSize");
+    font-weight: wu-font-weight(bold);
+    line-height: 1.2;
+    color: wu-var("stat", "ValueColor");
+  }
+
+  @include e(delta) {
+    display: inline-flex;
+    align-items: center;
+    gap: wu-space(1);
+    margin-block-start: wu-space(1);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(medium);
+    color: wu-var("stat", "LabelColor");
+  }
+
+  @include e(content) {
+    margin-block-start: wu-space(3);
+
+    // Full-bleed foot, for a sparkline or any fill that should reach the card
+    // edge. The negative margins cancel the card's own padding on both sides
+    // and the bottom; the top keeps its normal spacing from the value. The
+    // tokens are declared on .wu-stat, so the modifier only resolves inside
+    // one, and overflow plus the two end radii keep the fill inside the
+    // rounded corners.
+    @include m(bleed) {
+      margin-inline: calc(#{wu-var("stat", "Padding")} * -1);
+      margin-block-end: calc(#{wu-var("stat", "Padding")} * -1);
+      overflow: hidden;
+      border-end-start-radius: wu-var("stat", "BorderRadius");
+      border-end-end-radius: wu-var("stat", "BorderRadius");
+    }
+  }
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-stat--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+      --wu-stat--BorderColor: var(--wu-#{wu-role($variant)}-200);
+      --wu-stat--ValueColor: var(--wu-#{wu-role($variant)}-700);
+      // The tinted surface drops --wu-text-muted under 4.5:1; the 700 shade clears it.
+      --wu-stat--LabelColor: var(--wu-#{wu-role($variant)}-700);
+      --wu-stat--IconColor: var(--wu-#{wu-role($variant)});
+      --wu-stat--IconBackgroundColor: #{wu-tint(wu-role($variant), 12%)};
+    }
+  }
+
+  // Brand 700 on its 50 tint is 4.39:1; 800 clears 4.5:1.
+  @include m(primary) {
+    --wu-stat--ValueColor: var(--wu-brand-800);
+    --wu-stat--LabelColor: var(--wu-brand-800);
+  }
+
+  @include m(lg) {
+    --wu-stat--Padding: #{wu-space(6)};
+    --wu-stat--ValueFontSize: #{wu-font-size(4xl)};
+  }
+
+  @include m(sm) {
+    --wu-stat--Padding: #{wu-space(3)};
+    --wu-stat--ValueFontSize: #{wu-font-size(lg)};
+  }
+
+  // Row form: label and value on one line, for a dense list of secondary stats.
+  @include m(row) {
+    --wu-stat--Padding: #{wu-space(3)};
+    --wu-stat--ValueFontSize: #{wu-font-size(lg)};
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: wu-space(3);
+
+    @include en(label) {
+      margin-block-end: 0;
+    }
+  }
+
+  // Linked stats keep the card look and gain a pointer affordance.
+  &:is(a) {
+    display: block;
+    text-decoration: none;
+    transition: box-shadow wu-duration(fast) $wu-ease,
+      border-color wu-duration(fast) $wu-ease;
+
+    &:hover {
+      box-shadow: wu-shadow(md);
+      border-color: wu-var("stat", "IconColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  &:is(a).m-row {
+    display: flex;
+  }
+}
+
+// .wu-info-row lives in list.scss, which owns the tokenised definition.

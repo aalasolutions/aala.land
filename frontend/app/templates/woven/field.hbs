@@ -1,0 +1,377 @@
+<WovenDocs::Page
+  @id="field"
+  @title="Field and form layout"
+  @subtitle="Label, hint, error and tooltip around any control; action rows and filter rows."
+  @components="Woven::Field, Woven::FieldGroup, Woven::FormActions"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Field wires a label to whatever control it wraps. A native input,
+      textarea or select gets a
+      <code class="wu-code">for</code>/<code class="wu-code">id</code>
+      pair; a combobox, listbox or button gets
+      <code class="wu-code">aria-labelledby</code>. The optional tooltip
+      button renders outside the label element on purpose, because anything
+      inside a label joins the control's accessible name. Every form control
+      on a page belongs inside a Field.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Label, required marker, hint and error; the error replaces the hint in a slot that always reserves one line.</li>
+      <li class="wu-list__item">Validation status (error, warning, success) wired to aria-invalid and aria-describedby on any control.</li>
+      <li class="wu-list__item">Floating label mode, and FieldGroup for radio and checkbox sets.</li>
+      <li class="wu-list__item">Automatic label association for native and ARIA controls.</li>
+      <li class="wu-list__item">Horizontal and flush layouts.</li>
+      <li class="wu-list__item">Label tooltip with a placement override.</li>
+      <li class="wu-list__item">FormActions aligns a button row; wu-filter-row lays out a responsive filter bar.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Field: label and text" @id="field-text">
+    <WovenDocs::Example
+      @title="Label"
+      @note="The minimum: a label linked to the control by for and id. The default for every form field."
+      @layout="stack"
+      @code={{this.code.label}}
+    >
+      <Woven::Field @label="Property name">
+        <Woven::Input @placeholder="Marina Tower" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Required"
+      @note="Adds the asterisk; it is decorative, so also set required on the control for the browser and assistive technology."
+      @layout="stack"
+      @code={{this.code.required}}
+    >
+      <Woven::Field @label="Property name" @required={{true}}>
+        <Woven::Input @placeholder="Marina Tower" required />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Hint"
+      @note="Helper text under the control for format or consequence, shown while there is no error."
+      @layout="stack"
+      @code={{this.code.hint}}
+    >
+      <Woven::Field @label="Property name" @hint="Shown to tenants on the portal">
+        <Woven::Input @placeholder="Marina Tower" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Error"
+      @note="Replaces the hint with the validation message and an icon. The control gets aria-invalid and the red border automatically."
+      @layout="stack"
+      @code={{this.code.error}}
+    >
+      <Woven::Field @label="Monthly rent" @hint="Whole dirhams" @error="Rent must be greater than 0">
+        <Woven::Input @value="-100" />
+      </Woven::Field>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Validation" @id="validation">
+    <WovenDocs::Example
+      @title="Status"
+      @note="The status argument takes error, warning or success. Field writes aria-invalid, aria-describedby and data-wu-field-status onto the control, so the border always matches what assistive technology hears. A non-empty error message implies error."
+      @layout="stack"
+      @code={{this.code.statuses}}
+    >
+      <Woven::Field @label="Monthly rent" @hint="Whole dirhams">
+        <Woven::Input @value="85000" data-test-woven-status-none />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @error="Enter a rent greater than 0">
+        <Woven::Input @value="-100" data-test-woven-status-error />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @status="warning" @hint="Above the area average; check the amount">
+        <Woven::Input @value="400000" data-test-woven-status-warning />
+      </Woven::Field>
+      <Woven::Field @label="Monthly rent" @status="success" @hint="Matches the signed lease">
+        <Woven::Input @value="85000" data-test-woven-status-success />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Every control"
+      @note="Select, Dropdown, Checkbox and Toggle take the same status from the Field around them."
+      @layout="stack"
+      @code={{this.code.statusControls}}
+    >
+      <Woven::Field @label="Region" @error="Choose a region">
+        <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" data-test-woven-status-select />
+      </Woven::Field>
+      <Woven::Field @label="Status" @error="Choose a status">
+        <Woven::Dropdown @align="start" @options={{this.filterStatusOptions}} @placeholder="All" data-test-woven-status-dropdown />
+      </Woven::Field>
+      <Woven::Field @label="Terms" @error="Accept the terms to continue">
+        <Woven::Checkbox @label="I accept the terms" data-test-woven-status-checkbox />
+      </Woven::Field>
+      <Woven::Field @label="Notify tenants" @status="warning" @hint="Tenants will not hear about rent changes">
+        <Woven::Toggle @checked={{false}} data-test-woven-status-toggle />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Live error and numeric keyboard"
+      @note="The message slot always reserves one line, so the error appears without moving anything below it. @inputmode=&quot;numeric&quot; opens the number pad for a code that is not a quantity."
+      @layout="stack"
+      @code={{this.code.liveError}}
+    >
+      <Woven::Field @label="Cheque number" @hint="Six digits" @error={{this.chequeError}} @required={{true}}>
+        <Woven::Input
+          @value={{this.chequeNumber}}
+          @inputmode="numeric"
+          @onInput={{this.setChequeNumber}}
+          pattern="[0-9]*"
+          data-test-woven-cheque
+        />
+      </Woven::Field>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Floating label" @id="floating-label">
+    <WovenDocs::Example
+      @title="Placeholder as label"
+      @note="Without @label, @placeholder becomes a real label inside the control. It rises onto the top border on focus or once there is a value, and never disappears. Format guidance belongs in @hint. Pass the yielded placeholder to a Select or Autocomplete."
+      @layout="stack"
+      @code={{this.code.floating}}
+    >
+      <Woven::Field @placeholder="Property name" @hint="Shown to tenants on the portal">
+        <Woven::Input data-test-woven-floating-input />
+      </Woven::Field>
+      <Woven::Field @placeholder="Region" as |f|>
+        <Woven::Select @options={{this.regionOptions}} @placeholder={{f.placeholder}} data-test-woven-floating-select />
+      </Woven::Field>
+      <Woven::Field @placeholder="Notes">
+        <Woven::Textarea data-test-woven-floating-textarea />
+      </Woven::Field>
+      <Woven::Field @placeholder="Building" @error="Choose a building" as |f|>
+        <Woven::Autocomplete @options={{this.buildings}} @placeholder={{f.placeholder}} data-test-woven-floating-autocomplete />
+      </Woven::Field>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Field group" @id="field-group">
+    <WovenDocs::Example
+      @title="Radios with an error"
+      @note="FieldGroup renders a fieldset and legend with one message slot. Its status reaches every control inside; the message ids go on the fieldset."
+      @layout="stack"
+      @code={{this.code.fieldGroup}}
+    >
+      <Woven::FieldGroup
+        @label="Payment method"
+        @required={{true}}
+        @error={{if this.paymentMethod null "Choose how the tenant pays"}}
+        data-test-woven-field-group
+      >
+        <div class="wu-check-group">
+          <Woven::Radio
+            @name="woven-pay"
+            @value="cheque"
+            @label="Cheque"
+            @checked={{eq this.paymentMethod "cheque"}}
+            @onChange={{this.setPaymentMethod}}
+          />
+          <Woven::Radio
+            @name="woven-pay"
+            @value="transfer"
+            @label="Bank transfer"
+            @checked={{eq this.paymentMethod "transfer"}}
+            @onChange={{this.setPaymentMethod}}
+          />
+        </div>
+      </Woven::FieldGroup>
+    </WovenDocs::Example>
+    <h3 class="woven-subtitle">FieldGroup arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Autofill and keyboards" @id="autofill">
+    <ul class="wu-list">
+      <li class="wu-list__item">Browser autofill keeps the surface color and regular text color in both themes; the focus ring and status borders stay visible over it.</li>
+      <li class="wu-list__item">Phones: type="tel" with @inputmode="tel". Codes, OTPs, cheque and postal numbers: type="text" with @inputmode="numeric" and pattern="[0-9]*". Money and quantities keep type="number".</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Field: layout" @id="field-layout">
+    <WovenDocs::Example
+      @title="Horizontal"
+      @note="Label beside the control, for settings panels and short forms where vertical space matters."
+      @layout="stack"
+      @code={{this.code.horizontal}}
+    >
+      <Woven::Field @label="Region" @horizontal={{true}}>
+        <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Flush"
+      @note="Drops the outer margin for a field that sits inside a table cell, a toolbar or another component with its own spacing."
+      @layout="stack"
+      @code={{this.code.flush}}
+    >
+      <Woven::Field @label="Region" @horizontal={{true}} @flush={{true}}>
+        <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+      </Woven::Field>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Field: tooltip" @id="field-tooltip">
+    <WovenDocs::Example
+      @title="Label tooltip"
+      @note="A question-mark button beside the label carries the text on hover and focus. For definitions too long for a hint; the button stays outside the label so it does not become part of the control's name."
+      @layout="stack"
+      @code={{this.code.tooltip}}
+    >
+      <Woven::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
+        <Woven::Input @placeholder="TR-2026-00001" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Tooltip position"
+      @note="tooltipPosition overrides the default top; end keeps a long hint from covering the field above."
+      @layout="stack"
+      @code={{this.code.tooltipPosition}}
+    >
+      <Woven::Field @label="Deposit" @tooltip="Held until the lease ends." @tooltipPosition="end">
+        <Woven::Input @placeholder="5%" />
+      </Woven::Field>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Field: non-native controls" @id="field-aria">
+    <WovenDocs::Example
+      @title="Combobox"
+      @note="A Dropdown has no native input to label, so the field sets aria-labelledby on the combobox or trigger button, skipping the tooltip button."
+      @layout="stack"
+      @code={{this.code.combobox}}
+    >
+      <Woven::Field @label="Status">
+        <Woven::Dropdown @align="start" @options={{this.filterStatusOptions}} @placeholder="All" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Toggle"
+      @note="A toggle's native input receives the label id, so the field label names it and the horizontal layout reads as a settings row."
+      @layout="stack"
+      @code={{this.code.toggle}}
+    >
+      <Woven::Field @label="Notify tenants" @horizontal={{true}}>
+        <Woven::Toggle @checked={{this.notify}} @onChange={{this.setNotify}} />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Field arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.fieldArgRows}} />
+    <h3 class="woven-subtitle">Field blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.fieldBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Filter row" @id="filter-row">
+    <WovenDocs::Example
+      @title="Responsive filter bar"
+      @note="An auto-fitting grid whose column count follows the viewport. The unlabelled control uses wu-field__label-spacer to share the baseline. Use it above every list."
+      @layout="block"
+      @code={{this.code.filterRow}}
+    >
+      <div class="wu-filter-row">
+        <Woven::Field @label="Status">
+          <Woven::Dropdown
+            @align="start"
+            @value={{this.filterStatus}}
+            @onSelect={{this.setFilterStatus}}
+            @options={{this.filterStatusOptions}}
+            @placeholder="All"
+          />
+        </Woven::Field>
+        <Woven::Field @label="Search">
+          <Woven::Input
+            @value={{this.filterSearch}}
+            @onInput={{this.setFilterSearch}}
+            @placeholder="Name or ID"
+          />
+        </Woven::Field>
+        <div class="wu-field">
+          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <Woven::Button
+            @variant="secondary"
+            @text="Clear"
+            @onClick={{this.clearFilters}}
+            data-test-woven-clear-filters
+          />
+        </div>
+      </div>
+    </WovenDocs::Example>
+    <WovenDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Form actions" @id="form-actions">
+    <WovenDocs::Example
+      @title="Start aligned"
+      @note="The default: buttons at the inline start, primary first. For forms that read top to bottom on the page."
+      @layout="block"
+      @code={{this.code.actionsStart}}
+    >
+      <Woven::FormActions>
+        <Woven::Button @variant="primary" @text="Save" />
+        <Woven::Button @variant="secondary" @text="Cancel" />
+      </Woven::FormActions>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="End aligned"
+      @note="Buttons at the inline end with the primary last, the dialog and drawer convention."
+      @layout="block"
+      @code={{this.code.actionsEnd}}
+    >
+      <Woven::FormActions @align="end">
+        <Woven::Button @variant="secondary" @text="Cancel" />
+        <Woven::Button @variant="primary" @text="Save" />
+      </Woven::FormActions>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Between"
+      @note="A destructive action at one edge and the primary at the other, so they cannot be hit by mistake."
+      @layout="block"
+      @code={{this.code.actionsBetween}}
+    >
+      <Woven::FormActions @align="between">
+        <Woven::Button @variant="ghost" @text="Delete" />
+        <Woven::Button @variant="primary" @text="Save changes" />
+      </Woven::FormActions>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Form actions arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.actionsArgRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The label receives a stable id and a for attribute pointing at the control; an existing id on the control is respected.</li>
+      <li class="wu-list__item">The required asterisk is aria-hidden. Set the required attribute on the control so assistive technology announces it.</li>
+      <li class="wu-list__item">The tooltip button is labelled "More information about {label}" and is skipped when the dialog focus trap picks a first control.</li>
+      <li class="wu-list__item">The control receives aria-invalid while the status is error, aria-describedby pointing at the hint or error (caller ids are kept after them), and aria-required with @required.</li>
+      <li class="wu-list__item">The message slot is aria-live="polite" and the error icon is aria-hidden; color is never the only signal.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Horizontal fields place the label on the inline-start side, so it moves to the right under dir="rtl".</li>
+      <li class="wu-list__item">The filter row grid and FormActions alignment are logical: end alignment sits on the left in RTL.</li>
+      <li class="wu-list__item">The floating label is placed with logical insets and moves only vertically, so it needs no mirroring.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

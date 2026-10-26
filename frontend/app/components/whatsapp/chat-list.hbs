@@ -6,7 +6,7 @@
       data-test-wa-chat={{chat.chatId}}
       {{on "click" (fn @onSelect chat.chatId)}}
     >
-      <Nuvo::Avatar
+      <Woven::Avatar
         @initials={{initials chat.chatName}}
         @size="lg"
         aria-hidden="true"
@@ -16,7 +16,7 @@
         <div class="flex between x-center">
           <span class="wa-chat-name">
             {{#if chat.isGroup}}
-              <Nuvo::Tag @size="sm" @text="group" />
+              <Woven::Tag @size="sm" @text="group" />
             {{/if}}
             {{chat.chatName}}
           </span>
@@ -43,7 +43,7 @@
           </p>
           {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
             {{#if unreadCount}}
-              <Nuvo::Badge
+              <Woven::Badge
                 class="wa-chat-unread"
                 @count={{true}}
                 @variant="success"
@@ -57,6 +57,6 @@
       </div>
     </button>
   {{else}}
-    <Nuvo::EmptyState @title="No chats yet" />
+    <Woven::EmptyState @title="No chats yet" />
   {{/each}}
 </div>

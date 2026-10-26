@@ -1,0 +1,31 @@
+{{#if @ordered}}
+  <ol class={{this.classes}} data-test-wu-list ...attributes>
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#each this.normalizedItems key="key" as |entry|}}
+        <li class="wu-list__item" data-test-wu-list-item>
+          {{#if entry.icon}}
+            <span class="wu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+          {{/if}}
+          {{entry.label}}
+        </li>
+      {{/each}}
+    {{/if}}
+  </ol>
+{{else}}
+  <ul class={{this.classes}} data-test-wu-list ...attributes>
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#each this.normalizedItems key="key" as |entry|}}
+        <li class="wu-list__item" data-test-wu-list-item>
+          {{#if entry.icon}}
+            <span class="wu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+          {{/if}}
+          {{entry.label}}
+        </li>
+      {{/each}}
+    {{/if}}
+  </ul>
+{{/if}}

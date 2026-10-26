@@ -1,0 +1,165 @@
+// wu-alert - inline notification banner with icon, title, description and actions
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(alert) {
+  @include wu-root("alert", (
+    "Display": flex,
+    "AlignItems": flex-start,
+    "Gap": wu-space(3),
+    "PaddingBlock": wu-space(4),
+    "PaddingInline": wu-space(4),
+    "BorderRadius": wu-radius(lg),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-surface),
+    "IconColor": var(--wu-text-muted),
+    "TitleFontWeight": wu-font-weight(semibold),
+    "DescriptionColor": var(--wu-text-muted),
+  ));
+
+  display: wu-var("alert", "Display");
+  align-items: wu-var("alert", "AlignItems");
+  gap: wu-var("alert", "Gap");
+  padding-block: wu-var("alert", "PaddingBlock");
+  padding-inline: wu-var("alert", "PaddingInline");
+  color: wu-var("alert", "Color");
+  background-color: wu-var("alert", "BackgroundColor");
+  border: wu-var("alert", "BorderWidth") solid wu-var("alert", "BorderColor");
+  border-radius: wu-var("alert", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: wu-font-size(lg);
+    line-height: 1;
+    color: wu-var("alert", "IconColor");
+
+    // A title-only alert is one line, so the icon centres on it. With a
+    // description the alert is a block, so the icon grows and top-aligns.
+    @include when(large) {
+      align-items: flex-start;
+      font-size: wu-font-size(2xl);
+    }
+  }
+
+  @include e(content) {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  @include e(title) {
+    font-size: wu-font-size(sm);
+    font-weight: wu-var("alert", "TitleFontWeight");
+    line-height: 1.4;
+  }
+
+  @include e(description) {
+    margin-block-start: wu-space(1);
+    color: wu-var("alert", "DescriptionColor");
+    font-size: wu-font-size(sm);
+    line-height: 1.5;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    margin-block-start: wu-space(3);
+  }
+
+  @include e(close) {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: wu-space(6);
+    block-size: wu-space(6);
+    padding: 0;
+    color: wu-var("alert", "IconColor");
+    background-color: transparent;
+    border: none;
+    border-radius: wu-radius(sm);
+    cursor: pointer;
+    transition: background-color wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // Visual size stays 24px; ::before pads the hit area to the 32px floor.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - 1rem);
+      inset-inline-start: calc(50% - 1rem);
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
+
+    &:hover {
+      color: wu-var("alert", "Color");
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-alert--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-alert--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+      --wu-alert--BorderColor: var(--wu-#{wu-role($variant)}-200);
+      --wu-alert--IconColor: var(--wu-#{wu-role($variant)});
+      --wu-alert--DescriptionColor: var(--wu-#{wu-role($variant)}-700);
+    }
+  }
+
+  // ---- shape modifiers ----
+
+  @include m(inline) {
+    --wu-alert--AlignItems: center;
+    --wu-alert--PaddingBlock: #{wu-space(2)};
+    --wu-alert--PaddingInline: #{wu-space(3)};
+    --wu-alert--Gap: #{wu-space(2)};
+
+    @include en(description) {
+      display: inline;
+      margin-block-start: 0;
+      margin-inline-start: wu-space(1);
+    }
+
+    @include en(title) {
+      display: inline;
+    }
+
+    @include en(actions) {
+      margin-block-start: 0;
+      margin-inline-start: auto;
+    }
+  }
+
+  @include m(banner) {
+    --wu-alert--BorderRadius: #{wu-radius(none)};
+
+    inline-size: 100%;
+  }
+
+  // ---- states ----
+
+  @include when(dismissible) {
+    padding-inline-end: wu-space(3);
+  }
+}

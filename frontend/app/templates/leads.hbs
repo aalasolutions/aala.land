@@ -1,25 +1,25 @@
 {{page-title "Leads"}}
 
 <div data-test-leads-page class="flex col gap-4">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Lead Pipeline"
     @subtitle="Track and manage your leads through the pipeline."
   >
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @icon="plus"
         data-test-add-lead
         {{on "click" this.openCreate}}
       >
         New Lead
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
-    <Nuvo::Tabs
+    <Woven::Tabs
       @tabs={{this.filterTabs}}
       @activeTab={{this.filterType}}
       @onChange={{this.setFilter}}
@@ -27,7 +27,7 @@
     />
   {{/unless}}
   <div class="flex end" data-test-leads-toolbar>
-    <Nuvo::Segmented
+    <Woven::Segmented
       @options={{this.viewTabs}}
       @value={{this.viewMode}}
       @onChange={{this.setViewMode}}
@@ -36,7 +36,7 @@
   </div>
   {{#if (eq this.viewMode "pipeline")}}
     <div
-      class="nu-kanban
+      class="wu-kanban
         {{if this.draggedLead 'is-dragging'}}
         {{if this.suppressHover 'is-hover-suppressed'}}"
       {{on "pointermove" this.releaseHover}}
@@ -45,7 +45,7 @@
         <div
           data-test-kanban-column
           data-test-column-status={{column.status}}
-          class="nu-kanban__column
+          class="wu-kanban__column
             {{if (this.isDropTarget 'pipeline' column.status) 'is-drag-over'}}
             {{if (this.isGapAt 'pipeline' column.status 'end') 'is-drop-end'}}
             {{if column.collapsed 'is-collapsed'}}"
@@ -85,7 +85,7 @@
   {{#if (eq this.viewMode "temperature")}}
     <div
       data-test-temperature-board
-      class="nu-kanban
+      class="wu-kanban
         {{if this.draggedLead 'is-dragging'}}
         {{if this.suppressHover 'is-hover-suppressed'}}"
       {{on "pointermove" this.releaseHover}}
@@ -94,7 +94,7 @@
         <div
           data-test-kanban-column
           data-test-column-temp={{column.temperature}}
-          class="nu-kanban__column column-temp-{{lowercase column.temperature}}
+          class="wu-kanban__column column-temp-{{lowercase column.temperature}}
             {{if
               (this.isDropTarget 'temperature' column.temperature)
               'is-drag-over'
@@ -116,7 +116,7 @@
             @count={{column.leads.length}}
             @onToggle={{fn this.toggleColumn "temperature" column.temperature}}
           >
-            <span class="nu-kanban__column-accent"></span>
+            <span class="wu-kanban__column-accent"></span>
             <Ui::Ph @icon={{column.icon}} />
             {{column.label}}
           </Leads::KanbanColumnHeader>
@@ -149,7 +149,7 @@
   {{#if (eq this.viewMode "agent")}}
     <div
       data-test-agent-board
-      class="nu-kanban
+      class="wu-kanban
         {{if this.draggedLead 'is-dragging'}}
         {{if this.suppressHover 'is-hover-suppressed'}}"
       {{on "pointermove" this.releaseHover}}
@@ -158,7 +158,7 @@
         <div
           data-test-kanban-column
           data-test-column-agent={{column.key}}
-          class="nu-kanban__column
+          class="wu-kanban__column
             {{if (this.isDropTarget 'agent' column.agentId) 'is-drag-over'}}
             {{if (this.isGapAt 'agent' column.agentId 'end') 'is-drop-end'}}
             {{if column.collapsed 'is-collapsed'}}"
@@ -201,7 +201,7 @@
 
   {{#if (eq this.viewMode "list")}}
     {{#if this.filteredLeads.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.listColumns}}
         @rows={{this.filteredLeads}}
         @onRowClick={{this.openDetailModal}}
@@ -220,7 +220,7 @@
               data-test-lead-id={{cell.row.id}}
             >{{contact-name cell.row.contact}}</span>
             {{#if (is-limited-contact cell.row.contact)}}
-              <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
+              <Woven::Badge @size="sm" @text="Limited" data-test-limited-badge />
             {{/if}}
           </span>
         {{else if (eq cell.key "contact.phone")}}
@@ -252,12 +252,12 @@
             >{{contact-email cell.row.contact}}</span>
           </div>
         {{else if (eq cell.key "status")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-lead-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
         {{else if (eq cell.key "temperature")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-temp-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
@@ -285,7 +285,7 @@
             }}</span>
         {{else if (eq cell.key "id")}}
           <div class="flex">
-            <Nuvo::Button
+            <Woven::Button
               @subtle={{true}}
               @variant="secondary"
               @size="xs"
@@ -295,7 +295,7 @@
               data-test-edit-lead
               {{on "click" (fn this.openEdit cell.row)}}
             />
-            <Nuvo::Button
+            <Woven::Button
               @subtle={{true}}
               @variant="secondary"
               @size="xs"
@@ -309,7 +309,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       <p class="text-center text-muted py-8">No leads found</p>
     {{/if}}
@@ -324,36 +324,36 @@
   @onSaved={{this.refresh}}
 />
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showAssignModal}}
   @title="Assign Lead"
   @onClose={{this.closeAssignModal}}
 >
-  <form class="nu-form" {{on "submit" this.assignToAgent}}>
+  <form class="wu-form" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
       <strong>{{contact-name this.assignLead.contact}}</strong>
       to:</p>
-    <Nuvo::Field @label="Agent">
-      <Nuvo::Dropdown
+    <Woven::Field @label="Agent">
+      <Woven::Dropdown
         id="agent-select"
         @align="start"
         @value={{this.selectedAgentId}}
         @onSelect={{fn this.setFieldValue "selectedAgentId"}}
         @options={{this.agentOptions}}
       />
-    </Nuvo::Field>
+    </Woven::Field>
     <div class="flex gap-3 mt-2">
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeAssignModal}}
       />
-      <Nuvo::Button @variant="primary" @type="submit" @text="Assign" />
+      <Woven::Button @variant="primary" @type="submit" @text="Assign" />
     </div>
   </form>
-</Nuvo::Modal>
+</Woven::Modal>
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showDetailModal}}
   @title={{if
     this.detailLead
@@ -366,17 +366,17 @@
   <:header as |titleId|>
     <div class="flex col gap-2 grow min-w-0">
       <div class="flex gap-3 x-center wrap">
-        <h2 id={{titleId}} class="nu-modal__title" data-test-nu-modal-title>
+        <h2 id={{titleId}} class="wu-modal__title" data-test-wu-modal-title>
           {{contact-name this.detailLead.contact}}
         </h2>
         {{#if (is-limited-contact this.detailLead.contact)}}
-          <Nuvo::Badge @text="Limited" data-test-limited-badge />
+          <Woven::Badge @text="Limited" data-test-limited-badge />
         {{/if}}
-        <Nuvo::Tag
+        <Woven::Tag
           class="tag-temp-{{lowercase this.detailLead.temperature}}"
           @text={{this.detailLead.temperature}}
         />
-        <Nuvo::Tag
+        <Woven::Tag
           class="tag-lead-{{lowercase this.detailLead.status}}"
           @text={{this.detailLead.status}}
         />
@@ -384,9 +384,9 @@
     </div>
     <button
       type="button"
-      class="nu-modal__close"
+      class="wu-modal__close"
       aria-label="Close"
-      data-test-nu-modal-close
+      data-test-wu-modal-close
       {{on "click" this.closeDetailModal}}
     >
       ✕
@@ -397,8 +397,8 @@
     <div class="lead-detail flex gap-6 x-stretch">
       <div class="lead-detail__info flex col gap-4 min-w-0">
         <section class="flex col">
-          <h4 class="nu-title m-xs text-muted mb-1">Contact</h4>
-          <Nuvo::InfoRow @label="Phone">
+          <h4 class="wu-title m-xs text-muted mb-1">Contact</h4>
+          <Woven::InfoRow @label="Phone">
             {{#if (contact-phone this.detailLead.contact)}}
               <span class="flex gap-2 x-center">
                 <span dir="ltr" data-test-lead-phone>{{contact-phone
@@ -423,9 +423,9 @@
             {{else}}
               <span class="text-muted">N/A</span>
             {{/if}}
-          </Nuvo::InfoRow>
+          </Woven::InfoRow>
           {{#unless (is-limited-contact this.detailLead.contact)}}
-            <Nuvo::InfoRow class="m-stacked" @label="Email">
+            <Woven::InfoRow class="m-stacked" @label="Email">
               {{#if (contact-email this.detailLead.contact)}}
                 <span data-test-lead-email>{{contact-email
                     this.detailLead.contact
@@ -433,10 +433,10 @@
               {{else}}
                 <span class="text-muted">N/A</span>
               {{/if}}
-            </Nuvo::InfoRow>
+            </Woven::InfoRow>
           {{/unless}}
           {{#if (can-whatsapp this.detailLead.contact)}}
-            <Nuvo::InfoRow @label="WhatsApp">
+            <Woven::InfoRow @label="WhatsApp">
               <a
                 href={{wa-link this.detailLead.contact.phone}}
                 target="_blank"
@@ -446,32 +446,32 @@
               >
                 {{this.detailLead.contact.phone}}
               </a>
-            </Nuvo::InfoRow>
+            </Woven::InfoRow>
           {{/if}}
-          <Nuvo::InfoRow @label="Source">
+          <Woven::InfoRow @label="Source">
             {{#if this.detailLead.source}}
               {{this.detailLead.source}}
             {{else}}
               <span class="text-muted">Unknown</span>
             {{/if}}
-          </Nuvo::InfoRow>
+          </Woven::InfoRow>
         </section>
 
         <section class="flex col">
-          <h4 class="nu-title m-xs text-muted mb-1">Requirement</h4>
-          <Nuvo::InfoRow @label="Location / Area">
+          <h4 class="wu-title m-xs text-muted mb-1">Requirement</h4>
+          <Woven::InfoRow @label="Location / Area">
             {{#if this.detailLead.locality}}
               {{this.detailLead.locality.name}}
             {{else}}
               <span class="text-muted">No area selected</span>
             {{/if}}
-          </Nuvo::InfoRow>
+          </Woven::InfoRow>
           {{#if this.detailLead.unit}}
-            <Nuvo::InfoRow @label="Property">
+            <Woven::InfoRow @label="Property">
               {{this.detailLead.unit.unitNumber}}
-            </Nuvo::InfoRow>
+            </Woven::InfoRow>
           {{/if}}
-          <Nuvo::InfoRow @label="Budget">
+          <Woven::InfoRow @label="Budget">
             {{#if this.detailLead.budgetMin}}
               <Money @amount={{this.detailLead.budgetMin}} />
               {{#if this.detailLead.budgetMax}}
@@ -481,26 +481,26 @@
             {{else}}
               <span class="text-muted">Not specified</span>
             {{/if}}
-          </Nuvo::InfoRow>
+          </Woven::InfoRow>
         </section>
 
         <section class="flex col">
-          <h4 class="nu-title m-xs text-muted mb-1">Notes</h4>
+          <h4 class="wu-title m-xs text-muted mb-1">Notes</h4>
           {{#if this.detailLead.notes}}
-            <p class="nu-text m-sm">{{this.detailLead.notes}}</p>
+            <p class="wu-text m-sm">{{this.detailLead.notes}}</p>
           {{else}}
-            <p class="nu-text m-sm text-muted">No notes</p>
+            <p class="wu-text m-sm text-muted">No notes</p>
           {{/if}}
         </section>
       </div>
 
       <div class="lead-detail__timeline flex col grow min-w-0">
-        <h4 class="nu-title m-xs text-muted mb-1">Activity History</h4>
+        <h4 class="wu-title m-xs text-muted mb-1">Activity History</h4>
         <div class="lead-detail__scroll grow">
           {{#if this.leadActivities}}
-            <Nuvo::Timeline @compact={{true}}>
+            <Woven::Timeline @compact={{true}}>
               {{#each this.leadActivities as |activity|}}
-                <Nuvo::TimelineItem
+                <Woven::TimelineItem
                   @title={{activity.type}}
                   @timestamp={{format-date-time
                     activity.createdAt
@@ -519,16 +519,16 @@
                       @size="14px"
                     />
                   </:icon>
-                </Nuvo::TimelineItem>
+                </Woven::TimelineItem>
               {{/each}}
-            </Nuvo::Timeline>
+            </Woven::Timeline>
           {{else}}
-            <Nuvo::EmptyState
+            <Woven::EmptyState
               @title="No activity yet"
               @description="Activity on this lead will appear here."
             >
               <:icon><Ui::Ph @icon="clock-counter-clockwise" @size="28px" /></:icon>
-            </Nuvo::EmptyState>
+            </Woven::EmptyState>
           {{/if}}
         </div>
       </div>
@@ -536,19 +536,19 @@
   </:body>
 
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @size="sm"
       {{on "click" (fn this.openAssignModal this.detailLead)}}
     >
       Assign
-    </Nuvo::Button>
-    <Nuvo::Button
+    </Woven::Button>
+    <Woven::Button
       @variant="primary"
       @size="sm"
       {{on "click" (fn this.openEdit this.detailLead)}}
     >
       Edit
-    </Nuvo::Button>
+    </Woven::Button>
   </:footer>
-</Nuvo::Modal>
+</Woven::Modal>

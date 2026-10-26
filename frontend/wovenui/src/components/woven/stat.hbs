@@ -1,0 +1,54 @@
+{{! @route renders LinkTo, @href an anchor, else a div; all share stat-inner. }}
+{{#if @route}}
+  <LinkTo
+    @route={{@route}}
+    @models={{this.linkModels}}
+    @query={{this.linkQuery}}
+    class={{this.classes}}
+    data-test-wu-stat
+    ...attributes
+  >
+    <Woven::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+      @hasContentBlock={{has-block "content"}}
+      @contentBleed={{@contentBleed}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Woven::StatInner>
+  </LinkTo>
+{{else if @href}}
+  <a href={{@href}} class={{this.classes}} data-test-wu-stat ...attributes>
+    <Woven::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+      @hasContentBlock={{has-block "content"}}
+      @contentBleed={{@contentBleed}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Woven::StatInner>
+  </a>
+{{else}}
+  <div class={{this.classes}} data-test-wu-stat ...attributes>
+    <Woven::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+      @hasContentBlock={{has-block "content"}}
+      @contentBleed={{@contentBleed}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Woven::StatInner>
+  </div>
+{{/if}}

@@ -50,9 +50,9 @@ module('Integration | Component | team/member-drawer', function (hooks) {
   }
 
   async function pickRole(label) {
-    await click('#t-role [data-test-nu-dropdown-trigger]');
+    await click('#t-role [data-test-wu-dropdown-trigger]');
     const item = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].find((el) => el.textContent.trim() === label);
     await click(item);
   }
@@ -89,9 +89,9 @@ module('Integration | Component | team/member-drawer', function (hooks) {
 
   test('roles offered are strictly below the current user', async function (assert) {
     await renderDrawer();
-    await click('#t-role [data-test-nu-dropdown-trigger]');
+    await click('#t-role [data-test-wu-dropdown-trigger]');
     const labels = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].map((el) => el.textContent.trim());
     assert.deepEqual(labels, ['Manager', 'Agent', 'Accountant']);
   });

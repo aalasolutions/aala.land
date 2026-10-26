@@ -1,44 +1,44 @@
 {{page-title "Team"}}
 
 <div data-test-team-page class="flex col gap-4">
-  <Nuvo::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
+  <Woven::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
     <:actions>
       {{#unless this.isSuperAdmin}}
         <div class="flex gap-3">
           {{#if this.canTrim}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="secondary"
               @icon="trend-down"
               data-test-trim-users
               {{on "click" this.openTrim}}
             >
               Prepare Downgrade
-            </Nuvo::Button>
+            </Woven::Button>
           {{/if}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @icon="envelope-simple"
             data-test-invite-member
             {{on "click" this.openInvite}}
           >
             Invite
-          </Nuvo::Button>
-          <Nuvo::Button
+          </Woven::Button>
+          <Woven::Button
             @variant="primary"
             @icon="plus"
             data-test-add-member
             {{on "click" this.openCreate}}
           >
             Add Member
-          </Nuvo::Button>
+          </Woven::Button>
         </div>
       {{/unless}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
-  <Nuvo::Card @compact={{true}}>
+  <Woven::Card @compact={{true}}>
     {{#if this.model.users.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.model.users}}
         @pinColumns={{true}}
@@ -53,12 +53,12 @@
         {{else if (eq cell.key "email")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "role")}}
-          <Nuvo::Tag @text={{format-role cell.value}} />
+          <Woven::Tag @text={{format-role cell.value}} />
         {{else if (eq cell.key "regionCodes")}}
           {{#if cell.value.length}}
             <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
               {{#each cell.value as |code|}}
-                <Nuvo::Tag @text={{code}} @size="sm" />
+                <Woven::Tag @text={{code}} @size="sm" />
               {{/each}}
             </div>
           {{else}}
@@ -71,13 +71,13 @@
           <span class="text-muted">{{or cell.value "—"}}</span>
         {{else if (eq cell.key "isActive")}}
           {{#if cell.value}}
-            <Nuvo::Tag class="tag-enabled-active" @text="Active" />
+            <Woven::Tag class="tag-enabled-active" @text="Active" />
           {{else}}
-            <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
+            <Woven::Tag class="tag-enabled-inactive" @text="Inactive" />
           {{/if}}
         {{else if (eq cell.key "id")}}
           <div class="flex">
-            <Nuvo::Button
+            <Woven::Button
               @subtle={{true}}
               @variant="secondary"
               @size="xs"
@@ -90,7 +90,7 @@
             {{! Removal needs a company context; backend rejects users with no companyId. }}
             {{#if cell.row.companyId}}
               {{#if cell.row.isActive}}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="danger"
                   @size="xs"
@@ -101,7 +101,7 @@
                   {{on "click" (fn this.openRemove cell.row)}}
                 />
               {{else}}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
@@ -113,7 +113,7 @@
                   data-test-reactivate-user
                   {{on "click" (fn this.openReactivate cell.row)}}
                 />
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="danger"
                   @size="xs"
@@ -127,7 +127,7 @@
             {{/if}}
             {{#if this.isSuperAdmin}}
               {{#unless (eq cell.row.role "super_admin")}}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="secondary"
                   @size="xs"
@@ -149,21 +149,21 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       {{#if @model.total}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No team members on page {{this.page}}. Navigate back to find members."
         />
       {{else}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No team members yet. Add your first team member to get started."
         />
       {{/if}}
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="team-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -174,7 +174,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
 <Team::MemberDrawer
@@ -195,13 +195,13 @@
   @onSaved={{this.refresh}}
 />
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showRemoveModal}}
   @title={{if (eq this.removeStep 1) "Remove Team Member" "Confirm Removal"}}
   @onClose={{this.closeRemoveModal}}
 >
   {{#if (eq this.removeStep 1)}}
-    <div class="nu-form" data-test-remove-step-1>
+    <div class="wu-form" data-test-remove-step-1>
       <p class="text-muted text-sm">
         Removing
         <strong>{{this.userToRemove.name}}</strong>. Their leads, documents,
@@ -247,13 +247,13 @@
         {{/if}}
       </div>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Reassign records to"
         @required={{true}}
         @tooltip="Who takes over this person's leads, documents, commissions and work orders. Someone must be chosen."
         @error={{this.removeTargetError}}
       >
-        <Nuvo::Dropdown
+        <Woven::Dropdown
           id="remove-target"
           @align="start"
           @value={{this.removeTargetId}}
@@ -262,14 +262,14 @@
           @placeholder="Select a team member..."
           data-test-remove-target
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Reason"
         @required={{true}}
         @error={{this.removeReasonError}}
       >
-        <Nuvo::Textarea
+        <Woven::Textarea
           id="remove-reason"
           rows="2"
           placeholder="e.g. Agent left the company"
@@ -280,7 +280,7 @@
           aria-label="Reason"
           data-test-remove-reason
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.removeError}}
         <p
@@ -289,17 +289,17 @@
         >{{this.removeError}}</p>
       {{/if}}
 
-      <Nuvo::FormActions @align="end">
-        <Nuvo::Button
+      <Woven::FormActions @align="end">
+        <Woven::Button
           @variant="secondary"
           @onClick={{this.closeRemoveModal}}
-        >Cancel</Nuvo::Button>
-        <Nuvo::Button
+        >Cancel</Woven::Button>
+        <Woven::Button
           @variant="primary"
           @onClick={{this.continueRemove}}
           data-test-remove-continue
-        >Continue</Nuvo::Button>
-      </Nuvo::FormActions>
+        >Continue</Woven::Button>
+      </Woven::FormActions>
     </div>
   {{else}}
     <div class="flex col gap-4" data-test-remove-step-2>
@@ -329,13 +329,13 @@
         >{{this.removeError}}</p>
       {{/if}}
 
-      <Nuvo::FormActions @align="end">
-        <Nuvo::Button
+      <Woven::FormActions @align="end">
+        <Woven::Button
           @variant="secondary"
           @onClick={{this.backToRemoveOptions}}
           data-test-remove-back
-        >Back</Nuvo::Button>
-        <Nuvo::Button
+        >Back</Woven::Button>
+        <Woven::Button
           @variant="danger"
           @disabled={{this.isRemoving}}
           data-test-remove-confirm
@@ -348,32 +348,32 @@
               (eq this.removeMode "delete") "Delete Member" "Deactivate Member"
             )
           }}
-        </Nuvo::Button>
-      </Nuvo::FormActions>
+        </Woven::Button>
+      </Woven::FormActions>
     </div>
   {{/if}}
-</Nuvo::Modal>
+</Woven::Modal>
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showTrimModal}}
   @title={{if (eq this.trimStep 1) "Prepare Downgrade" "Confirm Trim"}}
   @onClose={{this.closeTrimModal}}
 >
   {{#if (eq this.trimStep 1)}}
-    <div class="nu-form" data-test-trim-step-1>
+    <div class="wu-form" data-test-trim-step-1>
       <p class="text-muted text-sm">
         Downgrading to the Free plan requires exactly one active user. Every
         other member will be deactivated and their records handed to the member
         who stays.
       </p>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Member who stays active (must be a company admin)"
         @tooltip="The Free plan allows one user. Everyone else loses access as soon as you confirm."
         @required={{true}}
         @error={{this.trimKeepError}}
       >
-        <Nuvo::Dropdown
+        <Woven::Dropdown
           id="trim-keep"
           @align="start"
           @value={{this.trimKeepId}}
@@ -382,14 +382,14 @@
           @placeholder="Select a company admin..."
           data-test-trim-keep
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Reason"
         @required={{true}}
         @error={{this.trimReasonError}}
       >
-        <Nuvo::Textarea
+        <Woven::Textarea
           id="trim-reason"
           rows="2"
           @value={{this.trimReason}}
@@ -399,7 +399,7 @@
           aria-label="Reason"
           data-test-trim-reason
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.trimError}}
         <p
@@ -408,17 +408,17 @@
         >{{this.trimError}}</p>
       {{/if}}
 
-      <Nuvo::FormActions @align="end">
-        <Nuvo::Button
+      <Woven::FormActions @align="end">
+        <Woven::Button
           @variant="secondary"
           @onClick={{this.closeTrimModal}}
-        >Cancel</Nuvo::Button>
-        <Nuvo::Button
+        >Cancel</Woven::Button>
+        <Woven::Button
           @variant="primary"
           @onClick={{this.continueTrim}}
           data-test-trim-continue
-        >Continue</Nuvo::Button>
-      </Nuvo::FormActions>
+        >Continue</Woven::Button>
+      </Woven::FormActions>
     </div>
   {{else}}
     <div class="flex col gap-4" data-test-trim-step-2>
@@ -442,24 +442,24 @@
         >{{this.trimError}}</p>
       {{/if}}
 
-      <Nuvo::FormActions @align="end">
-        <Nuvo::Button
+      <Woven::FormActions @align="end">
+        <Woven::Button
           @variant="secondary"
           @onClick={{this.backToTrimOptions}}
           data-test-trim-back
-        >Back</Nuvo::Button>
-        <Nuvo::Button
+        >Back</Woven::Button>
+        <Woven::Button
           @variant="danger"
           @disabled={{this.isTrimming}}
           data-test-trim-confirm
           {{on "click" this.confirmTrim}}
         >
           {{if this.isTrimming "Trimming..." "Deactivate Everyone Else"}}
-        </Nuvo::Button>
-      </Nuvo::FormActions>
+        </Woven::Button>
+      </Woven::FormActions>
     </div>
   {{/if}}
-</Nuvo::Modal>
+</Woven::Modal>
 
 <ConfirmModal
   @open={{this.showReactivateModal}}
@@ -472,8 +472,8 @@
   @onClose={{this.closeReactivateModal}}
   @onConfirm={{this.confirmReactivate}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason (optional)">
-    <Nuvo::Textarea
+  <Woven::Field class="mt-4" @label="Reason (optional)">
+    <Woven::Textarea
       id="team-reactivate-reason"
       rows="2"
       maxlength="500"
@@ -483,5 +483,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

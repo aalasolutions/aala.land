@@ -1,5 +1,5 @@
 <div class="wa-controls" data-test-wa-controls>
-  <Nuvo::Button
+  <Woven::Button
     @variant="ghost"
     @shape="circle"
     @size="sm"
@@ -25,14 +25,14 @@
     {{on "pointerup" @playback.onSeekEnd}}
     {{on "pointercancel" @playback.onSeekEnd}}
   />
-  <Nuvo::Text
+  <Woven::Text
     class="wa-controls__time whitespace-nowrap"
     @tag="span"
     @size="xs"
     @muted={{true}}
     data-test-wa-time
-  >{{@playback.currentLabel}} / {{@playback.durationLabel}}</Nuvo::Text>
-  <Nuvo::Button
+  >{{@playback.currentLabel}} / {{@playback.durationLabel}}</Woven::Text>
+  <Woven::Button
     @variant="ghost"
     @size="xs"
     @text={{@playback.speedLabel}}
@@ -42,7 +42,7 @@
     data-test-wa-speed
   />
   {{#if @showMute}}
-    <Nuvo::Button
+    <Woven::Button
       @variant="ghost"
       @shape="circle"
       @size="sm"
@@ -55,7 +55,7 @@
     />
   {{/if}}
   {{#if @onFullscreen}}
-    <Nuvo::Button
+    <Woven::Button
       @variant="ghost"
       @shape="circle"
       @size="sm"

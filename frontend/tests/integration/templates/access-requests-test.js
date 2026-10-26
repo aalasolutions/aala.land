@@ -105,7 +105,7 @@ module('Integration | Template | access-requests', function (hooks) {
     await click('[data-test-approve-confirm]');
 
     assert.strictEqual(this.calls.length, 0, 'nothing is sent without a date');
-    assert.dom('[data-test-nu-field-error]').exists();
+    assert.dom('[data-test-wu-field-error]').exists();
 
     await fillIn('[data-test-expiry-date]', '2027-01-31');
     await click('[data-test-approve-confirm]');
@@ -126,7 +126,7 @@ module('Integration | Template | access-requests', function (hooks) {
     await click('[data-test-confirm-modal-confirm]');
 
     assert.strictEqual(this.calls.length, 0, 'no reason, no request');
-    assert.dom('[data-test-nu-field-error]').hasText('Enter a reason');
+    assert.dom('[data-test-wu-field-error]').hasText('Enter a reason');
 
     await fillIn('[data-test-decision-reason]', '  Not their client ');
     await click('[data-test-confirm-modal-confirm]');

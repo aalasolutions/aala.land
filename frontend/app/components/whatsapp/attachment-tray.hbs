@@ -1,7 +1,7 @@
 <div class="wa-tray" data-test-wa-attachment-tray ...attributes>
   <div class="wa-tray__list">
     {{#each this.items key="id" as |item|}}
-      <Nuvo::ListItem
+      <Woven::ListItem
         class="wa-tray__item {{if item.error 'is-error'}}"
         data-test-wa-attachment={{item.id}}
         data-test-wa-attachment-state={{item.state}}
@@ -16,7 +16,7 @@
             />
           {{else}}
             <span class="wa-tray__thumb m-icon" data-test-wa-attachment-icon>
-              <Nuvo::Icon
+              <Woven::Icon
                 @icon={{this.iconFor item}}
                 @size="1.5rem"
                 aria-hidden="true"
@@ -25,13 +25,13 @@
           {{/if}}
           <div class="wa-tray__body">
             <div class="flex x-center gap-2 min-w-0p">
-              <Nuvo::Text
+              <Woven::Text
                 @tag="span"
                 @size="sm"
                 @truncate={{true}}
                 data-test-wa-attachment-name
-              ><bdi>{{item.file.name}}</bdi></Nuvo::Text>
-              <Nuvo::Badge
+              ><bdi>{{item.file.name}}</bdi></Woven::Text>
+              <Woven::Badge
                 @size="sm"
                 @quiet={{true}}
                 @text={{format-bytes item.file.size}}
@@ -39,7 +39,7 @@
               />
             </div>
             {{#if (this.showCaption item)}}
-              <Nuvo::Textarea
+              <Woven::Textarea
                 class="wa-tray__caption"
                 @value={{item.caption}}
                 @rows="1"
@@ -52,18 +52,18 @@
               />
             {{/if}}
             {{#if item.error}}
-              <Nuvo::Text
+              <Woven::Text
                 @tag="span"
                 @size="xs"
                 @variant="danger"
                 role="alert"
                 data-test-wa-attachment-error
-              >{{item.error}}</Nuvo::Text>
+              >{{item.error}}</Woven::Text>
             {{/if}}
           </div>
         </:main>
         <:actions>
-          <Nuvo::Button
+          <Woven::Button
             @variant="ghost"
             @shape="circle"
             @size="xs"
@@ -74,18 +74,18 @@
             data-test-wa-attachment-remove
           />
         </:actions>
-      </Nuvo::ListItem>
+      </Woven::ListItem>
     {{/each}}
   </div>
   <div class="wa-tray__footer">
-    <Nuvo::Button
+    <Woven::Button
       @variant="ghost"
       @size="sm"
       @text="Clear"
       @onClick={{@onClear}}
       data-test-wa-attachment-clear
     />
-    <Nuvo::Button
+    <Woven::Button
       @variant="primary"
       @size="sm"
       @icon="paper-plane-tilt"

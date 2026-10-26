@@ -418,7 +418,7 @@ export default class LeadsController extends Controller {
   setTiltedDragImage(card, event) {
     const rect = card.getBoundingClientRect();
     const frame = document.createElement('div');
-    frame.className = 'nu-kanban__drag-image';
+    frame.className = 'wu-kanban__drag-image';
     frame.style.setProperty('--kanban-drag-width', `${rect.width}px`);
     const clone = card.cloneNode(true);
     frame.append(clone);
@@ -438,7 +438,7 @@ export default class LeadsController extends Controller {
     const card = event.currentTarget;
     this.setTiltedDragImage(card, event);
     card
-      .closest('.nu-kanban')
+      .closest('.wu-kanban')
       ?.style.setProperty('--kanban-drag-height', `${card.offsetHeight}px`);
     const board = this.viewMode;
     this.dragOrigin = {

@@ -1,0 +1,173 @@
+// wu-tag - removable chip / label
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(tag) {
+  @include wu-root("tag", (
+    "Display": inline-flex,
+    "AlignItems": center,
+    "Gap": wu-space(1),
+    "PaddingBlock": 0.125rem,
+    "PaddingInline": wu-space(2),
+    "FontSize": wu-font-size(xs),
+    "FontWeight": wu-font-weight(medium),
+    "LineHeight": 1.4,
+    "BorderRadius": wu-radius(sm),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-alternate),
+    "focus--BoxShadow": wu-focus-ring(),
+    "disabled--Opacity": 0.55,
+  ));
+
+  display: wu-var("tag", "Display");
+  align-items: wu-var("tag", "AlignItems");
+  gap: wu-var("tag", "Gap");
+  padding-block: wu-var("tag", "PaddingBlock");
+  padding-inline: wu-var("tag", "PaddingInline");
+  font-size: wu-var("tag", "FontSize");
+  font-weight: wu-var("tag", "FontWeight");
+  line-height: wu-var("tag", "LineHeight");
+  color: wu-var("tag", "Color");
+  background-color: wu-var("tag", "BackgroundColor");
+  border: wu-var("tag", "BorderWidth") solid wu-var("tag", "BorderColor");
+  border-radius: wu-var("tag", "BorderRadius");
+  white-space: nowrap;
+  vertical-align: middle;
+  inline-size: fit-content; // opt out of flex-item stretch
+
+  // ---- elements ----
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  @include e(remove) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 1em;
+    block-size: 1em;
+    padding: 0;
+    color: inherit;
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+
+    // Visual size stays 1em; ::before pads the hit area to the 32px floor.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - 1rem);
+      inset-inline-start: calc(50% - 1rem);
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("tag", "focus--BoxShadow");
+    }
+
+    // The parent .is-disabled already fades; core's base layer would fade it twice.
+    &:disabled {
+      opacity: 1;
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-tag--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-tag--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
+      --wu-tag--BorderColor: var(--wu-#{wu-role($variant)}-200);
+    }
+  }
+
+  // Brand 700 on its 50 tint is 4.39:1; 800 clears 4.5:1.
+  @include m(primary) {
+    --wu-tag--Color: var(--wu-brand-800);
+  }
+
+  // ---- outline variants ----
+
+  @each $variant in $wu-variants {
+    &.m-outline.m-#{$variant} {
+      --wu-tag--Color: var(--wu-#{wu-role($variant)}-700);
+      --wu-tag--BackgroundColor: transparent;
+      --wu-tag--BorderColor: var(--wu-#{wu-role($variant)}-300);
+    }
+  }
+
+  // ---- sizes ----
+
+  // 11px text with 1.5px block padding keeps the 16px sm height.
+  @include m(sm) {
+    --wu-tag--PaddingBlock: 0.09375rem;
+    --wu-tag--PaddingInline: #{wu-space(1)};
+    --wu-tag--FontSize: 0.6875rem;
+  }
+
+  @include m(lg) {
+    --wu-tag--PaddingBlock: #{wu-space(1)};
+    --wu-tag--PaddingInline: #{wu-space(3)};
+    --wu-tag--FontSize: #{wu-font-size(sm)};
+  }
+
+  // ---- shape ----
+
+  @include m(pill) {
+    --wu-tag--BorderRadius: #{wu-radius(full)};
+  }
+
+  // Toggleable chip. Put it on a real <button> for keyboard reach.
+  @include m(selectable) {
+    cursor: pointer;
+    transition:
+      border-color wu-duration(fast) $wu-ease,
+      background-color wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // Unselected only: a selected chip is already --wu-brand, so tinting its
+    // text the same colour would erase the label.
+    &:not(.is-selected):hover {
+      --wu-tag--BorderColor: var(--wu-brand);
+      --wu-tag--Color: var(--wu-brand);
+    }
+
+    &.is-selected:hover {
+      --wu-tag--BackgroundColor: var(--wu-brand-hover);
+      --wu-tag--BorderColor: var(--wu-brand-hover);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var("tag", "focus--BoxShadow");
+    }
+  }
+
+  // ---- states ----
+
+  @include when(selected) {
+    --wu-tag--Color: var(--wu-text-inverted);
+    --wu-tag--BackgroundColor: var(--wu-brand);
+    --wu-tag--BorderColor: var(--wu-brand);
+  }
+
+  &.is-disabled {
+    opacity: wu-var("tag", "disabled--Opacity");
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}

@@ -1,0 +1,44 @@
+{{!-- Use @confirmText/@cancelText/@type, not <:footer>; @showCancel={{false}} is an alert. --}}
+<Woven::Modal
+  @open={{@open}}
+  @title={{@title}}
+  @subtitle={{@subtitle}}
+  @size={{if @size @size "sm"}}
+  @showClose={{this.showClose}}
+  @closeOnEsc={{this.allowDismiss}}
+  @closeOnBackdrop={{this.allowDismiss}}
+  @onClose={{this.close}}
+  data-test-wu-confirm-modal
+  ...attributes
+>
+  <:body>
+    {{#if @message}}
+      <Woven::Text
+        @text={{@message}}
+        @muted={{true}}
+        data-test-wu-confirm-modal-message
+      />
+    {{/if}}
+    {{yield}}
+  </:body>
+
+  <:footer>
+    {{#if this.showCancel}}
+      <Woven::Button
+        @variant="secondary"
+        @text={{this.cancelText}}
+        @disabled={{this.isConfirming}}
+        data-test-wu-confirm-modal-cancel
+        {{on "click" this.close}}
+      />
+    {{/if}}
+    {{! @loading already implies disabled, see button.js isDisabled. }}
+    <Woven::Button
+      @variant={{this.confirmVariant}}
+      @text={{if this.isConfirming this.confirmingText this.confirmText}}
+      @loading={{this.isConfirming}}
+      data-test-wu-confirm-modal-confirm
+      {{on "click" this.confirm}}
+    />
+  </:footer>
+</Woven::Modal>

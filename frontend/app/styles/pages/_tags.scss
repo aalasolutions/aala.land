@@ -1,6 +1,6 @@
 // Domain prefix avoids enum collisions (e.g. MAINTENANCE); values come from app/constants.js.
 @use "sass:map";
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 $tag-intents: (
   "success": "success",
@@ -243,14 +243,14 @@ $tag-domains: (
   @each $value, $intent in $values {
     .tag-#{$domain}-#{$value} {
       @if $intent == "neutral" {
-        --nu-tag--Color: var(--nu-text-muted);
-        --nu-tag--BackgroundColor: var(--nu-bg-alternate);
-        --nu-tag--BorderColor: var(--nu-border-regular);
+        --wu-tag--Color: var(--wu-text-muted);
+        --wu-tag--BackgroundColor: var(--wu-bg-alternate);
+        --wu-tag--BorderColor: var(--wu-border-regular);
       } @else {
         $scale: map.get($tag-intents, $intent);
-        --nu-tag--Color: var(--nu-#{nu-role($scale)}-700);
-        --nu-tag--BackgroundColor: var(--nu-#{nu-role($scale)}-50);
-        --nu-tag--BorderColor: var(--nu-#{nu-role($scale)}-200);
+        --wu-tag--Color: var(--wu-#{wu-role($scale)}-700);
+        --wu-tag--BackgroundColor: var(--wu-#{wu-role($scale)}-50);
+        --wu-tag--BorderColor: var(--wu-#{wu-role($scale)}-200);
       }
     }
   }

@@ -1,0 +1,19 @@
+{{page-title @title}}
+
+<Woven::PageHeader
+  @title={{@title}}
+  @subtitle={{@subtitle}}
+  @bordered={{true}}
+  class="woven-doc__header"
+  data-test-woven-doc-header
+>
+  <:meta>
+    {{#each this.components as |name|}}
+      <code class="wu-code" data-test-woven-doc-component>{{name}}</code>
+    {{/each}}
+  </:meta>
+</Woven::PageHeader>
+
+<div class="woven-doc" data-test-woven-doc={{@id}} ...attributes>
+  {{yield}}
+</div>

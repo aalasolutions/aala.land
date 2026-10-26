@@ -1,0 +1,16 @@
+<div class={{this.classes}} data-test-wu-progress ...attributes>
+  <div
+    class="wu-progress__track"
+    role="progressbar"
+    aria-valuenow={{this.value}}
+    aria-valuemin="0"
+    aria-valuemax="100"
+    data-test-wu-progress-track
+  >
+    <div class="wu-progress__bar" style={{this.barStyle}} data-test-wu-progress-bar></div>
+  </div>
+
+  {{#if this.showText}}
+    <span class="wu-progress__label" data-test-wu-progress-label>{{this.displayLabel}}</span>
+  {{/if}}
+</div>

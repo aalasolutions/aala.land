@@ -9,17 +9,17 @@
       role="status"
       data-test-record-history-loading
     >
-      <Nuvo::Spinner @size="sm" />
+      <Woven::Spinner @size="sm" />
       <span>Loading history...</span>
     </div>
   {{else if this.errorMessage}}
-    <Nuvo::Alert
+    <Woven::Alert
       @variant="danger"
       @description={{this.errorMessage}}
       data-test-record-history-error
     />
   {{else if this.rows.length}}
-    <Nuvo::DataTable
+    <Woven::DataTable
       @columns={{this.columns}}
       @rows={{this.rows}}
       @pinColumns={{true}}
@@ -31,7 +31,7 @@
       as |cell|
     >
       {{#if (eq cell.key "actionLabel")}}
-        <Nuvo::Tag
+        <Woven::Tag
           @variant={{cell.row.actionVariant}}
           @text={{cell.value}}
           data-test-record-history-action
@@ -67,10 +67,10 @@
       {{else}}
         {{cell.value}}
       {{/if}}
-    </Nuvo::DataTable>
+    </Woven::DataTable>
 
     {{#if this.hasPages}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{this.total}}
@@ -79,7 +79,7 @@
       />
     {{/if}}
   {{else}}
-    <Nuvo::EmptyState
+    <Woven::EmptyState
       @size="sm"
       @title="No history yet"
       data-test-record-history-empty

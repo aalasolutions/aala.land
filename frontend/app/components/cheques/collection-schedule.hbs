@@ -1,5 +1,5 @@
 <div data-test-collection-schedule ...attributes>
-  <Nuvo::Card @title="Collection schedule">
+  <Woven::Card @title="Collection schedule">
     {{#if this.groups.length}}
       <div class="cheque-schedule">
         <table class="cheque-schedule__table">
@@ -58,9 +58,9 @@
         </table>
       </div>
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         @description="No upcoming cheques in the collection schedule."
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>

@@ -1,6 +1,6 @@
 // Company settings: plan banner, billing card, region picker grid.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 // Colour comes from `tag-plan-*`; this only sets the box model.
 
@@ -8,131 +8,131 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-radius: nu-radius(md);
-  padding: nu-space(3) nu-space(4);
-  background-color: var(--nu-tag--BackgroundColor);
-  border: 1px solid var(--nu-tag--BorderColor);
+  border-radius: wu-radius(md);
+  padding: wu-space(3) wu-space(4);
+  background-color: var(--wu-tag--BackgroundColor);
+  border: 1px solid var(--wu-tag--BorderColor);
 
   &__name {
-    font-size: nu-font-size(md);
-    font-weight: nu-font-weight(bold);
+    font-size: wu-font-size(md);
+    font-weight: wu-font-weight(bold);
     margin-bottom: 2px;
-    color: var(--nu-tag--Color);
+    color: var(--wu-tag--Color);
   }
 
   &__limits {
-    color: var(--nu-text-muted);
-    font-size: nu-font-size(sm);
+    color: var(--wu-text-muted);
+    font-size: wu-font-size(sm);
   }
 
   &__expiry {
     text-align: end;
-    font-size: nu-font-size(xs);
-    color: var(--nu-text-muted);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
   }
 }
 
 .billing-plan-card {
-  padding: nu-space(5);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(md);
-  background: var(--nu-bg-alternate);
+  padding: wu-space(5);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(md);
+  background: var(--wu-bg-alternate);
 }
 
 .region-country-group {
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(sm);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(sm);
   overflow: hidden;
 
   &.is-readonly {
-    border-color: color-mix(in srgb, var(--nu-border-regular) 75%, transparent);
-    background: color-mix(in srgb, var(--nu-bg-alternate) 35%, transparent);
+    border-color: color-mix(in srgb, var(--wu-border-regular) 75%, transparent);
+    background: color-mix(in srgb, var(--wu-bg-alternate) 35%, transparent);
   }
 }
 
 .region-country-header {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
+  gap: wu-space(2);
   inline-size: 100%;
-  padding: nu-space(3) nu-space(4);
-  background: var(--nu-bg-surface);
+  padding: wu-space(3) wu-space(4);
+  background: var(--wu-bg-surface);
   border: none;
   cursor: pointer;
   text-align: start;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-regular);
 
   &:hover {
-    background: var(--nu-bg-alternate);
+    background: var(--wu-bg-alternate);
   }
 }
 
 .country-name {
-  font-weight: nu-font-weight(semibold);
+  font-weight: wu-font-weight(semibold);
 }
 
 .country-meta {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
+  gap: wu-space(2);
   margin-inline-start: auto;
 }
 
 .region-total {
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 }
 
 .region-selected-badge {
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
-  padding: 2px nu-space(2);
-  border-radius: nu-radius(full);
-  background: var(--nu-brand-100);
-  color: var(--nu-brand);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
+  padding: 2px wu-space(2);
+  border-radius: wu-radius(full);
+  background: var(--wu-brand-100);
+  color: var(--wu-brand);
 }
 
 .region-settings-readonly {
   .region-country-header {
-    background: color-mix(in srgb, var(--nu-bg-surface) 82%, var(--nu-bg-alternate));
-    color: color-mix(in srgb, var(--nu-text-regular) 78%, white);
+    background: color-mix(in srgb, var(--wu-bg-surface) 82%, var(--wu-bg-alternate));
+    color: color-mix(in srgb, var(--wu-text-regular) 78%, white);
 
     &:hover {
-      background: color-mix(in srgb, var(--nu-bg-surface) 82%, var(--nu-bg-alternate));
+      background: color-mix(in srgb, var(--wu-bg-surface) 82%, var(--wu-bg-alternate));
     }
   }
 
   .region-total,
   .region-check-label,
   .text-muted {
-    color: color-mix(in srgb, var(--nu-text-muted) 78%, white);
+    color: color-mix(in srgb, var(--wu-text-muted) 78%, white);
   }
 
   .region-selected-badge {
-    background: color-mix(in srgb, var(--nu-brand-100) 55%, white);
-    color: color-mix(in srgb, var(--nu-brand) 70%, white);
+    background: color-mix(in srgb, var(--wu-brand-100) 55%, white);
+    color: color-mix(in srgb, var(--wu-brand) 70%, white);
   }
 }
 
 .region-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: nu-space(2);
-  padding: 0 nu-space(2);
+  gap: wu-space(2);
+  padding: 0 wu-space(2);
 }
 
 .region-checkbox {
   display: flex;
   align-items: center;
-  gap: nu-space(2);
-  padding: nu-space(2) nu-space(3);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(sm);
+  gap: wu-space(2);
+  padding: wu-space(2) wu-space(3);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(sm);
 
   &.is-readonly {
-    background: color-mix(in srgb, var(--nu-bg-alternate) 45%, transparent);
-    border-color: color-mix(in srgb, var(--nu-border-regular) 72%, transparent);
+    background: color-mix(in srgb, var(--wu-bg-alternate) 45%, transparent);
+    border-color: color-mix(in srgb, var(--wu-border-regular) 72%, transparent);
     opacity: 0.78;
   }
 }

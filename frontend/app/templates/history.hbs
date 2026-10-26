@@ -1,7 +1,7 @@
 {{page-title "History"}}
 
 <div data-test-history-page class="flex col gap-4">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="History"
     @subtitle="Deletes, archives, cancellations and other lifecycle actions"
   >
@@ -12,14 +12,14 @@
           plural="entries"
         }}</p>
     </:meta>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   <div class="flex x-center gap-3 wrap" data-test-history-toolbar>
     <FiltersButton @count={{this.activeFilterCount}}>
       <div class="flex col gap-4">
         <div class="flex gap-3 wrap x-end">
-          <Nuvo::Field class="grow" @label="Action">
-            <Nuvo::Dropdown
+          <Woven::Field class="grow" @label="Action">
+            <Woven::Dropdown
               @searchable={{true}}
               @align="start"
               @value={{this.filterAction}}
@@ -28,10 +28,10 @@
               @placeholder="All Actions"
               data-test-history-filter-action
             />
-          </Nuvo::Field>
+          </Woven::Field>
 
-          <Nuvo::Field class="grow" @label="Record type">
-            <Nuvo::Dropdown
+          <Woven::Field class="grow" @label="Record type">
+            <Woven::Dropdown
               @searchable={{true}}
               @align="start"
               @value={{this.filterEntityType}}
@@ -40,11 +40,11 @@
               @placeholder="All Entities"
               data-test-history-filter-entity
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
         <div class="flex end">
-          <Nuvo::Button
+          <Woven::Button
             @variant="danger"
             @size="sm"
             @icon="x"
@@ -53,25 +53,25 @@
             data-test-history-clear-filters
           >
             Clear filters
-          </Nuvo::Button>
+          </Woven::Button>
         </div>
       </div>
     </FiltersButton>
   </div>
 
-  <Nuvo::Card @compact={{true}}>
+  <Woven::Card @compact={{true}}>
     {{#if this.model.forbidden}}
-      <Nuvo::Alert @variant="danger" data-test-history-forbidden>
+      <Woven::Alert @variant="danger" data-test-history-forbidden>
         You don't have permission to view history.
-      </Nuvo::Alert>
+      </Woven::Alert>
     {{else if this.model.error}}
-      <Nuvo::Alert
+      <Woven::Alert
         @variant="danger"
         @description={{this.model.error}}
         data-test-history-error
       />
     {{else if this.rows.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -88,7 +88,7 @@
             data-test-history-row={{cell.row.id}}
           >{{format-date-time cell.value region=cell.row.regionCode}}</span>
         {{else if (eq cell.key "actionLabel")}}
-          <Nuvo::Tag
+          <Woven::Tag
             @variant={{cell.row.actionVariant}}
             @text={{cell.value}}
             data-test-history-action
@@ -108,9 +108,9 @@
         {{else}}
           <span class="text-sm text-muted">{{cell.value}}</span>
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
 
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="history-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -122,7 +122,7 @@
         data-test-history-pagination
       />
     {{else}}
-      <Nuvo::EmptyState @title="No history found" data-test-history-empty />
+      <Woven::EmptyState @title="No history found" data-test-history-empty />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>

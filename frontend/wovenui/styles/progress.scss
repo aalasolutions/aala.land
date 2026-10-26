@@ -1,0 +1,260 @@
+// wu-progress - linear progress bar, plus the wu-spinner loading indicator
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(progress) {
+  @include wu-root("progress", (
+    "Height": 0.5rem,
+    "BorderRadius": wu-radius(full),
+    "TrackColor": var(--wu-bg-alternate),
+    "BarColor": var(--wu-brand),
+    "LabelColor": var(--wu-text-muted),
+    "LabelFontSize": wu-font-size(xs),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: wu-space(1);
+  inline-size: 100%;
+
+  // ---- elements ----
+
+  @include e(track) {
+    inline-size: 100%;
+    block-size: wu-var("progress", "Height");
+    background-color: wu-var("progress", "TrackColor");
+    border-radius: wu-var("progress", "BorderRadius");
+    overflow: hidden;
+  }
+
+  @include e(bar) {
+    @include wu-root-el("progress", "bar", (
+      "StripeColor": transparent,
+    ));
+
+    // Actual fill percentage is set inline by markup/JS (style="inline-size: 62%"),
+    // not by a modifier. Modifiers below only override for special states.
+    block-size: 100%;
+    background-color: wu-var("progress", "BarColor");
+    border-radius: wu-var("progress", "BorderRadius");
+    transition: inline-size wu-duration(normal) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(label) {
+    align-self: flex-end;
+    font-size: wu-var("progress", "LabelFontSize");
+    color: wu-var("progress", "LabelColor");
+    line-height: 1.4;
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-progress--BarColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $wu-progress-sizes: (
+    "sm": ("Height": 0.25rem),
+    "md": ("Height": 0.5rem),
+    "lg": ("Height": 0.75rem),
+  );
+
+  @each $size, $spec in $wu-progress-sizes {
+    @include m($size) {
+      @each $token, $value in $spec {
+        --wu-progress--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- striped ----
+
+  @include m(striped) {
+    --wu-progress__bar--StripeColor: #{wu-tint(text-inverted, 35%)};
+
+    .wu-progress__bar {
+      background-image: linear-gradient(
+        45deg,
+        wu-var-el("progress", "bar", "StripeColor") 25%,
+        transparent 25%,
+        transparent 50%,
+        wu-var-el("progress", "bar", "StripeColor") 50%,
+        wu-var-el("progress", "bar", "StripeColor") 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: wu-space(4) wu-space(4);
+    }
+  }
+
+  // ---- indeterminate ----
+
+  @include m(indeterminate) {
+    .wu-progress__bar {
+      inline-size: 40%;
+      animation: wu-progress-indeterminate wu-duration(slow) * 3.5 $wu-ease infinite;
+
+      [dir="rtl"] & {
+        animation-name: wu-progress-indeterminate-rtl;
+      }
+    }
+
+    @include reduced-motion {
+      .wu-progress__bar {
+        animation: none;
+      }
+    }
+  }
+}
+
+@keyframes wu-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+@keyframes wu-progress-indeterminate-rtl {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-350%);
+  }
+}
+
+// ---- wu-spinner ----
+
+// Circular progress. SVG-based, so a separate block rather than a modifier on
+// the linear bar. Geometry (stroke-dasharray/offset) is set by the component;
+// this owns size, color and the centred label.
+@include b(progress-circle) {
+  @include wu-root("progress-circle", (
+    "Size": 7.5rem,
+    "TrackColor": var(--wu-bg-alternate),
+    "BarColor": var(--wu-brand),
+    "LabelColor": var(--wu-text-regular),
+    "LabelFontSize": wu-font-size(xl),
+    "TransitionDuration": wu-duration(slow),
+  ));
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: wu-var("progress-circle", "Size");
+  block-size: wu-var("progress-circle", "Size");
+
+  @include e(svg) {
+    inline-size: 100%;
+    block-size: 100%;
+    transform: rotate(-90deg);
+  }
+
+  @include e(track) {
+    fill: none;
+    stroke: wu-var("progress-circle", "TrackColor");
+  }
+
+  @include e(bar) {
+    fill: none;
+    stroke: wu-var("progress-circle", "BarColor");
+    stroke-linecap: round;
+    transition: stroke-dashoffset wu-var("progress-circle", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(label) {
+    position: absolute;
+    font-size: wu-var("progress-circle", "LabelFontSize");
+    font-weight: wu-font-weight(semibold);
+    line-height: 1;
+    color: wu-var("progress-circle", "LabelColor");
+  }
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-progress-circle--BarColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  @include m(sm) {
+    --wu-progress-circle--Size: 4.5rem;
+    --wu-progress-circle--LabelFontSize: #{wu-font-size(sm)};
+  }
+
+  @include m(lg) {
+    --wu-progress-circle--Size: 10rem;
+    --wu-progress-circle--LabelFontSize: #{wu-font-size(2xl)};
+  }
+}
+
+@include b(spinner) {
+  @include wu-root("spinner", (
+    "Size": 1.5rem,
+    "BorderWidth": 2px,
+    "TrackColor": var(--wu-bg-alternate),
+    "SpinColor": var(--wu-brand),
+    "Duration": wu-duration(slow) * 2,
+  ));
+
+  display: inline-block;
+  inline-size: wu-var("spinner", "Size");
+  block-size: wu-var("spinner", "Size");
+  border: wu-var("spinner", "BorderWidth") solid wu-var("spinner", "TrackColor");
+  border-block-start-color: wu-var("spinner", "SpinColor");
+  border-radius: wu-radius(full);
+  animation: wu-spinner-rotate wu-var("spinner", "Duration") linear infinite;
+
+  @include reduced-motion {
+    animation-duration: wu-duration(slow) * 6;
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m($variant) {
+      --wu-spinner--SpinColor: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $wu-spinner-sizes: (
+    "xs": ("Size": 0.875rem, "BorderWidth": 2px),
+    "sm": ("Size": 1.125rem, "BorderWidth": 2px),
+    "md": ("Size": 1.5rem, "BorderWidth": 2px),
+    "lg": ("Size": 2.25rem, "BorderWidth": 3px),
+  );
+
+  @each $size, $spec in $wu-spinner-sizes {
+    @include m($size) {
+      @each $token, $value in $spec {
+        --wu-spinner--#{$token}: #{$value};
+      }
+    }
+  }
+}
+
+@keyframes wu-spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

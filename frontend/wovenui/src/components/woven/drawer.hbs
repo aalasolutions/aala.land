@@ -1,0 +1,70 @@
+<div
+  class={{this.backdropClasses}}
+  data-test-wu-drawer-backdrop
+  {{dialog-transition
+    @open
+    onOpen=this.onOpen
+    onVisible=this.onVisible
+    onHide=this.onHide
+    onHidden=this.onHidden
+  }}
+>
+  {{#if (and this.isMounted this.closeOnBackdrop)}}
+    {{! A button, not a click handler: only interactive elements take clicks. }}
+    <button
+      type="button"
+      class="wu-dialog-dismiss"
+      tabindex="-1"
+      aria-hidden="true"
+      data-test-wu-drawer-backdrop-dismiss
+      {{on "click" this.onClose}}
+    ></button>
+  {{/if}}
+  {{#if this.isMounted}}
+    <div
+      class={{this.drawerClasses}}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={{if (or (has-block "header") @title) this.titleId}}
+      tabindex="-1"
+      data-test-wu-drawer
+      {{dialog onEscape=this.onClose closeOnEsc=@closeOnEsc}}
+      ...attributes
+    >
+      {{#if (has-block "header")}}
+        <div class="wu-drawer__header">
+          {{yield this.titleId to="header"}}
+        </div>
+      {{else if @title}}
+        <div class="wu-drawer__header">
+          <h2 id={{this.titleId}} class="wu-drawer__title" data-test-wu-drawer-title>
+            {{@title}}
+          </h2>
+          <button
+            type="button"
+            class="wu-drawer__close"
+            aria-label="Close"
+            data-test-wu-drawer-close
+            {{on "click" this.onClose}}
+          >
+            ✕
+          </button>
+        </div>
+      {{/if}}
+
+      <div class="wu-drawer__body" data-test-wu-drawer-body>
+        {{#if (has-block "body")}}
+          {{yield to="body"}}
+        {{else}}
+          {{yield}}
+        {{/if}}
+      </div>
+
+      {{#if (has-block "footer")}}
+        <div class="wu-drawer__footer" data-test-wu-drawer-footer>
+          {{yield to="footer"}}
+        </div>
+      {{/if}}
+    </div>
+  {{/if}}
+</div>

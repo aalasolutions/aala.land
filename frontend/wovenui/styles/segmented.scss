@@ -1,0 +1,152 @@
+// wu-segmented - a single- or multi-choice control rendered as one joined
+// switch. Distinct from wu-tabs: tabs navigate between panels of content,
+// a segmented control sets a value.
+//
+// The track is muted and the selected segment is a raised surface floating
+// inside it, rather than a solid primary fill. Solid primary is already the
+// sidebar's active-nav treatment, so filling here would put two competing
+// primary blocks on the same screen.
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(segmented) {
+  @include wu-root("segmented", (
+    "Gap": 0.125rem,
+    "Padding": 0.1875rem,
+    "BackgroundColor": var(--wu-bg-alternate),
+    "BorderRadius": wu-radius(lg),
+  ));
+
+  display: inline-flex;
+  align-items: stretch;
+  gap: wu-var("segmented", "Gap");
+  padding: wu-var("segmented", "Padding");
+  background-color: wu-var("segmented", "BackgroundColor");
+  border-radius: wu-var("segmented", "BorderRadius");
+
+  // ---- item ----
+
+  @include e(item) {
+    @include wu-root-el("segmented", "item", (
+      "Gap": wu-space(2),
+      "PaddingBlock": wu-space(2),
+      "PaddingInline": wu-space(3),
+      "FontSize": wu-font-size(sm),
+      "FontWeight": wu-font-weight(normal),
+      "Color": var(--wu-text-muted),
+      "BackgroundColor": transparent,
+      "BorderRadius": wu-radius(md),
+      "TransitionDuration": wu-duration(fast),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: wu-var-el("segmented", "item", "Gap");
+    padding-block: wu-var-el("segmented", "item", "PaddingBlock");
+    padding-inline: wu-var-el("segmented", "item", "PaddingInline");
+    font-size: wu-var-el("segmented", "item", "FontSize");
+    font-weight: wu-var-el("segmented", "item", "FontWeight");
+    font-family: inherit;
+    line-height: 1;
+    color: wu-var-el("segmented", "item", "Color");
+    background-color: wu-var-el("segmented", "item", "BackgroundColor");
+    border: 0;
+    border-radius: wu-var-el("segmented", "item", "BorderRadius");
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color wu-var-el("segmented", "item", "TransitionDuration") $wu-ease,
+      color wu-var-el("segmented", "item", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:not(.is-active):not(.is-disabled):hover {
+      --wu-segmented__item--Color: var(--wu-text-regular);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+
+    // The raised segment. Reads as a physical switch sitting in the track.
+    &.is-active {
+      --wu-segmented__item--Color: var(--wu-brand);
+      --wu-segmented__item--BackgroundColor: var(--wu-bg-surface);
+      --wu-segmented__item--FontWeight: #{wu-font-weight(semibold)};
+
+      box-shadow: wu-shadow(sm);
+    }
+
+    &.is-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  // ---- sizes ----
+
+  // wu-root-el declares these on the item itself, so an inherited value from
+  // the track would lose. Set them on the item.
+  @include m(sm) {
+    --wu-segmented--Padding: 0.125rem;
+
+    .wu-segmented__item {
+      --wu-segmented__item--PaddingBlock: #{wu-space(1)};
+      --wu-segmented__item--PaddingInline: #{wu-space(2)};
+      --wu-segmented__item--FontSize: #{wu-font-size(xs)};
+    }
+  }
+
+  @include m(lg) {
+    --wu-segmented--Padding: #{wu-space(1)};
+
+    .wu-segmented__item {
+      --wu-segmented__item--PaddingBlock: #{wu-space(3)};
+      --wu-segmented__item--PaddingInline: #{wu-space(4)};
+      --wu-segmented__item--FontSize: #{wu-font-size(base)};
+    }
+  }
+
+  // ---- icon-only ----
+
+  // Square segments; the label is still in the DOM for screen readers.
+  @include m(icon-only) {
+    .wu-segmented__item {
+      --wu-segmented__item--PaddingInline: #{wu-space(2)};
+    }
+
+    // Kept in the DOM, hidden visually: the label is the accessible name.
+    .wu-segmented__label {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+
+  // Stretch to the container, splitting evenly.
+  @include m(fill) {
+    display: flex;
+
+    .wu-segmented__item {
+      flex: 1;
+    }
+  }
+}

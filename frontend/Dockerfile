@@ -21,9 +21,9 @@ ENV STRIP_TEST_SELECTORS=$STRIP_TEST_SELECTORS
 RUN npm install -g pnpm@10
 
 # The kit is a workspace package; pnpm needs the workspace manifest and the
-# addon's package.json before it can resolve `@nuvoui/ember: workspace:*`.
+# addon's package.json before it can resolve `@wovenui/ember: workspace:*`.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY nuvoui/package.json ./nuvoui/
+COPY wovenui/package.json ./wovenui/
 RUN pnpm install --frozen-lockfile
 
 COPY . .

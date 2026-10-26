@@ -1,0 +1,31 @@
+<header class={{this.classes}} data-test-wu-page-header ...attributes>
+  <div class="wu-page-header__main">
+    {{#if (has-block "breadcrumb")}}
+      <div class="wu-page-header__breadcrumb" data-test-wu-page-header-breadcrumb>
+        {{yield to="breadcrumb"}}
+      </div>
+    {{/if}}
+
+    {{#if @title}}
+      <h1 class="wu-page-header__title" data-test-wu-page-header-title>
+        {{@title}}
+      </h1>
+    {{/if}}
+
+    {{#if @subtitle}}
+      <p class="wu-page-header__subtitle" data-test-wu-page-header-subtitle>{{@subtitle}}</p>
+    {{/if}}
+
+    {{#if (has-block "meta")}}
+      <div class="wu-page-header__meta" data-test-wu-page-header-meta>
+        {{yield to="meta"}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if (has-block "actions")}}
+    <div class="wu-page-header__actions" data-test-wu-page-header-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</header>

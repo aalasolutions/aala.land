@@ -1,7 +1,7 @@
 {{page-title "Company Settings"}}
 
 <div data-test-company-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Company Settings"
     @subtitle="Manage your company information."
   />
@@ -24,7 +24,7 @@
     </div>
 
     {{#if this.isCompanyAdmin}}
-      <Nuvo::Tabs
+      <Woven::Tabs
         @tabs={{this.settingsTabs}}
         @activeTab={{this.currentTab}}
         @onChange={{this.setTab}}
@@ -33,17 +33,17 @@
 
   {{#if (eq this.currentTab "ai")}}
     {{#if this.creditUsageLabel}}
-      <Nuvo::Card class="max-w-lg text-muted text-sm">
+      <Woven::Card class="max-w-lg text-muted text-sm">
         <div data-test-ai-credit-usage>{{this.creditUsageLabel}}</div>
         <div class="text-xs mt-1">1 credit covers 24 hours of unlimited replies
           with one lead.</div>
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
 
     {{#if this.hasCreditAgents}}
-      <Nuvo::Card class="max-w-lg">
+      <Woven::Card class="max-w-lg">
         <div class="text-sm font-bold mb-2">AI credits by agent</div>
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.creditAgentColumns}}
           @rows={{this.creditAgentRows}}
           @pinColumns={{true}}
@@ -61,17 +61,17 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </Nuvo::DataTable>
-      </Nuvo::Card>
+        </Woven::DataTable>
+      </Woven::Card>
     {{/if}}
 
-    <Nuvo::Card class="max-w-lg">
+    <Woven::Card class="max-w-lg">
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
-        <Nuvo::Field
+        <Woven::Field
           @label="Business information for the AI"
           @tooltip="Facts the WhatsApp AI can share with leads: services, areas you cover, office hours, contact details. It cannot change how the AI behaves."
         >
-          <Nuvo::Textarea
+          <Woven::Textarea
             id="company-ai-prompt"
             data-test-ai-prompt
             rows="10"
@@ -83,7 +83,7 @@
             Describe your business, not instructions. The AI uses this as
             facts and always follows its built-in rules.
           </p>
-        </Nuvo::Field>
+        </Woven::Field>
 
         {{#if this.aiSuccessMsg}}
           <p class="text-success text-sm">{{this.aiSuccessMsg}}</p>
@@ -92,33 +92,33 @@
           <p class="text-danger text-sm">{{this.aiErrorMsg}}</p>
         {{/if}}
 
-        <Nuvo::FormActions>
-          <Nuvo::Button
+        <Woven::FormActions>
+          <Woven::Button
             @variant="primary"
             @type="submit"
             @loading={{this.isSavingAI}}
             data-test-save-prompt
           >
             {{if this.isSavingAI "Saving…" "Save"}}
-          </Nuvo::Button>
-          <Nuvo::Button
+          </Woven::Button>
+          <Woven::Button
             @variant="secondary"
             @disabled={{this.isSavingAI}}
             data-test-restore-prompt
             {{on "click" this.restoreDefaultPrompt}}
           >
             Clear
-          </Nuvo::Button>
-        </Nuvo::FormActions>
+          </Woven::Button>
+        </Woven::FormActions>
       </form>
-    </Nuvo::Card>
+    </Woven::Card>
   {{else if (eq this.currentTab "billing")}}
-    <Nuvo::Card class="max-w-lg" data-test-billing-panel>
+    <Woven::Card class="max-w-lg" data-test-billing-panel>
       <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
         {{#if this.isDowngradePending}}
-          <Nuvo::Alert
+          <Woven::Alert
             @variant="warning"
             class="mb-4"
             data-test-downgrade-pending
@@ -130,9 +130,9 @@
               unused part of your billing period is refunded to your payment
               method.
             </p>
-          </Nuvo::Alert>
+          </Woven::Alert>
         {{else if this.isScheduledToCancel}}
-          <Nuvo::Alert
+          <Woven::Alert
             @variant="warning"
             class="mb-4"
             data-test-cancel-scheduled
@@ -145,7 +145,7 @@
               switches to Free automatically. Changed your mind? Reactivate
               below.
             </p>
-          </Nuvo::Alert>
+          </Woven::Alert>
         {{/if}}
         <div class="billing-plan-card mb-4" data-test-plan-card>
           <div class="flex between x-center">
@@ -154,7 +154,7 @@
               data-test-plan-name
             >{{this.billing.tier}}</div>
             {{#if this.billing.billingStatus}}
-              <Nuvo::Tag
+              <Woven::Tag
                 class="tag-sub-{{this.billingStatusBadgeValue}}"
                 @text={{this.billingStatusLabel}}
                 data-test-billing-status
@@ -188,26 +188,28 @@
         </div>
 
         {{#if this.isFreeTier}}
-          <div class="mb-3" data-test-refund-terms-field>
-            <Nuvo::Checkbox
-              @checked={{this.refundTermsAccepted}}
-              @label={{this.refundTermsLabel}}
-              @onChange={{this.setRefundTermsAccepted}}
-              data-test-refund-terms
-            />
-          </div>
-          <Nuvo::Button
-            @variant="primary"
-            @loading={{this.isBillingBusy}}
-            @disabled={{not this.refundTermsAccepted}}
-            data-test-upgrade-pro
-            {{on "click" this.upgradeToPro}}
-          >
-            {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
-          </Nuvo::Button>
-          <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
-            Pro starts with your current team. Add members later under Team.
-          </p>
+          {{#if (eq 1 2)}}
+            <div class="mb-3" data-test-refund-terms-field>
+              <Woven::Checkbox
+                @checked={{this.refundTermsAccepted}}
+                @label={{this.refundTermsLabel}}
+                @onChange={{this.setRefundTermsAccepted}}
+                data-test-refund-terms
+              />
+            </div>
+            <Woven::Button
+              @variant="primary"
+              @loading={{this.isBillingBusy}}
+              @disabled={{not this.refundTermsAccepted}}
+              data-test-upgrade-pro
+              {{on "click" this.upgradeToPro}}
+            >
+              {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
+            </Woven::Button>
+            <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
+              Pro starts with your current team. Add members later under Team.
+            </p>
+          {{/if}}
           <p class="text-sm text-muted mt-3">
             Every Pro seat adds 5 GB of storage. Need white-label, ERP
             integration, or dedicated infrastructure?
@@ -218,7 +220,7 @@
           </p>
         {{else if this.billing.hasSubscription}}
           {{#if (or this.isDowngradePending this.isScheduledToCancel)}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="primary"
               @loading={{this.isBillingBusy}}
               data-test-reactivate-pro
@@ -229,16 +231,16 @@
                 "Working..."
                 (if this.isDowngradePending "Keep my plan" "Reactivate plan")
               }}
-            </Nuvo::Button>
+            </Woven::Button>
           {{else}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="danger"
               @disabled={{this.isDowngradeDisabled}}
               data-test-downgrade-free
               {{on "click" this.openDowngradeConfirm}}
             >
               Downgrade to Free
-            </Nuvo::Button>
+            </Woven::Button>
             {{#unless this.billing.canDowngradeToFree}}
               <p
                 class="text-sm text-muted mt-2"
@@ -259,13 +261,13 @@
         <p class="text-muted" data-test-billing-unavailable>Billing information
           is unavailable right now.</p>
       {{/if}}
-    </Nuvo::Card>
+    </Woven::Card>
 
     {{#if this.isCompanyAdmin}}
-      <Nuvo::Card class="mt-4" data-test-billing-history-panel>
+      <Woven::Card class="mt-4" data-test-billing-history-panel>
         <h3 class="text-lg font-bold mb-4">Billing History</h3>
         {{#if this.billingHistory.length}}
-          <Nuvo::DataTable
+          <Woven::DataTable
             @columns={{this.billingHistoryColumns}}
             @rows={{this.billingHistoryRows}}
             @pinColumns={{true}}
@@ -304,7 +306,7 @@
               {{/let}}
             {{else if (eq cell.key "type")}}
               {{#let (billing-history-status cell.row) as |status|}}
-                <Nuvo::Tag
+                <Woven::Tag
                   class={{status.tagClass}}
                   @text={{status.label}}
                   data-test-history-status
@@ -328,8 +330,8 @@
             {{else}}
               {{cell.value}}
             {{/if}}
-          </Nuvo::DataTable>
-          <Nuvo::Pagination
+          </Woven::DataTable>
+          <Woven::Pagination
             @selectId="billing-history-limit"
             @page={{this.billingHistoryPage}}
             @limit={{this.billingHistoryLimit}}
@@ -343,7 +345,7 @@
           <p class="text-muted" data-test-billing-history-empty>No payments yet.
             Invoices appear here after your first charge.</p>
         {{/if}}
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
 
     <ConfirmModal
@@ -361,7 +363,7 @@
   {{else if (eq this.currentTab "regions")}}
     <div class="company-settings-grid">
       {{#if this.model.regions.length}}
-        <Nuvo::Card
+        <Woven::Card
           class="{{unless this.canManageRegions 'region-settings-readonly'}}"
           data-test-region-settings
         >
@@ -382,12 +384,12 @@
           </p>
 
           {{#if this.formActiveRegions.length}}
-            <Nuvo::Field
+            <Woven::Field
               @label="Default Region"
               class="mb-4"
               @tooltip="Used when a record is created without a region of its own."
             >
-              <Nuvo::Dropdown
+              <Woven::Dropdown
                 @align="start"
                 @value={{this.formDefaultRegionCode}}
                 @onSelect={{fn this.setFieldValue "formDefaultRegionCode"}}
@@ -396,7 +398,7 @@
                 @disabled={{not this.canManageRegions}}
                 data-test-default-region
               />
-            </Nuvo::Field>
+            </Woven::Field>
           {{/if}}
 
           <p class="text-sm font-bold text-muted uppercase mb-3">Available
@@ -440,7 +442,7 @@
                       class="region-checkbox {{unless this.canManageRegions 'is-readonly'}}"
                       data-test-region-checkbox={{r.code}}
                     >
-                      <Nuvo::Checkbox
+                      <Woven::Checkbox
                         id={{r.code}}
                         @checked={{includes this.formActiveRegions r.code}}
                         @disabled={{not this.canManageRegions}}
@@ -464,8 +466,8 @@
             <p class="text-danger" data-test-region-error>{{this.errorMsg}}</p>
           {{/if}}
 
-          <Nuvo::FormActions>
-            <Nuvo::Button
+          <Woven::FormActions>
+            <Woven::Button
               @variant="primary"
               @loading={{this.isSaving}}
               @disabled={{not this.canManageRegions}}
@@ -473,27 +475,27 @@
               data-test-save-regions
             >
               {{if this.isSaving "Saving..." "Save Changes"}}
-            </Nuvo::Button>
-          </Nuvo::FormActions>
-        </Nuvo::Card>
+            </Woven::Button>
+          </Woven::FormActions>
+        </Woven::Card>
       {{/if}}
     </div>
   {{else}}
     <div class="company-settings-grid">
-      <Nuvo::Card>
+      <Woven::Card>
         <h3 class="text-lg font-bold mb-4">Company Information</h3>
         <form
           aria-label="Company Information"
-          class="nu-form"
+          class="wu-form"
           novalidate
           {{on "submit" this.saveCompany}}
         >
-          <Nuvo::Field
+          <Woven::Field
             @label="Company Name"
             @required={{true}}
             @error={{this.fieldErrors.formName}}
           >
-            <Nuvo::Input
+            <Woven::Input
               id="company-name"
               type="text"
               @value={{or this.formName this.company.name}}
@@ -501,30 +503,30 @@
               required={{true}}
               readonly={{not this.isAdmin}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
 
           {{#if this.company.adminEmail}}
-            <Nuvo::Field @label="Admin Email">
-              <Nuvo::Input
+            <Woven::Field @label="Admin Email">
+              <Woven::Input
                 id="company-email"
                 type="email"
                 @value={{this.company.adminEmail}}
                 disabled={{true}}
               />
-            </Nuvo::Field>
+            </Woven::Field>
           {{/if}}
 
-          <Nuvo::Field
+          <Woven::Field
             @label="Plan"
             @tooltip="Your current subscription. It sets the limits on users, regions and storage shown below."
           >
-            <Nuvo::Input
+            <Woven::Input
               id="company-plan"
               type="text"
               @value={{or this.company.subscriptionTier "FREE"}}
               disabled={{true}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
 
           {{#unless this.isAdmin}}
             <p class="text-sm text-muted">Only company admins and super admins
@@ -545,7 +547,7 @@
                 {{format-bytes this.storageUsage.quotaBytes}}
                 used ({{this.storageUsage.percentUsed}}%)
               </p>
-              <Nuvo::Progress
+              <Woven::Progress
                 @value={{this.storageUsage.percentUsed}}
                 @variant={{if this.isStorageWarning "danger" "primary"}}
                 data-test-storage-bar
@@ -560,18 +562,18 @@
             </div>
           {{/if}}
 
-          <Nuvo::FormActions>
-            <Nuvo::Button
+          <Woven::FormActions>
+            <Woven::Button
               @variant="primary"
               @type="submit"
               @loading={{this.isSaving}}
               @disabled={{not this.isAdmin}}
             >
               {{if this.isSaving "Saving..." "Save Changes"}}
-            </Nuvo::Button>
-          </Nuvo::FormActions>
+            </Woven::Button>
+          </Woven::FormActions>
         </form>
-      </Nuvo::Card>
+      </Woven::Card>
     </div>
   {{/if}}
 
@@ -589,16 +591,16 @@
     @onConfirm={{this.confirmRegionRemoval}}
   />
 {{else}}
-  <Nuvo::EmptyState
+  <Woven::EmptyState
     @title="No Company Data"
     @description="Super Admins are not associated with any company. To view a specific company's settings, impersonate a Company Admin."
   >
     <:icon><Ui::Ph @icon="buildings" /></:icon>
     <:actions>
-      <Nuvo::Button @variant="primary" @icon="users" @route="team">
+      <Woven::Button @variant="primary" @icon="users" @route="team">
         Go to Team
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::EmptyState>
+  </Woven::EmptyState>
 {{/if}}
 </div>

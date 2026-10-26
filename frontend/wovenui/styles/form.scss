@@ -1,0 +1,970 @@
+// wu-field / wu-input - form controls
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "sass:list";
+@use "./common/var" as *;
+
+// ---- autofill ----
+
+// Browsers paint their own autofill background; an inset shadow covers it with
+// the surface token and the long transition holds the native fill off. Low
+// specificity on purpose: the kit's focus, invalid and status rules win.
+:where(input, select, textarea):is(:autofill, :-webkit-autofill) {
+  border-color: var(--wu-border-control);
+  box-shadow: 0 0 0 100vmax var(--wu-bg-surface) inset;
+  -webkit-text-fill-color: var(--wu-text-regular);
+  transition: background-color 0s 50000s;
+}
+
+// ---- text-like controls ----
+
+@include b(input) {
+  @include wu-root("input", (
+    "PaddingBlock": wu-space(1),
+    "PaddingInline": wu-space(3),
+    "MinHeight": 2.25rem,
+    "FontSize": wu-font-size(sm),
+    "Color": var(--wu-text-regular),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-strong),
+    "BorderRadius": wu-radius(md),
+    "PlaceholderColor": $wu-placeholder-color,
+    "TransitionDuration": wu-duration(fast),
+    "focus--BorderColor": var(--wu-brand),
+    "focus--BoxShadow": wu-focus-ring(),
+    "disabled--Opacity": 0.6,
+  ));
+
+  display: block;
+  inline-size: 100%;
+  padding-block: wu-var("input", "PaddingBlock");
+  padding-inline: wu-var("input", "PaddingInline");
+  min-block-size: wu-var("input", "MinHeight");
+  font-family: inherit;
+  font-size: wu-var("input", "FontSize");
+  line-height: 1.4;
+  color: wu-var("input", "Color");
+  background-color: wu-var("input", "BackgroundColor");
+  border: wu-var("input", "BorderWidth") solid wu-var("input", "BorderColor");
+  border-radius: wu-var("input", "BorderRadius");
+  transition:
+    border-color wu-var("input", "TransitionDuration") $wu-ease,
+    box-shadow wu-var("input", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &::placeholder {
+    color: wu-var("input", "PlaceholderColor");
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border-color: wu-var("input", "focus--BorderColor");
+    box-shadow: wu-var("input", "focus--BoxShadow");
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: var(--wu-bg-alternate);
+  }
+
+  &:disabled {
+    opacity: wu-var("input", "disabled--Opacity");
+    cursor: not-allowed;
+  }
+
+  @include m(xs) {
+    --wu-input--PaddingBlock: #{wu-space(1)};
+    --wu-input--PaddingInline: #{wu-space(2)};
+    --wu-input--MinHeight: 1.75rem;
+    --wu-input--FontSize: #{wu-font-size(xs)};
+  }
+
+  @include m(sm) {
+    --wu-input--PaddingBlock: #{wu-space(1)};
+    --wu-input--PaddingInline: #{wu-space(2)};
+    --wu-input--MinHeight: 2rem;
+    --wu-input--FontSize: #{wu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --wu-input--PaddingBlock: #{wu-space(3)};
+    --wu-input--PaddingInline: #{wu-space(4)};
+    --wu-input--MinHeight: 3rem;
+    --wu-input--FontSize: #{wu-font-size(md)};
+  }
+
+  @include m(auto) {
+    inline-size: auto;
+  }
+
+  // Before the status rules: at equal specificity a status border must win.
+  &:is(:autofill, :-webkit-autofill) {
+    --wu-input--BorderColor: var(--wu-border-control);
+
+    transition: background-color 0s 50000s;
+  }
+
+  // The focus ring and the inset fill share box-shadow, so both are listed.
+  &:is(:autofill, :-webkit-autofill):focus {
+    box-shadow:
+      wu-var("input", "focus--BoxShadow"),
+      0 0 0 100vmax var(--wu-bg-surface) inset;
+  }
+
+  &.is-valid,
+  &[data-wu-field-status="success"] {
+    --wu-input--BorderColor: var(--wu-success);
+    --wu-input--focus--BorderColor: var(--wu-success);
+    --wu-input--focus--BoxShadow: #{wu-focus-ring(success)};
+  }
+
+  &.is-warning,
+  &[data-wu-field-status="warning"] {
+    --wu-input--BorderColor: var(--wu-warning);
+    --wu-input--focus--BorderColor: var(--wu-warning);
+    --wu-input--focus--BoxShadow: #{wu-focus-ring(warning)};
+  }
+
+  // Keyed on aria-invalid too, so the red state cannot drift from what assistive tech hears.
+  &.is-invalid,
+  &[aria-invalid="true"] {
+    --wu-input--BorderColor: var(--wu-danger);
+    --wu-input--focus--BorderColor: var(--wu-danger);
+    --wu-input--focus--BoxShadow: #{wu-focus-ring(danger)};
+  }
+}
+
+// Affix wrapper: positions prefix/suffix icons over the input and reserves
+// padding so typed text never slides under them.
+@include b(input-wrap) {
+  @include wu-root("input-wrap", (
+    "AffixInset": wu-space(3),
+    "AffixSize": 1rem,
+    // Affixes are often text ("AED", "%"), not glyphs, so they track the
+    // input's own size rather than the icon box.
+    "AffixFontSize": wu-font-size(sm),
+    "AffixColor": var(--wu-text-muted),
+    // Room for the affix. Fits an icon or a short code like "AED" with
+    // clearance; widen it per instance for anything longer.
+    "AffixGutter": wu-space(12),
+    "clear--HitArea": 2rem,
+    "clear--hover--Color": var(--wu-text-regular),
+  ));
+
+  position: relative;
+  display: block;
+  inline-size: 100%;
+
+  @include e(prefix, suffix) {
+    position: absolute;
+    inset-block-start: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: wu-var("input-wrap", "AffixSize");
+    block-size: wu-var("input-wrap", "AffixSize");
+    font-size: wu-var("input-wrap", "AffixFontSize");
+    line-height: 1;
+    white-space: nowrap;
+    color: wu-var("input-wrap", "AffixColor");
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  @include e(prefix) {
+    inset-inline-start: wu-var("input-wrap", "AffixInset");
+  }
+
+  @include e(suffix) {
+    inset-inline-end: wu-var("input-wrap", "AffixInset");
+  }
+
+  // Clear button is interactive, unlike the static affixes.
+  @include e(clear) {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: wu-var("input-wrap", "AffixInset");
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: wu-var("input-wrap", "AffixSize");
+    block-size: wu-var("input-wrap", "AffixSize");
+    padding: 0;
+    font-size: wu-var("input-wrap", "AffixSize");
+    line-height: 1;
+    color: wu-var("input-wrap", "AffixColor");
+    background: none;
+    border: none;
+    border-radius: wu-radius(full);
+    transform: translateY(-50%);
+    cursor: pointer;
+    transition:
+      color wu-duration(fast) $wu-ease,
+      opacity wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // Revealed on hover or keyboard focus. Guarded by (hover: hover) so touch
+    // devices, which never hover, keep it visible.
+    @media (hover: hover) {
+      opacity: 0;
+      pointer-events: none;
+
+      .wu-input-wrap:hover &,
+      .wu-input-wrap:focus-within &,
+      &:focus-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    // Icon is 1rem, under the interactive-target floor. The pseudo widens only
+    // the pointer target; it is out of flow so nothing shifts.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - wu-var("input-wrap", "clear--HitArea") / 2);
+      inset-inline-start: calc(50% - wu-var("input-wrap", "clear--HitArea") / 2);
+      inline-size: wu-var("input-wrap", "clear--HitArea");
+      block-size: wu-var("input-wrap", "clear--HitArea");
+    }
+
+    &:hover {
+      color: wu-var("input-wrap", "clear--hover--Color");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  // The wrapper is the sizing box: the control fills it and the inner input
+  // fills the control. `m-auto` on the input alone therefore changes nothing,
+  // because this box still claims the full row. `fit-content` shrinks it to
+  // the input's intrinsic width in a block context, and in a flex row the
+  // item sizes to its content the same way.
+  @include m(auto) {
+    inline-size: fit-content;
+  }
+
+  // Reserve room so text clears the affix.
+  @include m(has-prefix) {
+    .wu-input {
+      --wu-input--PaddingInline: #{wu-space(3)};
+
+      padding-inline-start: wu-var("input-wrap", "AffixGutter");
+    }
+  }
+
+  @include m(has-suffix) {
+    .wu-input {
+      padding-inline-end: wu-var("input-wrap", "AffixGutter");
+    }
+  }
+}
+
+@include b(textarea) {
+  resize: vertical;
+  min-block-size: 5rem;
+  line-height: 1.5;
+}
+
+@include b(select) {
+  @include wu-root("select", (
+    "ChevronImage": url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"),
+  ));
+
+  appearance: none;
+  padding-inline-end: wu-space(8);
+  cursor: pointer;
+  background-image: wu-var("select", "ChevronImage");
+  background-repeat: no-repeat;
+  background-position: right wu-space(3) center;
+  background-size: 1rem;
+
+  [dir="rtl"] & {
+    background-position: left wu-space(3) center;
+  }
+}
+
+// Shared by the label and the row that holds it plus a tooltip button.
+%wu-field-label-layout {
+  display: flex;
+  align-items: center;
+  gap: wu-space(1);
+}
+
+// ---- field wrapper ----
+
+$wu-field-label-line-height: calc(#{wu-font-size(sm)} * 1.1);
+
+// One line of message text, from the type scale, so the reserved slot tracks it.
+$wu-field-message-font-size: wu-font-size(xs);
+$wu-field-message-line-height: wu-line-height(normal);
+
+@include b(field) {
+  @include wu-root("field", (
+    "Gap": wu-space(2),
+    "MarginBlockEnd": 0,
+    "MessageGap": calc(#{wu-space(1)} / 2),
+    // One label line; the label row and the labelless spacer both use it.
+    "LabelLineHeight": $wu-field-label-line-height,
+    "MessageFontSize": $wu-field-message-font-size,
+    "MessageLineHeight": $wu-field-message-line-height,
+    "MessageMinHeight": calc(#{$wu-field-message-font-size} * #{$wu-field-message-line-height}),
+    "FloatLabelInset": wu-space(3),
+    "FloatLabelColor": var(--wu-text-muted),
+    "FloatLabelBackground": var(--wu-bg-surface),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: wu-var("field", "Gap");
+  margin-block-end: wu-var("field", "MarginBlockEnd");
+
+  @include e(label) {
+    @extend %wu-field-label-layout;
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+  }
+
+  @include e(required) {
+    color: var(--wu-danger);
+    line-height: 1;
+  }
+
+  // Label plus its optional tooltip button, at the label's own height so a
+  // tooltip does not push it out of line with a labelless sibling.
+  @include e(label-row) {
+    @extend %wu-field-label-layout;
+    min-block-size: wu-var("field", "LabelLineHeight");
+  }
+
+  // Question-mark button that carries an explanatory tooltip beside the label.
+  @include e(info) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--wu-text-muted);
+    cursor: help;
+    line-height: 1;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--wu-brand);
+    }
+  }
+
+  // Sits MessageGap under the control; the slot itself spaces the next field.
+  > .wu-field__message {
+    margin-block-start: calc(#{wu-var("field", "MessageGap")} - #{wu-var("field", "Gap")});
+  }
+
+  // Always rendered and one line tall even when empty, so a message never shifts the layout.
+  @include e(message) {
+    display: block;
+    // Fallbacks: the slot also renders inside Woven::FieldGroup, outside .wu-field.
+    min-block-size: wu-var("field", "MessageMinHeight", calc(#{$wu-field-message-font-size} * #{$wu-field-message-line-height}));
+    font-size: wu-var("field", "MessageFontSize", $wu-field-message-font-size);
+    line-height: wu-var("field", "MessageLineHeight", $wu-field-message-line-height);
+  }
+
+  @include e(hint) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    font-size: wu-var("field", "MessageFontSize", $wu-field-message-font-size);
+    color: var(--wu-text-muted);
+
+    @include m(warning) {
+      color: var(--wu-text-warning);
+    }
+
+    @include m(success) {
+      color: var(--wu-text-success);
+    }
+  }
+
+  @include e(error) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    font-size: wu-var("field", "MessageFontSize", $wu-field-message-font-size);
+    color: var(--wu-danger);
+  }
+
+  @include e(message-icon) {
+    flex-shrink: 0;
+  }
+
+  // Control plus message beside the label in the horizontal layout.
+  @include e(body) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: wu-space(1);
+    min-inline-size: 0;
+  }
+
+  @include m(horizontal) {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: wu-space(4);
+
+    > .wu-field__label-row,
+    > .wu-field__label {
+      flex-shrink: 0;
+      min-inline-size: min(8rem, 40%);
+      max-inline-size: 40%;
+      // Centers the label on a default-height control.
+      min-block-size: wu-var("input", "MinHeight", 2.25rem);
+    }
+  }
+
+  // ---- floating label: the placeholder text is the label ----
+
+  @include e(control) {
+    position: relative;
+  }
+
+  @include e(float-label) {
+    position: absolute;
+    inset-block-start: calc(#{wu-var("input", "MinHeight", 2.25rem)} / 2);
+    inset-inline-start: wu-var("field", "FloatLabelInset");
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    max-inline-size: calc(100% - 2 * #{wu-var("field", "FloatLabelInset")});
+    padding-inline: 0;
+    font-size: wu-font-size(sm);
+    line-height: 1;
+    color: wu-var("field", "FloatLabelColor");
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    // Vertical only, so RTL needs no mirrored transform.
+    transform: translateY(-50%);
+    transition:
+      inset-block-start wu-duration(fast) $wu-ease,
+      font-size wu-duration(fast) $wu-ease,
+      color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // Leaves the start gutter to a prefix icon while resting.
+  @include en(control) {
+    &:has(.wu-input-wrap.m-has-prefix) .wu-field__float-label {
+      inset-inline-start: wu-var("input-wrap", "AffixGutter", wu-space(12));
+    }
+  }
+
+  // Floated: sits on the top border, on a patch of surface color, never hidden.
+  @include en(control) {
+    &:focus-within,
+    &.has-value,
+    &:has(:is(input, textarea).wu-input:not(:placeholder-shown)) {
+      .wu-field__float-label {
+        inset-block-start: 0;
+        inset-inline-start: calc(#{wu-var("field", "FloatLabelInset")} - #{wu-space(1)});
+        padding-inline: wu-space(1);
+        font-size: wu-font-size(xs);
+        background-color: wu-var("field", "FloatLabelBackground");
+      }
+    }
+
+    &:focus-within .wu-field__float-label {
+      color: var(--wu-brand);
+    }
+
+    &:has([aria-invalid="true"], .is-invalid) .wu-field__float-label {
+      color: var(--wu-danger);
+    }
+  }
+
+  @include m(flush) {
+    --wu-field--MarginBlockEnd: 0;
+  }
+
+  // Aligns an unlabelled control with labelled siblings. Sized from the font
+  // scale, not placeholder text: the label is flex, so empty collapses and
+  // `&nbsp;` overshoots.
+  @include e(label-spacer) {
+    display: block;
+    block-size: wu-var("field", "LabelLineHeight", $wu-field-label-line-height);
+    visibility: hidden;
+  }
+}
+
+$wu-row-min-column-width: 10rem;
+
+// Auto-fitting row of filter controls; column count follows the viewport.
+@include b(filter-row) {
+  @include wu-root("filter-row", (
+    "Gap": wu-space(4),
+    "MinColumnWidth": $wu-row-min-column-width,
+  ));
+
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(wu-var("filter-row", "MinColumnWidth"), 1fr)
+  );
+  align-items: start;
+  gap: wu-var("filter-row", "Gap");
+
+  // Grid gap already spaces these; their own margin would double it.
+  .wu-field {
+    --wu-field--MarginBlockEnd: 0;
+  }
+
+  @include m(compact) {
+    --wu-filter-row--MinColumnWidth: 7.5rem;
+    --wu-filter-row--Gap: #{wu-space(3)};
+  }
+}
+
+// Side-by-side fields that wrap on narrow screens. Flex rather than the filter
+// row's grid, so one field can take a larger share (`__wide`).
+@include b(field-row) {
+  @include wu-root("field-row", (
+    "Gap": wu-space(4),
+    "MinColumnWidth": $wu-row-min-column-width,
+  ));
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: wu-var("field-row", "Gap");
+
+  > * {
+    flex: 1 1 wu-var("field-row", "MinColumnWidth");
+  }
+
+  > .wu-field-row__wide {
+    flex-grow: 2;
+  }
+
+  > .wu-field-row__narrow {
+    flex-grow: 0;
+  }
+
+  @include m(end) {
+    align-items: flex-end;
+  }
+}
+
+@include b(form-actions) {
+  display: flex;
+  align-items: center;
+  gap: wu-space(3);
+  margin-block-start: wu-space(6);
+
+  @include m(end) {
+    justify-content: flex-end;
+  }
+
+  @include m(between) {
+    justify-content: space-between;
+  }
+}
+
+// ---- checkbox / radio ----
+
+@include b(check) {
+  @include wu-root("check", (
+    "Size": 1.125rem,
+    "BorderWidth": 2px,
+    "BorderColor": var(--wu-border-strong),
+    "BorderRadius": wu-radius(sm),
+    "BackgroundColor": var(--wu-bg-surface),
+    "checked--BackgroundColor": var(--wu-brand),
+    "checked--BorderColor": var(--wu-brand),
+    "MarkColor": var(--wu-text-inverted),
+    "MarkInlineSize": 5px,
+    "MarkBlockSize": 10px,
+    "DotSize": 0.5rem,
+  ));
+
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  inline-size: wu-var("check", "Size");
+  block-size: wu-var("check", "Size");
+  background-color: wu-var("check", "BackgroundColor");
+  border: wu-var("check", "BorderWidth") solid wu-var("check", "BorderColor");
+  border-radius: wu-var("check", "BorderRadius");
+  cursor: pointer;
+  transition:
+    background-color wu-duration(fast) $wu-ease,
+    border-color wu-duration(fast) $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--wu-brand);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: wu-focus-ring();
+  }
+
+  &:checked {
+    background-color: wu-var("check", "checked--BackgroundColor");
+    border-color: wu-var("check", "checked--BorderColor");
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      inline-size: wu-var("check", "MarkInlineSize");
+      block-size: wu-var("check", "MarkBlockSize");
+      margin: auto;
+      border: solid wu-var("check", "MarkColor");
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+
+  &:indeterminate {
+    background-color: wu-var("check", "checked--BackgroundColor");
+    border-color: wu-var("check", "checked--BorderColor");
+
+    // Centred without a transform so RTL cannot offset it.
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      inline-size: 60%;
+      block-size: 2px;
+      margin: auto;
+      background-color: wu-var("check", "MarkColor");
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @include m(radio) {
+    --wu-check--BorderRadius: #{wu-radius(full)};
+
+    &:checked::after {
+      inset: 0;
+      inline-size: wu-var("check", "DotSize");
+      block-size: wu-var("check", "DotSize");
+      margin: auto;
+      border: none;
+      border-radius: wu-radius(full);
+      background-color: wu-var("check", "MarkColor");
+      transform: none;
+    }
+  }
+
+  // ---- sizes: box 14 / 16 / 18 (default) / 20px ----
+
+  @include m(xs) {
+    --wu-check--Size: 0.875rem;
+    --wu-check--MarkInlineSize: 4px;
+    --wu-check--MarkBlockSize: 7px;
+    --wu-check--DotSize: 0.375rem;
+  }
+
+  @include m(sm) {
+    --wu-check--Size: 1rem;
+    --wu-check--MarkInlineSize: 4px;
+    --wu-check--MarkBlockSize: 9px;
+    --wu-check--DotSize: 0.4375rem;
+  }
+
+  @include m(lg) {
+    --wu-check--Size: 1.25rem;
+    --wu-check--MarkInlineSize: 6px;
+    --wu-check--MarkBlockSize: 11px;
+    --wu-check--DotSize: 0.625rem;
+  }
+}
+
+// ---- validation status on checkbox, radio, toggle and the dropdown trigger ----
+// Same mechanism as the text controls: the control's own class, or the
+// attributes a Field or FieldGroup writes onto it.
+
+$wu-control-statuses: (
+  success: (".is-valid", '[data-wu-field-status="success"]'),
+  warning: (".is-warning", '[data-wu-field-status="warning"]'),
+  danger: (".is-invalid", '[aria-invalid="true"]'),
+);
+
+@each $role, $selectors in $wu-control-statuses {
+  $class: list.nth($selectors, 1);
+  $attr: list.nth($selectors, 2);
+
+  .wu-check:is(#{$class}, #{$attr}) {
+    --wu-check--BorderColor: var(--wu-#{$role});
+
+    &:focus-visible {
+      box-shadow: wu-focus-ring($role);
+    }
+  }
+
+  .wu-toggle__input:is(#{$class}, #{$attr}) ~ .wu-toggle__track {
+    box-shadow: 0 0 0 1px var(--wu-#{$role});
+  }
+
+  .wu-toggle__input:is(#{$class}, #{$attr}):focus-visible ~ .wu-toggle__track {
+    box-shadow: wu-focus-ring($role);
+  }
+
+  .wu-dropdown > .wu-btn:is(#{$class}, #{$attr}) {
+    --wu-btn--BorderColor: var(--wu-#{$role});
+    --wu-btn--hover--BorderColor: var(--wu-#{$role});
+    --wu-btn--focus--BoxShadow: #{wu-focus-ring($role)};
+  }
+}
+
+@include b(check-label) {
+  @include wu-root("check-label", (
+    "Gap": wu-space(2),
+    "FontSize": wu-font-size(sm),
+  ));
+
+  display: inline-flex;
+  align-items: center;
+  gap: wu-var("check-label", "Gap");
+  font-size: wu-var("check-label", "FontSize");
+  color: var(--wu-text-regular);
+  cursor: pointer;
+
+  @include when(disabled) {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @include m(xs) {
+    --wu-check-label--Gap: #{wu-space(1)};
+    --wu-check-label--FontSize: #{wu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --wu-check-label--Gap: #{wu-space(3)};
+    --wu-check-label--FontSize: #{wu-font-size(md)};
+  }
+}
+
+// Row of checkboxes or radios. The gap between options is deliberately much
+// larger than the 8px inside a label: at similar values each box appears to
+// float between two labels instead of belonging to the one it precedes.
+@include b(check-group) {
+  @include wu-root("check-group", (
+    "Gap": wu-space(6),
+    "RowGap": wu-space(3),
+  ));
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: wu-var("check-group", "RowGap") wu-var("check-group", "Gap");
+
+  @include m(stacked) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: wu-var("check-group", "RowGap");
+  }
+}
+
+// ---- form: vertical container for fields and the content between them ----
+
+@include b(form) {
+  @include wu-root("form", (
+    "Gap": wu-space(1),
+    "SectionGap": wu-space(4),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: wu-var("form", "Gap");
+  min-inline-size: 0;
+
+  // Fields carry their own message line as spacing; any other child gets section spacing.
+  > :not(.wu-field, .wu-field-group, :has(> .wu-field, > .wu-field-group)) {
+    margin-block: calc(#{wu-var("form", "SectionGap")} - #{wu-var("form", "Gap")});
+  }
+
+  // Section spacing never pads the container's own edges.
+  > :first-child {
+    margin-block-start: 0;
+  }
+
+  > :last-child {
+    margin-block-end: 0;
+  }
+}
+
+// ---- field group: fieldset + legend around a set of checkboxes or radios ----
+
+@include b(field-group) {
+  @include wu-root("field-group", (
+    "Gap": wu-space(2),
+    "MarginBlockEnd": 0,
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: wu-var("field-group", "Gap");
+
+  // Sits one step under the control; the slot itself spaces the next field.
+  > .wu-field__message {
+    margin-block-start: calc(calc(#{wu-space(1)} / 2) - #{wu-var("field-group", "Gap")});
+  }
+  min-inline-size: 0;
+  margin: 0;
+  margin-block-end: wu-var("field-group", "MarginBlockEnd");
+  padding: 0;
+  border: 0;
+
+  // A legend ignores the fieldset's flex gap, so its spacing is its own margin.
+  @include e(legend) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    margin-block-end: wu-var("field-group", "Gap");
+    padding: 0;
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
+  }
+
+  @include m(flush) {
+    --wu-field-group--MarginBlockEnd: 0;
+  }
+}
+
+// ---- input group ----
+
+@include b(input-group) {
+  @include wu-root("input-group", (
+    "BorderRadius": wu-radius(md),
+    "AddonPaddingInline": wu-space(3),
+    "AddonFontSize": wu-font-size(sm),
+    "focus--BorderColor": var(--wu-brand),
+    "focus--BoxShadow": wu-focus-ring(),
+  ));
+
+  display: flex;
+  align-items: stretch;
+  inline-size: 100%;
+  border-radius: wu-var("input-group", "BorderRadius");
+
+  @include e(addon) {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: wu-var("input-group", "AddonPaddingInline");
+    font-size: wu-var("input-group", "AddonFontSize");
+    color: var(--wu-text-muted);
+    background-color: var(--wu-bg-alternate);
+    border: 1px solid var(--wu-border-strong);
+    border-radius: inherit;
+    white-space: nowrap;
+    transition: border-color wu-duration(fast) $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // Sizes match the input's own padding and font at each step.
+  @include m(xs, sm) {
+    --wu-input-group--AddonPaddingInline: #{wu-space(2)};
+    --wu-input-group--AddonFontSize: #{wu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --wu-input-group--AddonPaddingInline: #{wu-space(4)};
+    --wu-input-group--AddonFontSize: #{wu-font-size(md)};
+  }
+
+  // Only the outer edges stay round; interior edges square up so the parts
+  // read as one control. Logical properties keep this correct in RTL.
+  > :first-child {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  > :last-child {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+
+  // Anything sandwiched between addons loses both sides.
+  > :not(:first-child):not(:last-child) {
+    border-radius: 0;
+  }
+
+  > :not(:first-child) {
+    margin-inline-start: -1px;
+  }
+
+  // wu-input-wrap is the flex child, but the .wu-input inside it carries the
+  // visible border. Radius must be re-applied one level down or the input keeps
+  // rounding where it meets an addon.
+  > .wu-input-wrap {
+    flex: 1;
+    min-inline-size: 0;
+    border-radius: inherit;
+
+    .wu-input {
+      border-radius: inherit;
+    }
+  }
+
+  > .wu-input-wrap:first-child .wu-input {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  > .wu-input-wrap:last-child .wu-input {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+
+  > .wu-input-wrap:not(:first-child):not(:last-child) .wu-input {
+    border-radius: 0;
+  }
+
+  // Focus belongs to the WHOLE group, not just the input. The input drops its
+  // own ring and the group draws one around every part.
+  &:focus-within {
+    border-color: wu-var("input-group", "focus--BorderColor");
+    box-shadow: wu-var("input-group", "focus--BoxShadow");
+
+    .wu-input-group__addon {
+      border-color: wu-var("input-group", "focus--BorderColor");
+    }
+  }
+
+  .wu-input:focus,
+  .wu-input:focus-visible {
+    position: relative;
+    z-index: 1;
+    box-shadow: none;
+  }
+}

@@ -1,0 +1,149 @@
+<WovenDocs::Page
+  @id="pagination"
+  @title="Pagination"
+  @subtitle="Page list with status text and an optional per-page select."
+  @components="Woven::Pagination"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      The component derives the page list from page, per-page and total: up
+      to seven pages in full, otherwise first, last, the current page and
+      one neighbour on each side with ellipses between. It reports only
+      valid whole page numbers, so a controller can trust what it receives.
+      The application's paginated controllers pass
+      <code class="wu-code">@limit</code>
+      with a default of 50.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Compact page list with ellipses for long ranges.</li>
+      <li class="wu-list__item">Status text ("1-50 of 430") derived from the inputs.</li>
+      <li class="wu-list__item">Per-page select rendered only when a per-page callback is given; 50, 100 and 250 by default.</li>
+      <li class="wu-list__item">Four sizes (xs, sm, md default, lg) and a compact style; previous and next overrides for step-only controllers.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Examples" @id="examples">
+    <WovenDocs::Example
+      @title="Default"
+      @note="Page list and status only. Choose this when the page size is fixed by the route."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Woven::Pagination
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.total}}
+        @onPageChange={{this.setPage}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Per-page select"
+      @note="Passing a limit callback renders the select with the default choices 50, 100 and 250; reset the page to 1 when the size changes. This is the shape every server-paged list uses."
+      @layout="block"
+      @code={{this.code.perPage}}
+    >
+      <Woven::Pagination
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.total}}
+        @onPageChange={{this.setPage}}
+        @onLimitChange={{this.setLimit}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Custom choices, small"
+      @note="perPageOptions replaces the default choices; sm shrinks the controls for a card footer or a drawer."
+      @layout="block"
+      @code={{this.code.perPageOptions}}
+    >
+      <Woven::Pagination
+        @page={{this.smallPage}}
+        @perPage={{10}}
+        @total={{this.smallTotal}}
+        @perPageOptions={{array 10 20 30}}
+        @onPageChange={{this.setSmallPage}}
+        @onPerPageChange={{this.setSmallLimit}}
+        @size="sm"
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Sizes"
+      @note="xs, sm, md (default) and lg. Page buttons are 28, 32, 36 and 48px, matching buttons of the same size."
+      @layout="stack"
+      @code={{this.code.sizes}}
+    >
+      <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="xs" data-test-woven-pagination-size="xs" />
+      <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="sm" data-test-woven-pagination-size="sm" />
+      <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} data-test-woven-pagination-size="md" />
+      <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="lg" data-test-woven-pagination-size="lg" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Compact, long range"
+      @note="compact tightens the spacing; a long range collapses to first, neighbours, current and last with ellipses."
+      @layout="block"
+      @code={{this.code.compact}}
+    >
+      <Woven::Pagination
+        @page={{this.compactPage}}
+        @perPage={{10}}
+        @total={{240}}
+        @onPageChange={{this.setCompactPage}}
+        @compact={{true}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Step overrides"
+      @note="onPrevious and onNext replace the step logic for a controller that only knows how to move one page at a time, for example a cursor-based API."
+      @layout="block"
+      @code={{this.code.steps}}
+    >
+      <Woven::Pagination
+        @page={{this.stepPage}}
+        @perPage={{10}}
+        @total={{90}}
+        @onPrevious={{this.stepPrevious}}
+        @onNext={{this.stepNext}}
+        @onPageChange={{this.setStepPage}}
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Empty"
+      @note="A total of 0 reports 0 results with both steps disabled; keep the component mounted so the layout does not jump when rows arrive."
+      @layout="block"
+      @code={{this.code.empty}}
+    >
+      <Woven::Pagination @page={{1}} @perPage={{50}} @total={{0}} @onPageChange={{this.setPage}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Callbacks" @id="callbacks">
+    <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Previous and next are labelled buttons and carry the disabled attribute at the range ends.</li>
+      <li class="wu-list__item">The current page button has aria-current="page".</li>
+      <li class="wu-list__item">The per-page select has a visible label linked by a per-instance id.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">The previous and next glyphs are single guillemets, which the browser mirrors as bidi characters, so no flip rule is needed; the list reads right to left.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

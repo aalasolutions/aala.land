@@ -1,0 +1,14 @@
+{{#if this.tooltip.isVisible}}
+  <div
+    id={{this.tooltipId}}
+    class={{this.classes}}
+    style={{this.style}}
+    {{tooltip-fit this.tooltip.anchor this.tooltip.content this.resolvedPlacement}}
+    role="tooltip"
+    data-test-wu-tooltip
+    ...attributes
+  >
+    {{this.tooltip.content}}
+    <span class="wu-tooltip__arrow" aria-hidden="true"></span>
+  </div>
+{{/if}}

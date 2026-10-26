@@ -1,0 +1,83 @@
+<div
+  class={{this.classes}}
+  data-test-wu-field
+  {{this.linkControl}}
+  ...attributes
+>
+  {{#if @label}}
+    {{! The tooltip button sits outside the label: label content becomes the control's name. }}
+    <span class="wu-field__label-row">
+      <label
+        class="wu-field__label"
+        id={{this.labelId}}
+        data-test-wu-field-label
+      >
+        {{@label}}
+        {{#if @required}}
+          <span
+            class="wu-field__required"
+            aria-hidden="true"
+            data-test-wu-field-required
+          >*</span>
+        {{/if}}
+      </label>
+      {{#if @tooltip}}
+        <button
+          type="button"
+          class="wu-field__info"
+          aria-label="More information about {{@label}}"
+          data-tooltip={{@tooltip}}
+          data-tooltip-position={{if @tooltipPosition @tooltipPosition "top"}}
+          data-test-wu-field-tooltip
+        >
+          <Woven::Icon @icon="question" />
+        </button>
+      {{/if}}
+    </span>
+  {{/if}}
+
+  {{#if this.floating}}
+    <div class="wu-field__control" data-test-wu-field-control>
+      {{yield this.api}}
+      {{! After the control so it paints over the control's background. }}
+      <label
+        class="wu-field__float-label"
+        id={{this.floatLabelId}}
+        data-test-wu-field-label
+      >
+        {{@placeholder}}
+        {{#if @required}}
+          <span
+            class="wu-field__required"
+            aria-hidden="true"
+            data-test-wu-field-required
+          >*</span>
+        {{/if}}
+      </label>
+    </div>
+  {{else if @horizontal}}
+    {{! The control and its message share one column beside the label. }}
+    <div class="wu-field__body">
+      {{yield this.api}}
+      <Woven::FieldMessage
+        @error={{@error}}
+        @hint={{@hint}}
+        @status={{this.status}}
+        @hintId={{this.hintId}}
+        @errorId={{this.errorId}}
+      />
+    </div>
+  {{else}}
+    {{yield this.api}}
+  {{/if}}
+
+  {{#unless this.messageInBody}}
+    <Woven::FieldMessage
+      @error={{@error}}
+      @hint={{@hint}}
+      @status={{this.status}}
+      @hintId={{this.hintId}}
+      @errorId={{this.errorId}}
+    />
+  {{/unless}}
+</div>

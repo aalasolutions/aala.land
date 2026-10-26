@@ -1,46 +1,46 @@
 // Bespoke `.console-*` classes on kit tokens; badges use domains from _tags.scss.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 .console-hero {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: nu-space(6);
+  gap: wu-space(6);
 }
 
 .console-hero__figures {
   display: flex;
-  gap: nu-space(8);
+  gap: wu-space(8);
 }
 
 .console-hero__label {
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .console-hero__value {
   font-size: 2rem;
-  font-weight: nu-font-weight(bold);
-  color: var(--nu-text-regular);
+  font-weight: wu-font-weight(bold);
+  color: var(--wu-text-regular);
   line-height: 1.1;
 }
 
 .console-hero__unit {
   font-size: 1rem;
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-muted);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-muted);
 }
 
 .console-hero__chips,
 .console-chip-row {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(2);
+  gap: wu-space(2);
 }
 
 .m-numeric .console-chip-row {
@@ -50,31 +50,31 @@
 .console-chip {
   display: inline-flex;
   align-items: center;
-  gap: nu-space(2);
-  padding-block: nu-space(1);
-  padding-inline: nu-space(3);
-  border-radius: nu-radius(full);
-  background: var(--nu-bg-alternate);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  gap: wu-space(2);
+  padding-block: wu-space(1);
+  padding-inline: wu-space(3);
+  border-radius: wu-radius(full);
+  background: var(--wu-bg-alternate);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .console-chip__code {
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 .console-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: nu-space(4);
+  gap: wu-space(4);
 }
 
 .console-rollups {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: nu-space(6);
+  gap: wu-space(6);
 
   @include media-down(lg) {
     grid-template-columns: 1fr;
@@ -84,40 +84,40 @@
 .console-region-row {
   display: flex;
   align-items: center;
-  gap: nu-space(3);
+  gap: wu-space(3);
 }
 
 .console-region-row__name {
   inline-size: 5.625rem;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .console-region-bar {
   flex: 1;
   block-size: 8px;
-  border-radius: nu-radius(full);
-  background: var(--nu-bg-alternate);
+  border-radius: wu-radius(full);
+  background: var(--wu-bg-alternate);
   overflow: hidden;
 }
 
 .console-region-bar__fill {
   display: block;
   block-size: 100%;
-  border-radius: nu-radius(full);
-  background: var(--nu-brand);
+  border-radius: wu-radius(full);
+  background: var(--wu-brand);
 }
 
 .console-region-row__count {
   inline-size: 2rem;
   text-align: end;
-  font-weight: nu-font-weight(semibold);
+  font-weight: wu-font-weight(semibold);
 }
 
 .console-list-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(3);
+  gap: wu-space(3);
 }
 
 .console-list-filters__search {
@@ -135,7 +135,7 @@
   cursor: pointer;
 
   &:hover {
-    background: var(--nu-bg-alternate);
+    background: var(--wu-bg-alternate);
   }
 }
 
@@ -144,23 +144,23 @@
   text-decoration: none;
 
   &:hover {
-    color: var(--nu-brand);
+    color: var(--wu-brand);
   }
 }
 
 .console-expand-row td {
-  background: var(--nu-bg-alternate);
+  background: var(--wu-bg-alternate);
 }
 
 .console-expand {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(4);
-  padding-block: nu-space(2);
+  gap: wu-space(4);
+  padding-block: wu-space(2);
 }
 
 // A three letter code needs far less room than the amount beside it.
 .console-currency-input {
-  max-inline-size: nu-space(24);
+  max-inline-size: wu-space(24);
   text-transform: uppercase;
 }

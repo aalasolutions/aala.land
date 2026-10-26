@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Team Member" "Add Team Member"}}
   @placement="end"
@@ -12,60 +12,60 @@
     {{/unless}}
     <form
       id="team-member-form"
-      class="nu-form"
+      class="wu-form"
       novalidate
       {{on "submit" this.save}}
     >
-      <Nuvo::Field
+      <Woven::Field
         @label="Name"
         @required={{true}}
         @error={{this.fieldErrors.formName}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="t-name"
           type="text"
           @value={{this.form.formName}}
           @onInput={{fn this.setField "formName"}}
           data-test-input-name
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Email"
         @required={{true}}
         @error={{this.fieldErrors.formEmail}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="t-email"
           type="email"
           @value={{this.form.formEmail}}
           @onInput={{fn this.setField "formEmail"}}
           data-test-input-email
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#unless this.isEdit}}
-        <Nuvo::Field
+        <Woven::Field
           @label="Password"
           @required={{true}}
           @error={{this.fieldErrors.formPassword}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="t-password"
             type="password"
             @value={{this.form.formPassword}}
             @onInput={{fn this.setField "formPassword"}}
             data-test-input-password
           />
-        </Nuvo::Field>
+        </Woven::Field>
       {{/unless}}
 
       {{#unless this.isEditingSelf}}
-        <Nuvo::Field
+        <Woven::Field
           @label="Role"
           @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
         >
-          <Nuvo::Dropdown
+          <Woven::Dropdown
             id="t-role"
             @align="start"
             @value={{this.form.formRole}}
@@ -74,11 +74,11 @@
             @placeholder="Select role..."
             data-test-input-role
           />
-        </Nuvo::Field>
+        </Woven::Field>
       {{/unless}}
 
-      <div class="nu-field">
-        <span id="team-regions-label" class="nu-field__label">Regions</span>
+      <div class="wu-field">
+        <span id="team-regions-label" class="wu-field__label">Regions</span>
         <div
           class="flex gap-2 wrap"
           role="group"
@@ -88,7 +88,7 @@
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
+              class="wu-tag m-pill m-selectable
                 {{if
                   (or
                     this.hasAllRegions
@@ -115,17 +115,17 @@
         </div>
         {{#if this.hasAllRegions}}
           <span
-            class="nu-field__hint"
+            class="wu-field__hint"
             data-test-all-regions-note
           >{{this.allRegionsNote}}</span>
         {{else}}
-          <span class="nu-field__hint">Which regions this member can work in.
+          <span class="wu-field__hint">Which regions this member can work in.
             Selecting more than one lets them switch.</span>
         {{/if}}
       </div>
 
       {{#if this.hasNoRegionsSelected}}
-        <Nuvo::Alert
+        <Woven::Alert
           @variant="warning"
           @title="No regions selected"
           @description="This member will fall back to the company default region rather than one you picked. Select at least one to control what they can read."
@@ -139,17 +139,17 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @onClick={{this.close}}
       data-test-cancel-member-form
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="team-member-form"
       @loading={{this.isSaving}}
       data-test-save-member
-    >{{this.submitLabel}}</Nuvo::Button>
+    >{{this.submitLabel}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

@@ -161,7 +161,7 @@ module('Integration | Template | contacts/index', function (hooks) {
     assert.dom('[data-test-contacts-table]').exists();
     assert.dom('[data-test-my-requests]').doesNotExist();
 
-    await click('[data-test-nu-tabs-trigger="requests"]');
+    await click('[data-test-wu-tabs-trigger="requests"]');
 
     assert.strictEqual(controller.tab, 'requests');
     assert.dom('[data-test-contacts-table]').doesNotExist();
@@ -191,7 +191,7 @@ module('Integration | Template | contacts/index', function (hooks) {
       tagCounts: { all: 9, lead: 4, owner: 3, tenant: 2, portfolio_owner: 0 },
     });
 
-    const segment = (id) => `[data-test-nu-segmented-item="${id}"]`;
+    const segment = (id) => `[data-test-wu-segmented-item="${id}"]`;
     assert.dom(segment('')).hasText('All 9');
     assert.dom(segment('lead')).hasText('Lead 4');
     assert.dom(segment('owner')).hasText('Owner 3');
@@ -211,8 +211,8 @@ module('Integration | Template | contacts/index', function (hooks) {
   test('the role bar keeps plain labels when the list carries no totals', async function (assert) {
     await renderList(this);
 
-    assert.dom('[data-test-nu-segmented-item="lead"]').hasText('Lead');
-    assert.dom('[data-test-nu-segmented-item=""]').hasText('All');
+    assert.dom('[data-test-wu-segmented-item="lead"]').hasText('Lead');
+    assert.dom('[data-test-wu-segmented-item=""]').hasText('All');
   });
 
   test('search and the column Options sit in the toolbar, and the table has no outer card', async function (assert) {
@@ -227,6 +227,6 @@ module('Integration | Template | contacts/index', function (hooks) {
       )
       .exists('Options renders in the toolbar slot');
     assert.dom('.data-table-shell__toolbar').doesNotExist();
-    assert.dom('[data-test-contacts-list] .nu-card').doesNotExist();
+    assert.dom('[data-test-contacts-list] .wu-card').doesNotExist();
   });
 });

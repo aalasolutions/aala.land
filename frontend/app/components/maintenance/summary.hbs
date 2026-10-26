@@ -1,5 +1,5 @@
 <div class="wo-story" data-test-work-order-summary ...attributes>
-  <Nuvo::Card>
+  <Woven::Card>
     <div class="wo-story__now" data-test-work-order-now>
       <p
         class="wo-story__statement"
@@ -18,13 +18,13 @@
             </li>
           {{/each}}
         </ol>
-        <Nuvo::Timeline
+        <Woven::Timeline
           class="wo-story__timeline"
           aria-label="Progress"
           data-test-work-order-timeline
         >
           {{#each this.stages as |stage|}}
-            <Nuvo::TimelineItem
+            <Woven::TimelineItem
               class="is-{{stage.state}}"
               @title={{stage.label}}
               @variant="primary"
@@ -33,12 +33,12 @@
               data-test-work-order-timeline-stage={{stage.state}}
             />
           {{/each}}
-        </Nuvo::Timeline>
+        </Woven::Timeline>
       {{/unless}}
     </div>
-  </Nuvo::Card>
+  </Woven::Card>
 
-  <Nuvo::Card @title="What needs fixing">
+  <Woven::Card @title="What needs fixing">
     <p class="wo-story__issue" data-test-work-order-description>{{or
         @workOrder.description
         "-"
@@ -54,14 +54,14 @@
           "-"
         }}</p>
     </div>
-  </Nuvo::Card>
+  </Woven::Card>
 
   <div class="grid cols-1 cols-2@lg gap-6 align-start">
-    <Nuvo::Card @title="Who and when">
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="buildings" />
+    <Woven::Card @title="Who and when">
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="buildings" />
           Unit</span>
-        <span class="nu-info-row__value" data-test-work-order-unit>
+        <span class="wu-info-row__value" data-test-work-order-unit>
           {{#if @unit.areaId}}
             <LinkTo
               @route="properties.unit"
@@ -74,64 +74,64 @@
           {{/if}}
         </span>
       </div>
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="toolbox" />
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="toolbox" />
           Vendor</span>
         <span
-          class="nu-info-row__value"
+          class="wu-info-row__value"
           data-test-work-order-vendor
         >{{this.vendorName}}</span>
       </div>
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="user" /> Assignee</span>
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="user" /> Assignee</span>
         <span
-          class="nu-info-row__value"
+          class="wu-info-row__value"
           data-test-work-order-assignee
         >{{this.assigneeName}}</span>
       </div>
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="calendar-blank" />
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="calendar-blank" />
           Scheduled</span>
-        <span class="nu-info-row__value" data-test-work-order-scheduled>{{or
+        <span class="wu-info-row__value" data-test-work-order-scheduled>{{or
             (format-date @workOrder.scheduledDate)
             "-"
           }}</span>
       </div>
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="calendar-check" />
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="calendar-check" />
           Completed</span>
-        <span class="nu-info-row__value" data-test-work-order-completed>{{or
+        <span class="wu-info-row__value" data-test-work-order-completed>{{or
             (format-date @workOrder.completedAt zone="region")
             "-"
           }}</span>
       </div>
-    </Nuvo::Card>
+    </Woven::Card>
 
-    <Nuvo::Card @title="Cost">
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="calculator" />
+    <Woven::Card @title="Cost">
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="calculator" />
           Estimated</span>
-        <span class="nu-info-row__value" data-test-work-order-estimated>{{or
+        <span class="wu-info-row__value" data-test-work-order-estimated>{{or
             (format-money @workOrder.estimatedCost currency=@workOrder.currency)
             "-"
           }}</span>
       </div>
-      <div class="nu-info-row">
-        <span class="nu-info-row__label"><Ui::Ph @icon="receipt" />
+      <div class="wu-info-row">
+        <span class="wu-info-row__label"><Ui::Ph @icon="receipt" />
           Actual</span>
-        <span class="nu-info-row__value" data-test-work-order-actual>{{or
+        <span class="wu-info-row__value" data-test-work-order-actual>{{or
             (format-money @workOrder.actualCost currency=@workOrder.currency)
             "-"
           }}</span>
       </div>
-      <div class="nu-info-row m-stacked">
-        <span class="nu-info-row__label"><Ui::Ph @icon="note" />
+      <div class="wu-info-row m-stacked">
+        <span class="wu-info-row__label"><Ui::Ph @icon="note" />
           Cost notes</span>
         <span
-          class="nu-info-row__value whitespace-pre-line"
+          class="wu-info-row__value whitespace-pre-line"
           data-test-work-order-cost-notes
         >{{or @workOrder.costNotes "-"}}</span>
       </div>
-    </Nuvo::Card>
+    </Woven::Card>
   </div>
 </div>

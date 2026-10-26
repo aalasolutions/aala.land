@@ -1,12 +1,12 @@
 import { moneyFormatter as buildMoneyFormatter } from './money';
 
 const FALLBACKS = {
-  '--nu-brand': '#008175',
-  '--nu-success': '#006d4b',
-  '--nu-danger': '#a8000d',
-  '--nu-info': '#006092',
-  '--nu-text-muted': '#64748b',
-  '--nu-border-regular': '#e2e8f0',
+  '--wu-brand': '#008175',
+  '--wu-success': '#006d4b',
+  '--wu-danger': '#a8000d',
+  '--wu-info': '#006092',
+  '--wu-text-muted': '#64748b',
+  '--wu-border-regular': '#e2e8f0',
 };
 
 // Tokens inherit from :root, which the chart can read without owning the canvas.

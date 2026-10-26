@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title="Invite Team Member"
   @placement="end"
@@ -12,18 +12,18 @@
     <SeatNote @seatInfo={{@seatInfo}} />
     <form
       id="team-invite-form"
-      class="nu-form"
+      class="wu-form"
       novalidate
       {{on "submit" this.send}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           class="grow"
           @label="First Name"
           @required={{true}}
           @error={{this.fieldErrors.inviteFirstName}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="i-fname"
             type="text"
             placeholder="e.g. Jane"
@@ -31,14 +31,14 @@
             @onInput={{fn this.setField "inviteFirstName"}}
             data-test-invite-first
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           class="grow"
           @label="Last Name"
           @required={{true}}
           @error={{this.fieldErrors.inviteLastName}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="i-lname"
             type="text"
             placeholder="e.g. Smith"
@@ -46,15 +46,15 @@
             @onInput={{fn this.setField "inviteLastName"}}
             data-test-invite-last
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Email"
         @required={{true}}
         @error={{this.fieldErrors.inviteEmail}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="i-email"
           type="email"
           placeholder="e.g. jane@company.com"
@@ -62,13 +62,13 @@
           @onInput={{fn this.setField "inviteEmail"}}
           data-test-invite-email
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Role"
         @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
       >
-        <Nuvo::Dropdown
+        <Woven::Dropdown
           id="i-role"
           @align="start"
           @value={{this.form.inviteRole}}
@@ -77,7 +77,7 @@
           @placeholder="Select role..."
           data-test-invite-role
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
       {{#if this.errorMsg}}
         <p
@@ -85,7 +85,7 @@
           data-test-invite-error
         >{{this.errorMsg}}</p>
         {{#if this.existingUser}}
-          <Nuvo::Button
+          <Woven::Button
             @variant="secondary"
             @size="xs"
             @disabled={{@isReactivating}}
@@ -97,24 +97,24 @@
               "Reactivating..."
               "Reactivate this user instead"
             }}
-          </Nuvo::Button>
+          </Woven::Button>
         {{/if}}
       {{/if}}
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       data-test-cancel-invite
       {{on "click" this.close}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="team-invite-form"
       @disabled={{or this.isInviting @isReactivating}}
       @loading={{this.isInviting}}
       data-test-send-invite
-    >{{if this.isInviting "Sending..." "Send Invitation"}}</Nuvo::Button>
+    >{{if this.isInviting "Sending..." "Send Invitation"}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

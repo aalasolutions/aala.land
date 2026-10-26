@@ -28,7 +28,7 @@ export default class ProfileController extends Controller {
     this[fieldName] = e.target.value;
   }
 
-  // Nuvo::Input calls onInput as (value, event), not with a raw DOM event.
+  // Woven::Input calls onInput as (value, event), not with a raw DOM event.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
     if (fieldName in this.fieldErrors) {

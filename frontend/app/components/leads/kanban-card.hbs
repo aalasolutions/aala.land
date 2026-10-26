@@ -1,4 +1,4 @@
-<Nuvo::Panel
+<Woven::Panel
   @compact={{true}}
   @interactive={{true}}
   class="lead-card {{@dragClass}}"
@@ -14,16 +14,16 @@
     <p class="text-sm font-bold flex gap-2 x-center">
       {{contact-name @lead.contact}}
       {{#if (is-limited-contact @lead.contact)}}
-        <Nuvo::Badge @size="sm" @text="Limited" data-test-limited-badge />
+        <Woven::Badge @size="sm" @text="Limited" data-test-limited-badge />
       {{/if}}
     </p>
     {{#if this.isTemperatureBoard}}
-      <Nuvo::Tag
+      <Woven::Tag
         class="tag-lead-{{lowercase @lead.status}}"
         @text={{@lead.status}}
       />
     {{else}}
-      <Nuvo::Tag
+      <Woven::Tag
         class="tag-temp-{{lowercase @lead.temperature}}"
         @text={{@lead.temperature}}
       />
@@ -52,7 +52,7 @@
     </div>
   {{/if}}
   {{#if this.isAgentBoard}}
-    <Nuvo::Tag
+    <Woven::Tag
       class="tag-lead-{{lowercase @lead.status}}"
       @text={{@lead.status}}
     />
@@ -80,23 +80,23 @@
         @lead.createdAt
         zone="region"
       }}</span>
-    <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-      <Nuvo::Button
+    <Woven::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
+      <Woven::Button
         @variant="secondary"
         @size="xs"
         {{on "click" (fn @onEdit @lead)}}
       >
         Edit
-      </Nuvo::Button>
+      </Woven::Button>
       {{#if @onAssign}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @size="xs"
           {{on "click" (fn @onAssign @lead)}}
         >
           Assign
-        </Nuvo::Button>
+        </Woven::Button>
       {{/if}}
-    </Nuvo::BtnGroup>
+    </Woven::BtnGroup>
   </div>
-</Nuvo::Panel>
+</Woven::Panel>

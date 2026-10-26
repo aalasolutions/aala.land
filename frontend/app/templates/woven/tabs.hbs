@@ -1,0 +1,175 @@
+<WovenDocs::Page
+  @id="tabs"
+  @title="Tabs"
+  @subtitle="Tab list with an optional panel, controlled or uncontrolled."
+  @components="Woven::Tabs"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      Tabs navigate between panels of content. Pass
+      <code class="wu-code">@activeTab</code>
+      to control the selection from outside, or omit it and the component
+      keeps its own. The block receives the active id so one template can
+      render every panel. For a control that sets a value rather than
+      showing a panel, use Segmented.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Underline, pills and enclosed variants; vertical and fill layouts.</li>
+      <li class="wu-list__item">Icons and counts per tab; disabled tabs are skipped by the keyboard.</li>
+      <li class="wu-list__item">Roving tabindex with arrow, Home and End keys.</li>
+      <li class="wu-list__item">Controlled and uncontrolled modes.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Modes" @id="modes">
+    <WovenDocs::Example
+      @title="Controlled with panel"
+      @note="activeTab comes from the controller and onChange writes it back, so the route can put the tab in a query param. Icons, counts and a disabled tab are declared on the items."
+      @layout="block"
+      @code={{this.code.controlled}}
+    >
+      <Woven::Tabs
+        @tabs={{this.unitTabs}}
+        @activeTab={{this.activeUnitTab}}
+        @onChange={{this.updateUnitTab}}
+        as |tabId|
+      >
+        {{#if (eq tabId "overview")}}
+          <Woven::Text @text="Unit 1204, Marina Tower - 2BR, sea view, currently leased." />
+        {{else if (eq tabId "lease")}}
+          <Woven::Text @text="Leased to Ahmed Khalid, AED 8,500/month, renews 31 Dec 2026." />
+        {{else if (eq tabId "cheques")}}
+          <Woven::Text @text="4 post-dated cheques on file, next due 1 Sep 2026." />
+        {{else if (eq tabId "maintenance")}}
+          <Woven::Text @text="No open maintenance requests." />
+        {{/if}}
+      </Woven::Tabs>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Uncontrolled"
+      @note="Without activeTab the component starts on the first enabled tab and keeps its own state. Fine for local panels that nothing else needs to know about."
+      @layout="block"
+      @code={{this.code.uncontrolled}}
+    >
+      <Woven::Tabs @tabs={{this.plainTabs}} as |tabId|>
+        <Woven::Text @text="Active: {{tabId}}" />
+      </Woven::Tabs>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="List only"
+      @note="Without a block only the tab list renders; the page shows the content elsewhere, for example a routed outlet."
+      @layout="block"
+      @code={{this.code.listOnly}}
+    >
+      <Woven::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Custom icons with the :icon slot"
+      @note="Icons come from the tab objects, so the :icon block yields the tab back and the host decides what to draw per tab. Without the block, tab.icon renders as a Phosphor name."
+      @layout="block"
+      @code={{this.code.iconSlot}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}}>
+        <:icon as |tab|>
+          <span class="wu-tabs__icon" aria-hidden="true">{{if tab.count "*" "-"}}</span>
+        </:icon>
+      </Woven::Tabs>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Variants" @id="variants">
+    <WovenDocs::Example
+      @title="Underline"
+      @note="A bar under the active tab; the default and the lightest, for page-level sections."
+      @layout="block"
+      @code={{this.code.underline}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @variant="underline" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Pills"
+      @note="A filled pill on the active tab, for compact switchers inside cards and toolbars."
+      @layout="block"
+      @code={{this.code.pills}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Enclosed"
+      @note="Folder-style tabs joined to the panel below, for settings pages where the panel has its own border."
+      @layout="block"
+      @code={{this.code.enclosed}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Sizes" @id="sizes">
+    <WovenDocs::Example
+      @title="Sizes"
+      @note="xs, sm, md (default) and lg. Trigger height is 28, 32, 36 and 48px, matching buttons and inputs of the same size."
+      @layout="stack"
+      @code={{this.code.sizes}}
+    >
+      <Woven::Tabs @tabs={{this.plainTabs}} @size="xs" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="xs" />
+      <Woven::Tabs @tabs={{this.plainTabs}} @size="sm" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="sm" />
+      <Woven::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="md" />
+      <Woven::Tabs @tabs={{this.plainTabs}} @size="lg" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="lg" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Layouts" @id="layouts">
+    <WovenDocs::Example
+      @title="Vertical"
+      @note="The list stacks on the inline-start side and arrow keys switch to up and down. For long lists of sections in a settings area."
+      @layout="block"
+      @code={{this.code.vertical}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Fill"
+      @note="Tabs share the full width equally, for two to four tabs on a narrow card or a phone."
+      @layout="block"
+      @code={{this.code.fill}}
+    >
+      <Woven::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Callbacks" @id="callbacks">
+    <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The list has role="tablist" with aria-orientation; each tab is a button with role="tab" and aria-selected.</li>
+      <li class="wu-list__item">Only the active tab is in the tab order; arrows, Home and End move between enabled tabs and focus follows selection.</li>
+      <li class="wu-list__item">The panel has role="tabpanel" and tabindex="0" so it can be reached from the list.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Horizontal arrow keys follow the reading direction: under dir="rtl" ArrowLeft moves forward and ArrowRight moves back.</li>
+      <li class="wu-list__item">Layout uses logical properties; the vertical variant keeps the list on the inline-start side.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

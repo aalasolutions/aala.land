@@ -1,0 +1,28 @@
+<aside class={{this.classes}} data-test-wu-sidebar ...attributes>
+  {{#if (has-block "brand")}}
+    <div class="wu-sidebar__brand">{{yield to="brand"}}</div>
+  {{else if @brandTitle}}
+    <div class="wu-sidebar__brand">
+      <div class="wu-sidebar__brand-title">{{@brandTitle}}</div>
+      {{#if @brandSubtitle}}
+        <div class="wu-sidebar__brand-subtitle">{{@brandSubtitle}}</div>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  <nav class="wu-sidebar__nav">
+    {{yield}}
+  </nav>
+
+  {{#if (has-block "footer")}}
+    <div class="wu-sidebar__footer">{{yield to="footer"}}</div>
+  {{/if}}
+</aside>
+
+{{#if @dismissible}}
+  <div
+    class={{this.backdropClasses}}
+    data-test-wu-sidebar-backdrop
+    {{on "click" this.dismiss}}
+  ></div>
+{{/if}}

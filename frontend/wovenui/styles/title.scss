@@ -1,0 +1,113 @@
+// wu-title - heading and body text primitives
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(title) {
+  @include wu-root("title", (
+    "FontSize": wu-font-size(2xl),
+    "FontWeight": wu-font-weight(bold),
+    "LineHeight": 1.25,
+    "Color": var(--wu-text-regular),
+  ));
+
+  display: block;
+  margin: 0;
+  font-size: wu-var("title", "FontSize");
+  font-weight: wu-var("title", "FontWeight");
+  line-height: wu-var("title", "LineHeight");
+  color: wu-var("title", "Color");
+
+  // ---- size scale: uniform, looped ----
+
+  @each $size, $value in $wu-font-size {
+    @include m(#{$size}) {
+      --wu-title--FontSize: #{$value};
+    }
+  }
+
+  // ---- weight modifiers: uniform, looped ----
+
+  $wu-title-weights: (normal, medium, semibold, bold);
+
+  @each $weight in $wu-title-weights {
+    @include m(#{$weight}) {
+      --wu-title--FontWeight: #{wu-font-weight($weight)};
+    }
+  }
+
+  @include m(truncate) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+// Body copy
+@include b(text) {
+  @include wu-root("text", (
+    "FontSize": wu-font-size(md),
+    "FontWeight": wu-font-weight(normal),
+    "LineHeight": 1.5,
+    "Color": var(--wu-text-regular),
+  ));
+
+  display: block;
+  margin: 0;
+  font-size: wu-var("text", "FontSize");
+  font-weight: wu-var("text", "FontWeight");
+  line-height: wu-var("text", "LineHeight");
+  color: wu-var("text", "Color");
+
+  // ---- size scale: uniform, looped ----
+
+  @each $size, $value in $wu-font-size {
+    @include m(#{$size}) {
+      --wu-text--FontSize: #{$value};
+    }
+  }
+
+  // ---- weight modifiers ----
+
+  @each $weight in (normal, medium, semibold, bold) {
+    @include m(#{$weight}) {
+      --wu-text--FontWeight: #{wu-font-weight($weight)};
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $wu-variants {
+    @include m(#{$variant}) {
+      --wu-text--Color: var(--wu-#{wu-role($variant)});
+    }
+  }
+
+  @include m(muted) {
+    --wu-text--Color: var(--wu-text-muted);
+  }
+
+  @include m(subtle) {
+    --wu-text--Color: var(--wu-text-subtle);
+  }
+
+  @include m(truncate) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  @include m(clamp-2) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  @include m(clamp-3) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}

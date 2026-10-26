@@ -1,14 +1,14 @@
 {{page-title "Companies"}}
 
 <div data-test-admin-companies-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Companies"
     @subtitle="Every account, its rail, its deal, its lock state."
   />
 
-  <Nuvo::Card>
+  <Woven::Card>
     <div class="console-list-filters mb-4">
-      <Nuvo::Input
+      <Woven::Input
         class="console-list-filters__search"
         type="text"
         placeholder="Search companies..."
@@ -17,7 +17,7 @@
         @onInput={{this.setSearch}}
         data-test-companies-search
       />
-      <Nuvo::Dropdown
+      <Woven::Dropdown
         class="console-list-filters__select"
         aria-label="Filter by rail"
         @align="start"
@@ -26,7 +26,7 @@
         @onSelect={{this.setRail}}
         data-test-companies-rail-filter
       />
-      <Nuvo::Dropdown
+      <Woven::Dropdown
         class="console-list-filters__select"
         aria-label="Filter by status"
         @align="start"
@@ -38,7 +38,7 @@
     </div>
 
     {{#if this.rows.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @onRowClick={{this.openCompany}}
@@ -59,7 +59,7 @@
             >{{cell.value}}</LinkTo>
           </span>
         {{else if (eq cell.key "tier")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-plan-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
@@ -80,27 +80,27 @@
         {{else if (eq cell.key "status")}}
           <span data-test-companies-status={{cell.row.id}}>
             {{#if (eq cell.value "locked")}}
-              <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
+              <Woven::Tag class="tag-account-locked" @text="LOCKED" />
             {{else if (eq cell.value "lifted")}}
-              <Nuvo::Tag class="tag-account-lifted">
+              <Woven::Tag class="tag-account-lifted">
                 lifted until
                 {{format-date cell.row.lockState.liftUntil}}
-              </Nuvo::Tag>
+              </Woven::Tag>
             {{else if (eq cell.value "deal")}}
-              <Nuvo::Tag class="tag-account-on_deal">
+              <Woven::Tag class="tag-account-on_deal">
                 {{#if cell.row.deal.lifetime}}
                   lifetime deal
                 {{else}}
                   deal until
                   {{format-date cell.row.deal.untilDate}}
                 {{/if}}
-              </Nuvo::Tag>
+              </Woven::Tag>
             {{else}}
-              <Nuvo::Tag class="tag-account-active" @text="active" />
+              <Woven::Tag class="tag-account-active" @text="active" />
             {{/if}}
           </span>
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
+          <Woven::Button
             @subtle={{true}}
             @variant="secondary"
             @size="xs"
@@ -113,12 +113,12 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       <p class="text-muted text-center p-4">No companies found.</p>
     {{/if}}
 
-    <Nuvo::Pagination
+    <Woven::Pagination
       @selectId="console-companies-limit"
       @page={{this.page}}
       @limit={{this.limit}}
@@ -128,5 +128,5 @@
       @onPageChange={{this.goToPage}}
       @onLimitChange={{this.changeLimit}}
     />
-  </Nuvo::Card>
+  </Woven::Card>
 </div>

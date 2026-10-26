@@ -1,46 +1,46 @@
 // Shared compact detail card, used by leases and contacts.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 .record-sheet {
   overflow: hidden;
-  background: var(--nu-bg-surface);
-  border: 1px solid var(--nu-border-regular);
-  border-radius: nu-radius(xl);
-  box-shadow: nu-shadow(sm);
+  background: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(xl);
+  box-shadow: wu-shadow(sm);
 }
 
 .record-sheet__top {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(3) nu-space(6);
+  gap: wu-space(3) wu-space(6);
   align-items: center;
   justify-content: space-between;
-  padding: nu-space(4);
+  padding: wu-space(4);
 }
 
 .record-sheet__statement {
   margin: 0;
-  font-size: nu-font-size(lg);
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-size: wu-font-size(lg);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
   text-wrap: balance;
 }
 
 .record-sheet__pill {
-  padding: nu-space(1) nu-space(3);
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
+  padding: wu-space(1) wu-space(3);
+  font-size: wu-font-size(sm);
+  font-weight: wu-font-weight(semibold);
   white-space: nowrap;
-  color: var(--nu-brand);
-  background: nu-tint(brand, 12%);
-  border-radius: nu-radius(full);
+  color: var(--wu-brand);
+  background: wu-tint(brand, 12%);
+  border-radius: wu-radius(full);
 }
 
 .record-sheet__trio {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-block-start: 1px solid var(--nu-border-regular);
+  border-block-start: 1px solid var(--wu-border-regular);
 
   @include media-down(lg) {
     grid-template-columns: minmax(0, 1fr);
@@ -50,78 +50,78 @@
 .record-sheet__cell {
   display: flex;
   flex-direction: column;
-  gap: nu-space(1);
+  gap: wu-space(1);
   min-inline-size: 0;
-  padding: nu-space(4);
+  padding: wu-space(4);
 
   & + & {
-    border-inline-start: 1px solid var(--nu-border-regular);
+    border-inline-start: 1px solid var(--wu-border-regular);
 
     @include media-down(lg) {
       border-inline-start: 0;
-      border-block-start: 1px solid var(--nu-border-regular);
+      border-block-start: 1px solid var(--wu-border-regular);
     }
   }
 }
 
 .record-sheet__label {
   display: inline-flex;
-  gap: nu-space(1);
+  gap: wu-space(1);
   align-items: center;
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-muted);
 }
 
 .record-sheet__value {
-  font-weight: nu-font-weight(semibold);
-  color: var(--nu-text-regular);
+  font-weight: wu-font-weight(semibold);
+  color: var(--wu-text-regular);
   overflow-wrap: anywhere;
 }
 
 .record-sheet__amount {
-  font-size: nu-font-size(xl);
-  font-weight: nu-font-weight(semibold);
+  font-size: wu-font-size(xl);
+  font-weight: wu-font-weight(semibold);
   font-variant-numeric: tabular-nums;
-  color: var(--nu-text-regular);
+  color: var(--wu-text-regular);
 }
 
 .record-sheet__sub {
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
   overflow-wrap: anywhere;
 }
 
 .record-sheet__ribbon {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: nu-space(4);
+  gap: wu-space(4);
   align-items: center;
-  padding: nu-space(4);
-  font-size: nu-font-size(sm);
+  padding: wu-space(4);
+  font-size: wu-font-size(sm);
   font-variant-numeric: tabular-nums;
-  color: var(--nu-text-muted);
-  background: color-mix(in srgb, var(--nu-border-regular) 35%, var(--nu-bg-surface));
-  border-block-start: 1px solid var(--nu-border-regular);
+  color: var(--wu-text-muted);
+  background: color-mix(in srgb, var(--wu-border-regular) 35%, var(--wu-bg-surface));
+  border-block-start: 1px solid var(--wu-border-regular);
 
-  .nu-progress {
-    --nu-progress--Height: 0.375rem;
-    --nu-progress--TrackColor: var(--nu-border-regular);
+  .wu-progress {
+    --wu-progress--Height: 0.375rem;
+    --wu-progress--TrackColor: var(--wu-border-regular);
   }
 }
 
 .record-sheet__foot {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(2) nu-space(8);
-  padding: nu-space(4);
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
-  border-block-start: 1px solid var(--nu-border-regular);
+  gap: wu-space(2) wu-space(8);
+  padding: wu-space(4);
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
+  border-block-start: 1px solid var(--wu-border-regular);
 
   b {
-    font-weight: nu-font-weight(semibold);
-    color: var(--nu-text-regular);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-regular);
   }
 }
 
@@ -130,19 +130,19 @@
   margin: 0;
 
   b {
-    font-weight: nu-font-weight(normal);
+    font-weight: wu-font-weight(normal);
     white-space: pre-line;
   }
 }
 
 .record-sheet__also {
-  margin: nu-space(1) 0 0;
-  font-size: nu-font-size(sm);
-  color: var(--nu-text-muted);
+  margin: wu-space(1) 0 0;
+  font-size: wu-font-size(sm);
+  color: var(--wu-text-muted);
 }
 
 .record-sheet__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: nu-space(2);
+  gap: wu-space(2);
 }

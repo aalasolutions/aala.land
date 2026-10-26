@@ -1,26 +1,26 @@
 {{page-title "Access Requests"}}
 
 <div data-test-access-requests-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Access Requests"
     @subtitle="Agents asking for full details of contacts they did not add."
   />
 
-  <Nuvo::Segmented
+  <Woven::Segmented
     @options={{this.statusOptions}}
     @value={{this.status}}
     @onChange={{this.setStatus}}
     data-test-access-status-filter
   />
 
-  <Nuvo::Card>
+  <Woven::Card>
     {{#if @model.error}}
       <p
         class="text-danger"
         data-test-access-requests-error
       >{{@model.error}}</p>
     {{else if this.rows.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -60,7 +60,7 @@
         {{else if (eq cell.key "id")}}
           {{#if (eq cell.row.status "PENDING")}}
             <div class="flex">
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="primary"
                 @size="xs"
@@ -70,7 +70,7 @@
                 data-test-approve-access
                 {{on "click" (fn this.openApprove cell.row)}}
               />
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -82,7 +82,7 @@
               />
             </div>
           {{else if (eq cell.row.status "APPROVED")}}
-            <Nuvo::Button
+            <Woven::Button
               @subtle={{true}}
               @variant="secondary"
               @size="xs"
@@ -93,7 +93,7 @@
               {{on "click" (fn this.openDecision "revoke" cell.row)}}
             />
           {{else}}
-            <Nuvo::Badge
+            <Woven::Badge
               @variant={{cell.row.statusVariant}}
               @text={{capitalize cell.row.status}}
               data-test-access-request-status={{cell.row.status}}
@@ -102,16 +102,16 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         @description="No {{lowercase this.status}} access requests."
         data-test-access-requests-empty
       />
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="access-requests-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -123,10 +123,10 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
-<Nuvo::Modal
+<Woven::Modal
   @open={{this.showApproveModal}}
   @title="Approve access"
   @subtitle="{{this.approving.requester.name}} asked for {{this.approving.contact.displayName}}"
@@ -137,12 +137,12 @@
   <:body>
     <form
       id="approve-access-form"
-      class="nu-form"
+      class="wu-form"
       {{on "submit" this.confirmApprove}}
     >
       <div class="flex col gap-2" role="radiogroup" aria-label="Access lasts">
         {{#each this.expiryChoices as |choice|}}
-          <Nuvo::Radio
+          <Woven::Radio
             @name="access-expiry"
             @value={{choice.value}}
             @label={{choice.label}}
@@ -153,11 +153,11 @@
         {{/each}}
       </div>
       {{#if (eq this.expiryChoice "date")}}
-        <Nuvo::Field
+        <Woven::Field
           @label="Access ends on"
           @error={{this.expiryDateError}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="access-expiry-date"
             @type="date"
             @value={{this.expiryDate}}
@@ -165,7 +165,7 @@
             min={{this.minExpiryDate}}
             data-test-expiry-date
           />
-        </Nuvo::Field>
+        </Woven::Field>
       {{/if}}
       {{#if this.approveError}}
         <p
@@ -176,13 +176,13 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @text="Cancel"
       @onClick={{this.closeApprove}}
       data-test-approve-cancel
     />
-    <Nuvo::Button
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="approve-access-form"
@@ -191,7 +191,7 @@
       data-test-approve-confirm
     />
   </:footer>
-</Nuvo::Modal>
+</Woven::Modal>
 
 <ConfirmModal
   @open={{this.showDecisionModal}}
@@ -205,13 +205,13 @@
   @onConfirm={{this.confirmDecision}}
   data-test-decision-modal
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="access-decision-reason"
       rows="2"
       maxlength="500"
@@ -222,5 +222,5 @@
       aria-label="Reason"
       data-test-decision-reason
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

@@ -1,0 +1,35 @@
+{{! Column picker for Woven::DataTable; rendered by the table, not used on its own. }}
+<Woven::Popover @title="Columns" @placement="bottom" @align="end">
+  <:trigger as |toggle|>
+    <Woven::Button
+      @variant="ghost"
+      @size={{if @size @size "sm"}}
+      @icon="sliders-horizontal"
+      @onClick={{toggle}}
+      data-test-data-table-options
+    >Options</Woven::Button>
+  </:trigger>
+  <:body>
+    <div class="flex col" data-test-data-table-columns>
+      {{#each @columns key="key" as |option|}}
+        <Woven::Checkbox
+          @label={{option.name}}
+          @checked={{option.visible}}
+          @onChange={{fn @onToggle option.key}}
+          data-test-data-table-column-toggle={{option.key}}
+        />
+      {{/each}}
+    </div>
+  </:body>
+  <:footer>
+    {{#if @onReset}}
+      <Woven::Button
+        @variant="ghost"
+        @size="sm"
+        @icon="arrow-counter-clockwise"
+        @onClick={{@onReset}}
+        data-test-data-table-reset
+      >Reset columns</Woven::Button>
+    {{/if}}
+  </:footer>
+</Woven::Popover>

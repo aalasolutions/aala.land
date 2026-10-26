@@ -1,0 +1,40 @@
+<header class={{this.classes}} data-test-wu-topbar ...attributes>
+  {{#if @onToggle}}
+    <button
+      type="button"
+      class="wu-topbar__toggle"
+      aria-label="Toggle navigation"
+      data-test-wu-topbar-toggle
+      {{on "click" this.toggle}}
+    >☰</button>
+  {{/if}}
+
+  {{#if (has-block "brand")}}
+    <div class="wu-topbar__brand">{{yield to="brand"}}</div>
+  {{else if @brand}}
+    <div class="wu-topbar__brand">{{@brand}}</div>
+  {{/if}}
+
+  {{#if (has-block "search")}}
+    <div class="wu-topbar__search">{{yield to="search"}}</div>
+  {{/if}}
+
+  <div class="wu-topbar__actions">
+    {{yield to="actions"}}
+  </div>
+
+  {{#if (has-block "user")}}
+    <div class="wu-topbar__divider"></div>
+    <div class="wu-topbar__user">{{yield to="user"}}</div>
+  {{else if @userName}}
+    <div class="wu-topbar__divider"></div>
+    <div class="wu-topbar__user">
+      <div class="wu-topbar__user-details">
+        <div class="wu-topbar__user-name">{{@userName}}</div>
+        {{#if @userRole}}
+          <div class="wu-topbar__user-role">{{@userRole}}</div>
+        {{/if}}
+      </div>
+    </div>
+  {{/if}}
+</header>

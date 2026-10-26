@@ -86,12 +86,12 @@ module('Integration | Component | category-chart', function (hooks) {
 
     assert.dom('[data-test-category-chart]').doesNotExist();
     assert
-      .dom('[data-test-nu-empty-state-description]')
+      .dom('[data-test-wu-empty-state-description]')
       .hasText('No transactions in this month');
 
     await render(hbs`<CategoryChart />`);
     assert
-      .dom('[data-test-nu-empty-state-description]')
+      .dom('[data-test-wu-empty-state-description]')
       .exists('and with none');
   });
 });

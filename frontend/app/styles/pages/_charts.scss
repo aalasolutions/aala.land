@@ -1,7 +1,7 @@
 // Shared Chart.js shell: frame, HTML tooltip and screen-reader table. Sizing lives with the page.
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
-// Inside .nu-layer, so it only orders against other layer children.
+// Inside .wu-layer, so it only orders against other layer children.
 $chart-tip-layer: 2;
 
 .chart-canvas {
@@ -20,18 +20,18 @@ $chart-tip-layer: 2;
   }
 }
 
-// Hosted on .nu-layer: viewport-fixed, so no ancestor can clip it.
+// Hosted on .wu-layer: viewport-fixed, so no ancestor can clip it.
 .chart-canvas__tip {
   position: fixed;
   z-index: $chart-tip-layer;
-  padding: nu-space(1) nu-space(2);
-  font-size: nu-font-size(xs);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-inverted);
+  padding: wu-space(1) wu-space(2);
+  font-size: wu-font-size(xs);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-inverted);
   white-space: pre;
   pointer-events: none;
-  background-color: var(--nu-text-regular);
-  border-radius: nu-radius(md);
+  background-color: var(--wu-text-regular);
+  border-radius: wu-radius(md);
 }
 
 // The canvas exposes nothing, so the same numbers ship as a table; the wrapper carries the clip.

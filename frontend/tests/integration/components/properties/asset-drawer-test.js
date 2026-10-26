@@ -76,7 +76,7 @@ module('Integration | Component | properties/asset-drawer', function (hooks) {
     await click('[data-test-asset-save]');
 
     assert
-      .dom('#asset-form [data-test-nu-field-error]')
+      .dom('#asset-form [data-test-wu-field-error]')
       .hasText('Choose a city');
     assert.notOk(sent(this.calls, 'POST'));
   });

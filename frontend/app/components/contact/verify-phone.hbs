@@ -4,12 +4,12 @@
   {{on "submit" this.submit}}
   ...attributes
 >
-  <Nuvo::Field
+  <Woven::Field
     @label="Know this contact? Enter their number to unlock details"
     @error={{this.error}}
   >
     <div class="flex gap-2 x-center">
-      <Nuvo::Input
+      <Woven::Input
         id={{this.inputId}}
         @type="tel"
         @placeholder="+971501234567"
@@ -19,7 +19,7 @@
         class="grow"
         data-test-verify-phone-input
       />
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         @type="submit"
         @text="Unlock"
@@ -28,5 +28,5 @@
         data-test-verify-phone-submit
       />
     </div>
-  </Nuvo::Field>
+  </Woven::Field>
 </form>

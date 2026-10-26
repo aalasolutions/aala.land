@@ -1,15 +1,15 @@
 // Reports: KPI tiles, pipeline funnel and red-flag alert rows.
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 // KPI values stay below the xl page title.
-.reports-kpis .nu-stat {
-  --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+.reports-kpis .wu-stat {
+  --wu-stat--ValueFontSize: #{wu-font-size(lg)};
 }
 
 .funnel-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: #{nu-space(3)};
+  gap: #{wu-space(3)};
 
   @media (max-width: 768px) {
     grid-template-columns: repeat(3, 1fr);
@@ -17,12 +17,12 @@
 }
 
 .funnel-stage {
-  padding: nu-space(4);
-  background: var(--nu-bg-alternate);
-  border-radius: nu-radius(lg);
+  padding: wu-space(4);
+  background: var(--wu-bg-alternate);
+  border-radius: wu-radius(lg);
 }
 
 .red-flag-row {
-  background: var(--nu-bg-alternate);
-  border: 1px solid var(--nu-border-regular);
+  background: var(--wu-bg-alternate);
+  border: 1px solid var(--wu-border-regular);
 }

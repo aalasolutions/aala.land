@@ -15,17 +15,17 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        // @nuvoui/core's exports map hides the src/ partials the uikit imports
-        find: /^@nuvoui\/core\/src\//,
+        // @wovenui/core's exports map hides the src/ partials the uikit imports
+        find: /^@wovenui\/core\/src\//,
         replacement: fileURLToPath(
-          new URL('./node_modules/@nuvoui/core/src/', import.meta.url),
+          new URL('./node_modules/@wovenui/core/src/', import.meta.url),
         ),
       },
       {
         // Sass does not read the package exports map; point it at the kit stylesheets.
-        find: /^@nuvoui\/ember\/styles\//,
+        find: /^@wovenui\/ember\/styles\//,
         replacement: fileURLToPath(
-          new URL('./nuvoui/styles/', import.meta.url),
+          new URL('./wovenui/styles/', import.meta.url),
         ),
       },
     ],

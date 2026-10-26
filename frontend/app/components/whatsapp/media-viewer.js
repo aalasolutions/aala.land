@@ -4,7 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { isDestroying, isDestroyed } from '@ember/destroyable';
 import { modifier } from 'ember-modifier';
-import { isTopmostDialog } from '@nuvoui/ember/utils/dialog-focus';
+import { isTopmostDialog } from '@wovenui/ember/utils/dialog-focus';
 import { formatBytes } from 'land/helpers/format-bytes';
 import { mediaLabel } from 'land/utils/wa-media-label';
 import { openSignedDownload } from 'land/utils/media-download';
@@ -21,7 +21,7 @@ function fullscreenElement() {
   return document.fullscreenElement ?? document.webkitFullscreenElement ?? null;
 }
 
-// Full-screen Nuvo::Modal for one image or video; the open message lives on the whatsapp service.
+// Full-screen Woven::Modal for one image or video; the open message lives on the whatsapp service.
 export default class WhatsappMediaViewerComponent extends Component {
   @service whatsapp;
   @service notifications;

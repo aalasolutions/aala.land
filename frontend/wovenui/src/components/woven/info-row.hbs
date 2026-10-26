@@ -1,0 +1,6 @@
+<div class="wu-info-row" data-test-wu-info-row ...attributes>
+  <span class="wu-info-row__label" data-test-wu-info-row-label>{{@label}}</span>
+  <span class="wu-info-row__value" data-test-wu-info-row-value>
+    {{#if (has-block)}}{{yield}}{{else}}{{@value}}{{/if}}
+  </span>
+</div>

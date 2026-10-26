@@ -1,0 +1,394 @@
+<WovenDocs::Page
+  @id="input"
+  @title="Input, Textarea, Select"
+  @subtitle="Native text controls with the kit's sizes, states and addons."
+  @components="Woven::Input, Woven::Textarea, Woven::Select, Woven::InputGroup"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      All three wrap the native element and stay controlled: the value comes
+      in through
+      <code class="wu-code">@value</code>
+      and goes out through
+      <code class="wu-code">@onInput</code>
+      or
+      <code class="wu-code">@onChange</code>
+      as a plain value, not a DOM event. Attributes spread onto the native
+      element, so id, name and aria attributes pass straight through. Wrap
+      any of them in Woven::Field for a label, hint and error.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Four sizes (xs, sm, md default, lg) on input, select, textarea and input group; invalid and valid states, disabled and readonly.</li>
+      <li class="wu-list__item">Prefix and suffix glyphs; a clear button that is always reachable by keyboard.</li>
+      <li class="wu-list__item">Numeric, phone, email and URL inputs stay left-to-right inside an RTL page.</li>
+      <li class="wu-list__item">Textarea with row count and resize control.</li>
+      <li class="wu-list__item">Select accepts strings or value/label objects and renders a disabled placeholder option.</li>
+      <li class="wu-list__item">InputGroup adds prepend and append addons around any control.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input: value and events" @id="input-value">
+    <WovenDocs::Example
+      @title="Controlled value"
+      @note="onInput fires on every keystroke with the string first. Store it and pass it back as value; the input never keeps its own state."
+      @layout="stack"
+      @code={{this.code.controlled}}
+    >
+      <Woven::Input @value={{this.inputValue}} @placeholder="Property name" @onInput={{this.updateInput}} />
+      <span class="wu-text m-sm m-muted" data-test-woven-input-echo>Value: {{this.inputValue}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Change event"
+      @note="onChange fires on blur or Enter, once per committed value. Use it for lookups and validation that should not run per keystroke."
+      @layout="stack"
+      @code={{this.code.change}}
+    >
+      <Woven::Input @placeholder="Type, then blur or press Enter" @onChange={{this.countChange}} />
+      <span class="wu-text m-sm m-muted" data-test-woven-input-changes>Changes: {{this.changeCount}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Clearable"
+      @note="A labelled clear button appears whenever there is a value, never hover-gated, so keyboard and touch users can reach it. It calls onInput with an empty string and onClear."
+      @layout="stack"
+      @code={{this.code.clearable}}
+    >
+      <Woven::Input @value={{this.clearableValue}} @clearable={{true}} @onInput={{this.updateClearable}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input: icons" @id="input-icons">
+    <WovenDocs::Example
+      @title="Prefix icon"
+      @note="A glyph inside the field at the start, for search and lookup fields."
+      @layout="stack"
+      @code={{this.code.prefix}}
+    >
+      <Woven::Input @prefixIcon="⌕" @placeholder="Search units" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Suffix"
+      @note="A glyph or unit at the end. It gives way to the clear button while the field is clearable and non-empty."
+      @layout="stack"
+      @code={{this.code.suffix}}
+    >
+      <Woven::Input @suffixIcon="AED" @placeholder="Monthly rent" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input: sizes" @id="input-sizes">
+    <WovenDocs::Example
+      @title="Extra small"
+      @note="Toolbar rows beside xs buttons and dropdowns."
+      @layout="stack"
+      @code={{this.code.xs}}
+    >
+      <Woven::Input @size="xs" @placeholder="Extra small" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Small"
+      @note="Toolbars, table filters and the search box inside a dropdown menu."
+      @layout="stack"
+      @code={{this.code.sm}}
+    >
+      <Woven::Input @size="sm" @placeholder="Small" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Large"
+      @note="Hero forms and sign-in screens where the field is the focus."
+      @layout="stack"
+      @code={{this.code.lg}}
+    >
+      <Woven::Input @size="lg" @placeholder="Large" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Auto width"
+      @note="Stops filling the row and takes the browser default width, about 20 characters. It does not grow as you type."
+      @code={{this.code.auto}}
+    >
+      <Woven::Input @auto={{true}} @placeholder="Auto width" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input: states" @id="input-states">
+    <WovenDocs::Example
+      @title="Invalid"
+      @note="Red border plus aria-invalid. Pair it with the error text on Woven::Field so the reason is visible and announced."
+      @layout="stack"
+      @code={{this.code.invalid}}
+    >
+      <Woven::Input @invalid={{true}} @value="-100" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Valid"
+      @note="Green border for a value the server has confirmed, such as an available slug. Ignored while invalid is set."
+      @layout="stack"
+      @code={{this.code.valid}}
+    >
+      <Woven::Input @valid={{true}} @value="Looks right" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Disabled"
+      @note="The value cannot change and is not submitted with the form; the clear button is hidden."
+      @layout="stack"
+      @code={{this.code.disabled}}
+    >
+      <Woven::Input @disabled={{true}} @value="Disabled" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Read only"
+      @note="The value cannot change but stays focusable and copyable, for generated ids and references."
+      @layout="stack"
+      @code={{this.code.readonly}}
+    >
+      <Woven::Input @readonly={{true}} @value="Read only" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Max length"
+      @note="Native maxlength stops typing at the limit; show the limit in the hint."
+      @layout="stack"
+      @code={{this.code.maxlength}}
+    >
+      <Woven::Input @maxlength={{6}} @placeholder="Max 6 characters" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input: left-to-right types" @id="input-ltr">
+    <p class="woven-note">Switch the page to RTL: these four keep dir=ltr because their content is data, not prose.</p>
+    {{#each this.ltrExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Woven::Input @type={{example.type}} @placeholder={{example.type}} />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <h3 class="woven-subtitle">Input arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.inputArgRows}} />
+    <h3 class="woven-subtitle">Input callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.inputCallbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Textarea" @id="textarea">
+    <WovenDocs::Example
+      @title="Controlled, four rows"
+      @note="Same contract as Input. rows sets the visible height; three is the default."
+      @layout="stack"
+      @code={{this.code.textareaBasic}}
+    >
+      <Woven::Textarea
+        @value={{this.textareaValue}}
+        @rows={{4}}
+        @placeholder="Unit notes"
+        @onInput={{this.updateTextarea}}
+      />
+    </WovenDocs::Example>
+
+    {{#each this.resizeExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Woven::Textarea @resize={{example.resize}} @rows={{2}} @placeholder={{example.resize}} />
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Invalid"
+      @note="Red border plus aria-invalid, as on Input."
+      @layout="stack"
+      @code={{this.code.textareaInvalid}}
+    >
+      <Woven::Textarea @invalid={{true}} @value="Too long for this field" @rows={{2}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Disabled"
+      @note="Not editable and not submitted."
+      @layout="stack"
+      @code={{this.code.textareaDisabled}}
+    >
+      <Woven::Textarea @disabled={{true}} @value="Disabled" @rows={{2}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Read only"
+      @note="Selectable and copyable, not editable."
+      @layout="stack"
+      @code={{this.code.textareaReadonly}}
+    >
+      <Woven::Textarea @readonly={{true}} @value="Read only" @rows={{2}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Max length"
+      @note="Native maxlength for notes with a storage limit."
+      @layout="stack"
+      @code={{this.code.textareaMaxlength}}
+    >
+      <Woven::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Sizes"
+      @note="Font and padding follow the input sizes; rows still set the height."
+      @layout="stack"
+      @code={{this.code.textareaSizes}}
+    >
+      <Woven::Textarea @size="xs" @rows={{2}} @placeholder="Extra small" data-test-woven-textarea-size="xs" />
+      <Woven::Textarea @size="sm" @rows={{2}} @placeholder="Small" data-test-woven-textarea-size="sm" />
+      <Woven::Textarea @rows={{2}} @placeholder="Default" data-test-woven-textarea-size="md" />
+      <Woven::Textarea @size="lg" @rows={{2}} @placeholder="Large" data-test-woven-textarea-size="lg" />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Textarea arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.textareaArgRows}} />
+    <h3 class="woven-subtitle">Textarea callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.textareaCallbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Select" @id="select">
+    <WovenDocs::Example
+      @title="Object options"
+      @note="Objects with value and label, the selected one matched by value. The native select is right for short, static lists; for search or groups use Dropdown."
+      @layout="stack"
+      @code={{this.code.selectBasic}}
+    >
+      <Woven::Select @value={{this.selectValue}} @options={{this.regionOptions}} @onChange={{this.updateSelect}} />
+      <span class="wu-text m-sm m-muted" data-test-woven-select-echo>Value: {{this.selectValue}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="String options with placeholder"
+      @note="Plain strings serve as both value and label. The placeholder renders as a disabled first option, selected until something matches."
+      @layout="stack"
+      @code={{this.code.selectStrings}}
+    >
+      <Woven::Select @options={{this.propertyTypeOptions}} @placeholder="Choose a property type" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Extra small"
+      @note="Matches xs inputs and buttons in dense toolbars."
+      @layout="stack"
+      @code={{this.code.selectXs}}
+    >
+      <Woven::Select @size="xs" @options={{this.propertyTypeOptions}} @placeholder="Extra small" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Small"
+      @note="Matches sm inputs in toolbars and filter rows."
+      @layout="stack"
+      @code={{this.code.selectSm}}
+    >
+      <Woven::Select @size="sm" @options={{this.propertyTypeOptions}} @placeholder="Small" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Large"
+      @note="Matches lg inputs in hero forms."
+      @layout="stack"
+      @code={{this.code.selectLg}}
+    >
+      <Woven::Select @size="lg" @options={{this.propertyTypeOptions}} @placeholder="Large" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Disabled"
+      @note="Not changeable and not submitted."
+      @layout="stack"
+      @code={{this.code.selectDisabled}}
+    >
+      <Woven::Select @disabled={{true}} @options={{this.propertyTypeOptions}} @placeholder="Disabled" />
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Select arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.selectArgRows}} />
+    <h3 class="woven-subtitle">Select callbacks</h3>
+    <WovenDocs::Table @kind="callbacks" @rows={{this.selectCallbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Input group" @id="input-group">
+    <WovenDocs::Example
+      @title="Prepend"
+      @note="Fixed text before the control, for a protocol or a country code the user does not type."
+      @layout="stack"
+      @code={{this.code.prepend}}
+    >
+      <Woven::InputGroup @prepend="https://">
+        <Woven::Input @placeholder="your-domain.com" />
+      </Woven::InputGroup>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Append"
+      @note="A unit after the control, so the value stays a plain number."
+      @layout="stack"
+      @code={{this.code.append}}
+    >
+      <Woven::InputGroup @append="AED / month">
+        <Woven::Input @placeholder="0" />
+      </Woven::InputGroup>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Both"
+      @note="Currency before, decimals after; the input between stays controlled as usual."
+      @layout="stack"
+      @code={{this.code.both}}
+    >
+      <Woven::InputGroup @prepend="AED" @append=".00">
+        <Woven::Input @value={{this.groupInputValue}} @onInput={{this.updateGroupInput}} />
+      </Woven::InputGroup>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Sizes"
+      @note="The size step scales the addon text and padding. Pass the same size to the input inside so both parts share one height."
+      @layout="stack"
+      @code={{this.code.groupSizes}}
+    >
+      <Woven::InputGroup @size="xs" @prepend="AED" data-test-woven-group-size="xs">
+        <Woven::Input @size="xs" @placeholder="Extra small" />
+      </Woven::InputGroup>
+      <Woven::InputGroup @size="sm" @prepend="AED" data-test-woven-group-size="sm">
+        <Woven::Input @size="sm" @placeholder="Small" />
+      </Woven::InputGroup>
+      <Woven::InputGroup @prepend="AED" data-test-woven-group-size="md">
+        <Woven::Input @placeholder="Default" />
+      </Woven::InputGroup>
+      <Woven::InputGroup @size="lg" @prepend="AED" data-test-woven-group-size="lg">
+        <Woven::Input @size="lg" @placeholder="Large" />
+      </Woven::InputGroup>
+    </WovenDocs::Example>
+
+    <h3 class="woven-subtitle">Input group arguments</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+    <h3 class="woven-subtitle">Input group blocks</h3>
+    <WovenDocs::Table @kind="blocks" @rows={{this.groupBlockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Invalid state sets aria-invalid="true" on the native element in addition to the is-invalid class.</li>
+      <li class="wu-list__item">The clear button is a labelled native button ("Clear input") and is never hover-gated, so keyboard and touch users can reach it.</li>
+      <li class="wu-list__item">Prefix and suffix glyphs are aria-hidden. Wrap the control in Woven::Field for a linked label, hint and error.</li>
+      <li class="wu-list__item">Addon text in an input group is visible text; include units in the label if the addon carries meaning.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Inputs of type tel, number, email and url set dir="ltr" so digits and addresses read correctly inside an RTL page.</li>
+      <li class="wu-list__item">Prefix, suffix, clear button and group addons use inline insets and paddings, so they swap sides with the reading direction.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

@@ -1,12 +1,12 @@
 {{page-title "Marketers"}}
 
 <div class="flex col gap-6">
-  <Nuvo::PageHeader @title="Marketers" @subtitle="MRR by referral code. Numbers only.">
-  </Nuvo::PageHeader>
+  <Woven::PageHeader @title="Marketers" @subtitle="MRR by referral code. Numbers only.">
+  </Woven::PageHeader>
 
-  <Nuvo::Card>
+  <Woven::Card>
     {{#if this.rows.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @tree={{true}}
@@ -49,9 +49,9 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       <p class="text-muted text-center p-4">No companies yet.</p>
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>

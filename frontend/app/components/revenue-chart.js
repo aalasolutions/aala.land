@@ -27,7 +27,7 @@ export default class RevenueChartComponent extends ChartBase {
 
   // Sparkline: the line only. No scales, grid, ticks, axis borders or legend.
   get config() {
-    const line = token('--nu-brand');
+    const line = token('--wu-brand');
 
     return {
       type: 'line',

@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Asset" "New Asset"}}
   @placement="end"
@@ -7,9 +7,9 @@
   @onClosed={{this.reset}}
 >
   <:body>
-    <form id="asset-form" class="nu-form" novalidate {{on "submit" this.save}}>
+    <form id="asset-form" class="wu-form" novalidate {{on "submit" this.save}}>
       {{#unless this.isEdit}}
-        <Nuvo::Field
+        <Woven::Field
           @label="City"
           @required={{true}}
           @error={{this.fieldErrors.city}}
@@ -24,9 +24,9 @@
             @onSelect={{this.selectCity}}
             @onClear={{this.clearCity}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
         {{#if this.form.city}}
-          <Nuvo::Field
+          <Woven::Field
             @label="Location / Area"
             @required={{true}}
             @error={{this.fieldErrors.locality}}
@@ -41,15 +41,15 @@
               @onSelect={{this.selectLocality}}
               @onClear={{this.clearLocality}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         {{/if}}
       {{/unless}}
-      <Nuvo::Field
+      <Woven::Field
         @label="Asset Name"
         @required={{true}}
         @error={{this.fieldErrors.name}}
       >
-        <Nuvo::Input
+        <Woven::Input
           data-test-asset-name
           id="b-name"
           @type="text"
@@ -58,9 +58,9 @@
           @onInput={{fn this.setField "name"}}
           required={{true}}
         />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Address">
-        <Nuvo::Input
+      </Woven::Field>
+      <Woven::Field @label="Address">
+        <Woven::Input
           data-test-asset-address
           id="b-address"
           @type="text"
@@ -68,19 +68,19 @@
           @value={{this.form.address}}
           @onInput={{fn this.setField "address"}}
         />
-      </Nuvo::Field>
+      </Woven::Field>
       {{#if this.errorMsg}}
         <p class="text-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       data-test-asset-cancel
       @variant="secondary"
       {{on "click" this.close}}
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       data-test-asset-save
       @type="submit"
       form="asset-form"
@@ -89,6 +89,6 @@
       @loading={{this.isSaving}}
     >
       {{this.submitLabel}}
-    </Nuvo::Button>
+    </Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

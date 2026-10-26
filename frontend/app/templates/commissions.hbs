@@ -1,10 +1,10 @@
 {{page-title "Commissions"}}
 
 <div data-test-commissions-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Commissions" @subtitle="Track agent commissions and payouts.">
+  <Woven::PageHeader @title="Commissions" @subtitle="Track agent commissions and payouts.">
     <:actions>
       <div class="flex gap-3 x-end">
-        <Nuvo::Dropdown
+        <Woven::Dropdown
           id="commissions-status-filter"
           @align="start"
           @value={{this.filterStatus}}
@@ -12,21 +12,21 @@
           @options={{this.filterStatusOptions}}
           @placeholder="All"
         />
-        <Nuvo::Button
+        <Woven::Button
           @variant="primary"
           data-test-add-commission
           @icon="plus"
           {{on "click" this.openCreate}}
         >
           New Commission
-        </Nuvo::Button>
+        </Woven::Button>
       </div>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
-  <Nuvo::Card>
+  <Woven::Card>
     {{#if this.filteredCommissions.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.filteredCommissions}}
         @pinColumns={{true}}
@@ -58,7 +58,7 @@
             {{/if}}
           </span>
         {{else if (eq cell.key "type")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-commtype-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
@@ -75,14 +75,14 @@
         {{else if (eq cell.key "commissionRate")}}
           {{cell.value}}%
         {{else if (eq cell.key "status")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-commission-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
         {{else if (eq cell.key "id")}}
           {{#if (eq cell.row.status "PENDING")}}
             <div class="flex">
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="primary"
                 @size="xs"
@@ -92,7 +92,7 @@
                 data-tooltip="Approve"
                 {{on "click" (fn this.approveCommission cell.row)}}
               />
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -105,7 +105,7 @@
             </div>
           {{else if (eq cell.row.status "APPROVED")}}
             <div class="flex">
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="primary"
                 @size="xs"
@@ -115,7 +115,7 @@
                 data-tooltip="Mark Paid"
                 {{on "click" (fn this.payCommission cell.row)}}
               />
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -139,19 +139,19 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       {{#if @model.total}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No commissions on this page with current filters. Navigate to find commissions or adjust filters."
         />
       {{else}}
-        <Nuvo::EmptyState @description="No commissions found." />
+        <Woven::EmptyState @description="No commissions found." />
       {{/if}}
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="commissions-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -162,7 +162,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
 <Commissions::CommissionDrawer
@@ -183,8 +183,8 @@
   @onClose={{this.closeCancelModal}}
   @onConfirm={{this.confirmCancel}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
-    <Nuvo::Textarea
+  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Woven::Textarea
       id="commission-cancel-reason"
       rows="2"
       maxlength="500"
@@ -195,5 +195,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

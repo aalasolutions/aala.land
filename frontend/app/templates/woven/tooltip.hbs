@@ -1,0 +1,154 @@
+<WovenDocs::Page
+  @id="tooltip"
+  @title="Tooltip"
+  @subtitle="One delegated mechanism: a data attribute on any element."
+  @components="Woven::TooltipHost"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      There is no per-instance tooltip component. Add
+      <code class="wu-code">data-tooltip="..."</code>
+      to any element; the host installs delegated listeners on the document
+      and renders a single positioned element only while a tooltip is shown.
+      A trigger costs zero extra DOM nodes and zero listeners, which is why a
+      table with a thousand rows is fine. Use it for a short description of
+      a control; anything that needs markup or interaction is a popover.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Hover and focus triggers; Escape, scroll, resize and a tap elsewhere dismiss.</li>
+      <li class="wu-list__item">Logical placements with flip rules and a fit modifier that slides the box inside the viewport while the arrow keeps pointing at the trigger.</li>
+      <li class="wu-list__item">Content is read at show time and kept live by a mutation observer.</li>
+      <li class="wu-list__item">Automatic aria-describedby on the trigger while visible.</li>
+      <li class="wu-list__item">Light variant.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Basic" @id="basic">
+    <WovenDocs::Example
+      @title="Attribute on a button"
+      @note="The attribute is the API. Hover or focus the button; the host shows the text above it after a short delay."
+      @code={{this.code.basic}}
+    >
+      <Woven::Button @text="Hover me" @variant="secondary" data-tooltip="Default placement is top" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="On plain text"
+      @note="Any element works. Give non-interactive text a tabindex so keyboard users can reach the description too."
+      @code={{this.code.text}}
+    >
+      <span
+        class="wu-text m-sm"
+        tabindex="0"
+        data-tooltip="Tenancy Registration: the government lease registry reference"
+        data-test-woven-tooltip-text
+      >TR ref</span>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Positions" @id="positions">
+    {{#each this.positionExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Button
+          @text={{example.position}}
+          @variant="secondary"
+          data-tooltip="{{example.position}} placement"
+          data-tooltip-position={{example.position}}
+          data-test-woven-tooltip-position={{example.position}}
+        />
+      </WovenDocs::Example>
+    {{/each}}
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Surface" @id="surface">
+    <WovenDocs::Example
+      @title="Light"
+      @note="A light surface with a border, for tooltips over dark toolbars or images where the dark default would vanish."
+      @code={{this.code.light}}
+    >
+      <Woven::Button @text="Light" @variant="secondary" data-tooltip="Light surface tooltip" data-tooltip-light />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Triggers" @id="triggers">
+    <WovenDocs::Example
+      @title="Disabled control"
+      @note="A disabled button receives no pointer events, so the attribute goes on a wrapping span. The common way to explain why an action is unavailable."
+      @code={{this.code.disabled}}
+    >
+      <span
+        data-tooltip="Disabled button, wrapped so hover still registers"
+        data-tooltip-position="bottom"
+      >
+        <Woven::Button @text="Disabled" @variant="secondary" @disabled={{true}} />
+      </span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Icon-only control"
+      @note="aria-label is the name, the tooltip is the description. Only use aria-label when the element has no accessible name of its own."
+      @code={{this.code.iconOnly}}
+    >
+      <Woven::Button
+        @icon="plugs"
+        @shape="square"
+        @variant="secondary"
+        aria-label="Re-pair"
+        data-tooltip="Re-pair device"
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Field label"
+      @note="Woven::Field renders a question-mark button carrying the tooltip, kept outside the label so it does not join the control's name."
+      @layout="stack"
+      @code={{this.code.field}}
+    >
+      <Woven::Field @label="Deposit" @tooltip="Held until the lease ends.">
+        <Woven::Input @placeholder="5%" />
+      </Woven::Field>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Live content"
+      @note="Keep hovering and click: the text updates in place because the host observes the attribute. State-dependent hints need no special handling."
+      @code={{this.code.live}}
+    >
+      <Woven::Button
+        @text="Click while hovering"
+        @variant="secondary"
+        @onClick={{this.bump}}
+        data-tooltip="Clicked {{this.clicks}} times"
+        data-test-woven-tooltip-live
+      />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Attributes" @id="attributes">
+    <WovenDocs::Table @kind="attributes" @rows={{this.attributeRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Service" @id="service">
+    <p class="woven-note">The <code>tooltip</code> service is driven by <code>Woven::TooltipHost</code>; application code rarely calls it. See Hosts and services for the host and the fit modifier.</p>
+    <WovenDocs::Table @kind="api" @rows={{this.serviceRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Never write role="tooltip" on a trigger: it replaces the element's own role. The host owns that role on the rendered element.</li>
+      <li class="wu-list__item">aria-describedby is set on the trigger while the tooltip is visible and removed on hide, unless the trigger already had one.</li>
+      <li class="wu-list__item">Focus shows the tooltip, so keyboard users get the same hint; Escape hides it.</li>
+      <li class="wu-list__item">Text only. Anything that needs markup or interaction is a popover.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">start and end are resolved against the html dir once per show and mapped to the physical m-left and m-right classes; those two classes are physical on purpose.</li>
+      <li class="wu-list__item">The fit shift uses translate rather than transform so the placement modifiers keep ownership of transform.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

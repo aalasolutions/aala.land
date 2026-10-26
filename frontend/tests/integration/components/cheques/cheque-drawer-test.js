@@ -31,7 +31,7 @@ const CHEQUE = {
 // A menu opened while the drawer still slides in is re-clamped inside its ResizeObserver callback.
 async function drawerSettled() {
   await waitUntil(() => {
-    const drawer = document.querySelector('[data-test-nu-drawer]');
+    const drawer = document.querySelector('[data-test-wu-drawer]');
     return (
       drawer?.classList.contains('is-open') &&
       drawer.getAnimations().length === 0
@@ -81,9 +81,9 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
 
   async function pick(selector, label) {
     await drawerSettled();
-    await click(`${selector} [data-test-nu-dropdown-trigger]`);
+    await click(`${selector} [data-test-wu-dropdown-trigger]`);
     const item = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].find((el) => el.textContent.trim() === label);
     await click(item);
   }
@@ -113,9 +113,9 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
     await settled();
     assert.strictEqual(unitFetches(this.calls), 1, 'fetched on open');
     await drawerSettled();
-    await click('#chq-unit [data-test-nu-dropdown-trigger]');
+    await click('#chq-unit [data-test-wu-dropdown-trigger]');
     const labels = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].map((el) => el.textContent.trim());
     assert.deepEqual(labels, [
       'No property linked',
@@ -188,10 +188,10 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
     assert.dom('[data-test-input-amount]').hasValue('8500.00');
     assert.dom('[data-test-input-due-date]').hasValue('2026-11-01');
     assert
-      .dom('#chq-type [data-test-nu-dropdown-trigger]')
+      .dom('#chq-type [data-test-wu-dropdown-trigger]')
       .includesText('Security Deposit');
     assert
-      .dom('#chq-unit [data-test-nu-dropdown-trigger]')
+      .dom('#chq-unit [data-test-wu-dropdown-trigger]')
       .includesText('Area - Tower - Property 101');
     assert.dom('[data-test-save-cheque]').hasText('Update');
 

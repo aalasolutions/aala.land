@@ -94,7 +94,7 @@ module(
       await fillIn('#wo-desc', 'Hinge broken');
       await click('[data-test-save-work-order]');
 
-      assert.dom('[data-test-nu-field-error]').hasText('Choose a property');
+      assert.dom('[data-test-wu-field-error]').hasText('Choose a property');
       assert.notOk(sent(this.calls, 'POST'));
     });
 
@@ -104,9 +104,9 @@ module(
         hbs`<Maintenance::WorkOrderDrawer @open={{this.open}} @workOrder={{this.workOrder}} @onClose={{this.noop}} />`,
       );
       await waitFor('#wo-title');
-      await click('#wo-status [data-test-nu-dropdown-trigger]');
+      await click('#wo-status [data-test-wu-dropdown-trigger]');
       const cancelled = [
-        ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+        ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
       ].find((el) => el.textContent.trim() === 'Cancelled');
       await click(cancelled);
 

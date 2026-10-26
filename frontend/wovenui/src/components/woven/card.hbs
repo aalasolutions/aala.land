@@ -1,0 +1,35 @@
+{{! Named blocks take priority; a plain default block renders into the body slot. }}
+<div class={{this.classes}} data-test-wu-card ...attributes>
+  {{#if (has-block "header")}}
+    <div class="wu-card__header" data-test-wu-card-header>
+      {{yield to="header"}}
+    </div>
+  {{else if this.showHeader}}
+    <div class="wu-card__header" data-test-wu-card-header>
+      <div>
+        {{#if @title}}
+          <h3 class="wu-card__title" data-test-wu-card-title>{{@title}}</h3>
+        {{/if}}
+        {{#if @subtitle}}
+          <p class="wu-card__subtitle" data-test-wu-card-subtitle>{{@subtitle}}</p>
+        {{/if}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{#if (has-block "body")}}
+    <div class="wu-card__body" data-test-wu-card-body>
+      {{yield to="body"}}
+    </div>
+  {{else if (has-block)}}
+    <div class="wu-card__body" data-test-wu-card-body>
+      {{yield}}
+    </div>
+  {{/if}}
+
+  {{#if (has-block "footer")}}
+    <div class="wu-card__footer" data-test-wu-card-footer>
+      {{yield to="footer"}}
+    </div>
+  {{/if}}
+</div>

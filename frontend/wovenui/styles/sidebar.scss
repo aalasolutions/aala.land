@@ -1,0 +1,475 @@
+// wu-sidebar - fixed app navigation rail
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(sidebar) {
+  // ---- variables: sidebar ----
+  @include wu-root("sidebar", (
+    "Width": 15rem,
+    "CollapsedWidth": 3.75rem,
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "PaddingBlock": wu-space(4),
+    "PaddingInline": wu-space(3),
+    "TransitionDuration": wu-duration(normal),
+  ));
+
+  // ---- variables: link ----
+  @include wu-root-el("sidebar", "link", (
+    "Color": var(--wu-text-muted),
+    "BackgroundColor": transparent,
+    "hover--Color": var(--wu-text-regular),
+    "hover--BackgroundColor": var(--wu-bg-alternate),
+  ));
+
+  // ---- variables: group toggle ----
+  @include wu-root-el("sidebar", "group-toggle", (
+    "Color": var(--wu-text-muted),
+    "BackgroundColor": transparent,
+  ));
+
+  display: flex;
+  flex-direction: column;
+  inline-size: wu-var("sidebar", "Width");
+  block-size: 100vh;
+  padding-block: wu-var("sidebar", "PaddingBlock");
+  padding-inline: wu-var("sidebar", "PaddingInline");
+  background-color: wu-var("sidebar", "BackgroundColor");
+  border-inline-end: 1px solid wu-var("sidebar", "BorderColor");
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: wu-z(sticky);
+  transition: inline-size wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+  // Sits on the shell background instead of carrying its own surface, for
+  // layouts where the routed content is the only raised panel.
+  @include m(plain) {
+    --wu-sidebar--BackgroundColor: transparent;
+    --wu-sidebar--BorderColor: transparent;
+  }
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include e(brand) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    padding-inline: wu-space(3);
+    margin-block-end: wu-space(6);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  @include e(brand-title) {
+    margin: 0;
+    font-size: wu-font-size(xl);
+    font-weight: wu-font-weight(bold);
+    color: var(--wu-brand);
+  }
+
+  @include e(brand-subtitle) {
+    margin: 0;
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
+  }
+
+  @include e(nav) {
+    display: flex;
+    flex-direction: column;
+    gap: wu-space(1);
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  @include e(section-label) {
+    padding-inline: wu-space(3);
+    margin-block: wu-space(2) wu-space(1);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    color: var(--wu-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  @include e(link) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(3);
+    padding-block: wu-space(2);
+    padding-inline: wu-space(3);
+    border-radius: wu-radius(md);
+    color: wu-var-el("sidebar", "link", "Color");
+    background-color: wu-var-el("sidebar", "link", "BackgroundColor");
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    text-decoration: none;
+    transition:
+      background-color wu-var("sidebar", "TransitionDuration") $wu-ease,
+      color wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      --wu-sidebar__link--Color: var(--wu-sidebar__link--hover--Color);
+      --wu-sidebar__link--BackgroundColor: var(--wu-sidebar__link--hover--BackgroundColor);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+
+    // `active` is what Ember's <LinkTo> emits; `is-active` is the kit's own
+    // state class. Both paint the same so a route link needs no extra binding.
+    &.is-active,
+    &.active {
+      --wu-sidebar__link--Color: var(--wu-text-inverted);
+      --wu-sidebar__link--BackgroundColor: var(--wu-brand);
+    }
+
+    // No pointer-events:none here: the tooltip still must fire on hover, no href to suppress.
+    &.is-disabled {
+      --wu-sidebar__link--Color: var(--wu-text-subtle);
+      cursor: not-allowed;
+
+      &:hover {
+        --wu-sidebar__link--Color: var(--wu-text-subtle);
+        --wu-sidebar__link--BackgroundColor: transparent;
+      }
+    }
+  }
+
+  @include e(link-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+
+  @include e(link-label) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Collapsible group. Animates grid-template-rows, not a max-height guess,
+  // so a group with many children cannot be clipped.
+  @include e(group) {
+    display: flex;
+    flex-direction: column;
+    // gap: wu-space(1);
+  }
+
+  @include e(group-toggle) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(3);
+    inline-size: 100%;
+    padding-block: wu-space(2);
+    padding-inline: wu-space(3);
+    border: 0;
+    border-radius: wu-radius(md);
+    color: wu-var-el("sidebar", "group-toggle", "Color");
+    background-color: wu-var-el("sidebar", "group-toggle", "BackgroundColor");
+    font-size: wu-font-size(sm);
+    font-weight: wu-font-weight(semibold);
+    text-align: start;
+    cursor: pointer;
+    transition:
+      background-color wu-var("sidebar", "TransitionDuration") $wu-ease,
+      color wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      --wu-sidebar__group-toggle--Color: var(--wu-text-regular);
+      --wu-sidebar__group-toggle--BackgroundColor: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+
+    &.is-active {
+      --wu-sidebar__group-toggle--Color: var(--wu-brand);
+      --wu-sidebar__group-toggle--BackgroundColor: #{wu-tint(brand, 12%)};
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+    }
+  }
+
+  @include e(chevron) {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    font-size: wu-font-size(xs);
+    opacity: 0.5;
+    transition: transform wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(group-items) {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // The single child owns the clipping; the track animates around it.
+    // No padding at rest: a closed 0fr track still paints it.
+    > * {
+      display: flex;
+      flex-direction: column;
+      gap: wu-space(1);
+      overflow: hidden;
+      min-block-size: 0;
+      padding-block: 0;
+      border-end-start-radius: wu-radius(md);
+      border-end-end-radius: wu-radius(md);
+      background-color: wu-tint(brand, 6%);
+      transition: padding-block wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+      @include reduced-motion {
+        transition: none;
+      }
+    }
+  }
+
+  @include e(sublink) {
+    // sublink
+
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    padding-block: wu-space(2);
+    padding-inline: wu-space(3) wu-space(3);
+    margin-inline: wu-space(2);
+    border-radius: wu-radius(md);
+    color: var(--wu-text-muted);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(semibold);
+    text-decoration: none;
+    transition: background-color wu-var("sidebar", "TransitionDuration") $wu-ease,
+      color wu-var("sidebar", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--wu-text-regular);
+      background-color: var(--wu-bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+
+    &.is-active,
+    &.active {
+      color: var(--wu-text-inverted);
+      background-color: var(--wu-brand);
+    }
+  }
+
+  @include e(footer) {
+    margin-block-start: auto;
+    padding-block-start: wu-space(4);
+    border-block-start: 1px solid var(--wu-border-regular);
+  }
+
+  // ---- states ----
+
+  // On the group element, so one class drives the whole disclosure.
+  @include e(group) {
+    &.is-expanded {
+      > .wu-sidebar__chevron,
+      .wu-sidebar__group-toggle .wu-sidebar__chevron {
+        transform: rotate(180deg);
+      }
+
+      > .wu-sidebar__group-items {
+        grid-template-rows: 1fr;
+
+        > * {
+          padding-block: wu-space(1);
+        }
+      }
+    }
+  }
+
+  @include e(group-title) {
+    display: none;
+  }
+
+  @include when(collapsed) {
+    --wu-sidebar--Width: var(--wu-sidebar--CollapsedWidth);
+
+    .wu-sidebar__brand-subtitle,
+    .wu-sidebar__section-label,
+    .wu-sidebar__link-label {
+      display: none;
+    }
+
+    .wu-sidebar__chevron {
+      display: none;
+    }
+
+    .wu-sidebar__link,
+    .wu-sidebar__group-toggle {
+      justify-content: center;
+      gap: 0;
+      padding-inline: wu-space(2);
+    }
+
+    .wu-sidebar__nav {
+      overflow: visible;
+    }
+
+    .wu-sidebar__group {
+      position: relative;
+      gap: 0;
+    }
+
+    .wu-sidebar__group-toggle.is-active {
+      --wu-sidebar__group-toggle--Color: var(--wu-text-inverted);
+      --wu-sidebar__group-toggle--BackgroundColor: var(--wu-brand);
+    }
+
+    .wu-sidebar__group-items {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: 100%;
+      margin-inline-start: calc(#{wu-space(2)} + #{wu-var("sidebar", "PaddingInline")});
+      grid-template-rows: 1fr;
+      min-inline-size: 11rem;
+      padding: wu-space(2);
+      background-color: var(--wu-bg-surface);
+      border: 1px solid var(--wu-border-regular);
+      border-radius: wu-radius(md);
+      box-shadow: wu-shadow(lg);
+      z-index: wu-z(dropdown);
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity wu-duration(fast) $wu-ease,
+        visibility wu-duration(fast) $wu-ease;
+
+      @include reduced-motion {
+        transition: none;
+      }
+
+      > * {
+        overflow: visible;
+        padding-block: 0;
+        background-color: transparent;
+      }
+    }
+
+    .wu-sidebar__group:hover > .wu-sidebar__group-items,
+    .wu-sidebar__group:focus-within > .wu-sidebar__group-items {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .wu-sidebar__group-items {
+      .wu-sidebar__group-title {
+        display: block;
+        padding-inline: wu-space(3);
+        padding-block-end: wu-space(1);
+        margin: 0;
+        font-size: wu-font-size(2xs);
+        font-weight: wu-font-weight(semibold);
+        color: var(--wu-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .wu-sidebar__link-label {
+        display: block;
+      }
+
+      // Both sides, so a hovered flyout row fills the panel width evenly.
+      .wu-sidebar__sublink {
+        margin-inline: 0;
+      }
+    }
+
+    .wu-sidebar__group.is-active-group {
+      > .wu-sidebar__group-toggle.is-active {
+        --wu-sidebar__group-toggle--Color: var(--wu-brand);
+        --wu-sidebar__group-toggle--BackgroundColor: #{wu-tint(brand, 12%)};
+      }
+
+      > .wu-sidebar__group-items {
+        position: static;
+        margin-inline-start: 0;
+        min-inline-size: 0;
+        padding: 0;
+        background-color: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        opacity: 1;
+        visibility: visible;
+
+        > * {
+          padding-block: wu-space(1);
+          background-color: wu-tint(brand, 6%);
+        }
+
+        .wu-sidebar__group-title,
+        .wu-sidebar__link-label {
+          display: none;
+        }
+
+        .wu-sidebar__sublink {
+          justify-content: center;
+          gap: 0;
+          padding-inline: wu-space(1);
+          margin-inline: wu-space(1);
+        }
+      }
+    }
+  }
+
+  @include when(open) {
+    inset-inline-start: 0;
+  }
+}
+
+// Mobile drawer scrim, shown only while sidebar.is-open on small viewports
+@include b(sidebar-backdrop) {
+  @include wu-root("sidebar-backdrop", (
+    "BackgroundColor": #{wu-scrim(45%)},
+  ));
+
+  position: fixed;
+  inset: 0;
+  background-color: wu-var("sidebar-backdrop", "BackgroundColor");
+  z-index: wu-z(sticky);
+
+  @include when(hidden) {
+    display: none;
+  }
+}

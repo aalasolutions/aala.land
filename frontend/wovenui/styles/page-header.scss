@@ -1,0 +1,105 @@
+// wu-page-header - page title bar with breadcrumb, meta and actions
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(page-header) {
+  @include wu-root("page-header", (
+    "Display": flex,
+    "Gap": wu-space(4),
+    "PaddingBlockEnd": 0,
+    "BorderBlockEndWidth": 0,
+    "BorderBlockEndColor": var(--wu-border-regular),
+    "BackgroundColor": transparent,
+    "TitleFontSize": wu-font-size(xl),
+    "TitleFontWeight": wu-font-weight(bold),
+    "TitleColor": var(--wu-text-regular),
+    "SubtitleFontSize": wu-font-size(sm),
+    "SubtitleColor": var(--wu-text-muted),
+    "StickyTop": 0,
+    "StickyZIndex": wu-z(sticky),
+  ));
+
+  display: wu-var("page-header", "Display");
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: wu-var("page-header", "Gap");
+  padding-block-end: wu-var("page-header", "PaddingBlockEnd");
+  background-color: wu-var("page-header", "BackgroundColor");
+  border-block-end: wu-var("page-header", "BorderBlockEndWidth") solid wu-var("page-header", "BorderBlockEndColor");
+
+  // ---- elements ----
+
+  // Groups breadcrumb/title/subtitle/meta so `justify-content: space-between`
+  // pushes actions to the far edge as one unit.
+  @include e(main) {
+    flex: 1 1 20rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: wu-space(3);
+    min-inline-size: 0;
+  }
+
+  @include e(breadcrumb) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(1);
+    font-size: wu-font-size(xs);
+    flex-basis: 100%;
+    color: var(--wu-text-muted);
+    margin-block-end: wu-space(1);
+  }
+
+  @include e(title) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    font-size: wu-var("page-header", "TitleFontSize");
+    font-weight: wu-var("page-header", "TitleFontWeight");
+    color: wu-var("page-header", "TitleColor");
+    margin: 0;
+  }
+
+  @include e(subtitle) {
+    order: 1;
+    flex-basis: 100%;
+    font-size: wu-var("page-header", "SubtitleFontSize");
+    color: wu-var("page-header", "SubtitleColor");
+    margin: wu-space(1) 0 0;
+  }
+
+  @include e(meta) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+    font-size: wu-font-size(xs);
+    color: var(--wu-text-muted);
+
+    > * {
+      margin: 0;
+    }
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: wu-space(2);
+  }
+
+  // ---- modifiers ----
+
+  @include m(bordered) {
+    --wu-page-header--PaddingBlockEnd: #{wu-space(4)};
+    --wu-page-header--BorderBlockEndWidth: 1px;
+  }
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: wu-var("page-header", "StickyTop");
+    z-index: wu-var("page-header", "StickyZIndex");
+    --wu-page-header--BackgroundColor: var(--wu-bg-surface);
+  }
+}

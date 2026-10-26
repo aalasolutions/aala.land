@@ -1,0 +1,159 @@
+// wu-tooltip - the single floating hint element owned by Woven::TooltipHost
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(tooltip) {
+  @include wu-root("tooltip", (
+    "ZIndex": wu-z(modal),
+    "MaxWidth": 16rem,
+    "PaddingBlock": wu-space(1),
+    "PaddingInline": wu-space(3),
+    "FontSize": wu-font-size(xs),
+    "FontWeight": wu-font-weight(medium),
+    "LineHeight": 1.4,
+    "Color": var(--wu-text-inverted),
+    "BackgroundColor": var(--wu-text-regular),
+    "BorderRadius": wu-radius(md),
+    "Shadow": #{wu-shadow(md)},
+    "ArrowSize": 8px,
+    "ArrowInset": wu-space(4),
+    "TransitionDuration": wu-duration(fast),
+    // Written inline by the tooltip-fit modifier when the box would leave the viewport.
+    "ShiftX": 0px,
+    "ShiftY": 0px,
+    "ArrowShiftX": 0px,
+    "ArrowShiftY": 0px,
+  ));
+
+  position: fixed;
+  z-index: wu-var("tooltip", "ZIndex");
+  // Kept off `transform`, which the placement modifiers own.
+  translate: wu-var("tooltip", "ShiftX") wu-var("tooltip", "ShiftY");
+  inline-size: max-content;
+  max-inline-size: wu-var("tooltip", "MaxWidth");
+  padding-block: wu-var("tooltip", "PaddingBlock");
+  padding-inline: wu-var("tooltip", "PaddingInline");
+  font-size: wu-var("tooltip", "FontSize");
+  font-weight: wu-var("tooltip", "FontWeight");
+  line-height: wu-var("tooltip", "LineHeight");
+  color: wu-var("tooltip", "Color");
+  background-color: wu-var("tooltip", "BackgroundColor");
+  border-radius: wu-var("tooltip", "BorderRadius");
+  box-shadow: wu-var("tooltip", "Shadow");
+  pointer-events: none;
+  animation: wu-tooltip-in wu-var("tooltip", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  @include e(arrow) {
+    position: absolute;
+    inline-size: wu-var("tooltip", "ArrowSize");
+    block-size: wu-var("tooltip", "ArrowSize");
+    background-color: wu-var("tooltip", "BackgroundColor");
+    transform: rotate(45deg);
+  }
+
+  // Offsets below are physical on purpose: the host applies the RTL swap before it writes the modifier.
+  @include m(top) {
+    transform: translateX(-50%);
+
+    .wu-tooltip__arrow {
+      bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  // Corner modifiers name where the box SITS: m-top-left extends leftward from the trigger.
+  @include m(top-left) {
+    transform: translate(-100%, -100%);
+
+    .wu-tooltip__arrow {
+      bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      right: wu-var("tooltip", "ArrowInset");
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(top-right) {
+    transform: translateY(-100%);
+
+    .wu-tooltip__arrow {
+      bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      left: wu-var("tooltip", "ArrowInset");
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(bottom) {
+    transform: translateX(-50%);
+
+    .wu-tooltip__arrow {
+      top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(bottom-left) {
+    transform: translateX(-100%);
+
+    .wu-tooltip__arrow {
+      top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      right: wu-var("tooltip", "ArrowInset");
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(bottom-right) {
+    .wu-tooltip__arrow {
+      top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      left: wu-var("tooltip", "ArrowInset");
+      translate: wu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  // left/right are physical: the host resolves start/end before choosing them.
+  @include m(left) {
+    transform: translateY(-50%);
+
+    .wu-tooltip__arrow {
+      right: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      inset-block-start: 50%;
+      margin-block-start: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      translate: 0 wu-var("tooltip", "ArrowShiftY");
+    }
+  }
+
+  @include m(right) {
+    transform: translateY(-50%);
+
+    .wu-tooltip__arrow {
+      left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      inset-block-start: 50%;
+      margin-block-start: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
+      translate: 0 wu-var("tooltip", "ArrowShiftY");
+    }
+  }
+
+  @include m(light) {
+    --wu-tooltip--Color: var(--wu-text-regular);
+    --wu-tooltip--BackgroundColor: var(--wu-bg-surface);
+  }
+}
+
+// Opacity only; a transform here would clobber the centring transform.
+@keyframes wu-tooltip-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

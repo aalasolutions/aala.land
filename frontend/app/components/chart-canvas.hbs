@@ -3,7 +3,7 @@
     <canvas {{this.draw}} data-test-chart-canvas-el></canvas>
   </div>
 
-  {{! Hosted on .nu-layer so no ancestor can clip it. }}
+  {{! Hosted on .wu-layer so no ancestor can clip it. }}
   {{#in-element this.layer.element insertBefore=null}}
     <div
       class="chart-canvas__tip"

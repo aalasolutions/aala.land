@@ -1,0 +1,96 @@
+<WovenDocs::Page
+  @id="breadcrumb"
+  @title="Breadcrumb"
+  @subtitle="Navigable trail to the current page."
+  @components="Woven::Breadcrumb"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      By default the last item is the current page and renders as plain text
+      with
+      <code class="wu-code">aria-current="page"</code>. Other items render
+      as router links when they carry a route, anchors when they carry an
+      href, or buttons when they carry an onClick. In a page header, pass
+      <code class="wu-code">@parentsOnly</code>
+      so every item is a parent link and the header title names the current
+      page.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Router link, anchor or button items from one items array.</li>
+      <li class="wu-list__item">Current page derived from position, or none with parentsOnly.</li>
+      <li class="wu-list__item">Compact style.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Items" @id="items">
+    <WovenDocs::Example
+      @title="Links"
+      @note="Items with href render as anchors, so the trail works with the browser: hover shows the target, middle-click opens a tab."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Woven::Breadcrumb @items={{this.breadcrumbItems}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Routes, parents only"
+      @note="Items with route (plus model or models) render as router links, so navigation stays in the app. parentsOnly links every item and marks none current: the form a detail page header uses."
+      @layout="block"
+      @code={{this.code.routes}}
+    >
+      <Woven::Breadcrumb @items={{this.routeItems}} @compact={{true}} @parentsOnly={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Click handlers"
+      @note="Items with onClick render as buttons, for trails that drive in-app state such as a folder tree or a wizard."
+      @layout="block"
+      @code={{this.code.click}}
+    >
+      <Woven::Breadcrumb @items={{this.clickItems}} />
+      <span class="wu-text m-sm m-muted" data-test-woven-crumb-clicked>Last clicked: {{this.lastCrumb}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Single item"
+      @note="One item is the current page alone; render it so the header layout stays stable on top-level pages."
+      @layout="block"
+      @code={{this.code.single}}
+    >
+      <Woven::Breadcrumb @items={{this.singleItem}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Styles" @id="styles">
+    <WovenDocs::Example
+      @title="Compact"
+      @note="Smaller type and tighter separators, the form used inside a page header."
+      @layout="block"
+      @code={{this.code.compact}}
+    >
+      <Woven::Breadcrumb @items={{this.breadcrumbItems}} @compact={{true}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+    <h3 class="woven-subtitle">Item shape</h3>
+    <WovenDocs::Table @kind="args" @rows={{this.itemRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Renders a nav labelled "Breadcrumb" wrapping an ordered list.</li>
+      <li class="wu-list__item">The current item carries aria-current="page"; separators are drawn by CSS and not read aloud.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Separators and item spacing are inline-logical, so the trail reads right to left under dir="rtl".</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

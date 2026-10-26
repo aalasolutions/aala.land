@@ -1,0 +1,33 @@
+{{! Shared body for the div, anchor and LinkTo branches of Woven::Stat. The
+    parent forwards its `icon` and `content` named blocks to the matching
+    blocks here. `content` trails the value, for a sparkline or a small note.
+    `@contentBleed` adds the sheet's `m-bleed` modifier, which cancels the
+    card padding so the block reaches the card edge. }}
+{{#if @hasIconBlock}}
+  <div class="wu-stat__icon" aria-hidden="true" data-test-wu-stat-icon>
+    {{yield to="icon"}}
+  </div>
+{{else if @icon}}
+  <div class="wu-stat__icon" aria-hidden="true" data-test-wu-stat-icon>
+    {{@icon}}
+  </div>
+{{/if}}
+
+{{#if @label}}
+  <div class="wu-stat__label" data-test-wu-stat-label>{{@label}}</div>
+{{/if}}
+
+<div class="wu-stat__value" data-test-wu-stat-value>{{@value}}</div>
+
+{{#if @delta}}
+  <div class="wu-stat__delta" data-test-wu-stat-delta>{{@delta}}</div>
+{{/if}}
+
+{{#if @hasContentBlock}}
+  <div
+    class="wu-stat__content{{if @contentBleed ' m-bleed'}}"
+    data-test-wu-stat-content
+  >
+    {{yield to="content"}}
+  </div>
+{{/if}}

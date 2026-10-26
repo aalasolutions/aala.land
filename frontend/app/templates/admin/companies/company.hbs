@@ -1,9 +1,9 @@
 {{page-title (if this.company this.company.name "Company")}}
 
 {{#if this.company}}
-  <Nuvo::PageHeader @title={{this.company.name}} class="mb-6">
+  <Woven::PageHeader @title={{this.company.name}} class="mb-6">
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{array (hash label="Companies" route="admin.companies.index")}}
         @compact={{true}}
         @parentsOnly={{true}}
@@ -11,15 +11,15 @@
       />
     </:breadcrumb>
     <:meta>
-      <Nuvo::Tag
+      <Woven::Tag
         class="tag-plan-{{lowercase this.company.tier}}"
         @text={{this.company.tier}}
         data-test-company-tier
       />
       {{#if this.railLabel}}
-        <Nuvo::Tag @text={{this.railLabel}} data-test-company-rail />
+        <Woven::Tag @text={{this.railLabel}} data-test-company-rail />
       {{/if}}
-      <Nuvo::Tag
+      <Woven::Tag
         class={{this.statusView.cls}}
         @text={{this.statusView.text}}
         data-test-company-status
@@ -27,17 +27,17 @@
     </:meta>
     <:actions>
       {{#if this.adminUser}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @icon="sign-in"
           data-test-company-login-as
           {{on "click" this.loginAs}}
         >
           Login as admin
-        </Nuvo::Button>
+        </Woven::Button>
       {{/if}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if this.showLockCard}}
     {{#if this.isLocked}}
@@ -120,7 +120,7 @@
     {{/if}}
   {{/if}}
 
-  <Nuvo::Tabs
+  <Woven::Tabs
     @tabs={{this.tabs}}
     @activeTab={{this.activeTab}}
     @onChange={{this.selectTab}}
@@ -129,7 +129,7 @@
 
   {{#if (eq this.activeTab "overview")}}
     <div class="console-cards">
-      <Nuvo::Panel @title="Billing state" data-test-company-plan-card>
+      <Woven::Panel @title="Billing state" data-test-company-plan-card>
         {{#if this.billing}}
           <dl class="console-kv">
             <dt>Tier</dt>
@@ -164,10 +164,10 @@
           <p class="text-muted" data-test-company-billing-unavailable>Billing
             state is unavailable right now.</p>
         {{/if}}
-      </Nuvo::Panel>
+      </Woven::Panel>
 
       {{#if this.deal}}
-        <Nuvo::Panel @title="Active deal" data-test-company-deal-card>
+        <Woven::Panel @title="Active deal" data-test-company-deal-card>
           <dl class="console-kv">
             <dt>Price</dt>
             <dd>{{this.dealPriceLabel}}</dd>
@@ -184,12 +184,12 @@
             <dt>Granted by</dt>
             <dd>{{this.deal.grantedBy}}</dd>
           </dl>
-        </Nuvo::Panel>
+        </Woven::Panel>
       {{/if}}
 
-      <Nuvo::Panel>
+      <Woven::Panel>
         <:header>
-          <h3 class="nu-panel__title">Limits</h3>
+          <h3 class="wu-panel__title">Limits</h3>
           <button
             type="button"
             class="btn btn-secondary btn-xs"
@@ -207,12 +207,12 @@
             <dd>{{this.company.limits.maxProperties}}</dd>
           </dl>
         </:body>
-      </Nuvo::Panel>
+      </Woven::Panel>
     </div>
 
   {{else if (eq this.activeTab "deal")}}
     {{#if this.deal}}
-      <Nuvo::Panel @title="Active deal" data-test-company-deal-card>
+      <Woven::Panel @title="Active deal" data-test-company-deal-card>
         <dl class="console-kv">
           <dt>Price</dt>
           <dd>{{this.dealPriceLabel}}</dd>
@@ -251,9 +251,9 @@
             {{on "click" this.openEndDealConfirm}}
           >End deal early</button>
         </div>
-      </Nuvo::Panel>
+      </Woven::Panel>
     {{else}}
-      <Nuvo::Panel class="console-empty">
+      <Woven::Panel class="console-empty">
         <Ui::Ph @icon="handshake" @size="40px" />
         <p class="text-muted mt-2">No deal on this company yet.</p>
         <button
@@ -262,13 +262,13 @@
           data-test-deal-give
           {{on "click" this.openDealModal}}
         >Give a deal</button>
-      </Nuvo::Panel>
+      </Woven::Panel>
     {{/if}}
 
   {{else if (eq this.activeTab "payments")}}
-    <Nuvo::Panel>
+    <Woven::Panel>
       <:header>
-        <h3 class="nu-panel__title">Payments</h3>
+        <h3 class="wu-panel__title">Payments</h3>
         <button
           type="button"
           class="btn btn-primary"
@@ -280,7 +280,7 @@
       {{#if this.paymentsLoading}}
         <p class="text-muted">Loading payments…</p>
       {{else if this.paymentRows}}
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.paymentColumns}}
           @rows={{this.paymentRows}}
           @pinColumns={{true}}
@@ -314,7 +314,7 @@
             {{/let}}
           {{else if (eq cell.key "type")}}
             {{#let (billing-history-status cell.row) as |status|}}
-              <Nuvo::Tag
+              <Woven::Tag
                 class={{status.tagClass}}
                 @text={{status.label}}
                 data-test-payment-status
@@ -351,19 +351,19 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </Nuvo::DataTable>
+        </Woven::DataTable>
       {{else}}
         <p class="text-muted">No payments recorded yet.</p>
       {{/if}}
       </:body>
-    </Nuvo::Panel>
+    </Woven::Panel>
 
   {{else if (eq this.activeTab "history")}}
-    <Nuvo::Panel @title="History">
+    <Woven::Panel @title="History">
       {{#if this.historyLoading}}
         <p class="text-muted">Loading history…</p>
       {{else if this.historyRows}}
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.historyColumns}}
           @rows={{this.historyRows}}
           @pinColumns={{true}}
@@ -379,14 +379,14 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </Nuvo::DataTable>
+        </Woven::DataTable>
       {{else}}
         <p class="text-muted">No operator events for this company yet.</p>
       {{/if}}
-    </Nuvo::Panel>
+    </Woven::Panel>
   {{/if}}
 
-  <Nuvo::Drawer
+  <Woven::Drawer
     @open={{this.dealModalOpen}}
     @title="{{if this.dealEditing 'Edit' 'Give'}} {{this.company.name}} a deal"
     @placement="end"
@@ -394,16 +394,16 @@
     @onClose={{this.closeDealModal}}
   >
     <:body>
-      <div class="nu-form" data-test-deal-form>
-        <div class="nu-field-row">
-          <Nuvo::Field
+      <div class="wu-form" data-test-deal-form>
+        <div class="wu-field-row">
+          <Woven::Field
             @label="Price"
             @tooltip="Enter the amount that matches the Basis below, either per seat each month or one flat total each month."
             @error={{this.dealErrors.dealPrice}}
             @flush={{true}}
-            class="nu-field-row__wide"
+            class="wu-field-row__wide"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="deal-price"
               type="number"
               min="0"
@@ -412,15 +412,15 @@
               data-test-deal-price
               {{on "input" (fn this.setDealField "dealPrice")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
             @error={{this.dealErrors.dealCurrency}}
             @flush={{true}}
-            class="nu-field-row__narrow"
+            class="wu-field-row__narrow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="deal-currency"
               type="text"
               maxlength="3"
@@ -429,14 +429,14 @@
               data-test-deal-currency
               {{on "input" (fn this.setDealField "dealCurrency")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Basis"
             @tooltip="Per seat charges the price for every active user each month. Flat charges the price once each month, whatever the seat count."
             @flush={{true}}
-            class="nu-field-row__wide"
+            class="wu-field-row__wide"
           >
-            <Nuvo::Dropdown
+            <Woven::Dropdown
               id="deal-basis"
               data-test-deal-basis
               @align="start"
@@ -444,16 +444,16 @@
               @value={{this.dealBasis}}
               @onSelect={{this.setDealBasis}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
-        <Nuvo::Field
+        <Woven::Field
           @label="Seats included"
           @tooltip="How many active users this price covers. Extra users above this are billed at the normal per seat rate."
           @error={{this.dealErrors.dealSeatCap}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="deal-seats"
             type="number"
             min="1"
@@ -462,17 +462,17 @@
             data-test-deal-seats
             {{on "input" (fn this.setDealField "dealSeatCap")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <div class="nu-field-row m-end">
-          <Nuvo::Field
+        <div class="wu-field-row m-end">
+          <Woven::Field
             @label="Until"
             @tooltip="The last day this price applies. After it, the company goes back to standard plan pricing."
             @error={{this.dealErrors.dealUntil}}
             @flush={{true}}
-            class="nu-field-row__wide"
+            class="wu-field-row__wide"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="deal-until"
               type="date"
               @value={{this.dealUntil}}
@@ -480,7 +480,7 @@
               data-test-deal-until
               {{on "input" (fn this.setDealField "dealUntil")}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
           <label class="console-checkbox grow">
             <input
               type="checkbox"
@@ -492,13 +492,13 @@
           </label>
         </div>
 
-        <Nuvo::Field
+        <Woven::Field
           @label="Why"
           @required={{true}}
           @error={{this.dealErrors.dealWhy}}
           @flush={{true}}
         >
-          <Nuvo::Textarea
+          <Woven::Textarea
             id="deal-why"
             rows="2"
             required={{true}}
@@ -506,7 +506,7 @@
             @value={{this.dealWhy}}
             {{on "input" (fn this.setDealField "dealWhy")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
         <div class="alert alert-warning" data-test-deal-expiry-preview>
           <div>
@@ -534,9 +534,9 @@
           (if this.dealEditing "Save deal" "Give deal")
         }}</button>
     </:footer>
-  </Nuvo::Drawer>
+  </Woven::Drawer>
 
-  <Nuvo::Drawer
+  <Woven::Drawer
     @open={{this.paymentModalOpen}}
     @title="Record a payment from {{this.company.name}}"
     @placement="end"
@@ -544,15 +544,15 @@
     @onClose={{this.closePaymentModal}}
   >
     <:body>
-      <div class="nu-form" data-test-payment-form>
-        <div class="nu-field-row">
-          <Nuvo::Field
+      <div class="wu-form" data-test-payment-form>
+        <div class="wu-field-row">
+          <Woven::Field
             @label="Amount"
             @error={{this.payErrors.payAmount}}
             @flush={{true}}
-            class="nu-field-row__wide"
+            class="wu-field-row__wide"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="pay-amount"
               type="number"
               min="0"
@@ -561,15 +561,15 @@
               data-test-payment-amount
               {{on "input" (fn this.setPayField "payAmount")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
             @error={{this.payErrors.payCurrency}}
             @flush={{true}}
-            class="nu-field-row__narrow"
+            class="wu-field-row__narrow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="pay-currency"
               type="text"
               maxlength="3"
@@ -578,58 +578,58 @@
               data-test-payment-currency
               {{on "input" (fn this.setPayField "payCurrency")}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
-        <div class="nu-field-row">
-          <Nuvo::Field
+        <div class="wu-field-row">
+          <Woven::Field
             @label="Date received"
             @error={{this.payErrors.payReceivedAt}}
             @flush={{true}}
             class="grow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="pay-received"
               type="date"
               @value={{this.payReceivedAt}}
               data-test-payment-date
               {{on "input" (fn this.setPayField "payReceivedAt")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Covers from"
             @tooltip="First day of the period this payment pays for. Paid access runs from here."
             @error={{this.payErrors.payCoversStart}}
             @flush={{true}}
             class="grow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="pay-covers-start"
               type="date"
               @value={{this.payCoversStart}}
               data-test-payment-covers
               {{on "input" (fn this.setPayField "payCoversStart")}}
             />
-          </Nuvo::Field>
-          <Nuvo::Field
+          </Woven::Field>
+          <Woven::Field
             @label="Covers to"
             @tooltip="Last day of the period this payment pays for. Access lapses after this date unless it is renewed."
             @error={{this.payErrors.payCoversEnd}}
             @flush={{true}}
             class="grow"
           >
-            <Nuvo::Input
+            <Woven::Input
               id="pay-covers-end"
               type="date"
               @value={{this.payCoversEnd}}
               data-test-payment-covers-end
               {{on "input" (fn this.setPayField "payCoversEnd")}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
-        <Nuvo::Field @label="Notes" @flush={{true}}>
-          <Nuvo::Textarea
+        <Woven::Field @label="Notes" @flush={{true}}>
+          <Woven::Textarea
             id="pay-notes"
             rows="2"
             placeholder="JazzCash transfer, txn 8842"
@@ -637,21 +637,21 @@
             @value={{this.payNotes}}
             {{on "input" (fn this.setPayField "payNotes")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <Nuvo::Field @label="Receipt image" @flush={{true}}>
+        <Woven::Field @label="Receipt image" @flush={{true}}>
           <input
             id="pay-receipt"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            class="nu-input"
+            class="wu-input"
             data-test-payment-receipt
             {{on "change" this.setPayReceipt}}
           />
           {{#if this.payReceiptName}}
             <span class="text-sm text-muted">{{this.payReceiptName}}</span>
           {{/if}}
-        </Nuvo::Field>
+        </Woven::Field>
         <p class="text-sm text-muted">Document it: notes or a receipt image is
           required.</p>
         {{#if this.payDocError}}
@@ -673,9 +673,9 @@
         {{on "click" this.submitPayment}}
       >{{if this.payBusy "Recording…" "Record"}}</button>
     </:footer>
-  </Nuvo::Drawer>
+  </Woven::Drawer>
 
-  <Nuvo::Drawer
+  <Woven::Drawer
     @open={{this.remedyModalOpen}}
     @title="Refund or discount for {{this.company.name}}"
     @placement="end"
@@ -683,7 +683,7 @@
     @onClose={{this.closeRemedy}}
   >
     <:body>
-      <div class="nu-form" data-test-remedy-form>
+      <div class="wu-form" data-test-remedy-form>
         <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
 
         <div class="flex col gap-2">
@@ -735,12 +735,12 @@
         {{/if}}
 
         {{#if this.showRemedyAmount}}
-          <Nuvo::Field
+          <Woven::Field
             @label="Amount"
             @error={{this.remedyErrors.remedyAmount}}
             @flush={{true}}
           >
-            <Nuvo::Input
+            <Woven::Input
               id="remedy-amount"
               type="number"
               min="0"
@@ -750,16 +750,16 @@
               data-test-remedy-partial-amount={{if this.remedyIsRefund true}}
               {{on "input" (fn this.setRemedyField "remedyAmount")}}
             />
-          </Nuvo::Field>
+          </Woven::Field>
         {{/if}}
 
-        <Nuvo::Field
+        <Woven::Field
           @label="Why"
           @required={{true}}
           @error={{this.remedyErrors.remedyWhy}}
           @flush={{true}}
         >
-          <Nuvo::Textarea
+          <Woven::Textarea
             id="remedy-why"
             rows="2"
             required={{true}}
@@ -767,7 +767,7 @@
             @value={{this.remedyWhy}}
             {{on "input" (fn this.setRemedyField "remedyWhy")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
         {{#if this.remedyIsRefund}}
           <div class="alert alert-warning" data-test-remedy-sla-alert>
@@ -793,9 +793,9 @@
         {{on "click" this.submitRemedy}}
       >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</button>
     </:footer>
-  </Nuvo::Drawer>
+  </Woven::Drawer>
 
-  <Nuvo::Drawer
+  <Woven::Drawer
     @open={{this.limitsModalOpen}}
     @title="Edit limits"
     @placement="end"
@@ -803,14 +803,14 @@
     @onClose={{this.closeLimitsModal}}
   >
     <:body>
-      <div class="nu-form">
-        <Nuvo::Field
+      <div class="wu-form">
+        <Woven::Field
           @label="Max users"
           @tooltip="A hard cap on active team members for this company. It overrides the seat limit that comes with their plan."
           @error={{this.limitErrors.limitMaxUsers}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="limit-users"
             type="number"
             min="1"
@@ -818,14 +818,14 @@
             @value={{this.limitMaxUsers}}
             {{on "input" (fn this.setLimitField "limitMaxUsers")}}
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           @label="Max regions"
           @tooltip="A hard cap on how many regions this company can switch on. It overrides the region limit from their plan."
           @error={{this.limitErrors.limitMaxRegions}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="limit-regions"
             type="number"
             min="1"
@@ -833,14 +833,14 @@
             @value={{this.limitMaxRegions}}
             {{on "input" (fn this.setLimitField "limitMaxRegions")}}
           />
-        </Nuvo::Field>
-        <Nuvo::Field
+        </Woven::Field>
+        <Woven::Field
           @label="Max properties"
           @tooltip="A hard cap on how many properties this company can create. It overrides the limit from their plan."
           @error={{this.limitErrors.limitMaxProperties}}
           @flush={{true}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="limit-properties"
             type="number"
             min="1"
@@ -848,7 +848,7 @@
             @value={{this.limitMaxProperties}}
             {{on "input" (fn this.setLimitField "limitMaxProperties")}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
     </:body>
     <:footer>
@@ -864,7 +864,7 @@
         {{on "click" this.submitLimits}}
       >{{if this.limitsBusy "Saving…" "Save"}}</button>
     </:footer>
-  </Nuvo::Drawer>
+  </Woven::Drawer>
 
   <ConfirmModal
     @open={{this.endDealConfirmOpen}}
@@ -893,12 +893,12 @@
   />
 
 {{else}}
-  <Nuvo::Panel class="console-empty">
+  <Woven::Panel class="console-empty">
     <p class="text-muted">This company could not be loaded.</p>
     <button
       type="button"
       class="btn btn-secondary mt-3"
       {{on "click" this.goBack}}
     >Back to Companies</button>
-  </Nuvo::Panel>
+  </Woven::Panel>
 {{/if}}

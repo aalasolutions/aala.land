@@ -9,7 +9,7 @@ export default class Router extends EmberRouter {
 Router.map(function () {
   this.route('index', { path: '/' });
   // Public component documentation; one child route per component family.
-  this.route('nuvo', function () {
+  this.route('woven', function () {
     this.route('internals');
     this.route('shell');
     this.route('typography');

@@ -1,32 +1,32 @@
 {{page-title "Maintenance"}}
 
 <div data-test-maintenance-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
+  <Woven::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
     <:actions>
-      <Nuvo::Button @variant="primary" {{on "click" this.openCreate}} @icon="plus">
+      <Woven::Button @variant="primary" {{on "click" this.openCreate}} @icon="plus">
         New Work Order
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.costSummary}}
     <div class="grid cols-4 gap-4">
-      <Nuvo::Stat
+      <Woven::Stat
         @variant="primary"
         @label="Total Estimated"
         @value={{format-money @model.costSummary.totalEstimated}}
       />
-      <Nuvo::Stat
+      <Woven::Stat
         @variant="primary"
         @label="Total Actual"
         @value={{format-money @model.costSummary.totalActual}}
       />
-      <Nuvo::Stat
+      <Woven::Stat
         @variant="warning"
         @label="Pending Cost"
         @value={{format-money @model.costSummary.pendingCost}}
       />
-      <Nuvo::Stat
+      <Woven::Stat
         @variant="secondary"
         @label="Work Orders"
         @value={{@model.costSummary.workOrderCount}}
@@ -34,7 +34,7 @@
     </div>
   {{/if}}
 
-  <Nuvo::Segmented
+  <Woven::Segmented
     @options={{this.sectionTabs}}
     @value={{this.activeSection}}
     @onChange={{this.setSection}}
@@ -42,8 +42,8 @@
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <Nuvo::Field @label="Status">
-        <Nuvo::Dropdown
+      <Woven::Field @label="Status">
+        <Woven::Dropdown
           id="maintenance-status-filter"
           @align="start"
           @value={{this.filterStatus}}
@@ -51,9 +51,9 @@
           @options={{this.statusOptions}}
           @placeholder="All"
         />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Period">
-        <Nuvo::Dropdown
+      </Woven::Field>
+      <Woven::Field @label="Period">
+        <Woven::Dropdown
           id="maintenance-period-filter"
           @align="start"
           @value={{this.filterMonth}}
@@ -61,12 +61,12 @@
           @options={{this.monthOptions}}
           @placeholder="All"
         />
-      </Nuvo::Field>
+      </Woven::Field>
     </div>
 
-    <Nuvo::Card>
+    <Woven::Card>
       {{#if this.filteredWorkOrders.length}}
-        <Nuvo::DataTable
+        <Woven::DataTable
           @columns={{this.columns}}
           @rows={{this.filteredWorkOrders}}
           @pinColumns={{true}}
@@ -101,12 +101,12 @@
               {{/if}}
             </span>
           {{else if (eq cell.key "category")}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-trade-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
           {{else if (eq cell.key "priority")}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-priority-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
@@ -125,13 +125,13 @@
                   cell.value
                 }}{{else}}-{{/if}}</span>
           {{else if (eq cell.key "status")}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-wo-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
             <div class="flex">
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -142,7 +142,7 @@
                 {{on "click" (fn this.openEdit cell.row)}}
               />
               {{#if (this.canDeleteWorkOrder cell.row)}}
-                <Nuvo::Button
+                <Woven::Button
                   @subtle={{true}}
                   @variant="danger"
                   @size="xs"
@@ -157,14 +157,14 @@
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </Nuvo::DataTable>
+        </Woven::DataTable>
       {{else}}
         {{#if @model.total}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="No work orders on this page with current filters. Navigate to find orders or adjust filters."
           />
         {{else}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @title="No work orders"
             @description="No work orders match your filters."
           />
@@ -172,7 +172,7 @@
       {{/if}}
 
       {{#if @model.total}}
-        <Nuvo::Pagination
+        <Woven::Pagination
           @selectId="maintenance-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -183,11 +183,11 @@
           @onPageChange={{this.goToPage}}
         />
       {{/if}}
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 
   {{#if (eq this.activeSection "upcoming")}}
-    <Nuvo::Card>
+    <Woven::Card>
       <h4 class="text-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
         Preventive Maintenance (Next 30 Days)</h4>
       {{#if @model.upcoming.length}}
@@ -203,28 +203,28 @@
                   {{format-date wo.scheduledDate}}</p>
               </div>
               <div class="flex x-center gap-3">
-                <Nuvo::Tag
+                <Woven::Tag
                   class="tag-priority-{{lowercase wo.priority}}"
                   @text={{wo.priority}}
                 />
-                <Nuvo::Button
+                <Woven::Button
                   @variant="secondary"
                   @size="xs"
                   @icon="pencil-simple"
                   {{on "click" (fn this.openEdit wo)}}
                 >
                   Edit
-                </Nuvo::Button>
+                </Woven::Button>
               </div>
             </div>
           {{/each}}
         </div>
       {{else}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No preventive maintenance scheduled for the next 30 days."
         />
       {{/if}}
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 </div>
 
@@ -247,8 +247,8 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
-    <Nuvo::Textarea
+  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Woven::Textarea
       id="wo-delete-reason"
       rows="2"
       maxlength="500"
@@ -259,5 +259,5 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>

@@ -29,7 +29,7 @@ const esmParserOptions = {
 };
 
 export default defineConfig([
-  globalIgnores(['dist/', 'nuvoui/dist/', 'coverage/', '!**/.*']),
+  globalIgnores(['dist/', 'wovenui/dist/', 'coverage/', '!**/.*']),
   js.configs.recommended,
   eslintConfigPrettier,
   ember.configs.base,
@@ -61,8 +61,8 @@ export default defineConfig([
     files: [
       'app/**/*.{js,gjs}',
       'tests/**/*.{js,gjs}',
-      'nuvoui/src/**/*.{js,gjs}',
-      'nuvoui/tests/**/*.{js,gjs}',
+      'wovenui/src/**/*.{js,gjs}',
+      'wovenui/tests/**/*.{js,gjs}',
     ],
     ignores: ['app/utils/local-date.js'],
     rules: {
@@ -87,7 +87,7 @@ export default defineConfig([
   },
   {
     ...qunit.configs.recommended,
-    files: ['tests/**/*-test.{js,gjs}', 'nuvoui/tests/**/*-test.{js,gjs}'],
+    files: ['tests/**/*-test.{js,gjs}', 'wovenui/tests/**/*-test.{js,gjs}'],
     plugins: {
       qunit,
     },

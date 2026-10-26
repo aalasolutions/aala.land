@@ -1,5 +1,5 @@
 // Collection schedule: one table, grouped by due period.
-@use "@nuvoui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/common/var" as *;
 
 .cheque-schedule {
   overflow-x: auto;
@@ -7,22 +7,22 @@
 
 .cheque-schedule__table {
   inline-size: 100%;
-  font-size: nu-font-size(sm);
+  font-size: wu-font-size(sm);
   border-collapse: collapse;
 
   th {
-    padding: nu-space(2) nu-space(3);
-    font-size: nu-font-size(xs);
-    font-weight: nu-font-weight(normal);
+    padding: wu-space(2) wu-space(3);
+    font-size: wu-font-size(xs);
+    font-weight: wu-font-weight(normal);
     text-align: start;
-    color: var(--nu-text-muted);
-    border-block-end: 1px solid var(--nu-border-regular);
+    color: var(--wu-text-muted);
+    border-block-end: 1px solid var(--wu-border-regular);
   }
 
   td {
-    padding: 0.375rem nu-space(3);
-    color: var(--nu-text-regular);
-    border-block-end: 1px solid var(--nu-border-regular);
+    padding: 0.375rem wu-space(3);
+    color: var(--wu-text-regular);
+    border-block-end: 1px solid var(--wu-border-regular);
   }
 
   .is-num {
@@ -32,26 +32,26 @@
 }
 
 .cheque-schedule__group td {
-  padding-block-start: nu-space(5);
-  font-weight: nu-font-weight(semibold);
+  padding-block-start: wu-space(5);
+  font-weight: wu-font-weight(semibold);
   border-block-end-width: 2px;
 }
 
 .cheque-schedule__group.is-overdue td {
-  color: var(--nu-danger);
-  border-block-end-color: nu-tint(danger, 40%);
+  color: var(--wu-danger);
+  border-block-end-color: wu-tint(danger, 40%);
 }
 
 .cheque-schedule__count {
-  margin-inline-start: nu-space(2);
-  font-weight: nu-font-weight(medium);
-  color: var(--nu-text-muted);
+  margin-inline-start: wu-space(2);
+  font-weight: wu-font-weight(medium);
+  color: var(--wu-text-muted);
 }
 
 .cheque-schedule__muted {
-  color: var(--nu-text-muted);
+  color: var(--wu-text-muted);
 }
 
 .is-overdue .cheque-schedule__when {
-  color: var(--nu-danger);
+  color: var(--wu-danger);
 }

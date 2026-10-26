@@ -2,7 +2,7 @@
 
 <div data-test-whatsapp-page class="wa-shell">
 
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     class="wa-shell__header"
     @title="WhatsApp"
   />
@@ -11,7 +11,7 @@
     class="wa-connection is-{{this.connectionStatus}}"
     data-test-wa-connection-status={{this.connectionStatus}}
   >
-    <Nuvo::Dot @variant={{this.connectionVariant}} @size="sm" />
+    <Woven::Dot @variant={{this.connectionVariant}} @size="sm" />
 
     <div class="wa-connection__text">
       <span class="wa-connection__label" data-test-wa-connection-label>
@@ -31,7 +31,7 @@
 
     {{#if this.isConnected}}
       <span class="wa-connection__cta">
-        <Nuvo::Button
+        <Woven::Button
           @variant="ghost"
           @size="xs"
           @icon="plugs-connected"
@@ -48,7 +48,7 @@
         data-tooltip={{this.connectTooltip}}
         data-tooltip-position="bottom"
       >
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @size="xs"
           @icon="plugs"
@@ -75,7 +75,7 @@
             data-tooltip={{this.aiToggleTooltip}}
             data-tooltip-position="bottom"
           >
-            <Nuvo::Button
+            <Woven::Button
               @variant={{if this.aiEnabled "info" "secondary"}}
               @size="xs"
               @icon="robot"
@@ -111,7 +111,7 @@
       {{#if this.currentChatId}}
 
         <div class="wa-chat-header">
-          <Nuvo::Avatar
+          <Woven::Avatar
             @initials={{initials this.currentChatName}}
             @size="md"
             aria-hidden="true"
@@ -134,7 +134,7 @@
           {{#if this.currentChatWindowError}}
             <div class="wa-load-older-error" data-test-wa-reload-error>
               <span>Couldn't refresh messages.</span>
-              <Nuvo::Button
+              <Woven::Button
                 @variant="secondary"
                 @size="sm"
                 @text="Retry"
@@ -147,7 +147,7 @@
           {{#if this.currentChatOlderError}}
             <div class="wa-load-older-error" data-test-wa-load-older-error>
               <span>Couldn't load older messages.</span>
-              <Nuvo::Button
+              <Woven::Button
                 @variant="secondary"
                 @size="sm"
                 @text="Retry"
@@ -158,7 +158,7 @@
             </div>
           {{else if this.currentChatLoadingOlder}}
             <div class="wa-load-older" data-test-wa-load-older>
-              <Nuvo::Spinner @size="sm" />
+              <Woven::Spinner @size="sm" />
             </div>
           {{/if}}
           {{#each this.currentChatMessages key="id" as |msg|}}
@@ -213,9 +213,9 @@
 
                 {{#if (and msg.fromMe (not (eq msg.mediaType "size_notice")))}}
                   {{#if msg.aiGenerated}}
-                    <Nuvo::Tag @variant="info" @size="sm" @text="AI" />
+                    <Woven::Tag @variant="info" @size="sm" @text="AI" />
                   {{else}}
-                    <Nuvo::Tag @variant="primary" @size="sm" @text="You" />
+                    <Woven::Tag @variant="primary" @size="sm" @text="You" />
                   {{/if}}
 
                   {{! No status yet means Meta hasn't called back; it reads as pending, not failed. }}
@@ -230,7 +230,7 @@
                       }}
                     ><Ui::Ph @icon="warning-circle" /></span>
                     {{#if (this.canRetrySend msg)}}
-                      <Nuvo::Button
+                      <Woven::Button
                         @variant="ghost"
                         @size="xs"
                         @text="Retry"
@@ -275,10 +275,10 @@
           {{else}}
             {{#if this.currentChatLoadingWindow}}
               <div class="wa-load-older" data-test-wa-thread-loading>
-                <Nuvo::Spinner @size="sm" />
+                <Woven::Spinner @size="sm" />
               </div>
             {{else if this.showsEmptyThread}}
-              <Nuvo::EmptyState
+              <Woven::EmptyState
                 @fill={{true}}
                 @title="No messages in this chat yet"
               />
@@ -287,7 +287,7 @@
           {{#if this.currentChatNewerError}}
             <div class="wa-load-older-error" data-test-wa-load-newer-error>
               <span>Couldn't load newer messages.</span>
-              <Nuvo::Button
+              <Woven::Button
                 @variant="secondary"
                 @size="sm"
                 @text="Retry"
@@ -298,7 +298,7 @@
             </div>
           {{else if this.currentChatLoadingNewer}}
             <div class="wa-load-older" data-test-wa-load-newer>
-              <Nuvo::Spinner @size="sm" />
+              <Woven::Spinner @size="sm" />
             </div>
           {{/if}}
           {{#each this.currentChatPendingMedia key="id" as |pending|}}
@@ -351,7 +351,7 @@
               @disabled={{this.composerDisabled}}
               @onFiles={{this.addAttachments}}
             />
-            <Nuvo::Textarea
+            <Woven::Textarea
               @value={{this.messageText}}
               @onInput={{this.setMessageText}}
               @placeholder="Type a message..."
@@ -360,7 +360,7 @@
               data-test-wa-composer-input
               {{on "keydown" this.handleKeydown}}
             />
-            <Nuvo::Button
+            <Woven::Button
               @variant="primary"
               @icon="paper-plane-tilt"
               @text="Send"
@@ -373,13 +373,13 @@
 
       {{else}}
 
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @fill={{true}}
           @size="lg"
           @title="Select a chat to view its messages"
         >
           <:icon><Ui::Ph @icon="chats-circle" /></:icon>
-        </Nuvo::EmptyState>
+        </Woven::EmptyState>
 
       {{/if}}
 
@@ -415,18 +415,18 @@
   @onConfirm={{this.confirmDeleteMedia}}
   data-test-wa-media-delete-modal
 >
-  <Nuvo::Text
+  <Woven::Text
     class="mt-2 break-words"
     @weight="semibold"
     data-test-wa-media-delete-name
-  ><bdi>{{this.mediaToDeleteLabel}}</bdi></Nuvo::Text>
-  <Nuvo::Field
+  ><bdi>{{this.mediaToDeleteLabel}}</bdi></Woven::Text>
+  <Woven::Field
     class="mt-4"
     @label="Reason"
     @required={{true}}
     @error={{this.mediaReasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="wa-media-delete-reason"
       rows="2"
       maxlength="500"
@@ -437,7 +437,7 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>
 
 <Whatsapp::MediaViewer />

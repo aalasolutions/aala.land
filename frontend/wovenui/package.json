@@ -1,0 +1,149 @@
+{
+  "name": "@wovenui/ember",
+  "version": "0.2.0",
+  "description": "WovenUI Glimmer component kit and SCSS layer for Ember.",
+  "keywords": [
+    "ember-addon"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js",
+    "./styles/*": "./styles/*",
+    "./addon-main.js": "./addon-main.cjs"
+  },
+  "files": [
+    "dist",
+    "styles",
+    "addon-main.cjs",
+    "CONVENTIONS.md"
+  ],
+  "scripts": {
+    "build": "rollup --config",
+    "start": "rollup --config --watch --no-watch.clearScreen",
+    "prepack": "rollup --config"
+  },
+  "dependencies": {
+    "@ember/render-modifiers": "^3.0.0",
+    "@embroider/addon-shim": "^1.10.0",
+    "@embroider/macros": "^1.20.5",
+    "decorator-transforms": "^2.3.1",
+    "ember-lifeline": "^7.1.0",
+    "ember-modifier": "^4.3.0",
+    "ember-page-title": "^9.0.3",
+    "ember-table": "6.0.0-11",
+    "ember-truth-helpers": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@ember/test-helpers": ">= 3.0.0",
+    "@glimmer/component": "^2.0.0",
+    "ember-cli-htmlbars": ">= 6.0.0",
+    "ember-qunit": ">= 8.0.0",
+    "ember-source": ">= 4.0.0",
+    "qunit": ">= 2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-runtime": "^7.29.7",
+    "@babel/runtime": "^7.29.7",
+    "@embroider/addon-dev": "^8.2.0",
+    "@rollup/plugin-babel": "^7.1.0",
+    "babel-plugin-ember-template-compilation": "^3.1.0",
+    "rollup": "^4.52.5"
+  },
+  "ember": {
+    "edition": "octane"
+  },
+  "ember-addon": {
+    "version": 2,
+    "type": "addon",
+    "main": "addon-main.cjs",
+    "app-js": {
+      "./components/woven/accordion.js": "./dist/_app_/components/woven/accordion.js",
+      "./components/woven/alert.js": "./dist/_app_/components/woven/alert.js",
+      "./components/woven/autocomplete.js": "./dist/_app_/components/woven/autocomplete.js",
+      "./components/woven/avatar-group.js": "./dist/_app_/components/woven/avatar-group.js",
+      "./components/woven/avatar.js": "./dist/_app_/components/woven/avatar.js",
+      "./components/woven/badge.js": "./dist/_app_/components/woven/badge.js",
+      "./components/woven/breadcrumb.js": "./dist/_app_/components/woven/breadcrumb.js",
+      "./components/woven/btn-group.js": "./dist/_app_/components/woven/btn-group.js",
+      "./components/woven/button-inner.js": "./dist/_app_/components/woven/button-inner.js",
+      "./components/woven/button.js": "./dist/_app_/components/woven/button.js",
+      "./components/woven/card.js": "./dist/_app_/components/woven/card.js",
+      "./components/woven/checkbox.js": "./dist/_app_/components/woven/checkbox.js",
+      "./components/woven/confirm-modal.js": "./dist/_app_/components/woven/confirm-modal.js",
+      "./components/woven/data-table-options.js": "./dist/_app_/components/woven/data-table-options.js",
+      "./components/woven/data-table.js": "./dist/_app_/components/woven/data-table.js",
+      "./components/woven/desc-list.js": "./dist/_app_/components/woven/desc-list.js",
+      "./components/woven/dialog-host.js": "./dist/_app_/components/woven/dialog-host.js",
+      "./components/woven/divider.js": "./dist/_app_/components/woven/divider.js",
+      "./components/woven/dot.js": "./dist/_app_/components/woven/dot.js",
+      "./components/woven/drawer.js": "./dist/_app_/components/woven/drawer.js",
+      "./components/woven/dropdown.js": "./dist/_app_/components/woven/dropdown.js",
+      "./components/woven/empty-state.js": "./dist/_app_/components/woven/empty-state.js",
+      "./components/woven/field-group.js": "./dist/_app_/components/woven/field-group.js",
+      "./components/woven/field-message.js": "./dist/_app_/components/woven/field-message.js",
+      "./components/woven/field.js": "./dist/_app_/components/woven/field.js",
+      "./components/woven/form-actions.js": "./dist/_app_/components/woven/form-actions.js",
+      "./components/woven/icon.js": "./dist/_app_/components/woven/icon.js",
+      "./components/woven/info-row.js": "./dist/_app_/components/woven/info-row.js",
+      "./components/woven/input-group.js": "./dist/_app_/components/woven/input-group.js",
+      "./components/woven/input.js": "./dist/_app_/components/woven/input.js",
+      "./components/woven/layer-host.js": "./dist/_app_/components/woven/layer-host.js",
+      "./components/woven/list-item.js": "./dist/_app_/components/woven/list-item.js",
+      "./components/woven/list.js": "./dist/_app_/components/woven/list.js",
+      "./components/woven/modal.js": "./dist/_app_/components/woven/modal.js",
+      "./components/woven/page-header.js": "./dist/_app_/components/woven/page-header.js",
+      "./components/woven/pagination.js": "./dist/_app_/components/woven/pagination.js",
+      "./components/woven/panel.js": "./dist/_app_/components/woven/panel.js",
+      "./components/woven/popover.js": "./dist/_app_/components/woven/popover.js",
+      "./components/woven/progress-circle.js": "./dist/_app_/components/woven/progress-circle.js",
+      "./components/woven/progress.js": "./dist/_app_/components/woven/progress.js",
+      "./components/woven/radio.js": "./dist/_app_/components/woven/radio.js",
+      "./components/woven/segmented.js": "./dist/_app_/components/woven/segmented.js",
+      "./components/woven/select.js": "./dist/_app_/components/woven/select.js",
+      "./components/woven/sidebar-link.js": "./dist/_app_/components/woven/sidebar-link.js",
+      "./components/woven/sidebar.js": "./dist/_app_/components/woven/sidebar.js",
+      "./components/woven/skeleton.js": "./dist/_app_/components/woven/skeleton.js",
+      "./components/woven/spinner.js": "./dist/_app_/components/woven/spinner.js",
+      "./components/woven/stat-inner.js": "./dist/_app_/components/woven/stat-inner.js",
+      "./components/woven/stat.js": "./dist/_app_/components/woven/stat.js",
+      "./components/woven/tabs.js": "./dist/_app_/components/woven/tabs.js",
+      "./components/woven/tag.js": "./dist/_app_/components/woven/tag.js",
+      "./components/woven/text.js": "./dist/_app_/components/woven/text.js",
+      "./components/woven/textarea.js": "./dist/_app_/components/woven/textarea.js",
+      "./components/woven/timeline-item.js": "./dist/_app_/components/woven/timeline-item.js",
+      "./components/woven/timeline.js": "./dist/_app_/components/woven/timeline.js",
+      "./components/woven/title.js": "./dist/_app_/components/woven/title.js",
+      "./components/woven/toast-region.js": "./dist/_app_/components/woven/toast-region.js",
+      "./components/woven/toggle.js": "./dist/_app_/components/woven/toggle.js",
+      "./components/woven/toolbar.js": "./dist/_app_/components/woven/toolbar.js",
+      "./components/woven/tooltip-host.js": "./dist/_app_/components/woven/tooltip-host.js",
+      "./components/woven/topbar.js": "./dist/_app_/components/woven/topbar.js",
+      "./modifiers/anchor.js": "./dist/_app_/modifiers/anchor.js",
+      "./modifiers/dialog-transition.js": "./dist/_app_/modifiers/dialog-transition.js",
+      "./modifiers/dialog.js": "./dist/_app_/modifiers/dialog.js",
+      "./modifiers/tooltip-fit.js": "./dist/_app_/modifiers/tooltip-fit.js",
+      "./services/dialogs.js": "./dist/_app_/services/dialogs.js",
+      "./services/layer.js": "./dist/_app_/services/layer.js",
+      "./services/notifications.js": "./dist/_app_/services/notifications.js",
+      "./services/woven-storage.js": "./dist/_app_/services/woven-storage.js",
+      "./services/tooltip.js": "./dist/_app_/services/tooltip.js"
+    }
+  },
+  "peerDependenciesMeta": {
+    "@ember/test-helpers": {
+      "optional": true
+    },
+    "ember-cli-htmlbars": {
+      "optional": true
+    },
+    "ember-qunit": {
+      "optional": true
+    },
+    "qunit": {
+      "optional": true
+    }
+  }
+}

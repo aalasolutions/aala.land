@@ -1,4 +1,4 @@
-<Nuvo::ListItem data-test-wa-audio-player>
+<Woven::ListItem data-test-wa-audio-player>
   <:main>
     {{#if @src}}
       {{! template-lint-disable require-media-caption }}
@@ -19,7 +19,7 @@
   </:main>
   <:actions>
     {{#if @sizeLabel}}
-      <Nuvo::Badge
+      <Woven::Badge
         @size="sm"
         @quiet={{true}}
         @text={{@sizeLabel}}
@@ -27,4 +27,4 @@
       />
     {{/if}}
   </:actions>
-</Nuvo::ListItem>
+</Woven::ListItem>

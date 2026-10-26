@@ -68,21 +68,21 @@ module(
     }
 
     async function pickOption(selector, label) {
-      await click(`${selector} [data-test-nu-dropdown-trigger]`);
+      await click(`${selector} [data-test-wu-dropdown-trigger]`);
       const item = [
-        ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+        ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
       ].find((el) => el.textContent.includes(label));
       await click(item);
     }
 
     async function pickAutocomplete(index, label) {
       const filters = document.querySelectorAll(
-        '[data-test-remote-autocomplete] [data-test-nu-dropdown-filter]',
+        '[data-test-remote-autocomplete] [data-test-wu-dropdown-filter]',
       );
       await focus(filters[index]);
       const item = [
         ...document.querySelectorAll(
-          '.nu-menu.is-open [data-test-nu-dropdown-item]',
+          '.wu-menu.is-open [data-test-wu-dropdown-item]',
         ),
       ].find((el) => el.textContent.includes(label));
       await click(item);
@@ -113,7 +113,7 @@ module(
       await click('[data-test-unit-save]');
       assert
         .dom(
-          '[data-test-nu-field]:has(#unit-sub-type) [data-test-nu-field-error]',
+          '[data-test-wu-field]:has(#unit-sub-type) [data-test-wu-field-error]',
         )
         .hasText('Choose the property kind.');
 
@@ -147,7 +147,7 @@ module(
       await click('[data-test-unit-save]');
       assert
         .dom(
-          '[data-test-nu-field]:has(#unit-number) [data-test-nu-field-error]',
+          '[data-test-wu-field]:has(#unit-number) [data-test-wu-field-error]',
         )
         .hasText('Enter a property number');
       assert.notOk(sent(this.calls, 'POST'));

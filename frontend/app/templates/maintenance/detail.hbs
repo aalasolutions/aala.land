@@ -1,9 +1,9 @@
 {{page-title this.title}}
 
 <div data-test-work-order-detail class="flex col gap-6">
-  <Nuvo::PageHeader @title={{this.title}} @subtitle={{this.subtitle}}>
+  <Woven::PageHeader @title={{this.title}} @subtitle={{this.subtitle}}>
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{array (hash label="Maintenance" route="maintenance.index")}}
         @compact={{true}}
         @parentsOnly={{true}}
@@ -13,17 +13,17 @@
     <:meta>
       {{#if @model.workOrder}}
         <div class="flex gap-1 wrap">
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-wo-{{lowercase @model.workOrder.status}}"
             @text={{@model.workOrder.status}}
             data-test-work-order-status
           />
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-priority-{{lowercase @model.workOrder.priority}}"
             @text={{@model.workOrder.priority}}
             data-test-work-order-priority
           />
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-trade-{{lowercase @model.workOrder.category}}"
             @text={{@model.workOrder.category}}
             data-test-work-order-category
@@ -33,7 +33,7 @@
     </:meta>
     <:actions>
       {{#if (and @model.workOrder this.canEdit)}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @icon="pencil-simple"
           @text="Edit"
@@ -42,7 +42,7 @@
         />
       {{/if}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.workOrder}}
     <RegionNotice
@@ -67,7 +67,7 @@
           <div class="flex between x-center">
             <h2 class="text-md font-bold">Documents</h2>
             {{#if panel.canUpload}}
-              <Nuvo::Button
+              <Woven::Button
                 @variant="primary"
                 @size="sm"
                 @icon="upload-simple"
@@ -82,13 +82,13 @@
     </section>
 
     {{#if this.canViewHistory}}
-      <Nuvo::Card @title="History" data-test-work-order-history-card>
+      <Woven::Card @title="History" data-test-work-order-history-card>
         <RecordHistoryList
           @entityType="WorkOrder"
           @entityId={{@model.workOrder.id}}
           @reloadKey={{@model.workOrder}}
         />
-      </Nuvo::Card>
+      </Woven::Card>
     {{/if}}
 
     {{#if this.canEdit}}
@@ -100,11 +100,11 @@
       />
     {{/if}}
   {{else}}
-    <Nuvo::Card>
-      <Nuvo::EmptyState
+    <Woven::Card>
+      <Woven::EmptyState
         @description="Work order not found."
         data-test-work-order-not-found
       />
-    </Nuvo::Card>
+    </Woven::Card>
   {{/if}}
 </div>

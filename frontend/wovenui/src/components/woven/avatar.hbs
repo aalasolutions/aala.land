@@ -1,0 +1,13 @@
+<span class={{this.classes}} data-test-wu-avatar ...attributes>
+  {{#if this.hasImage}}
+    <img class="wu-avatar__image" src={{@src}} alt={{@alt}} data-test-wu-avatar-image />
+  {{else if this.hasInitials}}
+    <span class="wu-avatar__initials" data-test-wu-avatar-initials>{{@initials}}</span>
+  {{else if this.hasIcon}}
+    <span class="wu-avatar__icon" aria-hidden="true" data-test-wu-avatar-icon>{{@icon}}</span>
+  {{/if}}
+
+  {{#if this.hasStatus}}
+    <span class="wu-avatar__status" data-test-wu-avatar-status></span>
+  {{/if}}
+</span>

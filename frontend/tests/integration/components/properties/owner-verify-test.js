@@ -67,8 +67,8 @@ module(
     });
 
     async function pickFrom(root, label) {
-      await focus(`${root} [data-test-nu-dropdown-filter]`);
-      const selector = '.nu-menu.is-open [data-test-nu-dropdown-item]';
+      await focus(`${root} [data-test-wu-dropdown-filter]`);
+      const selector = '.wu-menu.is-open [data-test-wu-dropdown-item]';
       await waitUntil(() => document.querySelector(selector));
       const item = [...document.querySelectorAll(selector)].find((el) =>
         el.textContent.includes(label),
@@ -79,9 +79,9 @@ module(
     async function pickLocation() {
       const filters = () =>
         document.querySelectorAll(
-          '[data-test-remote-autocomplete] [data-test-nu-dropdown-filter]',
+          '[data-test-remote-autocomplete] [data-test-wu-dropdown-filter]',
         );
-      const selector = '.nu-menu.is-open [data-test-nu-dropdown-item]';
+      const selector = '.wu-menu.is-open [data-test-wu-dropdown-item]';
       for (const [index, label] of [
         [0, 'Dubai'],
         [1, 'Marina'],
@@ -98,9 +98,9 @@ module(
     }
 
     async function pickKind() {
-      await click('[data-test-unit-kind] [data-test-nu-dropdown-trigger]');
+      await click('[data-test-unit-kind] [data-test-wu-dropdown-trigger]');
       const item = [
-        ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+        ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
       ].find((el) => el.textContent.includes('Apartment'));
       await click(item);
     }
@@ -138,7 +138,7 @@ module(
 
       assert
         .dom(
-          '[data-test-nu-field]:has(#unit-sub-type) [data-test-nu-field-error]',
+          '[data-test-wu-field]:has(#unit-sub-type) [data-test-wu-field-error]',
         )
         .hasText('Choose the property kind.');
       assert.strictEqual(this.sent.length, 0);

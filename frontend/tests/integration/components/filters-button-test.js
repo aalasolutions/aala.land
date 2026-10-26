@@ -31,13 +31,13 @@ module('Integration | Component | filters-button', function (hooks) {
 
     await click('[data-test-filters-button]');
 
-    assert.dom('[data-test-nu-drawer-title]').hasText('Filters');
+    assert.dom('[data-test-wu-drawer-title]').hasText('Filters');
     assert.dom('[data-test-filters-drawer] [data-test-sample-field]').exists();
     assert
       .dom('[data-test-filters-button]')
       .hasAttribute('aria-expanded', 'true');
 
-    await click('[data-test-nu-drawer-close]');
+    await click('[data-test-wu-drawer-close]');
 
     assert
       .dom('[data-test-filters-button]')
@@ -55,7 +55,7 @@ module('Integration | Component | filters-button', function (hooks) {
     await click('[data-test-sample-clear]');
 
     assert.dom('[data-test-sample-clear]').isDisabled();
-    assert.dom('[data-test-nu-drawer-close]').isFocused();
+    assert.dom('[data-test-wu-drawer-close]').isFocused();
   });
 
   test('leaves focus alone on a click in empty drawer space', async function (assert) {
@@ -67,6 +67,6 @@ module('Integration | Component | filters-button', function (hooks) {
     document.activeElement.blur();
     await triggerEvent('[data-test-sample-text]', 'click');
 
-    assert.dom('[data-test-nu-drawer-close]').isNotFocused();
+    assert.dom('[data-test-wu-drawer-close]').isNotFocused();
   });
 });

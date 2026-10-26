@@ -1,55 +1,55 @@
 {{page-title "My Profile"}}
 
 <div data-test-profile-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="My Profile"
     @subtitle="Manage your account settings."
   />
 
   {{#if this.model}}
-    <Nuvo::Card class="profile-card">
-      <form class="nu-form" novalidate {{on "submit" this.saveProfile}}>
-        <Nuvo::Field
+    <Woven::Card class="profile-card">
+      <form class="wu-form" novalidate {{on "submit" this.saveProfile}}>
+        <Woven::Field
           @label="Name"
           @required={{true}}
           @error={{this.fieldErrors.formName}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="profile-name"
             type="text"
             @value={{or this.formName this.model.name}}
             @onInput={{fn this.setFieldValue "formName"}}
             required={{true}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <Nuvo::Field @label="Email">
-          <Nuvo::Input
+        <Woven::Field @label="Email">
+          <Woven::Input
             id="profile-email"
             type="email"
             @value={{this.model.email}}
             @disabled={{true}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <Nuvo::Field @label="New Password">
-          <Nuvo::Input
+        <Woven::Field @label="New Password">
+          <Woven::Input
             id="profile-password"
             type="password"
             placeholder="Leave blank to keep current"
             @value={{this.formPassword}}
             @onInput={{fn this.setFieldValue "formPassword"}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
-        <Nuvo::Field @label="Role">
-          <Nuvo::Input
+        <Woven::Field @label="Role">
+          <Woven::Input
             id="profile-role"
             type="text"
             @value={{format-role this.model.role}}
             @disabled={{true}}
           />
-        </Nuvo::Field>
+        </Woven::Field>
 
         <div class="profile-connection-card">
           <div class="profile-connection-heading">
@@ -91,22 +91,22 @@
         </div>
 
         {{#if this.errorMsg}}
-          <Nuvo::Alert @variant="danger" @description={{this.errorMsg}} />
+          <Woven::Alert @variant="danger" @description={{this.errorMsg}} />
         {{/if}}
 
-        <Nuvo::FormActions>
-          <Nuvo::Button
+        <Woven::FormActions>
+          <Woven::Button
             type="submit"
             @variant="primary"
             @disabled={{this.isSaving}}
             @loading={{this.isSaving}}
           >
             {{if this.isSaving "Saving..." "Save Changes"}}
-          </Nuvo::Button>
-        </Nuvo::FormActions>
+          </Woven::Button>
+        </Woven::FormActions>
       </form>
-    </Nuvo::Card>
+    </Woven::Card>
   {{else}}
-    <Nuvo::EmptyState @title="Loading profile..." />
+    <Woven::EmptyState @title="Loading profile..." />
   {{/if}}
 </div>

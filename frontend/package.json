@@ -15,7 +15,7 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "pnpm --filter @nuvoui/ember build && STRIP_TEST_SELECTORS=${STRIP_TEST_SELECTORS:-true} vite build",
+    "build": "pnpm --filter @wovenui/ember build && STRIP_TEST_SELECTORS=${STRIP_TEST_SELECTORS:-true} vite build",
     "format": "prettier . --cache --write",
     "lint": "concurrently \"pnpm:lint:*(!fix)\" --names \"lint:\" --prefixColors auto",
     "lint:css": "stylelint \"**/*.css\"",
@@ -28,9 +28,9 @@
     "lint:js:fix": "eslint . --fix",
     "start": "concurrently \"pnpm:start:kit\" \"pnpm:start:app\" --names \"kit,app\" --prefixColors auto",
     "start:app": "vite",
-    "start:kit": "pnpm --filter @nuvoui/ember start",
+    "start:kit": "pnpm --filter @wovenui/ember start",
     "test": "concurrently \"pnpm:lint\" \"pnpm:test:*\" --names \"lint,test:\" --prefixColors auto",
-    "test:ember": "pnpm --filter @nuvoui/ember build && vite build --mode development && ember test --path dist"
+    "test:ember": "pnpm --filter @wovenui/ember build && vite build --mode development && ember test --path dist"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
@@ -50,7 +50,7 @@
     "@embroider/vite": "^1.7.13",
     "@eslint/js": "^9.39.5",
     "@glimmer/component": "^2.0.0",
-    "@nuvoui/core": "^2.1.1",
+    "@wovenui/core": "^2.2.1",
     "@rollup/plugin-babel": "^7.1.0",
     "babel-plugin-ember-template-compilation": "^3.1.0",
     "concurrently": "^9.2.1",
@@ -92,7 +92,7 @@
   },
   "dependencies": {
     "@ember/string": "^4.0.1",
-    "@nuvoui/ember": "workspace:*",
+    "@wovenui/ember": "workspace:*",
     "chart.js": "4.5.1",
     "ember-lifeline": "^7.1.0",
     "luxon": "3.7.2",

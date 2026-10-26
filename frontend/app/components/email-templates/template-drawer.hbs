@@ -1,4 +1,4 @@
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{@open}}
   @title={{if this.isEdit "Edit Template" "New Template"}}
   @placement="end"
@@ -9,18 +9,18 @@
   <:body>
     <form
       id="email-template-form"
-      class="nu-form"
+      class="wu-form"
       novalidate
       {{on "submit" this.save}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field
+        <Woven::Field
           class="grow"
           @label="Template Name"
           @required={{true}}
           @error={{this.fieldErrors.formName}}
         >
-          <Nuvo::Input
+          <Woven::Input
             id="t-name"
             type="text"
             placeholder="Welcome New Tenant"
@@ -28,9 +28,9 @@
             @onInput={{fn this.setField "formName"}}
             data-test-input-name
           />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Category">
-          <Nuvo::Dropdown
+        </Woven::Field>
+        <Woven::Field class="grow" @label="Category">
+          <Woven::Dropdown
             id="t-category"
             @align="start"
             @value={{this.form.formCategory}}
@@ -39,15 +39,15 @@
             @placeholder="Select category..."
             data-test-input-category
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Subject"
         @required={{true}}
         @error={{this.fieldErrors.formSubject}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="t-subject"
           type="text"
           placeholder="Welcome to your new home!"
@@ -55,14 +55,14 @@
           @onInput={{fn this.setField "formSubject"}}
           data-test-input-subject
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Body (HTML)"
         @required={{true}}
         @error={{this.fieldErrors.formBody}}
       >
-        <Nuvo::Textarea
+        <Woven::Textarea
           id="t-body"
           placeholder="Use curly braces for variables, e.g. first name"
           rows="8"
@@ -70,13 +70,13 @@
           @onInput={{fn this.setField "formBody"}}
           data-test-input-body
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Field
+      <Woven::Field
         @label="Variables (comma-separated)"
         @hint="Use double curly braces in subject/body to reference variables."
       >
-        <Nuvo::Input
+        <Woven::Input
           id="t-vars"
           type="text"
           placeholder="firstName, lastName, propertyName"
@@ -84,9 +84,9 @@
           @onInput={{fn this.setField "formVariables"}}
           data-test-input-variables
         />
-      </Nuvo::Field>
+      </Woven::Field>
 
-      <Nuvo::Checkbox
+      <Woven::Checkbox
         @checked={{this.form.formIsActive}}
         @label="Active"
         @onChange={{fn this.setField "formIsActive"}}
@@ -99,17 +99,17 @@
     </form>
   </:body>
   <:footer>
-    <Nuvo::Button
+    <Woven::Button
       @variant="secondary"
       @onClick={{this.close}}
       data-test-cancel-template-form
-    >Cancel</Nuvo::Button>
-    <Nuvo::Button
+    >Cancel</Woven::Button>
+    <Woven::Button
       @variant="primary"
       @type="submit"
       form="email-template-form"
       @loading={{this.isSaving}}
       data-test-save-template
-    >{{this.submitLabel}}</Nuvo::Button>
+    >{{this.submitLabel}}</Woven::Button>
   </:footer>
-</Nuvo::Drawer>
+</Woven::Drawer>

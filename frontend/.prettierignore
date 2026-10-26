@@ -13,4 +13,4 @@ ember-cli-update.json
 *.html
 
 # kit addon build output
-/nuvoui/dist/
+/wovenui/dist/

@@ -1,0 +1,60 @@
+<div
+  style="position: relative; display: inline-block;"
+  data-test-wu-popover
+  {{did-insert this.registerRoot}}
+  {{on "keydown" this.onKeydown}}
+  ...attributes
+>
+  {{yield this.toggle this.isOpen to="trigger"}}
+
+  {{! Hosted on .wu-layer so no ancestor can clip it; mounted only while open. }}
+  {{#if this.isOpen}}
+  {{#in-element this.layer.element insertBefore=null}}
+  <div
+    class={{this.classes}}
+    role="dialog"
+    aria-labelledby={{if @title this.titleId}}
+    data-test-wu-popover-content
+    {{did-insert this.registerPanel}}
+    {{will-destroy this.forgetPanel}}
+    {{on "keydown" this.onKeydown}}
+    {{anchor
+      this.rootElement
+      placement=this.anchorPlacement
+      align=this.anchorAlign
+      gap=8
+      onDismiss=this.close
+    }}
+  >
+    <span class="wu-popover__arrow" aria-hidden="true"></span>
+
+    {{#if @title}}
+      <div class="wu-popover__header">
+        <h3 id={{this.titleId}} class="wu-popover__title" data-test-wu-popover-title>
+          {{@title}}
+        </h3>
+        <button
+          type="button"
+          class="wu-popover__close"
+          aria-label="Close"
+          data-test-wu-popover-close
+          {{on "click" this.close}}
+        >
+          ✕
+        </button>
+      </div>
+    {{/if}}
+
+    <div class="wu-popover__body" data-test-wu-popover-body>
+      {{yield to="body"}}
+    </div>
+
+    {{#if (has-block "footer")}}
+      <div class="wu-popover__footer" data-test-wu-popover-footer>
+        {{yield to="footer"}}
+      </div>
+    {{/if}}
+  </div>
+  {{/in-element}}
+  {{/if}}
+</div>

@@ -109,11 +109,11 @@ module(
       await renderDrawer();
       await click('[data-test-save-template]');
 
-      assert.dom('[data-test-nu-field-error]').exists({ count: 3 });
+      assert.dom('[data-test-wu-field-error]').exists({ count: 3 });
       assert.strictEqual(this.calls.length, 0);
 
       await fillIn('#t-name', 'Welcome');
-      assert.dom('[data-test-nu-field-error]').exists({ count: 2 });
+      assert.dom('[data-test-wu-field-error]').exists({ count: 2 });
     });
 
     test('an edit draft never leaks into another template', async function (assert) {

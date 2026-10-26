@@ -1,12 +1,12 @@
 {{page-title (if @model.contact (contact-name @model.contact) "Contact")}}
 
 <div data-test-contact-detail class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title={{if @model.contact (contact-name @model.contact) "Contact"}}
     @subtitle="Contact record"
   >
     <:breadcrumb>
-      <Nuvo::Breadcrumb
+      <Woven::Breadcrumb
         @items={{array (hash label="Contacts" route="contacts.index")}}
         @compact={{true}}
         @parentsOnly={{true}}
@@ -15,16 +15,16 @@
     </:breadcrumb>
     <:meta>
       {{#if this.isLimited}}
-        <Nuvo::Badge @text="Limited" data-test-limited-badge />
+        <Woven::Badge @text="Limited" data-test-limited-badge />
       {{else if @model.contact}}
         <div class="flex gap-1 flex-wrap">
           {{#each @model.contact.tags as |tag|}}
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-contact-{{tag}}"
               @text={{contact-tag-label tag}}
             />
           {{else}}
-            <Nuvo::Tag class="tag-contact-other" @text="Contact" />
+            <Woven::Tag class="tag-contact-other" @text="Contact" />
           {{/each}}
         </div>
       {{/if}}
@@ -33,7 +33,7 @@
       {{#if this.isLimited}}
         <Contact::AccessAction @contact={{@model.contact}} />
       {{else if (and @model.contact (can-edit-contact @model.contact))}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @icon="pencil-simple"
           @text="Edit"
@@ -42,48 +42,48 @@
         />
       {{/if}}
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if @model.contact}}
     <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
     <div class="flex col gap-6">
       {{#if this.isLimited}}
-        <Nuvo::Card @title="Contact Information">
-          <Nuvo::DescList @horizontal={{true}} data-test-limited-details>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Phone</dt>
-              <dd class="nu-desc-list__description" data-test-limited-phone><bdi
+        <Woven::Card @title="Contact Information">
+          <Woven::DescList @horizontal={{true}} data-test-limited-details>
+            <div class="wu-desc-list__group">
+              <dt class="wu-desc-list__term">Phone</dt>
+              <dd class="wu-desc-list__description" data-test-limited-phone><bdi
                   dir="ltr"
                 >{{or (contact-phone @model.contact) "-"}}</bdi></dd>
             </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Region</dt>
+            <div class="wu-desc-list__group">
+              <dt class="wu-desc-list__term">Region</dt>
               <dd
-                class="nu-desc-list__description"
+                class="wu-desc-list__description"
                 data-test-limited-region
               >{{or @model.contact.regionCode "-"}}</dd>
             </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Added by</dt>
+            <div class="wu-desc-list__group">
+              <dt class="wu-desc-list__term">Added by</dt>
               <dd
-                class="nu-desc-list__description"
+                class="wu-desc-list__description"
                 data-test-contact-added-by
               >{{or @model.contact.createdByName "-"}}</dd>
             </div>
-            <div class="nu-desc-list__group">
-              <dt class="nu-desc-list__term">Created</dt>
-              <dd class="nu-desc-list__description">{{format-date
+            <div class="wu-desc-list__group">
+              <dt class="wu-desc-list__term">Created</dt>
+              <dd class="wu-desc-list__description">{{format-date
                   @model.contact.createdAt
                   zone="region"
                 }}</dd>
             </div>
-          </Nuvo::DescList>
+          </Woven::DescList>
           <Contact::VerifyPhone
             class="mt-4"
             @contactId={{@model.contact.id}}
             @onVerified={{this.onPhoneVerified}}
           />
-        </Nuvo::Card>
+        </Woven::Card>
       {{else}}
         <Contact::Summary
           @contact={{@model.contact}}
@@ -94,7 +94,7 @@
       {{/if}}
 
       {{#unless this.isLimited}}
-        <Nuvo::Tabs
+        <Woven::Tabs
           @tabs={{this.relatedTabs}}
           @activeTab={{this.currentTab}}
           @onChange={{this.setTab}}
@@ -102,11 +102,11 @@
         />
 
         {{#if (eq this.currentTab "leads")}}
-          <Nuvo::Card data-test-contact-leads>
+          <Woven::Card data-test-contact-leads>
             {{#if this.leadRows.length}}
               <div class="flex col gap-3">
                 {{#each this.leadRows as |lead|}}
-                  <Nuvo::Panel
+                  <Woven::Panel
                     @compact={{true}}
                     @interactive={{true}}
                     class="flex col gap-2"
@@ -115,11 +115,11 @@
                   >
                     <div class="flex between x-center">
                       <div class="flex gap-2 x-center">
-                        <Nuvo::Tag
+                        <Woven::Tag
                           class="tag-lead-{{lowercase lead.status}}"
                           @text={{lead.status}}
                         />
-                        <Nuvo::Tag
+                        <Woven::Tag
                           class="tag-temp-{{lowercase lead.temperature}}"
                           @text={{lead.temperature}}
                         />
@@ -128,7 +128,7 @@
                         {{/if}}
                       </div>
                       {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
-                      <Nuvo::Button
+                      <Woven::Button
                         @variant="secondary"
                         @size="xs"
                         @shape="circle"
@@ -170,14 +170,14 @@
                     {{#if (eq this.expandedLeadId lead.id)}}
                       <div class="lead-detail__scroll">
                         {{#if (eq this.loadingActivitiesFor lead.id)}}
-                          <Nuvo::Spinner @size="sm" />
+                          <Woven::Spinner @size="sm" />
                         {{else}}
-                          <Nuvo::Timeline @compact={{true}}>
+                          <Woven::Timeline @compact={{true}}>
                             {{#each
                               (get this.leadActivities lead.id)
                               as |activity|
                             }}
-                              <Nuvo::TimelineItem
+                              <Woven::TimelineItem
                                 @title={{activity.type}}
                                 @timestamp={{format-date-time
                                   activity.createdAt
@@ -193,19 +193,19 @@
                                     @icon={{get-activity-icon activity.type}}
                                     @size="14px"
                                   /></:icon>
-                              </Nuvo::TimelineItem>
+                              </Woven::TimelineItem>
                             {{else}}
                               <p class="text-muted text-sm">No activity yet.</p>
                             {{/each}}
-                          </Nuvo::Timeline>
+                          </Woven::Timeline>
                         {{/if}}
                       </div>
                     {{/if}}
-                  </Nuvo::Panel>
+                  </Woven::Panel>
                 {{/each}}
               </div>
               {{#if (gt this.totals.leads this.pageSize)}}
-                <Nuvo::Pagination
+                <Woven::Pagination
                   class="mt-4"
                   @page={{this.pages.leads}}
                   @limit={{this.pageSize}}
@@ -215,13 +215,13 @@
                 />
               {{/if}}
             {{else}}
-              <Nuvo::EmptyState @description="No lead requirements found." />
+              <Woven::EmptyState @description="No lead requirements found." />
             {{/if}}
-          </Nuvo::Card>
+          </Woven::Card>
         {{else if (eq this.currentTab "leases")}}
-          <Nuvo::Card data-test-contact-leases>
+          <Woven::Card data-test-contact-leases>
             {{#if this.leaseRows.length}}
-              <Nuvo::DataTable
+              <Woven::DataTable
                 @columns={{this.leaseColumns}}
                 @rows={{this.leaseRows}}
                 @pinColumns={{true}}
@@ -240,12 +240,12 @@
                   >{{cell.value}}</LinkTo>
                 {{else if (eq cell.key "status")}}
                   <div class="flex gap-1 wrap">
-                    <Nuvo::Tag
+                    <Woven::Tag
                       class="tag-lease-{{lowercase cell.value}}"
                       @text={{cell.value}}
                     />
                     {{#if cell.row.deletedAt}}
-                      <Nuvo::Tag
+                      <Woven::Tag
                         @variant="secondary"
                         @text="Archived"
                         data-test-lease-archived-badge
@@ -264,9 +264,9 @@
                 {{else}}
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}
-              </Nuvo::DataTable>
+              </Woven::DataTable>
               {{#if (gt this.totals.leases this.pageSize)}}
-                <Nuvo::Pagination
+                <Woven::Pagination
                   class="mt-4"
                   @page={{this.pages.leases}}
                   @limit={{this.pageSize}}
@@ -276,15 +276,15 @@
                 />
               {{/if}}
             {{else}}
-              <Nuvo::EmptyState
+              <Woven::EmptyState
                 @description="No leases found for this tenant."
               />
             {{/if}}
-          </Nuvo::Card>
+          </Woven::Card>
         {{else if (eq this.currentTab "properties")}}
-          <Nuvo::Card data-test-contact-properties>
+          <Woven::Card data-test-contact-properties>
             {{#if this.unitRows.length}}
-              <Nuvo::DataTable
+              <Woven::DataTable
                 @columns={{this.unitColumns}}
                 @rows={{this.unitRows}}
                 @pinColumns={{true}}
@@ -303,7 +303,7 @@
                 {{else if (eq cell.key "propertyType")}}
                   {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
                 {{else if (eq cell.key "status")}}
-                  <Nuvo::Tag
+                  <Woven::Tag
                     class="tag-unit-{{lowercase cell.value}}"
                     @text={{cell.value}}
                   />
@@ -313,7 +313,7 @@
                     @currency={{region-currency cell.row.regionCode}}
                   />
                 {{else if (eq cell.key "id")}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @variant="secondary"
                     @size="xs"
                     @route="properties.unit"
@@ -324,9 +324,9 @@
                 {{else}}
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}
-              </Nuvo::DataTable>
+              </Woven::DataTable>
               {{#if (gt this.totals.units this.pageSize)}}
-                <Nuvo::Pagination
+                <Woven::Pagination
                   class="mt-4"
                   @page={{this.pages.properties}}
                   @limit={{this.pageSize}}
@@ -336,18 +336,18 @@
                 />
               {{/if}}
             {{else}}
-              <Nuvo::EmptyState
+              <Woven::EmptyState
                 @description="No properties found for this owner."
               />
             {{/if}}
-          </Nuvo::Card>
+          </Woven::Card>
         {{else if (eq this.currentTab "history")}}
-          <Nuvo::Card data-test-contact-history>
+          <Woven::Card data-test-contact-history>
             <RecordHistoryList
               @entityType="Contact"
               @entityId={{@model.contact.id}}
             />
-          </Nuvo::Card>
+          </Woven::Card>
         {{else}}
           <section data-test-contact-documents>
             <Documents::Panel
@@ -364,7 +364,7 @@
                 <div class="flex between x-center">
                   <h2 class="text-md font-bold">Documents</h2>
                   {{#if panel.canUpload}}
-                    <Nuvo::Button
+                    <Woven::Button
                       @variant="primary"
                       @size="sm"
                       @icon="upload-simple"
@@ -389,8 +389,8 @@
       />
     {{/if}}
   {{else}}
-    <Nuvo::Card>
-      <Nuvo::EmptyState @description="Contact not found." />
-    </Nuvo::Card>
+    <Woven::Card>
+      <Woven::EmptyState @description="Contact not found." />
+    </Woven::Card>
   {{/if}}
 </div>

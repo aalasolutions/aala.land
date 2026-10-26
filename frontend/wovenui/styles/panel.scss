@@ -1,0 +1,126 @@
+// wu-panel - bordered surface container, wu-toolbar - horizontal action bar
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./mixins/surface" as *;
+@use "./common/var" as *;
+
+@include b(panel) {
+  @include wu-root("panel", (
+    "Padding": wu-space(5),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--wu-border-regular),
+    "BorderRadius": wu-radius(lg),
+    "BoxShadow": wu-shadow(none),
+    "TransitionDuration": wu-duration(fast),
+    "hover--BoxShadow": wu-shadow(lg),
+    "hover--BorderColor": var(--wu-brand),
+  ));
+
+  display: block;
+  padding: wu-var("panel", "Padding");
+  background-color: wu-var("panel", "BackgroundColor");
+  border: wu-var("panel", "BorderWidth") solid wu-var("panel", "BorderColor");
+  border-radius: wu-var("panel", "BorderRadius");
+  box-shadow: wu-var("panel", "BoxShadow");
+  transition:
+    box-shadow wu-var("panel", "TransitionDuration") $wu-ease,
+    border-color wu-var("panel", "TransitionDuration") $wu-ease,
+    transform wu-var("panel", "TransitionDuration") $wu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include wu-surface-elements($header-align: center);
+
+  // ---- modifiers ----
+
+  @include m(compact) {
+    --wu-panel--Padding: #{wu-space(3)};
+  }
+
+  @include m(raised) {
+    --wu-panel--BoxShadow: #{wu-shadow(md)};
+  }
+
+  @include m(interactive) {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-2px);
+      @include wu-set-all("panel", "hover", ("BoxShadow", "BorderColor"));
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+}
+
+@include b(toolbar) {
+  @include wu-root("toolbar", (
+    "Gap": wu-space(3),
+    "Padding": wu-space(3),
+    "BackgroundColor": var(--wu-bg-surface),
+    "BorderColor": var(--wu-border-regular),
+    "ZIndex": wu-z(sticky),
+  ));
+
+  display: flex;
+  align-items: center;
+  gap: wu-var("toolbar", "Gap");
+  padding: wu-var("toolbar", "Padding");
+  background-color: wu-var("toolbar", "BackgroundColor");
+
+  // ---- elements ----
+
+  @include e(group) {
+    display: flex;
+    align-items: center;
+    gap: wu-space(2);
+  }
+
+  @include e(item) {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  @include e(spacer) {
+    flex: 1 1 auto;
+  }
+
+  @include e(search) {
+    display: inline-flex;
+    align-items: center;
+    gap: wu-space(2);
+    inline-size: 16rem;
+    max-inline-size: 100%;
+    padding-block: wu-space(1);
+    padding-inline: wu-space(3);
+    color: var(--wu-text-regular);
+    background-color: var(--wu-bg-alternate);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(md);
+
+    &:focus-within {
+      outline: none;
+      box-shadow: wu-focus-ring();
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: wu-var("toolbar", "ZIndex");
+  }
+
+  @include m(bordered) {
+    border-block-end: 1px solid wu-var("toolbar", "BorderColor");
+  }
+}

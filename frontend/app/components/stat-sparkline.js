@@ -34,7 +34,7 @@ export default class StatSparklineComponent extends ChartBase {
 
   get config() {
     const variant = this.args.variant ?? 'primary';
-    const line = token(`--nu-${VARIANT_ROLES[variant] ?? variant}`);
+    const line = token(`--wu-${VARIANT_ROLES[variant] ?? variant}`);
 
     return {
       type: 'line',

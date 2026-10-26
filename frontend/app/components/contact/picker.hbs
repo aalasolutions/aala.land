@@ -1,5 +1,5 @@
 <div class="flex col gap-4" data-test-contact-picker>
-  <Nuvo::Field @label={{this.label}} @required={{@required}}>
+  <Woven::Field @label={{this.label}} @required={{@required}}>
     <RemoteAutocomplete
       @searchUrl={{this.searchUrl}}
       @searchParam="search"
@@ -14,10 +14,10 @@
       @onCreate={{this.create}}
       data-test-contact-search
     />
-  </Nuvo::Field>
+  </Woven::Field>
 
   {{#if (and this.conflict (not this.isAttached))}}
-    <Nuvo::Panel
+    <Woven::Panel
       @compact={{true}}
       class="flex col gap-2"
       data-test-contact-conflict
@@ -39,7 +39,7 @@
             >Added by {{this.conflict.createdByName}}</span>
           {{/if}}
         </div>
-        <Nuvo::Button
+        <Woven::Button
           @variant="primary"
           @size="sm"
           @text="Use this contact"
@@ -47,12 +47,12 @@
           data-test-contact-use-existing
         />
       </div>
-    </Nuvo::Panel>
+    </Woven::Panel>
   {{/if}}
 
   {{#unless this.isAttached}}
     {{#unless this.isCreating}}
-      <Nuvo::Button
+      <Woven::Button
         @variant="secondary"
         @size="sm"
         @text="Not in contacts? Add a new one"
@@ -65,8 +65,8 @@
   {{#if (or this.isAttached this.isCreating)}}
     <div class="flex gap-4">
       <div class="grow">
-        <Nuvo::Field @label="First Name">
-          <Nuvo::Input
+        <Woven::Field @label="First Name">
+          <Woven::Input
             id="{{this.fieldPrefix}}-first-name"
             @type="text"
             @placeholder="e.g. Ahmed"
@@ -79,11 +79,11 @@
             @readonly={{this.isAttached}}
             data-test-contact-first-name
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
       <div class="grow">
-        <Nuvo::Field @label="Last Name">
-          <Nuvo::Input
+        <Woven::Field @label="Last Name">
+          <Woven::Input
             id="{{this.fieldPrefix}}-last-name"
             @type="text"
             @placeholder="e.g. Al Mansouri"
@@ -96,14 +96,14 @@
             @readonly={{this.isAttached}}
             data-test-contact-last-name
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
     </div>
 
     <div class="flex gap-4">
       <div class="grow">
-        <Nuvo::Field @label="Phone">
-          <Nuvo::Input
+        <Woven::Field @label="Phone">
+          <Woven::Input
             id="{{this.fieldPrefix}}-phone"
             @type="text"
             @placeholder="+971501234567"
@@ -112,12 +112,12 @@
             @readonly={{this.isAttached}}
             data-test-contact-phone
           />
-        </Nuvo::Field>
+        </Woven::Field>
       </div>
       {{#unless this.isLimited}}
         <div class="grow">
-          <Nuvo::Field @label="Email">
-            <Nuvo::Input
+          <Woven::Field @label="Email">
+            <Woven::Input
               id="{{this.fieldPrefix}}-email"
               @type="email"
               @placeholder="ahmed@example.com"
@@ -130,14 +130,14 @@
               @readonly={{this.isAttached}}
               data-test-contact-email
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
       {{/unless}}
     </div>
 
     {{#if this.isLimited}}
-      <Nuvo::Field @label="Enter their number to unlock details">
-        <Nuvo::Input
+      <Woven::Field @label="Enter their number to unlock details">
+        <Woven::Input
           id="{{this.fieldPrefix}}-verify-phone"
           @type="tel"
           @placeholder="+971501234567"
@@ -145,7 +145,7 @@
           @onInput={{this.setVerifyPhone}}
           data-test-contact-verify-phone
         />
-      </Nuvo::Field>
+      </Woven::Field>
     {{/if}}
 
     {{#if this.isAttached}}
@@ -156,7 +156,7 @@
         </p>
       {{/if}}
     {{else}}
-      <Nuvo::Checkbox
+      <Woven::Checkbox
         @label="Reachable on WhatsApp"
         @checked={{this.identity.isWhatsapp}}
         @onChange={{this.toggleWhatsapp}}
@@ -165,9 +165,9 @@
     {{/if}}
 
     {{#if this.notes}}
-      <Nuvo::Field @label="Notes">
+      <Woven::Field @label="Notes">
         <p class="text-sm text-muted" data-test-contact-notes>{{this.notes}}</p>
-      </Nuvo::Field>
+      </Woven::Field>
     {{/if}}
   {{/if}}
 </div>

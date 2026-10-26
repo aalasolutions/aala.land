@@ -53,7 +53,7 @@ You will need the following things properly installed on your computer.
 
 ## Conventions (Project Rules)
 
-- Styling is NuvoUI SCSS (no Tailwind, no inline styles).
+- Styling is WovenUI SCSS (no Tailwind, no inline styles).
 - Add `data-test-*` attributes for interactive elements in templates.
 
 ## Further Reading

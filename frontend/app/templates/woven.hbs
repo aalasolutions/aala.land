@@ -1,0 +1,97 @@
+{{page-title "WovenUI UIKit"}}
+
+{{! The documentation shell dogfoods the kit's own sidebar, topbar and collapse. }}
+<div class="woven-shell">
+  <Woven::Sidebar
+    @collapsed={{this.sidebarCollapsed}}
+    @open={{this.sidebarOpen}}
+    @dismissible={{true}}
+    @onDismiss={{this.closeSidebar}}
+    @brandTitle="WovenUI"
+    @brandSubtitle="Ember kit"
+  >
+    {{! Named blocks are all-or-nothing: <:footer> forces an explicit <:default>. }}
+    <:default>
+      {{#each this.navSections as |group|}}
+        <div class="wu-sidebar__section-label">{{group.label}}</div>
+        {{#each group.items as |entry|}}
+          <LinkTo
+            @route={{entry.route}}
+            class="wu-sidebar__link"
+            data-tooltip={{if this.sidebarCollapsed entry.label}}
+            data-tooltip-position="end"
+            data-test-woven-nav={{entry.route}}
+            {{on "click" this.closeSidebar}}
+          >
+            <span class="wu-sidebar__link-icon" aria-hidden="true">{{entry.icon}}</span>
+            <span class="wu-sidebar__link-label">{{entry.label}}</span>
+          </LinkTo>
+        {{/each}}
+      {{/each}}
+    </:default>
+
+    <:footer>
+      <span class="wu-text m-xs m-subtle">{{this.pageCount}} pages</span>
+    </:footer>
+  </Woven::Sidebar>
+
+  <div class="woven-shell__main">
+    <Woven::Topbar
+      @sticky={{true}}
+      @onToggle={{this.toggleSidebar}}
+      @userName="Test User"
+      @userRole="Owner"
+    >
+      <:brand>
+        <Woven::Button
+          @variant="ghost"
+          @size="sm"
+          @icon={{if this.sidebarCollapsed "»" "«"}}
+          @shape="square"
+          @onClick={{this.toggleCollapsed}}
+          aria-label="Collapse sidebar"
+          data-tooltip="Collapse sidebar"
+          data-test-woven-collapse
+        />
+        <span class="wu-title m-md">UI Kit</span>
+      </:brand>
+
+      <:actions>
+        <span class="wu-text m-sm m-muted">Theme</span>
+        {{#each this.themes as |theme|}}
+          <Woven::Button
+            @variant={{if (eq this.activeTheme theme) "primary" "secondary"}}
+            @size="xs"
+            @text={{theme}}
+            @onClick={{fn this.setTheme theme}}
+            data-test-woven-theme={{theme}}
+          />
+        {{/each}}
+
+        <span class="wu-text m-sm m-muted ms-4">Dir</span>
+        {{#each this.dirs as |dir|}}
+          <Woven::Button
+            @variant={{if (eq this.dir dir) "primary" "secondary"}}
+            @size="xs"
+            @text={{dir}}
+            @onClick={{fn this.setDir dir}}
+            data-test-woven-dir={{dir}}
+          />
+        {{/each}}
+
+        <Woven::Badge @variant="danger" @value={{3}}>
+          <Woven::Button
+            @variant="ghost"
+            @shape="square"
+            @icon="🔔"
+            aria-label="Notifications"
+          />
+        </Woven::Badge>
+      </:actions>
+    </Woven::Topbar>
+
+    <div class="woven-page">
+      {{outlet}}
+    </div>
+  </div>
+</div>

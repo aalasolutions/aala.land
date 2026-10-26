@@ -1,0 +1,113 @@
+// wu-breadcrumb - hierarchical navigation trail
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(breadcrumb) {
+  @include wu-root("breadcrumb", (
+    "FontSize": wu-font-size(sm),
+  ));
+
+  display: block;
+  font-size: wu-var("breadcrumb", "FontSize");
+
+  // ---- elements ----
+
+  @include e(list) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: wu-space(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @include e(item) {
+    @include wu-root-el("breadcrumb", "item", (
+      "Gap": wu-space(1),
+      "SeparatorContent": '"/"',
+      "SeparatorColor": var(--wu-text-subtle),
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: wu-var-el("breadcrumb", "item", "Gap");
+
+    // The glyph is the fallback separator. An item that renders an explicit
+    // __separator gets that one instead, never both.
+    &:not(:first-child):not(:has(.wu-breadcrumb__separator))::before {
+      content: wu-var-el("breadcrumb", "item", "SeparatorContent");
+      color: wu-var-el("breadcrumb", "item", "SeparatorColor");
+    }
+  }
+
+  @include e(separator) {
+    display: inline-flex;
+    align-items: center;
+    color: var(--wu-text-subtle);
+  }
+
+  @include e(link) {
+    @include wu-root-el("breadcrumb", "link", (
+      "Color": var(--wu-text-muted),
+      "TransitionDuration": wu-duration(fast),
+      "hover--Color": var(--wu-brand),
+      "focus--BoxShadow": wu-focus-ring(),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 0;
+    padding: 0;
+    color: wu-var-el("breadcrumb", "link", "Color");
+    font: inherit;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    border-radius: wu-radius(sm);
+    transition: color wu-var-el("breadcrumb", "link", "TransitionDuration") $wu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: wu-var-el("breadcrumb", "link", "hover--Color");
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: wu-var-el("breadcrumb", "link", "focus--BoxShadow");
+    }
+  }
+
+  @include e(current) {
+    color: var(--wu-text-regular);
+    font-weight: wu-font-weight(medium);
+  }
+
+  // ---- states ----
+
+  @include e(item) {
+    &.is-current {
+      .wu-breadcrumb__link {
+        --wu-breadcrumb__link--Color: var(--wu-text-regular);
+        font-weight: wu-font-weight(medium);
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(compact) {
+    --wu-breadcrumb--FontSize: #{wu-font-size(xs)};
+
+    .wu-breadcrumb__item {
+      --wu-breadcrumb__item--Gap: #{wu-space(1)};
+    }
+  }
+}

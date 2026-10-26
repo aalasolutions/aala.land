@@ -1,0 +1,37 @@
+// Logical-direction utilities. Core ships physical only (.text-left/.ml-*),
+// which pins to the viewport instead of the reading direction in RTL.
+@use "./common/var" as *;
+
+$wu-utility-prefix: "" !default;
+
+.#{$wu-utility-prefix}text-start {
+  text-align: start;
+}
+
+.#{$wu-utility-prefix}text-end {
+  text-align: end;
+}
+
+// Directional glyphs (carets, arrows) that are not bidi-mirrored by the font.
+[dir="rtl"] .#{$wu-utility-prefix}flip-rtl {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
+@each $key, $value in $wu-space {
+  .#{$wu-utility-prefix}ms-#{$key} {
+    margin-inline-start: $value;
+  }
+
+  .#{$wu-utility-prefix}me-#{$key} {
+    margin-inline-end: $value;
+  }
+
+  .#{$wu-utility-prefix}ps-#{$key} {
+    padding-inline-start: $value;
+  }
+
+  .#{$wu-utility-prefix}pe-#{$key} {
+    padding-inline-end: $value;
+  }
+}

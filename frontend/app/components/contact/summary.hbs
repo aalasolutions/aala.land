@@ -21,7 +21,7 @@
     </div>
     <div class="record-sheet__actions">
       {{#if @contact.phone}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @size="sm"
           @icon="phone"
@@ -31,7 +31,7 @@
         />
       {{/if}}
       {{#if (can-whatsapp @contact)}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @size="sm"
           @icon="whatsapp-logo"
@@ -44,7 +44,7 @@
         />
       {{/if}}
       {{#if @contact.email}}
-        <Nuvo::Button
+        <Woven::Button
           @variant="secondary"
           @size="sm"
           @icon="envelope-simple"

@@ -1,16 +1,16 @@
 <form
   data-test-signup-form
-  class="nu-form w-full"
+  class="wu-form w-full"
   novalidate
   {{on "submit" this.submit}}
 >
-  <div class="nu-form">
-    <Nuvo::Field
+  <div class="wu-form">
+    <Woven::Field
       @label="Company Name"
       @required={{true}}
       @error={{this.fieldErrors.companyName}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="signup-company"
         @type="text"
         @placeholder="Acme Real Estate"
@@ -19,15 +19,15 @@
         required={{true}}
         data-test-company-name
       />
-    </Nuvo::Field>
+    </Woven::Field>
 
     <div class="flex col gap-1 signup-slug-field">
-      <Nuvo::Field
+      <Woven::Field
         @label="Company URL Slug"
         @required={{true}}
         @error={{this.fieldErrors.companySlug}}
       >
-        <Nuvo::Input
+        <Woven::Input
           id="signup-slug"
           @type="text"
           @placeholder="acme-real-estate"
@@ -36,16 +36,16 @@
           required={{true}}
           data-test-company-slug
         />
-      </Nuvo::Field>
+      </Woven::Field>
       <p class="text-muted px-1 text-xs">Lowercase, numbers, and hyphens only.</p>
     </div>
   </div>
 
-  <Nuvo::Field
+  <Woven::Field
     @label="Primary Operating Region"
     @error={{this.fieldErrors.region}}
   >
-    <Nuvo::Dropdown
+    <Woven::Dropdown
       @searchable={{true}}
       @align="start"
       @value={{this.selectedRegion}}
@@ -54,17 +54,17 @@
       @placeholder="Select your region..."
       data-test-region-select
     />
-  </Nuvo::Field>
+  </Woven::Field>
 
-  <Nuvo::Divider />
+  <Woven::Divider />
 
   <div class="grid cols-2 gap-4">
-    <Nuvo::Field
+    <Woven::Field
       @label="Your Name"
       @required={{true}}
       @error={{this.fieldErrors.userName}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="signup-name"
         @type="text"
         @placeholder="Jane Smith"
@@ -73,14 +73,14 @@
         required={{true}}
         data-test-user-name
       />
-    </Nuvo::Field>
+    </Woven::Field>
 
-    <Nuvo::Field
+    <Woven::Field
       @label="Email Address"
       @required={{true}}
       @error={{this.fieldErrors.email}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="signup-email"
         @type="email"
         @placeholder="jane@company.com"
@@ -90,16 +90,16 @@
         required={{true}}
         data-test-email-input
       />
-    </Nuvo::Field>
+    </Woven::Field>
   </div>
 
   <div class="grid cols-2 gap-4">
-    <Nuvo::Field
+    <Woven::Field
       @label="Password"
       @required={{true}}
       @error={{this.fieldErrors.password}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="signup-password"
         @type="password"
         @placeholder="Min 8 characters"
@@ -109,13 +109,13 @@
         required={{true}}
         data-test-password-input
       />
-    </Nuvo::Field>
-    <Nuvo::Field
+    </Woven::Field>
+    <Woven::Field
       @label="Confirm Password"
       @required={{true}}
       @error={{this.fieldErrors.confirmPassword}}
     >
-      <Nuvo::Input
+      <Woven::Input
         id="signup-confirm"
         @type="password"
         @placeholder="••••••••"
@@ -125,14 +125,14 @@
         required={{true}}
         data-test-confirm-password
       />
-    </Nuvo::Field>
+    </Woven::Field>
   </div>
 
   {{#if this.errorMessage}}
-    <Nuvo::Alert @variant="danger" @description={{this.errorMessage}} />
+    <Woven::Alert @variant="danger" @description={{this.errorMessage}} />
   {{/if}}
 
-  <Nuvo::Button
+  <Woven::Button
     @variant="primary"
     @type="submit"
     @loading={{this.isLoading}}
@@ -140,10 +140,10 @@
     data-test-submit-button
   >
     {{if this.isLoading "Creating Account..." "Create Workspace with Email"}}
-  </Nuvo::Button>
+  </Woven::Button>
 
   {{#if this.googleAuth.isConfigured}}
-    <Nuvo::Divider @label="OR" />
+    <Woven::Divider @label="OR" />
 
     {{#if this.canGoogleSignup}}
       <div

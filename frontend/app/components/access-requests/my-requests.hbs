@@ -1,12 +1,12 @@
-<Nuvo::Card data-test-my-requests ...attributes>
+<Woven::Card data-test-my-requests ...attributes>
   {{#if this.isLoading}}
     <div class="flex center py-8">
-      <Nuvo::Spinner />
+      <Woven::Spinner />
     </div>
   {{else if this.error}}
     <p class="text-danger" data-test-my-requests-error>{{this.error}}</p>
   {{else if this.rows.length}}
-    <Nuvo::DataTable
+    <Woven::DataTable
       @columns={{this.columns}}
       @rows={{this.rows}}
       @pinColumns={{true}}
@@ -23,7 +23,7 @@
           data-test-my-request-contact
         >{{cell.value}}</LinkTo>
       {{else if (eq cell.key "status")}}
-        <Nuvo::Badge
+        <Woven::Badge
           @variant={{cell.row.statusVariant}}
           @text={{capitalize cell.value}}
           data-test-my-request-status={{cell.value}}
@@ -46,16 +46,16 @@
       {{else}}
         <span class="text-muted">{{cell.value}}</span>
       {{/if}}
-    </Nuvo::DataTable>
+    </Woven::DataTable>
   {{else}}
-    <Nuvo::EmptyState
+    <Woven::EmptyState
       @description="You have not asked for access to any contact yet. Open a contact with limited details to request access."
       data-test-my-requests-empty
     />
   {{/if}}
 
   {{#if this.total}}
-    <Nuvo::Pagination
+    <Woven::Pagination
       @selectId="my-access-requests-limit"
       @page={{this.page}}
       @limit={{this.limit}}
@@ -67,4 +67,4 @@
       @onPageChange={{this.goToPage}}
     />
   {{/if}}
-</Nuvo::Card>
+</Woven::Card>

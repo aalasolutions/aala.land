@@ -23,7 +23,7 @@ const TX = {
   paymentMethod: 'BANK_TRANSFER',
 };
 
-const TRIGGER = '[data-test-nu-dropdown-trigger]';
+const TRIGGER = '[data-test-wu-dropdown-trigger]';
 
 module(
   'Integration | Component | financials/transaction-drawer',
@@ -69,7 +69,7 @@ module(
     async function pick(selector, label) {
       await click(`${selector} ${TRIGGER}`);
       const item = [
-        ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+        ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
       ].find((el) => el.textContent.trim() === label);
       await click(item);
     }
@@ -77,7 +77,7 @@ module(
     async function optionLabels(selector) {
       await click(`${selector} ${TRIGGER}`);
       const labels = [
-        ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+        ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
       ].map((el) => el.textContent.trim());
       await click(`${selector} ${TRIGGER}`);
       return labels;
@@ -138,7 +138,7 @@ module(
         await click('[data-test-save-transaction]');
 
         assert
-          .dom('[data-test-nu-field-error]')
+          .dom('[data-test-wu-field-error]')
           .hasText('Enter the date the money arrived');
         assert.notOk(sent(this.calls, 'POST'));
         assert.dom('[data-test-save-transaction]').hasText('Create');
@@ -153,7 +153,7 @@ module(
         await click('[data-test-save-transaction]');
 
         assert
-          .dom('[data-test-nu-field-error]')
+          .dom('[data-test-wu-field-error]')
           .hasText('Enter the date the money was paid');
       });
     });

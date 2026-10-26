@@ -5,12 +5,12 @@
     class="app-shell {{if this.desktopCollapsed 'is-collapsed'}}"
   >
     <aside
-      class="nu-sidebar m-plain
+      class="wu-sidebar m-plain
         {{if this.desktopCollapsed 'is-collapsed'}}
         {{if this.sidebarMobileOpen 'is-open'}}"
       data-test-sidebar
     >
-      <div class="nu-sidebar__brand app-shell__user">
+      <div class="wu-sidebar__brand app-shell__user">
         <LinkTo
           @route="profile"
           class="app-shell__user-full"
@@ -19,7 +19,7 @@
           }}"
           data-test-sidebar-user
         >
-          <Nuvo::Avatar
+          <Woven::Avatar
             @initials={{initials this.session.data.authenticated.user.name}}
           />
           <span class="app-shell__user-details" aria-hidden="true">
@@ -35,7 +35,7 @@
         </LinkTo>
 
         <div class="app-shell__user-compact">
-          <Nuvo::Popover
+          <Woven::Popover
             @placement="end"
             @open={{this.userMenuOpen}}
             @onToggle={{this.setUserMenuOpen}}
@@ -50,7 +50,7 @@
                 data-test-sidebar-user-trigger
                 {{on "click" toggle}}
               >
-                <Nuvo::Avatar
+                <Woven::Avatar
                   @initials={{initials this.session.data.authenticated.user.name}}
                 />
               </button>
@@ -74,26 +74,26 @@
                 >My profile</LinkTo>
               </div>
             </:body>
-          </Nuvo::Popover>
+          </Woven::Popover>
         </div>
       </div>
 
-      <nav data-test-sidebar-nav class="nu-sidebar__nav">
+      <nav data-test-sidebar-nav class="wu-sidebar__nav">
         <LinkTo
           @route="dashboard"
-          class="nu-sidebar__link"
+          class="wu-sidebar__link"
           data-tooltip={{if this.desktopCollapsed "Dashboard"}}
           data-tooltip-position="end"
           data-tooltip-light
           data-test-nav-dashboard
         >
           <Ui::Ph @icon="gauge" />
-          <span class="nu-sidebar__link-label">Dashboard</span>
+          <span class="wu-sidebar__link-label">Dashboard</span>
         </LinkTo>
 
         {{#if this.sidebarGroups.properties}}
           <div
-            class="nu-sidebar__group
+            class="wu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'properties')
@@ -106,7 +106,7 @@
             <button
               data-test-nav-group-toggle="properties"
               type="button"
-              class="nu-sidebar__group-toggle
+              class="wu-sidebar__group-toggle
                 {{if
                   (eq this.activeGroup 'properties')
                   'is-active'
@@ -114,33 +114,33 @@
               {{on "click" (fn this.toggleGroup "properties" "properties")}}
             >
               <Ui::Ph @icon="buildings" />
-              <span class="nu-sidebar__link-label">Properties</span>
-              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
+              <span class="wu-sidebar__link-label">Properties</span>
+              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
             </button>
-            <div class="nu-sidebar__group-items">
+            <div class="wu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">Properties</p>
+                <p class="wu-sidebar__group-title">Properties</p>
                 <LinkTo
                   @route="properties"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "All Properties"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-properties
                 >
                   <Ui::Ph @icon="house-line" />
-                  <span class="nu-sidebar__link-label">All Properties</span>
+                  <span class="wu-sidebar__link-label">All Properties</span>
                 </LinkTo>
                 <LinkTo
                   @route="leases"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "Leases"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-leases
                 >
                   <Ui::Ph @icon="file-text" />
-                  <span class="nu-sidebar__link-label">Leases</span>
+                  <span class="wu-sidebar__link-label">Leases</span>
                 </LinkTo>
               </div>
             </div>
@@ -149,7 +149,7 @@
 
         {{#if this.sidebarGroups.crm}}
           <div
-            class="nu-sidebar__group
+            class="wu-sidebar__group
               {{if
                 (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm'))
                 'is-expanded'
@@ -159,43 +159,43 @@
             <button
               data-test-nav-group-toggle="crm"
               type="button"
-              class="nu-sidebar__group-toggle
+              class="wu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'crm') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "crm" "contacts")}}
             >
               <Ui::Ph @icon="address-book" />
-              <span class="nu-sidebar__link-label">People</span>
-              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
+              <span class="wu-sidebar__link-label">People</span>
+              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
             </button>
-            <div class="nu-sidebar__group-items">
+            <div class="wu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">People</p>
+                <p class="wu-sidebar__group-title">People</p>
                 <LinkTo
                   @route="contacts"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Contacts"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-contacts
                 >
                   <Ui::Ph @icon="users" />
-                  <span class="nu-sidebar__link-label">Contacts</span>
+                  <span class="wu-sidebar__link-label">Contacts</span>
                 </LinkTo>
                 <LinkTo
                   @route="leads"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Lead Pipeline"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-leads
                 >
                   <Ui::Ph @icon="kanban" />
-                  <span class="nu-sidebar__link-label">Lead Pipeline</span>
+                  <span class="wu-sidebar__link-label">Lead Pipeline</span>
                 </LinkTo>
                 {{#if this.sidebarGroups.accessRequests}}
                   <LinkTo
                     @route="access-requests"
-                    class="nu-sidebar__sublink"
+                    class="wu-sidebar__sublink"
                     data-tooltip={{if
                       (and this.desktopCollapsed (eq this.activeGroup "crm"))
                       "Access Requests"
@@ -205,9 +205,9 @@
                     data-test-nav-access-requests
                   >
                     <Ui::Ph @icon="key" />
-                    <span class="nu-sidebar__link-label">Access Requests</span>
+                    <span class="wu-sidebar__link-label">Access Requests</span>
                     {{#if this.pendingAccessCount}}
-                      <Nuvo::Badge
+                      <Woven::Badge
                         @count={{true}}
                         @value={{this.pendingAccessCount}}
                         @max={{99}}
@@ -224,20 +224,20 @@
         {{#if this.sidebarGroups.documents}}
           <LinkTo
             @route="documents"
-            class="nu-sidebar__link"
+            class="wu-sidebar__link"
             data-tooltip={{if this.desktopCollapsed "Documents"}}
             data-tooltip-position="end"
             data-tooltip-light
             data-test-nav-documents
           >
             <Ui::Ph @icon="files" />
-            <span class="nu-sidebar__link-label">Documents</span>
+            <span class="wu-sidebar__link-label">Documents</span>
           </LinkTo>
         {{/if}}
 
         {{#if this.sidebarGroups.finance}}
           <div
-            class="nu-sidebar__group
+            class="wu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'finance')
@@ -250,49 +250,49 @@
             <button
               data-test-nav-group-toggle="finance"
               type="button"
-              class="nu-sidebar__group-toggle
+              class="wu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'finance') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "finance" "financials")}}
             >
               <Ui::Ph @icon="currency-circle-dollar" />
-              <span class="nu-sidebar__link-label">Finance</span>
-              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
+              <span class="wu-sidebar__link-label">Finance</span>
+              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
             </button>
-            <div class="nu-sidebar__group-items">
+            <div class="wu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">Finance</p>
+                <p class="wu-sidebar__group-title">Finance</p>
                 <LinkTo
                   @route="financials"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Transactions"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-financials
                 >
                   <Ui::Ph @icon="receipt" />
-                  <span class="nu-sidebar__link-label">Transactions</span>
+                  <span class="wu-sidebar__link-label">Transactions</span>
                 </LinkTo>
                 <LinkTo
                   @route="cheques"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Cheques Received"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-cheques
                 >
                   <Ui::Ph @icon="money" />
-                  <span class="nu-sidebar__link-label">Cheques Received</span>
+                  <span class="wu-sidebar__link-label">Cheques Received</span>
                 </LinkTo>
                 <LinkTo
                   @route="commissions"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Commissions"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-commissions
                 >
                   <Ui::Ph @icon="percent" />
-                  <span class="nu-sidebar__link-label">Commissions</span>
+                  <span class="wu-sidebar__link-label">Commissions</span>
                 </LinkTo>
               </div>
             </div>
@@ -302,7 +302,7 @@
         {{#if this.sidebarGroups.outreach}}
           {{#if this.whatsappDisabled}}
             <span
-              class="nu-sidebar__link is-disabled"
+              class="wu-sidebar__link is-disabled"
               role="link"
               aria-disabled="true"
               tabindex="0"
@@ -313,21 +313,21 @@
               data-test-nav-whatsapp-disabled
             >
               <Ui::Ph @icon="whatsapp-logo" />
-              <span class="nu-sidebar__link-label">WhatsApp</span>
+              <span class="wu-sidebar__link-label">WhatsApp</span>
             </span>
           {{else}}
             <LinkTo
               @route="whatsapp"
-              class="nu-sidebar__link"
+              class="wu-sidebar__link"
               data-tooltip={{this.whatsappTooltip}}
               data-tooltip-position="end"
               data-tooltip-light
               data-test-nav-whatsapp
             >
               <Ui::Ph @icon="whatsapp-logo" />
-              <span class="nu-sidebar__link-label">WhatsApp</span>
+              <span class="wu-sidebar__link-label">WhatsApp</span>
               {{#if this.whatsappUnreadCount}}
-                <Nuvo::Badge
+                <Woven::Badge
                   @count={{true}}
                   @value={{this.whatsappUnreadCount}}
                   @max={{99}}
@@ -340,7 +340,7 @@
 
         {{#if this.sidebarGroups.operations}}
           <div
-            class="nu-sidebar__group
+            class="wu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'operations')
@@ -353,7 +353,7 @@
             <button
               data-test-nav-group-toggle="operations"
               type="button"
-              class="nu-sidebar__group-toggle
+              class="wu-sidebar__group-toggle
                 {{if
                   (eq this.activeGroup 'operations')
                   'is-active'
@@ -361,33 +361,33 @@
               {{on "click" (fn this.toggleGroup "operations" "maintenance")}}
             >
               <Ui::Ph @icon="wrench" />
-              <span class="nu-sidebar__link-label">Operations</span>
-              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
+              <span class="wu-sidebar__link-label">Operations</span>
+              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
             </button>
-            <div class="nu-sidebar__group-items">
+            <div class="wu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">Operations</p>
+                <p class="wu-sidebar__group-title">Operations</p>
                 <LinkTo
                   @route="maintenance"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Maintenance"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-maintenance
                 >
                   <Ui::Ph @icon="toolbox" />
-                  <span class="nu-sidebar__link-label">Maintenance</span>
+                  <span class="wu-sidebar__link-label">Maintenance</span>
                 </LinkTo>
                 <LinkTo
                   @route="vendors"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Vendors"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-vendors
                 >
                   <Ui::Ph @icon="storefront" />
-                  <span class="nu-sidebar__link-label">Vendors</span>
+                  <span class="wu-sidebar__link-label">Vendors</span>
                 </LinkTo>
               </div>
             </div>
@@ -397,14 +397,14 @@
         {{#if this.sidebarGroups.reports}}
           <LinkTo
             @route="reports"
-            class="nu-sidebar__link"
+            class="wu-sidebar__link"
             data-tooltip={{if this.desktopCollapsed "Reports"}}
             data-tooltip-position="end"
             data-tooltip-light
             data-test-nav-reports
           >
             <Ui::Ph @icon="chart-bar" />
-            <span class="nu-sidebar__link-label">Reports</span>
+            <span class="wu-sidebar__link-label">Reports</span>
           </LinkTo>
         {{/if}}
 
@@ -412,14 +412,14 @@
           {{#unless this.isSuperAdmin}}
             <LinkTo
               @route="team"
-              class="nu-sidebar__link"
+              class="wu-sidebar__link"
               data-tooltip={{if this.desktopCollapsed "Team"}}
               data-tooltip-position="end"
               data-tooltip-light
               data-test-nav-team
             >
               <Ui::Ph @icon="users-three" />
-              <span class="nu-sidebar__link-label">Team</span>
+              <span class="wu-sidebar__link-label">Team</span>
             </LinkTo>
           {{/unless}}
         {{/if}}
@@ -428,21 +428,21 @@
           {{#unless this.isSuperAdmin}}
             <LinkTo
               @route="history"
-              class="nu-sidebar__link"
+              class="wu-sidebar__link"
               data-tooltip={{if this.desktopCollapsed "History"}}
               data-tooltip-position="end"
               data-tooltip-light
               data-test-nav-history
             >
               <Ui::Ph @icon="clock-counter-clockwise" />
-              <span class="nu-sidebar__link-label">History</span>
+              <span class="wu-sidebar__link-label">History</span>
             </LinkTo>
           {{/unless}}
         {{/if}}
 
         {{#if this.sidebarGroups.admin}}
           <div
-            class="nu-sidebar__group
+            class="wu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')
@@ -454,93 +454,93 @@
             <button
               data-test-nav-group-toggle="admin"
               type="button"
-              class="nu-sidebar__group-toggle
+              class="wu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'admin') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "admin" "admin.overview")}}
             >
               <Ui::Ph @icon="gear" />
-              <span class="nu-sidebar__link-label">Admin</span>
-              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
+              <span class="wu-sidebar__link-label">Admin</span>
+              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
             </button>
-            <div class="nu-sidebar__group-items">
+            <div class="wu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">Admin</p>
+                <p class="wu-sidebar__group-title">Admin</p>
                 <LinkTo
                   @route="admin.overview"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Overview"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-overview
                 >
                   <Ui::Ph @icon="squares-four" />
-                  <span class="nu-sidebar__link-label">Overview</span>
+                  <span class="wu-sidebar__link-label">Overview</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.companies"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Companies"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-companies
                 >
                   <Ui::Ph @icon="buildings" />
-                  <span class="nu-sidebar__link-label">Companies</span>
+                  <span class="wu-sidebar__link-label">Companies</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.marketers"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Marketers"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-marketers
                 >
                   <Ui::Ph @icon="megaphone" />
-                  <span class="nu-sidebar__link-label">Marketers</span>
+                  <span class="wu-sidebar__link-label">Marketers</span>
                 </LinkTo>
                 <LinkTo
                   @route="team"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Team"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-team
                 >
                   <Ui::Ph @icon="users-three" />
-                  <span class="nu-sidebar__link-label">Team</span>
+                  <span class="wu-sidebar__link-label">Team</span>
                 </LinkTo>
                 <LinkTo
                   @route="documents"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Documents"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-documents
                 >
                   <Ui::Ph @icon="files" />
-                  <span class="nu-sidebar__link-label">Documents</span>
+                  <span class="wu-sidebar__link-label">Documents</span>
                 </LinkTo>
                 <LinkTo
                   @route="audit"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Audit Log"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-audit
                 >
                   <Ui::Ph @icon="list-checks" />
-                  <span class="nu-sidebar__link-label">Audit Log</span>
+                  <span class="wu-sidebar__link-label">Audit Log</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.system"
-                  class="nu-sidebar__sublink"
+                  class="wu-sidebar__sublink"
                   data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "System"}}
                   data-tooltip-position="end"
                   data-tooltip-light
                   data-test-nav-system
                 >
                   <Ui::Ph @icon="sliders" />
-                  <span class="nu-sidebar__link-label">System</span>
+                  <span class="wu-sidebar__link-label">System</span>
                 </LinkTo>
               </div>
             </div>
@@ -570,7 +570,7 @@
     {{#if this.sidebarMobileOpen}}
       <button
         type="button"
-        class="nu-sidebar-backdrop"
+        class="wu-sidebar-backdrop"
         tabindex="-1"
         aria-hidden="true"
         aria-label="Close menu"
@@ -599,10 +599,10 @@
         </div>
       {{/if}}
       <TenantLockBanner @lockState={{this.session.lockState}} />
-      <header class="nu-topbar m-sticky m-plain">
+      <header class="wu-topbar m-sticky m-plain">
         <button
           type="button"
-          class="nu-topbar__toggle"
+          class="wu-topbar__toggle"
           aria-label="Open navigation"
           aria-expanded={{if this.sidebarMobileOpen "true" "false"}}
           data-test-nav-toggle
@@ -611,7 +611,7 @@
           <Ui::Ph @icon="list" @size="20px" />
         </button>
         {{!-- Global search hidden until it covers contacts, leads and units.
-        <div class="nu-topbar__search">
+        <div class="wu-topbar__search">
           {{! Explicit combobox is the ARIA pattern for a text box that owns a listbox. }}
           {{! template-lint-disable no-redundant-role }}
           <input
@@ -620,7 +620,7 @@
             autocomplete="off"
             aria-label="Search"
             placeholder="Search..."
-            class="nu-topbar__search-input"
+            class="wu-topbar__search-input"
             aria-autocomplete="list"
             data-test-global-search
             aria-expanded={{if this.showSearchDropdown "true" "false"}}
@@ -652,7 +652,7 @@
           ></button>
         {{/if}}
         --}}
-        <div class="nu-topbar__actions">
+        <div class="wu-topbar__actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
               <button
@@ -677,7 +677,7 @@
                   data-test-region-overlay
                   {{on "click" this.closeRegionDropdown}}
                 ></button>
-                <div class="nu-topbar-menu" data-test-region-dropdown>
+                <div class="wu-topbar-menu" data-test-region-dropdown>
                   {{#each this.groupedRegions as |grp|}}
                     <div
                       class="app-shell__menu-label"
@@ -686,7 +686,7 @@
                     {{#each grp.regions as |r|}}
                       <button
                         type="button"
-                        class="nu-topbar-menu__item
+                        class="wu-topbar-menu__item
                           {{if
                             (eq r.code this.region.activeRegion.code)
                             'is-active'
@@ -709,11 +709,11 @@
                     {{/each}}
                   {{/each}}
                   {{#if this.canManageRegions}}
-                    <div class="nu-topbar-menu__divider"></div>
+                    <div class="wu-topbar-menu__divider"></div>
                     <LinkTo
                       @route="company"
                       @query={{hash tab="regions"}}
-                      class="nu-topbar-menu__item"
+                      class="wu-topbar-menu__item"
                       data-test-region-manage
                       {{on "click" this.closeRegionDropdown}}
                     >
@@ -724,7 +724,7 @@
               {{/if}}
             </div>
           {{else if this.showRegionLabel}}
-            <div class="nu-tag m-pill" data-test-region-label>
+            <div class="wu-tag m-pill" data-test-region-label>
               <Ui::Ph @icon="globe" @size="16px" />
               <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
@@ -733,13 +733,13 @@
             <button
               data-test-notifications-trigger
               type="button"
-              class="nu-topbar__icon-btn"
+              class="wu-topbar__icon-btn"
               aria-label="Notifications"
               {{on "click" this.toggleNotifications}}
             >
               <Ui::Ph @icon="bell" @size="22px" />
               {{#if this.unreadCount}}
-                <span class="nu-topbar__badge">{{this.unreadCount}}</span>
+                <span class="wu-topbar__badge">{{this.unreadCount}}</span>
               {{/if}}
             </button>
 
@@ -753,8 +753,8 @@
                 aria-label="Close notifications"
                 {{on "click" this.closeNotifications}}
               ></button>
-              <div class="nu-topbar-menu">
-                <div class="nu-topbar-menu__header">
+              <div class="wu-topbar-menu">
+                <div class="wu-topbar-menu__header">
                   <span class="text-sm font-bold">Notifications</span>
                   {{#if this.unreadCount}}
                     <button
@@ -770,7 +770,7 @@
                     <button
                       data-test-notification-item={{notif.id}}
                       type="button"
-                      class="nu-topbar-menu__item
+                      class="wu-topbar-menu__item
                         {{unless notif.isRead 'unread'}}"
                       {{on "click" (fn this.markAsRead notif)}}
                     >
@@ -798,11 +798,11 @@
                       </div>
                     </button>
                   {{else}}
-                    <div class="nu-topbar-menu__empty">
+                    <div class="wu-topbar-menu__empty">
                       <Ui::Ph
                         @icon="bell-slash"
                         @size="24px"
-                        @color="var(--nu-text-muted)"
+                        @color="var(--wu-text-muted)"
                       />
                       <p class="text-xs text-muted mt-2">No notifications</p>
                     </div>
@@ -815,7 +815,7 @@
             <LinkTo
               data-test-nav-company
               @route="company"
-              class="nu-topbar__icon-btn"
+              class="wu-topbar__icon-btn"
               aria-label="Company settings"
             >
               <Ui::Ph @icon="building-office" @size="20px" />
@@ -824,7 +824,7 @@
           <button
             data-test-logout-button
             type="button"
-            class="nu-topbar__icon-btn topbar-logout"
+            class="wu-topbar__icon-btn topbar-logout"
             aria-label="Logout"
             {{on "click" this.logout}}
           >
@@ -842,11 +842,11 @@
   {{outlet}}
 {{/if}}
 
-<Nuvo::ToastRegion />
+<Woven::ToastRegion />
 
-<Nuvo::LayerHost />
-<Nuvo::TooltipHost />
-<Nuvo::DialogHost />
+<Woven::LayerHost />
+<Woven::TooltipHost />
+<Woven::DialogHost />
 
 <ConfirmModal
   @open={{this.showLogoutModal}}

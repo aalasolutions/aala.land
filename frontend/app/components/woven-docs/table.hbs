@@ -1,0 +1,32 @@
+<div
+  class="wu-table-wrapper woven-doc__table"
+  data-test-woven-table={{@kind}}
+  ...attributes
+>
+  <table class="wu-table m-compact">
+    <thead>
+      <tr>
+        {{#each this.columns as |column|}}
+          <th scope="col">{{column.label}}</th>
+        {{/each}}
+      </tr>
+    </thead>
+    <tbody>
+      {{#each this.rows as |row|}}
+        <tr>
+          {{#each row.cells as |cell|}}
+            <td>
+              {{#if cell.value}}
+                {{#if cell.code}}
+                  <code class="wu-code">{{cell.value}}</code>
+                {{else}}
+                  {{cell.value}}
+                {{/if}}
+              {{/if}}
+            </td>
+          {{/each}}
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>

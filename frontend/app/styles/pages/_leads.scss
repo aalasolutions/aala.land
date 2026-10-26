@@ -1,25 +1,25 @@
-// Boards are the kit's `.nu-kanban`; only temperature accents and load bar are page-specific.
-@use "@nuvoui/ember/styles/common/var" as *;
-@use "@nuvoui/ember/styles/mixins/bem" as *;
+// Boards are the kit's `.wu-kanban`; only temperature accents and load bar are page-specific.
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 // Temperature accents match the `temp` domain in _tags.scss so column colour matches the badge.
 $lead-temps: (
-  "hot": var(--nu-danger),
-  "warm": var(--nu-warning),
-  "cold": var(--nu-info),
-  "dead": var(--nu-text-subtle),
+  "hot": var(--wu-danger),
+  "warm": var(--wu-warning),
+  "cold": var(--wu-info),
+  "dead": var(--wu-text-subtle),
 );
 
 // Kit re-declares this on the accent element; an inherited value from the column would lose.
 @each $temp, $color in $lead-temps {
-  .column-temp-#{$temp} .nu-kanban__column-accent {
-    --nu-kanban__column-accent--Color: #{$color};
+  .column-temp-#{$temp} .wu-kanban__column-accent {
+    --wu-kanban__column-accent--Color: #{$color};
   }
 }
 
 .lead-card {
-  .nu-panel__body {
-    gap: nu-space(2);
+  .wu-panel__body {
+    gap: wu-space(2);
   }
 
   p {
@@ -32,13 +32,13 @@ $lead-temps: (
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
-  gap: nu-space(1);
-  padding-block: nu-space(1);
-  padding-inline: nu-space(2);
-  background: var(--nu-bg-alternate);
-  border-radius: nu-radius(full);
-  font-size: nu-font-size(xs);
-  color: var(--nu-text-muted);
+  gap: wu-space(1);
+  padding-block: wu-space(1);
+  padding-inline: wu-space(2);
+  background: var(--wu-bg-alternate);
+  border-radius: wu-radius(full);
+  font-size: wu-font-size(xs);
+  color: var(--wu-text-muted);
 
   &.m-sm {
     font-size: 0.6875rem;
@@ -49,11 +49,11 @@ $lead-temps: (
 .wa-link {
   display: inline-flex;
   align-items: center;
-  color: var(--nu-success);
+  color: var(--wu-success);
   line-height: 1;
 
   &:hover {
-    color: var(--nu-success-hover);
+    color: var(--wu-success-hover);
   }
 }
 
@@ -64,7 +64,7 @@ $lead-temps: (
 
 .lead-detail__info {
   flex: 0 0 20rem;
-  border-inline-end: 1px solid var(--nu-border-regular);
+  border-inline-end: 1px solid var(--wu-border-regular);
   padding-inline-end: 1.5rem;
   overflow-y: auto;
 }
@@ -74,13 +74,13 @@ $lead-temps: (
   min-block-size: 0;
   padding-inline-end: 0.5rem;
 
-  .nu-timeline__description {
+  .wu-timeline__description {
     margin-block: 0;
   }
 }
 
 // long emails must wrap on any character, not overflow the 20rem rail
-.lead-detail__info .nu-info-row__value {
+.lead-detail__info .wu-info-row__value {
   overflow-wrap: anywhere;
 }
 
@@ -93,7 +93,7 @@ $lead-temps: (
   .lead-detail__info {
     flex: 1 1 auto;
     border-inline-end: none;
-    border-block-end: 1px solid var(--nu-border-regular);
+    border-block-end: 1px solid var(--wu-border-regular);
     padding-inline-end: 0;
     padding-block-end: 1rem;
     overflow-y: visible;
@@ -102,15 +102,15 @@ $lead-temps: (
 
 .agent-load-bar {
   block-size: 0.25rem;
-  background: var(--nu-bg-alternate);
-  border-radius: nu-radius(full);
+  background: var(--wu-bg-alternate);
+  border-radius: wu-radius(full);
   overflow: hidden;
 }
 
 .agent-load-fill {
   block-size: 100%;
-  border-radius: nu-radius(full);
-  transition: inline-size nu-duration(normal) $nu-ease;
+  border-radius: wu-radius(full);
+  transition: inline-size wu-duration(normal) $wu-ease;
 
   @include reduced-motion {
     transition: none;
@@ -118,16 +118,16 @@ $lead-temps: (
 
   &.load-low {
     inline-size: 25%;
-    background: var(--nu-success);
+    background: var(--wu-success);
   }
 
   &.load-medium {
     inline-size: 60%;
-    background: var(--nu-warning);
+    background: var(--wu-warning);
   }
 
   &.load-high {
     inline-size: 100%;
-    background: var(--nu-danger);
+    background: var(--wu-danger);
   }
 }

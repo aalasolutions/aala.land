@@ -78,9 +78,9 @@ module('Integration | Component | team/invite-drawer', function (hooks) {
   test('roles offered are strictly below the current user', async function (assert) {
     stubAuth(this.owner, { role: 'manager' });
     await renderDrawer();
-    await click('#i-role [data-test-nu-dropdown-trigger]');
+    await click('#i-role [data-test-wu-dropdown-trigger]');
     const labels = [
-      ...document.querySelectorAll('[data-test-nu-dropdown-item]'),
+      ...document.querySelectorAll('[data-test-wu-dropdown-item]'),
     ].map((el) => el.textContent.trim());
     assert.deepEqual(labels, ['Agent', 'Accountant']);
   });

@@ -1,0 +1,184 @@
+<WovenDocs::Page
+  @id="popover"
+  @title="Popover"
+  @subtitle="Click-triggered panel with an arrow, hosted on the anchored layer."
+  @components="Woven::Popover"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      A popover holds rich content next to its trigger. Like the dropdown
+      menu it renders on the layer host while open, so it escapes clipping
+      ancestors, and the anchor modifier positions it, flips it and draws
+      the arrow at the trigger's centre. Use it for a small form or a
+      confirmation that does not deserve a modal; use a tooltip for text
+      alone.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Four logical placements with automatic flip and viewport clamp.</li>
+      <li class="wu-list__item">Optional title with a close button; body and footer slots.</li>
+      <li class="wu-list__item">Closes on Escape, outside click, outside scroll and resize; focus returns to the trigger.</li>
+      <li class="wu-list__item">Controlled and uncontrolled modes.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Modes" @id="modes">
+    <WovenDocs::Example
+      @title="Uncontrolled"
+      @note="The popover keeps its own open state; the trigger block yields toggle and isOpen. The common case."
+      @code={{this.code.uncontrolled}}
+    >
+      <Woven::Popover @title="Details">
+        <:trigger as |toggle isOpen|>
+          <Woven::Button
+            @text="Open"
+            @variant="secondary"
+            @onClick={{toggle}}
+            aria-expanded={{if isOpen "true" "false"}}
+            data-test-woven-popover-uncontrolled
+          />
+        </:trigger>
+        <:body>
+          <Woven::Text @size="sm" @text="The popover keeps its own open state." />
+        </:body>
+      </Woven::Popover>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Controlled"
+      @note="The caller owns the open flag: the trigger reports through onToggle and every close path reports through onClose. For popovers a page must open from elsewhere."
+      @code={{this.code.controlled}}
+    >
+      <Woven::Popover
+        @title="Quick actions"
+        @open={{this.popoverOpen}}
+        @onToggle={{this.setPopoverOpen}}
+        @onClose={{this.closePopover}}
+      >
+        <:trigger as |toggle|>
+          <Woven::Button
+            @text="Unit actions"
+            @variant="secondary"
+            @onClick={{toggle}}
+            data-test-open-popover
+          />
+        </:trigger>
+        <:body>
+          <Woven::Text @text="Edit, duplicate, or archive this unit." />
+        </:body>
+        <:footer>
+          <Woven::Button @text="Close" @size="sm" @variant="ghost" @onClick={{this.closePopover}} />
+        </:footer>
+      </Woven::Popover>
+      <span class="wu-text m-sm m-muted" data-test-woven-popover-state>Open: {{this.popoverOpen}}</span>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Placements" @id="placements">
+    {{#each this.placementExamples as |example|}}
+      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Woven::Popover @title="Placement" @placement={{example.placement}}>
+          <:trigger as |toggle|>
+            <Woven::Button
+              @text={{example.placement}}
+              @variant="secondary"
+              @onClick={{toggle}}
+              data-test-woven-popover-placement={{example.placement}}
+            />
+          </:trigger>
+          <:body>
+            <Woven::Text
+              @size="sm"
+              @text="Positioned by the anchor modifier; flips when there is no room."
+            />
+          </:body>
+        </Woven::Popover>
+      </WovenDocs::Example>
+    {{/each}}
+
+    <WovenDocs::Example
+      @title="Align end"
+      @note="Hangs from the trigger's end edge instead of centring, for a control at the end of a row so the panel stays on screen."
+      @code={{this.code.alignEnd}}
+    >
+      <Woven::Popover @placement="bottom" @align="end">
+        <:trigger as |toggle|>
+          <Woven::Button
+            @icon="dots-three"
+            @shape="square"
+            @variant="secondary"
+            @onClick={{toggle}}
+            aria-label="More"
+          />
+        </:trigger>
+        <:body>
+          <Woven::Text @size="sm" @text="Hangs from the trigger's end edge." />
+        </:body>
+      </Woven::Popover>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Slots" @id="slots">
+    <WovenDocs::Example
+      @title="No title"
+      @note="Without a title there is no header or close button; Escape and an outside click still close it. For a small panel whose content is self-explanatory."
+      @code={{this.code.noTitle}}
+    >
+      <Woven::Popover>
+        <:trigger as |toggle|>
+          <Woven::Button @text="No title" @variant="secondary" @onClick={{toggle}} />
+        </:trigger>
+        <:body>
+          <Woven::Text @size="sm" @text="No header or close button. Escape and outside click still close it." />
+        </:body>
+      </Woven::Popover>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Footer"
+      @note="The footer row holds the panel's action, for a lightweight confirmation next to the control that triggers it."
+      @code={{this.code.footer}}
+    >
+      <Woven::Popover @title="Confirm">
+        <:trigger as |toggle|>
+          <Woven::Button @text="With footer" @variant="secondary" @onClick={{toggle}} />
+        </:trigger>
+        <:body>
+          <Woven::Text @size="sm" @text="Archive this unit?" />
+        </:body>
+        <:footer>
+          <Woven::Button @text="Archive" @size="sm" @variant="danger" />
+        </:footer>
+      </Woven::Popover>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Callbacks" @id="callbacks">
+    <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">The panel is role="dialog", labelled by the title when one is given. It does not trap focus; Tab leaves the panel.</li>
+      <li class="wu-list__item">Escape closes it and stops propagation, so a modal or drawer underneath stays open. Closing returns focus to the trigger when focus was inside.</li>
+      <li class="wu-list__item">Set aria-expanded on the trigger from the yielded isOpen when the trigger is a button.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">start and end placements resolve against the trigger's computed direction; the panel copies the trigger's dir.</li>
+      <li class="wu-list__item">The arrow is positioned from the anchor's centre with physical borders under data-placement, and the stylesheet flips its transform sign under dir="rtl".</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

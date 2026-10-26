@@ -1,0 +1,30 @@
+<fieldset
+  class={{this.classes}}
+  aria-describedby={{this.describedBy}}
+  data-test-wu-field-group
+  {{this.applyToControls}}
+  ...attributes
+>
+  {{#if @label}}
+    <legend class="wu-field-group__legend" data-test-wu-field-group-legend>
+      {{@label}}
+      {{#if @required}}
+        <span
+          class="wu-field__required"
+          aria-hidden="true"
+          data-test-wu-field-group-required
+        >*</span>
+      {{/if}}
+    </legend>
+  {{/if}}
+
+  {{yield this.api}}
+
+  <Woven::FieldMessage
+    @error={{@error}}
+    @hint={{@hint}}
+    @status={{this.status}}
+    @hintId={{this.hintId}}
+    @errorId={{this.errorId}}
+  />
+</fieldset>

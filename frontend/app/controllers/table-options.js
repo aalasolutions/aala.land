@@ -188,7 +188,7 @@ export default class TableOptionsController extends PaginatedController {
   @tracked deleteReason = '';
   @tracked reasonError = '';
 
-  // Nuvo inputs pass (value, event), not the raw DOM event legacy setField expects.
+  // Woven inputs pass (value, event), not the raw DOM event legacy setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }

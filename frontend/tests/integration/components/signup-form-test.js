@@ -21,9 +21,9 @@ async function fillEmailForm() {
   await fillIn('[data-test-email-input]', 'jane@acme.test');
   await fillIn('[data-test-password-input]', 'Password123!');
   await fillIn('[data-test-confirm-password]', 'Password123!');
-  await click('[data-test-region-select] [data-test-nu-dropdown-trigger]');
-  // The menu is hosted on .nu-layer, outside the component subtree.
-  await click(document.querySelector('[data-test-nu-dropdown-item]'));
+  await click('[data-test-region-select] [data-test-wu-dropdown-trigger]');
+  // The menu is hosted on .wu-layer, outside the component subtree.
+  await click(document.querySelector('[data-test-wu-dropdown-item]'));
 }
 
 module('Integration | Component | signup-form', function (hooks) {
@@ -113,8 +113,8 @@ module('Integration | Component | signup-form', function (hooks) {
     );
     // Google signup needs company name + region only
     await fillIn('[data-test-company-name]', 'Acme Realty');
-    await click('[data-test-region-select] [data-test-nu-dropdown-trigger]');
-    await click(document.querySelector('[data-test-nu-dropdown-item]'));
+    await click('[data-test-region-select] [data-test-wu-dropdown-trigger]');
+    await click(document.querySelector('[data-test-wu-dropdown-item]'));
 
     assert.ok(tokenCallback, 'google button rendered with a token callback');
     await tokenCallback('fake-id-token');

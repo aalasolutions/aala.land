@@ -1,0 +1,132 @@
+<WovenDocs::Page
+  @id="page-header"
+  @title="Page header"
+  @subtitle="Title block with breadcrumb, meta and actions slots."
+  @components="Woven::PageHeader"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      The header at the top of a route. It owns the page h1 and gives the
+      breadcrumb, supporting facts and primary actions fixed places so every
+      page lines up. The header of this documentation page is one. Use it
+      once per route, never inside a card.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Features" @id="features">
+    <ul class="wu-list">
+      <li class="wu-list__item">Title and subtitle; the title carries no icon.</li>
+      <li class="wu-list__item">Breadcrumb, meta and actions slots.</li>
+      <li class="wu-list__item">Bordered and sticky options.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Title area" @id="title">
+    <WovenDocs::Example
+      @title="Title"
+      @note="The h1 alone, for simple list pages."
+      @layout="block"
+      @code={{this.code.title}}
+    >
+      <Woven::PageHeader @title="Properties" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Subtitle"
+      @note="A line of context under the title: a count, a location, a period."
+      @layout="block"
+      @code={{this.code.subtitle}}
+    >
+      <Woven::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina" />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Bordered"
+      @note="A rule under the header separates it from content that starts without its own surface."
+      @layout="block"
+      @code={{this.code.bordered}}
+    >
+      <Woven::PageHeader @title="Bordered" @subtitle="A rule under the header" @bordered={{true}} />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Slots" @id="slots">
+    <WovenDocs::Example
+      @title="Breadcrumb"
+      @note="Detail pages only: a compact, parents-only Woven::Breadcrumb above the title. The current page is the title, never the last crumb. List pages have no breadcrumb."
+      @layout="block"
+      @code={{this.code.breadcrumb}}
+    >
+      <Woven::PageHeader @title="Marina Tower">
+        <:breadcrumb>
+          <Woven::Breadcrumb @items={{this.crumbs}} @compact={{true}} @parentsOnly={{true}} />
+        </:breadcrumb>
+      </Woven::PageHeader>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Meta"
+      @note="Badges and short facts under the subtitle: status, occupancy, owner."
+      @layout="block"
+      @code={{this.code.meta}}
+    >
+      <Woven::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina">
+        <:meta>
+          <Woven::Badge @variant="success" @text="Active" />
+          <span>Occupancy 91%</span>
+        </:meta>
+      </Woven::PageHeader>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Actions"
+      @note="Primary and secondary page actions at the inline end. Keep it to two or three; move the rest into a dropdown."
+      @layout="block"
+      @code={{this.code.actions}}
+    >
+      <Woven::PageHeader @title="Marina Tower">
+        <:actions>
+          <Woven::Button @variant="secondary" @size="sm" @text="Export" />
+          <Woven::Button @variant="primary" @size="sm" @text="Add Unit" />
+        </:actions>
+      </Woven::PageHeader>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Sticky" @id="sticky">
+    <WovenDocs::Example
+      @title="Pinned in a scroll container"
+      @note="Scroll the box: the header stays at the top so the title and actions remain in reach on a long page."
+      @layout="block"
+      @code={{this.code.sticky}}
+    >
+      <div class="woven-scroll-box" data-test-woven-sticky-demo>
+        <Woven::PageHeader @title="Sticky header" @subtitle="stays pinned in a scroll container" @sticky={{true}} />
+        {{#each this.filler as |line|}}
+          <Woven::Text @size="sm" @muted={{true}} @text={{line}} class="ps-4" />
+        {{/each}}
+      </div>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Arguments" @id="arguments">
+    <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="wu-list">
+      <li class="wu-list__item">Renders a header element with the title as h1. Use it once per route.</li>
+      <li class="wu-list__item">Use Woven::Breadcrumb in the breadcrumb slot for a navigable, labelled trail.</li>
+    </ul>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="RTL" @id="rtl">
+    <ul class="wu-list">
+      <li class="wu-list__item">Actions sit at the inline end, so the layout mirrors with the reading direction.</li>
+    </ul>
+  </WovenDocs::Section>
+</WovenDocs::Page>

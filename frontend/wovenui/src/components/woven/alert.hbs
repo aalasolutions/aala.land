@@ -1,0 +1,37 @@
+{{! Icon grows only when a description is present; title-only alerts stay small. }}
+<div class={{this.classes}} role="alert" data-test-wu-alert ...attributes>
+  {{#if this.showIcon}}
+    <span class={{this.iconClasses}} aria-hidden="true" data-test-wu-alert-icon>
+      {{@icon}}
+    </span>
+  {{/if}}
+
+  <div class="wu-alert__content">
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#if @title}}
+        <div class="wu-alert__title" data-test-wu-alert-title>{{@title}}</div>
+      {{/if}}
+      {{#if @description}}
+        <div class="wu-alert__description" data-test-wu-alert-description>{{@description}}</div>
+      {{/if}}
+    {{/if}}
+
+    {{#if (has-block "actions")}}
+      <div class="wu-alert__actions" data-test-wu-alert-actions>
+        {{yield to="actions"}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if @closable}}
+    <button
+      type="button"
+      class="wu-alert__close"
+      aria-label="Dismiss alert"
+      data-test-wu-alert-close
+      {{on "click" this.handleClose}}
+    >×</button>
+  {{/if}}
+</div>

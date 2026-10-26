@@ -8,7 +8,7 @@ import {
   waitUntil,
 } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
-import { resetDialogStateForTesting } from '@nuvoui/ember/utils/dialog-focus';
+import { resetDialogStateForTesting } from '@wovenui/ember/utils/dialog-focus';
 import { PNG_URL, wavUrl, stubPlayback } from 'land/tests/helpers/media';
 
 module('Integration | Component | whatsapp/media-viewer', function (hooks) {
@@ -156,7 +156,7 @@ module('Integration | Component | whatsapp/media-viewer', function (hooks) {
     assert.dom('[data-test-wa-viewer]').doesNotExist();
 
     await click('[data-test-trigger]');
-    await click('[data-test-nu-modal-backdrop-dismiss]');
+    await click('[data-test-wu-modal-backdrop-dismiss]');
     assert.dom('[data-test-wa-viewer]').doesNotExist();
   });
 

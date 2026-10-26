@@ -165,7 +165,7 @@ module('Integration | Component | chart-canvas', function (hooks) {
       const chart = Chart.getChart(find('[data-test-chart-canvas-el]'));
       return {
         chart,
-        // Hosted on .nu-layer, which sits outside the test container.
+        // Hosted on .wu-layer, which sits outside the test container.
         tip: document.querySelector('[data-test-chart-canvas-tip]'),
         host: find('[data-test-chart-canvas]'),
         external: chart.options.plugins.tooltip.external,
@@ -195,11 +195,11 @@ module('Integration | Component | chart-canvas', function (hooks) {
       assert.strictEqual(tip.textContent, '10');
     });
 
-    test('hosts the tip on .nu-layer, out of every clipping ancestor', async function (assert) {
+    test('hosts the tip on .wu-layer, out of every clipping ancestor', async function (assert) {
       const { tip, host } = await setup();
 
       assert.ok(tip, 'the tip is mounted');
-      assert.ok(tip.closest('.nu-layer'), 'hosted on .nu-layer');
+      assert.ok(tip.closest('.wu-layer'), 'hosted on .wu-layer');
       assert.notOk(host.contains(tip), 'not a descendant of the chart box');
     });
 

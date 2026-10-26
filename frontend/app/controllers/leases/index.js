@@ -141,7 +141,7 @@ export default class LeasesController extends PaginatedController {
     return [{ value: '', label: 'All types' }, ...LEASE_TYPE_OPTIONS];
   }
 
-  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
+  // Woven inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
     if (fieldName === 'deleteReason' || fieldName === 'archiveReason') {

@@ -1,14 +1,14 @@
 {{page-title "Reports"}}
 
 <div data-test-reports-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Boss Dashboard"
     @subtitle="Real-time performance and business intelligence."
   />
 
   {{#if @model.kpis}}
     <div class="reports-kpis grid cols-3 gap-4" data-test-reports-kpis>
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-kpi="monthly-revenue"
         @route="financials"
         @contentBleed={{true}}
@@ -22,8 +22,8 @@
             @caption="Completed revenue by month"
           />
         </:content>
-      </Nuvo::Stat>
-      <Nuvo::Stat
+      </Woven::Stat>
+      <Woven::Stat
         data-test-kpi="pending-cheques"
         @route="cheques"
         @variant="warning"
@@ -32,7 +32,7 @@
         @value={{format-number @model.kpis.pendingCheques}}
         @delta="Needs action"
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-kpi="won-leads"
         @route="leads"
         @variant="success"
@@ -43,7 +43,7 @@
           @model.kpis.totalLeads
         }} leads"
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-kpi="total-leads"
         @route="leads"
         @variant="secondary"
@@ -51,14 +51,14 @@
         @value={{format-number @model.kpis.totalLeads}}
         @delta="All stages"
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-kpi="active-leases"
         @route="leases"
         @label="Active Leases"
         @value={{format-number @model.kpis.activeLeases}}
         @delta="Currently running"
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-kpi="total-units"
         @route="properties"
         @label="Total Properties"
@@ -68,7 +68,7 @@
     </div>
   {{/if}}
 
-  <Nuvo::Tabs
+  <Woven::Tabs
     @tabs={{this.tabs}}
     @activeTab={{this.currentTab}}
     @onChange={{this.setTab}}
@@ -78,14 +78,14 @@
   {{#if (eq this.currentTab "alerts")}}
     <div class="grid gap-4 cols-2@lg align-start" data-test-flag-groups>
       {{#each this.flagGroups as |group|}}
-        <Nuvo::Panel data-test-flag-group={{group.type}}>
+        <Woven::Panel data-test-flag-group={{group.type}}>
           <:header>
             <div class="flex x-center gap-3">
-              <Nuvo::Tag
+              <Woven::Tag
                 @variant={{group.variant}}
                 @text={{group.severityLabel}}
               />
-              <h4 class="nu-panel__title">{{group.label}}</h4>
+              <h4 class="wu-panel__title">{{group.label}}</h4>
               <span
                 class="text-muted text-sm"
                 data-test-flag-group-total={{group.type}}
@@ -112,7 +112,7 @@
                       class="text-xs text-muted whitespace-nowrap"
                     >{{format-date flag.createdAt zone="region"}}</span>
                     {{#if flag.areaId}}
-                      <Nuvo::Button
+                      <Woven::Button
                         @variant="secondary"
                         @size="xs"
                         @route="properties.unit"
@@ -125,7 +125,7 @@
                 </div>
               {{/each}}
               {{#if group.hiddenCount}}
-                <Nuvo::Button
+                <Woven::Button
                   @variant="ghost"
                   @size="sm"
                   {{on "click" (fn this.showAllFlags group.type)}}
@@ -134,7 +134,7 @@
                   Show
                   {{group.hiddenCount}}
                   more
-                </Nuvo::Button>
+                </Woven::Button>
               {{else if group.isTruncated}}
                 <p
                   class="text-xs text-muted"
@@ -146,16 +146,16 @@
               {{/if}}
             </div>
           </:body>
-        </Nuvo::Panel>
+        </Woven::Panel>
       {{/each}}
     </div>
   {{/if}}
 
   {{#if (eq this.currentTab "pipeline")}}
     {{#if @model.funnel.length}}
-      <Nuvo::Panel>
+      <Woven::Panel>
         <:header>
-          <h4 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
+          <h4 class="wu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
             Pipeline Funnel</h4>
         </:header>
         <:body>
@@ -168,20 +168,20 @@
             {{/each}}
           </div>
         </:body>
-      </Nuvo::Panel>
+      </Woven::Panel>
     {{/if}}
 
     {{#if @model.agents.length}}
-      <Nuvo::Panel>
+      <Woven::Panel>
         <:header>
-          <h4 class="nu-panel__title"><Ui::Ph
+          <h4 class="wu-panel__title"><Ui::Ph
               @icon="users-three"
               @size="20px"
             />
             Agent Performance</h4>
         </:header>
         <:body>
-          <Nuvo::DataTable
+          <Woven::DataTable
             @columns={{this.columns}}
             @rows={{this.agentRows}}
             @pinColumns={{true}}
@@ -227,20 +227,20 @@
             {{else}}
               {{cell.value}}
             {{/if}}
-          </Nuvo::DataTable>
+          </Woven::DataTable>
         </:body>
-      </Nuvo::Panel>
+      </Woven::Panel>
     {{else}}
-      <Nuvo::Panel class="text-center">
+      <Woven::Panel class="text-center">
         <p class="text-muted">No agent data available.</p>
-      </Nuvo::Panel>
+      </Woven::Panel>
     {{/if}}
   {{/if}}
 
   {{#if (eq this.currentTab "activity")}}
-    <Nuvo::Panel>
+    <Woven::Panel>
       <:header>
-        <h4 class="nu-panel__title"><Ui::Ph
+        <h4 class="wu-panel__title"><Ui::Ph
             @icon="clock-counter-clockwise"
             @size="20px"
           />
@@ -248,7 +248,7 @@
       </:header>
       <:body>
         {{#if this.activityRows.length}}
-          <Nuvo::DataTable
+          <Woven::DataTable
             @columns={{this.activityColumns}}
             @rows={{this.activityRows}}
             @tableId="reports-activity"
@@ -261,7 +261,7 @@
                 data-test-activity-row={{cell.row.id}}
               >{{format-date-time cell.value}}</span>
             {{else if (eq cell.key "actionLabel")}}
-              <Nuvo::Tag
+              <Woven::Tag
                 @variant={{cell.row.actionVariant}}
                 @text={{cell.value}}
               />
@@ -270,20 +270,20 @@
             {{else}}
               <span class="text-sm">{{cell.value}}</span>
             {{/if}}
-          </Nuvo::DataTable>
+          </Woven::DataTable>
         {{else if @model.total}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @title="Nothing on this page"
             data-test-reports-activity-page-empty
           />
         {{else}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @title="No activity yet"
             data-test-reports-activity-empty
           />
         {{/if}}
         {{#if @model.total}}
-          <Nuvo::Pagination
+          <Woven::Pagination
             @selectId="reports-activity-limit"
             @page={{this.page}}
             @limit={{this.limit}}
@@ -296,6 +296,6 @@
           />
         {{/if}}
       </:body>
-    </Nuvo::Panel>
+    </Woven::Panel>
   {{/if}}
 </div>

@@ -1,0 +1,108 @@
+// wu-empty-state - placeholder for empty lists/views
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(empty-state) {
+  @include wu-root("empty-state", (
+    "Display": flex,
+    "PaddingBlock": wu-space(10),
+    "PaddingInline": wu-space(6),
+    "Gap": wu-space(3),
+    "TextAlign": center,
+    "BorderRadius": wu-radius(lg),
+    "BorderWidth": 0,
+    "BorderStyle": solid,
+    "BorderColor": transparent,
+    "BackgroundColor": transparent,
+    "IconFontSize": wu-font-size(3xl),
+    "IconColor": var(--wu-text-subtle),
+    "TitleFontSize": wu-font-size(lg),
+    "TitleFontWeight": wu-font-weight(semibold),
+    "TitleColor": var(--wu-text-regular),
+    "DescriptionFontSize": wu-font-size(sm),
+    "DescriptionColor": var(--wu-text-muted),
+  ));
+
+  display: wu-var("empty-state", "Display");
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: wu-var("empty-state", "Gap");
+  padding-block: wu-var("empty-state", "PaddingBlock");
+  padding-inline: wu-var("empty-state", "PaddingInline");
+  text-align: wu-var("empty-state", "TextAlign");
+  background-color: wu-var("empty-state", "BackgroundColor");
+  border: wu-var("empty-state", "BorderWidth") wu-var("empty-state", "BorderStyle") wu-var("empty-state", "BorderColor");
+  border-radius: wu-var("empty-state", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: wu-var("empty-state", "IconFontSize");
+    color: wu-var("empty-state", "IconColor");
+    line-height: 1;
+  }
+
+  @include e(title) {
+    font-size: wu-var("empty-state", "TitleFontSize");
+    font-weight: wu-var("empty-state", "TitleFontWeight");
+    color: wu-var("empty-state", "TitleColor");
+    margin: 0;
+  }
+
+  @include e(description) {
+    max-inline-size: 32rem;
+    font-size: wu-var("empty-state", "DescriptionFontSize");
+    color: wu-var("empty-state", "DescriptionColor");
+    margin: 0;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: wu-space(3);
+    margin-block-start: wu-space(2);
+  }
+
+  // ---- sizes ----
+
+  @include m(sm) {
+    --wu-empty-state--PaddingBlock: #{wu-space(6)};
+    --wu-empty-state--Gap: #{wu-space(2)};
+    --wu-empty-state--IconFontSize: #{wu-font-size(2xl)};
+    --wu-empty-state--TitleFontSize: #{wu-font-size(md)};
+  }
+
+  @include m(lg) {
+    --wu-empty-state--PaddingBlock: #{wu-space(12)};
+    --wu-empty-state--Gap: #{wu-space(4)};
+    --wu-empty-state--IconFontSize: 3.5rem;
+    --wu-empty-state--TitleFontSize: #{wu-font-size(xl)};
+  }
+
+  // ---- fill ----
+  //
+  // The base block is content-height, so inside a tall flex column (a chat
+  // pane, a scroll region) it pins to the top instead of sitting in the middle
+  // of the space it is describing. This grows it to claim the free space; the
+  // centring already declared on the block then does the rest.
+  // `min-block-size: 0` keeps it shrinkable inside a scroll parent.
+
+  @include m(fill) {
+    flex: 1;
+    min-block-size: 0;
+  }
+
+  // ---- bordered container ----
+
+  @include m(bordered) {
+    --wu-empty-state--BorderWidth: 1px;
+    --wu-empty-state--BorderStyle: dashed;
+    --wu-empty-state--BorderColor: var(--wu-border-regular);
+  }
+}

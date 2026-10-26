@@ -29,7 +29,7 @@ module('Integration | Component | reset-password-form', function (hooks) {
     );
     assert
       .dom(
-        '[data-test-reset-password-confirm-field] [data-test-nu-field-error]',
+        '[data-test-reset-password-confirm-field] [data-test-wu-field-error]',
       )
       .hasText('Re-enter the same password');
     assert.dom('[data-test-reset-password-error]').doesNotExist();

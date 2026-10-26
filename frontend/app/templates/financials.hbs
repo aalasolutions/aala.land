@@ -1,24 +1,24 @@
 {{page-title "Financials"}}
 
 <div data-test-financials-page class="flex col gap-6">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Financial Overview"
     @subtitle="Transactions, revenue, and payment tracking."
   >
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @icon="plus"
         data-test-new-transaction
         {{on "click" this.openCreate}}
       >
         New Transaction
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#unless @model.forbidden}}
-    <Nuvo::Card
+    <Woven::Card
       @title="Cheques to chase"
       @subtitle="Overdue and due this week, as of today. The period below does not filter this list."
       data-test-financials-queue
@@ -45,7 +45,7 @@
           <ul class="finance-queue">
             {{#each this.queue.rows key="key" as |row|}}
               <li class="finance-queue__row" data-test-queue-row={{row.kind}}>
-                <Nuvo::Tag
+                <Woven::Tag
                   @size="sm"
                   @variant={{if row.isOverdue "danger"}}
                   @text={{row.dueLabel}}
@@ -110,20 +110,20 @@
               more)</LinkTo>
           {{/if}}
         {{else if (not this.queueFailed)}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="Nothing to chase. No cheque or payment is overdue or due this week."
             data-test-queue-empty
           />
         {{/if}}
       </div>
-    </Nuvo::Card>
+    </Woven::Card>
   {{/unless}}
 
   <div class="finance-filters" data-test-financials-period>
     <h2 class="text-lg font-bold">{{this.rangeLabel}}</h2>
 
     <div class="finance-filters__range">
-      <Nuvo::Segmented
+      <Woven::Segmented
         @options={{this.rangeOptions}}
         @value={{this.range}}
         @onChange={{this.setRange}}
@@ -132,7 +132,7 @@
 
       {{#if this.isCustomRange}}
         <div class="finance-filters__dates" data-test-financials-custom-range>
-          <Nuvo::Input
+          <Woven::Input
             type="date"
             aria-label="From date"
             max={{this.to}}
@@ -142,7 +142,7 @@
             data-test-financials-from
           />
           <span class="finance-filters__to">to</span>
-          <Nuvo::Input
+          <Woven::Input
             type="date"
             aria-label="To date"
             min={{this.from}}
@@ -165,21 +165,21 @@
 
   {{#if this.totals}}
     <div class="grid cols-1 cols-3@md gap-4">
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-summary="total-income"
         @variant="success"
         @label="Collected"
         @value={{format-money this.totals.income}}
         @delta={{this.rangeLabel}}
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-summary="total-expense"
         @variant="danger"
         @label="Spent"
         @value={{format-money this.totals.expense}}
         @delta={{this.rangeLabel}}
       />
-      <Nuvo::Stat
+      <Woven::Stat
         data-test-summary="net"
         @label="Net"
         @value={{format-money this.totals.net}}
@@ -190,7 +190,7 @@
 
   {{#unless @model.forbidden}}
     <div class="grid cols-1 cols-2@lg gap-4">
-      <Nuvo::Card
+      <Woven::Card
         @title="Cash flow"
         @subtitle="Completed income and expense by {{this.bucketNoun}}, ending with the selected period."
         data-test-financials-cashflow
@@ -204,14 +204,14 @@
         {{else if this.cashflow.length}}
           <CashflowChart @points={{this.cashflow}} />
         {{else}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="No cash flow for this period."
             data-test-cashflow-empty
           />
         {{/if}}
-      </Nuvo::Card>
+      </Woven::Card>
 
-      <Nuvo::Card
+      <Woven::Card
         @title="Where the money went"
         @subtitle="Completed expenses by category for the selected period."
         data-test-financials-categories
@@ -233,7 +233,7 @@
                   <span>{{transaction-category-label row.category}}</span>
                   <span class="font-bold"><Money @amount={{row.total}} /></span>
                 </div>
-                <Nuvo::Progress
+                <Woven::Progress
                   @value={{row.share}}
                   @variant="danger"
                   @size="sm"
@@ -244,17 +244,17 @@
             {{/each}}
           </div>
         {{else}}
-          <Nuvo::EmptyState
+          <Woven::EmptyState
             @description="No completed expenses in this period."
             data-test-categories-empty
           />
         {{/if}}
-      </Nuvo::Card>
+      </Woven::Card>
     </div>
   {{/unless}}
 
   <div>
-    <Nuvo::Segmented
+    <Woven::Segmented
       @options={{this.transactionTabs}}
       @value={{this.activeTab}}
       @onChange={{this.setTab}}
@@ -262,9 +262,9 @@
     />
   </div>
 
-  <Nuvo::Card @title="Transactions">
+  <Woven::Card @title="Transactions">
     {{#if @model.forbidden}}
-      <Nuvo::Alert
+      <Woven::Alert
         @variant="danger"
         @title="No access to financial records"
         @description="Your role or the active region does not allow viewing financial records."
@@ -278,7 +278,7 @@
         data-test-financials-error
       />
     {{else if this.filteredTransactions.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{this.filteredTransactions}}
         @pinColumns={{true}}
@@ -303,7 +303,7 @@
             />
           </span>
         {{else if (eq cell.key "status")}}
-          <Nuvo::Tag
+          <Woven::Tag
             class="tag-txn-{{lowercase cell.value}}"
             @text={{cell.value}}
           />
@@ -314,7 +314,7 @@
             {{! The cheque owns this row; editing it is refused with a 409. }}
             <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
           {{else}}
-            <Nuvo::Button
+            <Woven::Button
               @subtle={{true}}
               @variant="secondary"
               @size="xs"
@@ -328,14 +328,14 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else if @model.total}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         data-test-financials-page-empty
         @description="No transactions on this page with current filters. Adjust filters or navigate to find transactions."
       />
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         data-test-financials-empty
         @description={{if
           (eq this.activeTab "INCOME")
@@ -350,7 +350,7 @@
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="financials-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -361,7 +361,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
 <Financials::TransactionDrawer

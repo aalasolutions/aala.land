@@ -1,21 +1,21 @@
 {{page-title "Properties"}}
 
 <div data-test-properties-page class="flex col gap-4">
-  <Nuvo::PageHeader
+  <Woven::PageHeader
     @title="Properties"
     @subtitle="Locations, assets, and properties."
   >
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         data-test-new-unit
         @icon="plus"
         {{on "click" this.openNewUnitModal}}
       >
         New Property
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   {{#if (eq this.currentView "cards")}}
     {{#if @model.length}}
@@ -25,7 +25,7 @@
             data-test-locality-card
             @route="properties.detail"
             @model={{loc.id}}
-            class="nu-card m-interactive flex between x-center"
+            class="wu-card m-interactive flex between x-center"
           >
             <div class="flex gap-6">
               <div>
@@ -42,14 +42,14 @@
         {{/each}}
       </div>
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         @title="No assets yet"
         @description="Click New Property to add your first property."
       />
     {{/if}}
   {{else if (eq this.currentView "list")}}
     {{#if @model.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{@model}}
         @pinColumns={{true}}
@@ -65,7 +65,7 @@
         {{else if (eq cell.key "cityName")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <Nuvo::Button
+          <Woven::Button
             data-test-view-locality
             @subtle={{true}}
             @variant="primary"
@@ -79,9 +79,9 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         @title="No assets yet"
         @description="Click New Property to add your first property."
       />
@@ -91,9 +91,9 @@
       <div class="flex x-center gap-3">
         <FiltersButton @count={{this.activeFilterCount}}>
           <div class="flex col gap-4" data-test-browse-filters>
-            <div class="nu-filter-row">
-              <Nuvo::Field @label="Type">
-                <Nuvo::Dropdown
+            <div class="wu-filter-row">
+              <Woven::Field @label="Type">
+                <Woven::Dropdown
                   @align="start"
                   @value={{this.filterType}}
                   @onSelect={{this.setFilterType}}
@@ -101,9 +101,9 @@
                   @placeholder="All"
                   data-test-filter-type
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Status">
-                <Nuvo::Dropdown
+              </Woven::Field>
+              <Woven::Field @label="Status">
+                <Woven::Dropdown
                   @align="start"
                   @value={{this.filterStatus}}
                   @onSelect={{this.setFilterStatus}}
@@ -111,9 +111,9 @@
                   @placeholder="All"
                   data-test-filter-status
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Bedrooms">
-                <Nuvo::Dropdown
+              </Woven::Field>
+              <Woven::Field @label="Bedrooms">
+                <Woven::Dropdown
                   @align="start"
                   @value={{this.filterBeds}}
                   @onSelect={{this.setFilterBeds}}
@@ -121,21 +121,21 @@
                   @placeholder="Any"
                   data-test-filter-beds
                 />
-              </Nuvo::Field>
-              <Nuvo::Field
+              </Woven::Field>
+              <Woven::Field
                 @label="Visibility"
                 @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
               >
-                <Nuvo::Dropdown
+                <Woven::Dropdown
                   @align="start"
                   @value={{this.archivedFilterValue}}
                   @onSelect={{this.setArchivedFilter}}
                   @options={{this.archivedFilterOptions}}
                   data-test-archived-filter
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Min Price">
-                <Nuvo::Input
+              </Woven::Field>
+              <Woven::Field @label="Min Price">
+                <Woven::Input
                   type="number"
                   placeholder="Min"
                   @value={{this.filterMinPrice}}
@@ -143,9 +143,9 @@
                   data-test-filter-min-price
                   {{on "change" this.applyFilters}}
                 />
-              </Nuvo::Field>
-              <Nuvo::Field @label="Max Price">
-                <Nuvo::Input
+              </Woven::Field>
+              <Woven::Field @label="Max Price">
+                <Woven::Input
                   type="number"
                   placeholder="Max"
                   @value={{this.filterMaxPrice}}
@@ -153,7 +153,7 @@
                   data-test-filter-max-price
                   {{on "change" this.applyFilters}}
                 />
-              </Nuvo::Field>
+              </Woven::Field>
             </div>
 
             <div>
@@ -166,7 +166,7 @@
                 {{#each this.amenityOptions as |opt|}}
                   <button
                     type="button"
-                    class="nu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
+                    class="wu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
                     data-test-amenity-filter={{opt.key}}
                     aria-pressed={{if
                       (includes this.filterAmenities opt.key)
@@ -183,7 +183,7 @@
             </div>
 
             <div class="flex end">
-              <Nuvo::Button
+              <Woven::Button
                 @variant="secondary"
                 @size="sm"
                 @icon="x"
@@ -192,7 +192,7 @@
                 data-test-clear-filters
               >
                 Clear filters
-              </Nuvo::Button>
+              </Woven::Button>
             </div>
           </div>
         </FiltersButton>
@@ -207,8 +207,8 @@
       </div>
       <div class="browse-toolbar__controls">
         <div class="browse-toolbar__sort">
-          <Nuvo::BtnGroup @attached={{true}} role="group" aria-label="Sort by">
-            <Nuvo::Dropdown
+          <Woven::BtnGroup @attached={{true}} role="group" aria-label="Sort by">
+            <Woven::Dropdown
               id="browse-sort-field"
               @size="xs"
               @align="end"
@@ -226,7 +226,7 @@
               }}
               data-tooltip-position="start"
             >
-              <Nuvo::Button
+              <Woven::Button
                 @variant="secondary"
                 @size="xs"
                 @icon={{if
@@ -241,9 +241,9 @@
                 data-test-sort-direction
               />
             </span>
-          </Nuvo::BtnGroup>
+          </Woven::BtnGroup>
         </div>
-        <Nuvo::Segmented
+        <Woven::Segmented
           @options={{this.browseLayoutOptions}}
           @value={{this.browseLayout}}
           @onChange={{this.setBrowseLayout}}
@@ -255,10 +255,10 @@
     </div>
 
     {{#if this.isLoadingBrowse}}
-      <Nuvo::Card class="text-center">
-        <Nuvo::Spinner />
+      <Woven::Card class="text-center">
+        <Woven::Spinner />
         <p class="text-muted mt-2">Loading...</p>
-      </Nuvo::Card>
+      </Woven::Card>
     {{else if this.browseUnits.length}}
       <div
         class="browse-unit-grid {{if (eq this.browseLayout 'list') 'is-list'}}"
@@ -292,17 +292,17 @@
             </div>
             <div class="unit-browse-card__state">
               {{#if unit.deletedAt}}
-                <Nuvo::Tag
+                <Woven::Tag
                   @variant="secondary"
                   @text="Archived"
                   data-test-archived-badge
                 />
               {{/if}}
-              <Nuvo::Tag
+              <Woven::Tag
                 class="tag-unit-{{lowercase unit.status}}"
                 @text={{capitalize unit.status}}
               />
-              <Nuvo::Tag
+              <Woven::Tag
                 class="tag-proptype-{{lowercase unit.propertyType}}"
                 @text={{property-type-label unit.propertyType}}
               />
@@ -358,39 +358,39 @@
 
       {{#if this.browseHasNextPage}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <Nuvo::Button
+          <Woven::Button
             data-test-browse-prev
             @variant="secondary"
             @size="sm"
             @disabled={{eq this.browsePage 1}}
             {{on "click" this.browsePrevPage}}
-          >Previous</Nuvo::Button>
+          >Previous</Woven::Button>
           <span class="text-sm text-muted">Page {{this.browsePage}}</span>
-          <Nuvo::Button
+          <Woven::Button
             data-test-browse-next
             @variant="secondary"
             @size="sm"
             {{on "click" this.browseNextPage}}
-          >Next</Nuvo::Button>
+          >Next</Woven::Button>
         </div>
       {{else if (gt this.browsePage 1)}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <Nuvo::Button
+          <Woven::Button
             data-test-browse-prev-empty
             @variant="secondary"
             @size="sm"
             {{on "click" this.browsePrevPage}}
-          >Previous</Nuvo::Button>
+          >Previous</Woven::Button>
           <span class="text-sm text-muted">Page {{this.browsePage}}</span>
         </div>
       {{/if}}
     {{else}}
-      <Nuvo::EmptyState
+      <Woven::EmptyState
         @title="No properties found"
         @description="No properties match your filters."
       >
         <:icon><Ui::Ph @icon="magnifying-glass" /></:icon>
-      </Nuvo::EmptyState>
+      </Woven::EmptyState>
     {{/if}}
   {{/if}}
 </div>

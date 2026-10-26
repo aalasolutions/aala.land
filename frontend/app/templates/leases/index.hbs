@@ -1,23 +1,23 @@
 {{page-title "Leases"}}
 
 <div data-test-leases-page class="flex col gap-4">
-  <Nuvo::PageHeader @title="Lease Agreements" @subtitle="Manage tenant lease contracts and renewals.">
+  <Woven::PageHeader @title="Lease Agreements" @subtitle="Manage tenant lease contracts and renewals.">
     <:meta>
       <p class="text-muted">{{format-number @model.total unit="lease"}}</p>
     </:meta>
     <:actions>
-      <Nuvo::Button
+      <Woven::Button
         @variant="primary"
         @icon="plus"
         {{on "click" this.openCreate}}
       >
         New Lease
-      </Nuvo::Button>
+      </Woven::Button>
     </:actions>
-  </Nuvo::PageHeader>
+  </Woven::PageHeader>
 
   <div class="flex x-center gap-3 wrap" data-test-leases-toolbar>
-    <Nuvo::Segmented
+    <Woven::Segmented
       @options={{this.statusTabs}}
       @value={{this.status}}
       @onChange={{this.setStatusTab}}
@@ -26,7 +26,7 @@
     <FiltersButton @count={{this.activeFilterCount}}>
       <div class="flex col gap-4">
         <div class="flex gap-3 wrap">
-          <Nuvo::Input
+          <Woven::Input
             type="text"
             autocomplete="off"
             placeholder="Search tenant, unit number, registration ref..."
@@ -38,8 +38,8 @@
         </div>
 
         <div class="flex gap-3 wrap x-end">
-          <Nuvo::Field class="grow" @label="Type">
-            <Nuvo::Dropdown
+          <Woven::Field class="grow" @label="Type">
+            <Woven::Dropdown
               id="leases-type-filter"
               @align="start"
               @value={{this.type}}
@@ -47,40 +47,40 @@
               @options={{this.typeFilterOptions}}
               data-test-type-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Visibility">
-            <Nuvo::Dropdown
+          </Woven::Field>
+          <Woven::Field @label="Visibility">
+            <Woven::Dropdown
               @align="start"
               @value={{this.archived}}
               @onSelect={{this.setArchivedTab}}
               @options={{this.archivedTabs}}
               data-test-archived-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Start date from">
+          </Woven::Field>
+          <Woven::Field @label="Start date from">
             <input
               type="date"
-              class="nu-input"
+              class="wu-input"
               aria-label="Start date from"
               value={{this.dateFrom}}
               {{on "change" this.setDateFrom}}
               data-test-date-from-filter
             />
-          </Nuvo::Field>
-          <Nuvo::Field @label="Start date to">
+          </Woven::Field>
+          <Woven::Field @label="Start date to">
             <input
               type="date"
-              class="nu-input"
+              class="wu-input"
               aria-label="Start date to"
               value={{this.dateTo}}
               {{on "change" this.setDateTo}}
               data-test-date-to-filter
             />
-          </Nuvo::Field>
+          </Woven::Field>
         </div>
 
         <div class="flex end">
-          <Nuvo::Button
+          <Woven::Button
             @variant="danger"
             @size="sm"
             @icon="x"
@@ -89,15 +89,15 @@
             data-test-clear-filters
           >
             Clear filters
-          </Nuvo::Button>
+          </Woven::Button>
         </div>
       </div>
     </FiltersButton>
   </div>
 
-  <Nuvo::Card @compact={{true}}>
+  <Woven::Card @compact={{true}}>
     {{#if @model.leases.length}}
-      <Nuvo::DataTable
+      <Woven::DataTable
         @columns={{this.columns}}
         @rows={{@model.leases}}
         @pinColumns={{true}}
@@ -117,7 +117,7 @@
           >{{or (contact-name cell.row.contact) "Unknown tenant"}}</LinkTo>
         {{else if (eq cell.key "unit.unitNumber")}}
           {{#if cell.row.unit}}
-            <Nuvo::Button
+            <Woven::Button
               @variant="secondary"
               @size="xs"
               @route="properties.unit"
@@ -135,12 +135,12 @@
           <span class="text-muted">{{format-date cell.value}} - {{format-date cell.row.endDate}}</span>
         {{else if (eq cell.key "status")}}
           <div class="flex gap-1 wrap">
-            <Nuvo::Tag
+            <Woven::Tag
               class="tag-lease-{{lowercase cell.value}}"
               @text={{cell.value}}
             />
             {{#if cell.row.deletedAt}}
-              <Nuvo::Tag
+              <Woven::Tag
                 @variant="secondary"
                 @text="Archived"
                 data-test-lease-archived-badge
@@ -152,7 +152,7 @@
         {{else if (eq cell.key "id")}}
           <div class="flex">
             {{#if this.canViewHistory}}
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -168,7 +168,7 @@
             {{/if}}
             {{#if cell.row.deletedAt}}
               {{#if this.canArchiveLease}}
-                <Nuvo::Button
+                <Woven::Button
                   data-test-unarchive-lease
                   @subtle={{true}}
                   @variant="secondary"
@@ -182,7 +182,7 @@
                 />
               {{/if}}
             {{else}}
-              <Nuvo::Button
+              <Woven::Button
                 @subtle={{true}}
                 @variant="secondary"
                 @size="xs"
@@ -193,7 +193,7 @@
                 {{on "click" (fn this.openEdit cell.row)}}
               />
               {{#if (eq cell.row.status "ACTIVE")}}
-                <Nuvo::Button
+                <Woven::Button
                   data-test-renew-lease
                   @subtle={{true}}
                   @variant="secondary"
@@ -203,7 +203,7 @@
                   data-tooltip="Renew"
                   {{on "click" (fn this.renewLease cell.row)}}
                 />
-                <Nuvo::Button
+                <Woven::Button
                   data-test-terminate-lease
                   @subtle={{true}}
                   @variant="danger"
@@ -217,7 +217,7 @@
                 />
               {{/if}}
               {{#if (eq cell.row.status "EXPIRED")}}
-                <Nuvo::Button
+                <Woven::Button
                   data-test-renew-lease
                   @subtle={{true}}
                   @variant="secondary"
@@ -230,7 +230,7 @@
               {{/if}}
               {{#if (eq cell.row.status "DRAFT")}}
                 {{#if this.canDeleteLease}}
-                  <Nuvo::Button
+                  <Woven::Button
                     @subtle={{true}}
                     @variant="danger"
                     @size="xs"
@@ -245,7 +245,7 @@
                 {{/if}}
               {{else if this.canArchiveLease}}
                 {{#unless (eq cell.row.status "ACTIVE")}}
-                  <Nuvo::Button
+                  <Woven::Button
                     data-test-archive-lease
                     @subtle={{true}}
                     @variant="secondary"
@@ -264,21 +264,21 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </Nuvo::DataTable>
+      </Woven::DataTable>
     {{else}}
       {{#if @model.total}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
         />
       {{else}}
-        <Nuvo::EmptyState
+        <Woven::EmptyState
           @description="No leases yet. Create your first lease agreement."
         />
       {{/if}}
     {{/if}}
 
     {{#if @model.total}}
-      <Nuvo::Pagination
+      <Woven::Pagination
         @selectId="leases-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -289,7 +289,7 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </Nuvo::Card>
+  </Woven::Card>
 </div>
 
 <Leases::LeaseDrawer
@@ -323,8 +323,8 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
-    <Nuvo::Textarea
+  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Woven::Textarea
       id="lease-delete-reason"
       rows="2"
       maxlength="500"
@@ -335,7 +335,7 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>
 
 <ConfirmModal
@@ -362,13 +362,13 @@
   @onClose={{this.closeArchiveModal}}
   @onConfirm={{this.confirmArchive}}
 >
-  <Nuvo::Field
+  <Woven::Field
     class="mt-4"
     @label={{if (eq this.archiveMode "archive") "Reason" "Reason (optional)"}}
     @required={{eq this.archiveMode "archive"}}
     @error={{this.reasonError}}
   >
-    <Nuvo::Textarea
+    <Woven::Textarea
       id="lease-archive-reason"
       rows="2"
       maxlength="500"
@@ -379,10 +379,10 @@
       aria-label="Reason"
       data-test-reason-input
     />
-  </Nuvo::Field>
+  </Woven::Field>
 </ConfirmModal>
 
-<Nuvo::Drawer
+<Woven::Drawer
   @open={{if this.historyLease true false}}
   @title="Lease History"
   @placement="end"
@@ -394,4 +394,4 @@
       <RecordHistoryList @entityType="Lease" @entityId={{this.historyLease.id}} />
     {{/if}}
   </:body>
-</Nuvo::Drawer>
+</Woven::Drawer>

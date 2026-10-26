@@ -155,7 +155,7 @@ module('Integration | Template | contacts/detail', function (hooks) {
 
     assert.deepEqual(this.refreshed, []);
     assert
-      .dom('[data-test-nu-field-error]')
+      .dom('[data-test-wu-field-error]')
       .hasText('The number does not match');
   });
 
@@ -173,12 +173,12 @@ module('Integration | Template | contacts/detail', function (hooks) {
     assert.dom('[data-test-verify-phone-form]').doesNotExist();
     assert.dom('[data-test-request-access]').doesNotExist();
     assert.dom('[data-test-limited-badge]').doesNotExist();
-    assert.dom('[data-test-nu-tabs-trigger="documents"]').exists();
+    assert.dom('[data-test-wu-tabs-trigger="documents"]').exists();
     assert
       .dom('[data-test-contact-documents]')
       .exists('no records: Documents is open');
 
-    await click('[data-test-nu-tabs-trigger="history"]');
+    await click('[data-test-wu-tabs-trigger="history"]');
     assert.dom('[data-test-contact-history]').exists();
   });
 
@@ -205,15 +205,15 @@ module('Integration | Template | contacts/detail', function (hooks) {
     });
 
     assert
-      .dom('[data-test-nu-tabs-trigger="leads"]')
+      .dom('[data-test-wu-tabs-trigger="leads"]')
       .hasAttribute('aria-selected', 'true');
     assert.dom('[data-test-contact-leads] [data-test-lead-card]').exists();
 
-    await click('[data-test-nu-tabs-trigger="leases"]');
+    await click('[data-test-wu-tabs-trigger="leases"]');
     assert
       .dom('[data-test-lease-row]')
       .hasAttribute('href', /\/leases\/lease-1$/);
-    assert.dom('[data-test-nu-tabs-trigger="properties"]').doesNotExist();
+    assert.dom('[data-test-wu-tabs-trigger="properties"]').doesNotExist();
   });
 
   test("a lead in another region prices its budget in that region's currency", async function (assert) {
@@ -270,10 +270,10 @@ module('Integration | Template | contacts/detail', function (hooks) {
     });
 
     assert
-      .dom('[data-test-nu-tabs-trigger="leases"]')
+      .dom('[data-test-wu-tabs-trigger="leases"]')
       .hasAttribute('aria-selected', 'true');
     assert
-      .dom('[data-test-nu-tabs-trigger="leads"]')
+      .dom('[data-test-wu-tabs-trigger="leads"]')
       .hasAttribute('aria-selected', 'false');
     assert.dom('[data-test-contact-relationship]').includesText('Rents 302');
   });
@@ -290,9 +290,9 @@ module('Integration | Template | contacts/detail', function (hooks) {
     });
 
     assert
-      .dom('[data-test-nu-tabs-trigger="properties"]')
+      .dom('[data-test-wu-tabs-trigger="properties"]')
       .hasAttribute('aria-selected', 'true');
-    assert.dom('[data-test-nu-tabs-trigger="properties"]').includesText('150');
+    assert.dom('[data-test-wu-tabs-trigger="properties"]').includesText('150');
     assert
       .dom('[data-test-contact-relationship]')
       .hasText('Owns 150 properties.');
@@ -330,7 +330,7 @@ module('Integration | Template | contacts/detail', function (hooks) {
     });
 
     await click(
-      '[data-test-contact-properties-pager] [data-test-nu-pagination-page="2"]',
+      '[data-test-contact-properties-pager] [data-test-wu-pagination-page="2"]',
     );
 
     const paths = this.calls.map((c) => c.path);
@@ -340,7 +340,7 @@ module('Integration | Template | contacts/detail', function (hooks) {
     assert.strictEqual(controller.pages.properties, 2);
     assert.strictEqual(controller.pages.leases, 1);
 
-    await click('[data-test-nu-tabs-trigger="leases"]');
+    await click('[data-test-wu-tabs-trigger="leases"]');
     assert.dom('[data-test-lease-row]').hasText('L1');
     assert.dom('[data-test-contact-leases-pager]').doesNotExist();
   });
