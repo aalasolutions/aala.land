@@ -188,28 +188,26 @@
         </div>
 
         {{#if this.isFreeTier}}
-          {{#if (eq 1 2)}}
-            <div class="mb-3" data-test-refund-terms-field>
-              <Woven::Checkbox
-                @checked={{this.refundTermsAccepted}}
-                @label={{this.refundTermsLabel}}
-                @onChange={{this.setRefundTermsAccepted}}
-                data-test-refund-terms
-              />
-            </div>
-            <Woven::Button
-              @variant="primary"
-              @loading={{this.isBillingBusy}}
-              @disabled={{not this.refundTermsAccepted}}
-              data-test-upgrade-pro
-              {{on "click" this.upgradeToPro}}
-            >
-              {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
-            </Woven::Button>
-            <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
-              Pro starts with your current team. Add members later under Team.
-            </p>
-          {{/if}}
+          <div class="mb-3" data-test-refund-terms-field>
+            <Woven::Checkbox
+              @checked={{this.refundTermsAccepted}}
+              @label={{this.refundTermsLabel}}
+              @onChange={{this.setRefundTermsAccepted}}
+              data-test-refund-terms
+            />
+          </div>
+          <Woven::Button
+            @variant="primary"
+            @loading={{this.isBillingBusy}}
+            @disabled={{not this.refundTermsAccepted}}
+            data-test-upgrade-pro
+            {{on "click" this.upgradeToPro}}
+          >
+            {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
+          </Woven::Button>
+          <p class="text-sm text-muted mt-3" data-test-pro-seat-note>
+            Pro starts with your current team. Add members later under Team.
+          </p>
           <p class="text-sm text-muted mt-3">
             Every Pro seat adds 5 GB of storage. Need white-label, ERP
             integration, or dedicated infrastructure?
