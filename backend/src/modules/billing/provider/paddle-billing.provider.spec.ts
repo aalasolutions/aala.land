@@ -394,6 +394,29 @@ describe('PaddleBillingProvider', () => {
       );
     });
 
+    it('uses PADDLE_CHECKOUT_URL as the checkout page when set', async () => {
+      const configured = new PaddleBillingProvider(
+        configWith({
+          PADDLE_API_KEY: 'key',
+          PADDLE_CHECKOUT_URL: 'https://www.example.com/checkout',
+        }),
+      );
+      client.transactions.create.mockResolvedValue({ id: 'txn_4' });
+      const result = await configured.createSubscription({
+        ...base,
+        basePriceId: null,
+        plan: 'PRO',
+        quantity: 1,
+      });
+      const url = new URL(result.checkoutUrl);
+      expect(url.origin + url.pathname).toBe(
+        'https://www.example.com/checkout',
+      );
+      expect(url.searchParams.get('_ptxn')).toBe('txn_4');
+      expect(url.searchParams.get('success')).toBe(base.successUrl);
+      expect(url.searchParams.get('cancel')).toBe(base.cancelUrl);
+    });
+
     it('adds the base line for ENTERPRISE and omits a zero seat line', async () => {
       client.transactions.create.mockResolvedValue({ id: 'txn_2' });
       await provider.createSubscription({

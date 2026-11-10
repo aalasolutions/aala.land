@@ -793,11 +793,13 @@ export class PaddleBillingProvider implements BillingProvider {
         collectionMode: 'automatic',
       }),
     );
-    // Our own page opens the checkout from _ptxn, so no Paddle-approved checkout domain is needed.
-    const checkoutUrl = new URL(
-      CHECKOUT_PAGE_PATH,
-      new URL(input.successUrl).origin,
-    );
+    // Our own page opens the checkout from _ptxn; live checkout needs it on a Paddle-approved domain.
+    const configuredPage = this.config
+      .get<string>('PADDLE_CHECKOUT_URL')
+      ?.trim();
+    const checkoutUrl = configuredPage
+      ? new URL(configuredPage)
+      : new URL(CHECKOUT_PAGE_PATH, new URL(input.successUrl).origin);
     checkoutUrl.searchParams.set('_ptxn', transaction.id);
     checkoutUrl.searchParams.set('success', input.successUrl);
     checkoutUrl.searchParams.set('cancel', input.cancelUrl);
