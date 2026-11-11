@@ -74,7 +74,7 @@ export class AuthGoogleService {
     });
 
     const response = await this.authService.login(loginUser);
-    await this.authService.sendWelcomeEmail(loginUser);
+    void this.authService.sendWelcomeEmail(loginUser);
     return response;
   }
 

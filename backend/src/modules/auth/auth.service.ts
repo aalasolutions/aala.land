@@ -395,7 +395,7 @@ export class AuthService {
       };
     });
 
-    await this.sendWelcomeEmail(result.user);
+    void this.sendWelcomeEmail(result.user);
 
     return result;
   }
