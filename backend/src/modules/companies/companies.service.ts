@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull } from 'typeorm';
 import {
@@ -20,9 +21,13 @@ import { REGIONS } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '@shared/enums/roles.enum';
 import { errorMessage } from '@shared/utils/error.util';
-import { BillingService } from '../billing/billing.service';
 import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+
+// Internal unique key only; signup never takes a slug from the user.
+export function generateCompanySlug(): string {
+  return `company-${randomUUID()}`;
+}
 
 @Injectable()
 export class CompaniesService {
@@ -34,7 +39,6 @@ export class CompaniesService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
-    private readonly billingService: BillingService,
     private readonly whatsappGateway: WhatsappGateway,
     private readonly notificationsGateway: NotificationsGateway,
   ) {}
@@ -55,14 +59,6 @@ export class CompaniesService {
 
     const company = this.companyRepository.create(dto);
     const saved = await this.companyRepository.save(company);
-
-    // fire-and-forget: never block signup on the billing provider
-    this.billingService.ensureCompanyCustomer(saved).catch((err) => {
-      const message = `billing customer creation failed for company ${saved.id}: ${errorMessage(err)}`;
-      // A console-created company has no admin yet; checkout creates the customer later.
-      if (err instanceof BadRequestException) this.logger.debug(message);
-      else this.logger.error(message);
-    });
 
     return saved;
   }
@@ -332,9 +328,6 @@ export class CompaniesService {
   }
 
   async createGoogleCompanyAdmin(dto: {
-    companyName: string;
-    slug: string;
-    regionCode: string;
     googleId: string;
     email: string;
     name: string;
@@ -342,80 +335,47 @@ export class CompaniesService {
   }): Promise<
     Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId' | 'regionCodes'>
   > {
-    this.validateRegionCode(dto.regionCode);
-
     try {
-      const { user, company: savedCompanyOut } =
-        await this.dataSource.transaction(async (manager) => {
-          const companyRepo = manager.getRepository(Company);
-          const userRepo = manager.getRepository(User);
+      const user = await this.dataSource.transaction(async (manager) => {
+        const companyRepo = manager.getRepository(Company);
+        const userRepo = manager.getRepository(User);
 
-          const existingSlug = await companyRepo.findOne({
-            where: { slug: dto.slug },
-            select: { id: true },
-          });
-          if (existingSlug) {
-            throw new ConflictException(
-              'This company name is already taken. Please choose a different one.',
-            );
-          }
-
-          const company = companyRepo.create({
-            name: dto.companyName,
-            slug: dto.slug,
-            defaultRegionCode: dto.regionCode,
-            activeRegions: [dto.regionCode],
-            // First-touch attribution; immutable after this write.
-            marketerCode: dto.marketerCode?.trim() || null,
-          });
-          const savedCompany = await companyRepo.save(company);
-
-          const userEntity = userRepo.create({
-            googleId: dto.googleId,
-            email: dto.email,
-            name: dto.name,
-            authProvider: AuthProvider.GOOGLE,
-            password: null,
-            role: Role.COMPANY_ADMIN,
-            companyId: savedCompany.id,
-            regionCodes: [dto.regionCode],
-          });
-          const savedUser = await userRepo.save(userEntity);
-
-          return {
-            user: {
-              id: savedUser.id,
-              name: savedUser.name,
-              email: savedUser.email,
-              role: savedUser.role,
-              companyId: savedCompany.id,
-              regionCodes: savedUser.regionCodes,
-            },
-            company: savedCompany,
-          };
+        const company = companyRepo.create({
+          name: '',
+          slug: generateCompanySlug(),
+          defaultRegionCode: null,
+          activeRegions: [],
+          // First-touch attribution; immutable after this write.
+          marketerCode: dto.marketerCode?.trim() || null,
         });
+        const savedCompany = await companyRepo.save(company);
 
-      // fire-and-forget, AFTER the transaction has committed
-      this.billingService
-        .ensureCompanyCustomer(savedCompanyOut)
-        .catch((err) =>
-          this.logger.error(
-            `billing customer creation failed for company ${savedCompanyOut.id}: ${errorMessage(err)}`,
-          ),
-        );
+        const userEntity = userRepo.create({
+          googleId: dto.googleId,
+          email: dto.email,
+          name: dto.name,
+          authProvider: AuthProvider.GOOGLE,
+          password: null,
+          role: Role.COMPANY_ADMIN,
+          companyId: savedCompany.id,
+          regionCodes: [],
+        });
+        const savedUser = await userRepo.save(userEntity);
+
+        return {
+          id: savedUser.id,
+          name: savedUser.name,
+          email: savedUser.email,
+          role: savedUser.role,
+          companyId: savedCompany.id,
+          regionCodes: savedUser.regionCodes,
+        };
+      });
 
       return user;
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
       const dbError = error as { code?: string; constraint?: string };
       if (dbError.code === '23505') {
-        if (dbError.constraint === 'UQ_b28b07d25e4324eee577de5496d') {
-          throw new ConflictException(
-            'This company name is already taken. Please choose a different one.',
-          );
-        }
         if (
           dbError.constraint === 'UQ_97672ac88f789774dd47f7c8be3' ||
           dbError.constraint === 'IDX_users_google_id'
@@ -425,7 +385,7 @@ export class CompaniesService {
           );
         }
         throw new ConflictException(
-          'Unable to create account due to a conflict. Please verify the company name and email.',
+          'Unable to create account due to a conflict. Please try again.',
         );
       }
       throw error;

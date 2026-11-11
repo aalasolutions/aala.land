@@ -17,14 +17,11 @@ function money(amountMinor: number, currency: string): string {
 
 export function welcomeEmail(vars: {
   name: string;
-  companyName: string;
   loginUrl: string;
 }): RenderedEmail {
   const body =
     p(`Hi ${esc(vars.name)},`) +
-    p(
-      `Welcome to AALA.LAND. Your workspace for <strong>${esc(vars.companyName)}</strong> is ready.`,
-    ) +
+    p(`Welcome to AALA.LAND. Your workspace is ready.`) +
     p(
       `Add your properties, track leads on the Kanban board, and manage your team from one place.`,
     );
@@ -32,14 +29,14 @@ export function welcomeEmail(vars: {
     subject: `Welcome to AALA.LAND, ${vars.name}`,
     html: renderLayout({
       title: 'Welcome to AALA.LAND',
-      previewText: `Your workspace for ${vars.companyName} is ready.`,
+      previewText: `Your workspace is ready.`,
       bodyHtml: body,
       cta: { label: 'Open your dashboard', url: vars.loginUrl },
     }),
     text: [
       `Hi ${vars.name},`,
       ``,
-      `Welcome to AALA.LAND. Your workspace for ${vars.companyName} is ready.`,
+      `Welcome to AALA.LAND. Your workspace is ready.`,
       ``,
       `Open your dashboard: ${vars.loginUrl}`,
     ].join('\n'),

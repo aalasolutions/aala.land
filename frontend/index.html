@@ -51,6 +51,22 @@
   {{content-for "body-footer"}}
 
   <script>
+    // Stale chunk after a deploy: reload once to fetch the new index.html
+    window.addEventListener('vite:preloadError', function (event) {
+      event.preventDefault();
+      try {
+        if (!sessionStorage.getItem('preloadReloaded')) {
+          sessionStorage.setItem('preloadReloaded', '1');
+          window.location.reload();
+        }
+      } catch (e) {}
+    });
+    window.addEventListener('load', function () {
+      // Delayed so a chunk that stays missing cannot reload in a loop
+      setTimeout(function () {
+        try { sessionStorage.removeItem('preloadReloaded'); } catch (e) {}
+      }, 10000);
+    });
     if ('serviceWorker' in navigator) {
       if (window.location.hostname === 'localhost') {
         navigator.serviceWorker.getRegistrations().then(function(regs) {

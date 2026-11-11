@@ -78,12 +78,7 @@ export class AuthController {
     summary: 'Sign up with Google and create a company admin account',
   })
   async googleSignup(@Body() dto: GoogleSignupDto) {
-    return this.googleService.googleSignup(
-      dto.idToken,
-      dto.companyName,
-      dto.regionCode,
-      dto.marketerCode,
-    );
+    return this.googleService.googleSignup(dto.idToken, dto.marketerCode);
   }
 
   @UseGuards(JwtAuthGuard)

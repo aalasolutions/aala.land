@@ -7,11 +7,15 @@ import {
   MaxLength,
   Validate,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsValidRegionCode } from '../validators/is-valid-region-code.validator';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'Acme Real Estate' })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)

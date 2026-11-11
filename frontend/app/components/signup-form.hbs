@@ -4,60 +4,6 @@
   novalidate
   {{on "submit" this.submit}}
 >
-  <div class="wu-form">
-    <Woven::Field
-      @label="Company Name"
-      @required={{true}}
-      @error={{this.fieldErrors.companyName}}
-    >
-      <Woven::Input
-        id="signup-company"
-        @type="text"
-        @placeholder="Acme Real Estate"
-        @value={{this.companyName}}
-        @onInput={{fn this.updateField "companyName"}}
-        required={{true}}
-        data-test-company-name
-      />
-    </Woven::Field>
-
-    <div class="flex col gap-1 signup-slug-field">
-      <Woven::Field
-        @label="Company URL Slug"
-        @required={{true}}
-        @error={{this.fieldErrors.companySlug}}
-      >
-        <Woven::Input
-          id="signup-slug"
-          @type="text"
-          @placeholder="acme-real-estate"
-          @value={{this.companySlug}}
-          @onInput={{fn this.updateField "companySlug"}}
-          required={{true}}
-          data-test-company-slug
-        />
-      </Woven::Field>
-      <p class="text-muted px-1 text-xs">Lowercase, numbers, and hyphens only.</p>
-    </div>
-  </div>
-
-  <Woven::Field
-    @label="Primary Operating Region"
-    @error={{this.fieldErrors.region}}
-  >
-    <Woven::Dropdown
-      @searchable={{true}}
-      @align="start"
-      @value={{this.selectedRegion}}
-      @options={{this.regionOptions}}
-      @onSelect={{this.selectRegion}}
-      @placeholder="Select your region..."
-      data-test-region-select
-    />
-  </Woven::Field>
-
-  <Woven::Divider />
-
   <div class="grid cols-2 gap-4">
     <Woven::Field
       @label="Your Name"
@@ -145,35 +91,21 @@
   {{#if this.googleAuth.isConfigured}}
     <Woven::Divider @label="OR" />
 
-    {{#if this.canGoogleSignup}}
-      <div
-        class="google-signin-section
-          {{unless this.isGoogleLoading 'auth-google-button'}}"
-      >
-        {{#if this.isGoogleLoading}}
-          <button
-            type="button"
-            class="btn--google btn--google--loading"
-            disabled
-          >
-            <span class="google-spinner"></span>
-          </button>
-        {{else}}
-          <div
-            id="google-signup-button"
-            class="google-button-host"
-            {{did-insert this.renderGoogleButton}}
-          ></div>
-        {{/if}}
-      </div>
-    {{else}}
-      <button
-        type="button"
-        class="auth-google-button auth-google-button--blocked"
-        aria-label="Continue with Google"
-        {{on "click" this.showGoogleSignupRequirements}}
-        data-test-google-signup-disabled
-      ></button>
-    {{/if}}
+    <div
+      class="google-signin-section
+        {{unless this.isGoogleLoading 'auth-google-button'}}"
+    >
+      {{#if this.isGoogleLoading}}
+        <button type="button" class="btn--google btn--google--loading" disabled>
+          <span class="google-spinner"></span>
+        </button>
+      {{else}}
+        <div
+          id="google-signup-button"
+          class="google-button-host"
+          {{did-insert this.renderGoogleButton}}
+        ></div>
+      {{/if}}
+    </div>
   {{/if}}
 </form>
