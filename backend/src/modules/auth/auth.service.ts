@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { CompaniesService } from '../companies/companies.service';
+import {
+  CompaniesService,
+  generateCompanySlug,
+} from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
@@ -62,6 +65,7 @@ interface LoginResponse {
   };
   regions: Region[];
   defaultRegionCode: string;
+  companyName: string | null;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
   whatsappConfigured: boolean;
@@ -77,6 +81,7 @@ interface BootstrapResponse {
   };
   regions: Region[];
   defaultRegionCode: string;
+  companyName: string | null;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
   whatsappConfigured: boolean;
@@ -85,6 +90,8 @@ interface BootstrapResponse {
 interface CompanyContext {
   regions: Region[];
   defaultRegionCode: string;
+  /** Empty string until onboarding names the company; null without a company. */
+  companyName: string | null;
   subscriptionTier: SubscriptionTier | null;
   /** Write-lock/banner state for the tenant app; null without a company. */
   lockState: CompanyLockState | null;
@@ -167,6 +174,7 @@ export class AuthService {
     return {
       regions: resolveRegions(codes),
       defaultRegionCode,
+      companyName: company?.name ?? null,
       subscriptionTier: company?.subscriptionTier ?? null,
       // Read-time evaluation; drives the tenant lock/grace banner.
       lockState: companyId
@@ -336,22 +344,15 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    const existingSlug = await this.companiesService
-      .findBySlug(dto.companySlug)
-      .catch(() => null);
-    if (existingSlug) {
-      throw new ConflictException('Company slug already taken');
-    }
-
     const result = await this.dataSource.transaction(async (manager) => {
       const companyRepo = manager.getRepository('Company');
       const userRepo = manager.getRepository('User');
 
       const company = companyRepo.create({
-        name: dto.companyName,
-        slug: dto.companySlug,
-        defaultRegionCode: dto.defaultRegionCode,
-        activeRegions: [dto.defaultRegionCode],
+        name: '',
+        slug: generateCompanySlug(),
+        defaultRegionCode: null,
+        activeRegions: [],
         // First-touch attribution; immutable after this write.
         marketerCode: dto.marketerCode?.trim() || null,
       });
@@ -384,8 +385,9 @@ export class AuthService {
           role: savedUser.role,
           companyId: savedCompany.id,
         },
-        regions: resolveRegions(savedCompany.activeRegions),
-        defaultRegionCode: savedCompany.defaultRegionCode,
+        regions: [],
+        defaultRegionCode: '',
+        companyName: '',
         subscriptionTier: savedCompany.subscriptionTier,
         // A company created this instant cannot be locked.
         lockState: null,
@@ -393,18 +395,22 @@ export class AuthService {
       };
     });
 
-    // Sent post-commit so a mail failure never blocks signup or holds the transaction open.
-    try {
-      await this.systemEmail.sendWelcome(
-        { email: result.user.email, name: result.user.name },
-        dto.companyName,
-      );
-    } catch (err) {
-      this.logger.error(
-        `Welcome email failed for ${result.user.email}: ${errorMessage(err)}`,
-      );
-    }
+    await this.sendWelcomeEmail(result.user);
 
     return result;
+  }
+
+  // Sent post-commit so a mail failure never blocks signup or holds the transaction open.
+  async sendWelcomeEmail(user: { email: string; name: string }): Promise<void> {
+    try {
+      await this.systemEmail.sendWelcome({
+        email: user.email,
+        name: user.name,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Welcome email failed for ${user.email}: ${errorMessage(err)}`,
+      );
+    }
   }
 }

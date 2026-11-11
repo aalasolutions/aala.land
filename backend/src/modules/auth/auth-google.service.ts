@@ -52,12 +52,7 @@ export class AuthGoogleService {
     return this.authService.login(user);
   }
 
-  async googleSignup(
-    idToken: string,
-    companyName: string,
-    regionCode: string,
-    marketerCode?: string,
-  ) {
+  async googleSignup(idToken: string, marketerCode?: string) {
     const { googleId, email, name } = await this.verifyGoogleToken(idToken);
 
     const existingUser = await this.usersService.findByEmailOrGoogleId(
@@ -71,35 +66,16 @@ export class AuthGoogleService {
       );
     }
 
-    const trimmedCompanyName = companyName.trim();
-    if (!trimmedCompanyName || !regionCode) {
-      throw new BadRequestException('Company name and region are required');
-    }
-
-    const slug = trimmedCompanyName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 100)
-      .replace(/^-|-$/g, '');
-
-    if (!slug) {
-      throw new BadRequestException(
-        'Company name must contain letters or numbers',
-      );
-    }
-
     const loginUser = await this.companiesService.createGoogleCompanyAdmin({
-      companyName: trimmedCompanyName,
-      slug,
-      regionCode,
       googleId,
       email,
       name,
       marketerCode,
     });
 
-    return this.authService.login(loginUser);
+    const response = await this.authService.login(loginUser);
+    await this.authService.sendWelcomeEmail(loginUser);
+    return response;
   }
 
   async linkGoogleAccount(userId: string, idToken: string) {

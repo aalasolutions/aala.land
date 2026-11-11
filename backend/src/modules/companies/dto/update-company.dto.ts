@@ -1,6 +1,8 @@
 import {
   IsString,
   IsOptional,
+  IsNotEmpty,
+  ValidateIf,
   IsBoolean,
   IsArray,
   MaxLength,
@@ -10,14 +12,19 @@ import {
   IsDateString,
   IsEnum,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsValidRegionCode } from '../validators/is-valid-region-code.validator';
 import { SubscriptionTier } from '../entities/company.entity';
 
 export class UpdateCompanyDto {
   @ApiPropertyOptional({ example: 'Acme Real Estate Updated' })
+  @ValidateIf((_obj, value) => value !== undefined)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(255)
   name?: string;
 

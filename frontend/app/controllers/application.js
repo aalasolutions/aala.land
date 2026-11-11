@@ -45,6 +45,11 @@ export default class ApplicationController extends Controller {
   @service uiSettings;
   @service dialogs;
 
+  // Onboarding renders bare: no sidebar or topbar leading into features.
+  get showAppShell() {
+    return this.session.isAuthenticated && !this.session.needsOnboarding;
+  }
+
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
   }

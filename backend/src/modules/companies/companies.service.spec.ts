@@ -6,13 +6,11 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
-  Logger,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
-import { BillingService } from '../billing/billing.service';
 import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
@@ -71,12 +69,6 @@ describe('CompaniesService', () => {
             transaction: jest.fn(),
           },
         },
-        {
-          provide: BillingService,
-          useValue: {
-            ensureCompanyCustomer: jest.fn().mockResolvedValue('cus_test'),
-          },
-        },
         { provide: WhatsappGateway, useValue: { disconnectUser: jest.fn() } },
         {
           provide: NotificationsGateway,
@@ -109,50 +101,6 @@ describe('CompaniesService', () => {
       expect(repo.create).toHaveBeenCalled();
       expect(repo.save).toHaveBeenCalledWith(mockCompany);
       expect(result).toEqual(mockCompany);
-    });
-
-    it('still returns the saved company when ensureCompanyCustomer rejects (fire-and-forget)', async () => {
-      repo.create.mockReturnValue(mockCompany);
-      repo.save.mockResolvedValue(mockCompany);
-
-      const billingService = module.get<BillingService>(BillingService);
-      jest
-        .spyOn(billingService, 'ensureCompanyCustomer')
-        .mockRejectedValueOnce(new Error('Stripe down'));
-
-      const result = await service.create({
-        name: 'Test Company',
-        slug: 'test-company',
-        defaultRegionCode: 'dubai',
-      });
-
-      expect(result).toEqual(mockCompany);
-    });
-
-    it('logs a missing admin email at debug, not error', async () => {
-      repo.create.mockReturnValue(mockCompany);
-      repo.save.mockResolvedValue(mockCompany);
-      const billingService = module.get<BillingService>(BillingService);
-      jest
-        .spyOn(billingService, 'ensureCompanyCustomer')
-        .mockRejectedValueOnce(
-          new BadRequestException(
-            'Company has no active admin email for billing',
-          ),
-        );
-      const logger = (service as unknown as { logger: Logger }).logger;
-      const debug = jest.spyOn(logger, 'debug').mockImplementation();
-      const error = jest.spyOn(logger, 'error').mockImplementation();
-
-      await service.create({
-        name: 'Test Company',
-        slug: 'test-company',
-        defaultRegionCode: 'dubai',
-      });
-      await new Promise((resolve) => setImmediate(resolve));
-
-      expect(debug).toHaveBeenCalled();
-      expect(error).not.toHaveBeenCalled();
     });
   });
 
@@ -521,24 +469,10 @@ describe('CompaniesService', () => {
 
   describe('createGoogleCompanyAdmin', () => {
     const dto = {
-      companyName: 'Test Company',
-      slug: 'test-company',
-      regionCode: 'dubai',
       googleId: 'google-1',
       email: 'admin@test.com',
       name: 'Admin',
     };
-
-    it('maps company slug unique violations to company-name conflicts', async () => {
-      dataSource.transaction.mockRejectedValue({
-        code: '23505',
-        constraint: 'UQ_b28b07d25e4324eee577de5496d',
-      });
-
-      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
-        'This company name is already taken. Please choose a different one.',
-      );
-    });
 
     it('maps user account unique violations to account conflicts', async () => {
       const accountConstraints = [
@@ -565,22 +499,38 @@ describe('CompaniesService', () => {
       });
 
       await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
-        'Unable to create account due to a conflict. Please verify the company name and email.',
+        'Unable to create account due to a conflict. Please try again.',
       );
     });
 
-    it('propagates explicit conflict exceptions from the transaction', async () => {
-      const error = new ConflictException('explicit conflict');
-      dataSource.transaction.mockRejectedValue(error);
+    it('creates an unnamed company with no region and a generated slug', async () => {
+      const companyRepo = {
+        create: jest.fn((v) => v),
+        save: jest.fn((v) => Promise.resolve({ ...v, id: 'new-company-id' })),
+      };
+      const userRepo = {
+        create: jest.fn((v) => v),
+        save: jest.fn((v) => Promise.resolve({ ...v, id: 'new-user-id' })),
+      };
+      dataSource.transaction.mockImplementation((cb: any) =>
+        cb({
+          getRepository: (entity: unknown) =>
+            entity === Company ? companyRepo : userRepo,
+        }),
+      );
 
-      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toBe(error);
+      const result = await service.createGoogleCompanyAdmin(dto);
+
+      const companyArg = companyRepo.create.mock.calls[0][0];
+      expect(companyArg.name).toBe('');
+      expect(companyArg.slug).toMatch(/^company-[0-9a-f-]{36}$/);
+      expect(companyArg.defaultRegionCode).toBeNull();
+      expect(companyArg.activeRegions).toEqual([]);
+      expect(userRepo.create.mock.calls[0][0].regionCodes).toEqual([]);
+      expect(result.regionCodes).toEqual([]);
     });
 
-    it('returns the user projection and calls ensureCompanyCustomer after commit on happy path', async () => {
-      const savedCompany = {
-        id: 'new-company-id',
-        name: 'Test Company',
-      } as Company;
+    it('returns the user projection on happy path', async () => {
       const userProjection = {
         id: 'new-user-id',
         name: 'Admin',
@@ -589,19 +539,11 @@ describe('CompaniesService', () => {
         companyId: 'new-company-id',
       };
 
-      dataSource.transaction.mockResolvedValue({
-        user: userProjection,
-        company: savedCompany,
-      });
-
-      const billingService = module.get<BillingService>(BillingService);
+      dataSource.transaction.mockResolvedValue(userProjection);
 
       const result = await service.createGoogleCompanyAdmin(dto);
 
       expect(result).toEqual(userProjection);
-      expect(billingService.ensureCompanyCustomer).toHaveBeenCalledWith(
-        savedCompany,
-      );
     });
   });
 });

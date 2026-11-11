@@ -31,10 +31,6 @@
   max-inline-size: 95vw;
 }
 
-.signup-slug-field {
-  display: none;
-}
-
 .signup-owner-pill {
   display: inline-flex;
   align-items: center;
@@ -173,10 +169,6 @@ $google-neutral-border-hover: #c6cbd1;
 
     @include google-host-fill;
   }
-}
-
-.auth-google-button--blocked {
-  padding: 0;
 }
 
 .btn--google {

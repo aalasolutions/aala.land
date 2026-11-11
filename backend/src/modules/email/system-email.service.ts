@@ -83,15 +83,11 @@ export class SystemEmailService {
     return user ? { id: user.id, email: user.email, name: user.name } : null;
   }
 
-  async sendWelcome(
-    recipient: { email: string; name: string },
-    companyName: string,
-  ): Promise<void> {
+  async sendWelcome(recipient: { email: string; name: string }): Promise<void> {
     await this.send(
       recipient.email,
       welcomeEmail({
         name: recipient.name,
-        companyName,
         loginUrl: `${appUrl()}/login`,
       }),
     );
