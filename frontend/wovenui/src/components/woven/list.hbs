@@ -1,29 +1,33 @@
 {{#if @ordered}}
-  <ol class={{this.classes}} data-test-wu-list ...attributes>
+  <ol class={{this.classes}} role="list" data-test-wu-list ...attributes>
     {{#if (has-block)}}
       {{yield}}
     {{else}}
       {{#each this.normalizedItems key="key" as |entry|}}
-        <li class="wu-list__item" data-test-wu-list-item>
+        <li class="wu-list-item" data-test-wu-list-item>
           {{#if entry.icon}}
-            <span class="wu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+            <span aria-hidden="true">{{entry.icon}}</span>
           {{/if}}
-          {{entry.label}}
+          <div class="wu-list-body">
+            <span class="wu-list-title">{{entry.label}}</span>
+          </div>
         </li>
       {{/each}}
     {{/if}}
   </ol>
 {{else}}
-  <ul class={{this.classes}} data-test-wu-list ...attributes>
+  <ul class={{this.classes}} role="list" data-test-wu-list ...attributes>
     {{#if (has-block)}}
       {{yield}}
     {{else}}
       {{#each this.normalizedItems key="key" as |entry|}}
-        <li class="wu-list__item" data-test-wu-list-item>
+        <li class="wu-list-item" data-test-wu-list-item>
           {{#if entry.icon}}
-            <span class="wu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+            <span aria-hidden="true">{{entry.icon}}</span>
           {{/if}}
-          {{entry.label}}
+          <div class="wu-list-body">
+            <span class="wu-list-title">{{entry.label}}</span>
+          </div>
         </li>
       {{/each}}
     {{/if}}

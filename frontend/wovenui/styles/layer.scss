@@ -1,13 +1,16 @@
-// wu-layer - body-level host for anchored menus and popovers (Woven::LayerHost)
+// wu-layer: host for anchored menus, popovers and tooltips, at body level and inside each open dialog.
 @use "./mixins/bem" as *;
 @use "./common/var" as *;
 
-// Zero-size stacking context at modal level; children are viewport-fixed by
-// the anchor modifier. Mounted after modals and drawers so it paints above
-// them, and before the tooltip host so tooltips paint above it.
+// Fixed and zero-size, so it adds no flex gap inside a dialog; JS anchoring positions its children.
 @include b(layer) {
   position: fixed;
   inset-block-start: 0;
   inset-inline-start: 0;
   z-index: wu-z(modal);
+}
+
+// JS anchoring sets the coordinates; kit menu and popover anchor fallbacks would flip them.
+.wu-layer > * {
+  position-try-fallbacks: none;
 }

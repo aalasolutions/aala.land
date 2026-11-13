@@ -1,35 +1,30 @@
 import Component from '@glimmer/component';
+import { VARIANTS } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
+export default class WovenBadgeComponent extends Component {
+  get role() {
+    return VARIANTS.includes(this.args.variant) ? this.args.variant : null;
+  }
 
-export default class NuBadgeComponent extends Component {
+  get countRole() {
+    return this.args.variant === undefined ? 'danger' : this.role;
+  }
+
   get classes() {
     const parts = ['wu-badge'];
 
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    if (this.role) {
+      parts.push(this.role);
     }
     if (this.args.solid) {
-      parts.push('m-solid');
-    }
-    if (this.args.outline) {
-      parts.push('m-outline');
-    }
-    if (this.args.pill) {
-      parts.push('m-pill');
-    }
-    if (this.args.quiet) {
-      parts.push('m-quiet');
-    }
-    if (this.args.isDot) {
-      parts.push('m-dot');
+      parts.push('solid');
     }
 
     return parts.join(' ');
+  }
+
+  get dotClasses() {
+    return this.role ? `wu-dot ${this.role}` : 'wu-dot';
   }
 
   // Count bubble has no block content to anchor a pill badge to.
@@ -38,16 +33,17 @@ export default class NuBadgeComponent extends Component {
   }
 
   get countClasses() {
-    const parts = ['wu-badge-count'];
+    const parts = this.args.isDot ? ['wu-dot'] : ['wu-badge', 'solid'];
 
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (this.args.isDot) {
-      parts.push('m-dot');
+    if (this.countRole) {
+      parts.push(this.countRole);
     }
 
     return parts.join(' ');
+  }
+
+  get cornerClasses() {
+    return `${this.countClasses} corner`;
   }
 
   // @text aliases @value, whichever reads naturally for count vs label.

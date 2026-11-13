@@ -7,6 +7,10 @@ SCSS lives in `styles/<name>.scss` inside this package. Read the one you are wra
 learn the exact class names. **Never invent a class.** If the style you need does
 not exist, stop and report it; do not add SCSS.
 
+Button, btn-group, badge, tag, dot, avatar, avatar-group and spinner are styled by
+`@wovenui/components` instead: read its `dist/llms-full.txt` for their class names
+(root `wu-<name>`, bare modifiers, parts `wu-<name>-<part>`, state in attributes).
+
 ## Rules
 
 - `import Component from '@glimmer/component'`. Never `Component.extend`.
@@ -26,7 +30,7 @@ not exist, stop and report it; do not add SCSS.
 ## Canonical class getter
 
 ```js
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
+import { VARIANTS } from './-constants';
 const SIZES = ['sm', 'lg'];
 
 get classes() {
@@ -43,10 +47,10 @@ get classes() {
 
 These are the details that make a kit feel finished. Apply where relevant.
 
-- **Loading folds into the icon slot.** `loading ? loadingIcon : icon`, add the
-  spin class, and `loading` implies `disabled`. See `wu-button.js`.
+- **Loading folds into the icon slot.** `loading` renders a `wu-spinner` in place
+  of the icon, sets `aria-busy="true"`, and implies `disabled`. See `button.js`.
 - **`has-block` changes layout.** A badge standing alone is an inline pill; a
-  badge wrapping content is a corner bubble (`wu-badge-wrap` + `is-fixed`).
+  badge wrapping content is a corner bubble (`wu-badge-host` + `corner`).
   Use `{{#if (has-block)}}` to decide.
 - **`@max` overflow.** `@value=120 @max=99` renders `99+`. Note `0` must still
   display; only null/undefined hides.

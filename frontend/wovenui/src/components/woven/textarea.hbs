@@ -1,5 +1,5 @@
 <textarea
-  class={{this.classes}}
+  class="wu-textarea"
   value={{@value}}
   placeholder={{@placeholder}}
   disabled={{@disabled}}
@@ -8,6 +8,7 @@
   rows={{if @rows @rows 3}}
   style={{this.resizeStyle}}
   aria-invalid={{if this.isInvalid "true"}}
+  data-wu-status={{this.status}}
   data-test-wu-textarea
   {{on "input" this.handleInput}}
   {{on "change" this.handleChange}}

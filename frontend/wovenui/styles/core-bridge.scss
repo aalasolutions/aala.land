@@ -23,16 +23,18 @@ th {
   font-weight: wu-font-weight(normal);
 }
 
-// Core's base layer sizes raw controls; kit components size themselves.
-:where(
-  button,
-  input[type="submit"],
-  input[type="button"],
-  input[type="reset"]
-) {
-  min-height: auto;
-}
+// Same layer as core's base so kit components (@layer components) override; :is() keeps core's specificity so source order decides.
+@layer base {
+  :is(
+    button,
+    input[type="submit"],
+    input[type="button"],
+    input[type="reset"]
+  ) {
+    min-height: auto;
+  }
 
-:where(input, select) {
-  height: auto;
+  :is(input, select) {
+    height: auto;
+  }
 }

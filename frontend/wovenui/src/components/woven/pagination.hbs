@@ -1,33 +1,31 @@
 {{! Block param is `entry`, avoids shadowing HTML elements. }}
-<div class={{this.classes}} data-test-wu-pagination ...attributes>
-  <span class="wu-pagination__status" data-test-wu-pagination-status>
+<nav class={{this.classes}} aria-label="Pagination" data-test-wu-pagination ...attributes>
+  <span class="wu-pagination-total" data-test-wu-pagination-status>
     {{this.statusText}}
   </span>
 
-  <ul class="wu-pagination__list">
-    <li class="wu-pagination__item {{if this.disablePrevious 'is-disabled'}}">
+  <ul class="wu-pagination-list">
+    <li>
       <button
         type="button"
-        class="wu-pagination__link wu-pagination__prev"
+        class="wu-btn wu-pagination-prev"
         aria-label="Previous page"
         disabled={{this.disablePrevious}}
         data-test-wu-pagination-prev
         {{on "click" this.goToPrevious}}
-      >
-        &lsaquo;
-      </button>
+      ></button>
     </li>
 
     {{#each this.pages key="@index" as |entry|}}
       {{#if (eq entry.type "ellipsis")}}
-        <li class="wu-pagination__item">
-          <span class="wu-pagination__ellipsis">&hellip;</span>
+        <li>
+          <span class="wu-pagination-ellipsis">&hellip;</span>
         </li>
       {{else}}
-        <li class="wu-pagination__item {{if entry.active 'is-active'}}">
+        <li>
           <button
             type="button"
-            class="wu-pagination__link"
+            class="wu-btn"
             aria-current={{if entry.active "page" false}}
             data-test-wu-pagination-page={{entry.number}}
             {{on "click" (fn this.goToPage entry.number)}}
@@ -38,46 +36,30 @@
       {{/if}}
     {{/each}}
 
-    <li class="wu-pagination__item {{if this.disableNext 'is-disabled'}}">
+    <li>
       <button
         type="button"
-        class="wu-pagination__link wu-pagination__next"
+        class="wu-btn wu-pagination-next"
         aria-label="Next page"
         disabled={{this.disableNext}}
         data-test-wu-pagination-next
         {{on "click" this.goToNext}}
-      >
-        &rsaquo;
-      </button>
+      ></button>
     </li>
   </ul>
 
   {{#if this.showPerPage}}
-    <div class="wu-pagination__per-page">
-      <label for={{this.selectId}}>Per page</label>
-      {{! label-for needs the id on the button; Dropdown splats onto a div. }}
-      <Woven::Dropdown
-        @options={{this.perPageOptions}}
-        @value={{this.perPage}}
-        @onSelect={{this.changePerPage}}
-        @size={{this.perPageSize}}
-        @align="end"
+    <label class="wu-pagination-size">
+      <select
+        class="wu-select {{this.perPageSize}}"
+        data-test-wu-pagination-select
+        {{on "change" this.changePerPage}}
       >
-        <:trigger as |toggle isOpen|>
-          <Woven::Button
-            @variant="secondary"
-            @size={{this.perPageSize}}
-            @onClick={{toggle}}
-            id={{this.selectId}}
-            aria-haspopup="listbox"
-            aria-expanded={{if isOpen "true" "false"}}
-            data-test-wu-pagination-select
-          >
-            {{this.perPage}}
-            <span class="wu-dropdown__caret" aria-hidden="true">▾</span>
-          </Woven::Button>
-        </:trigger>
-      </Woven::Dropdown>
-    </div>
+        {{#each this.perPageOptions as |size|}}
+          <option value={{size}} selected={{eq size this.perPage}}>{{size}}</option>
+        {{/each}}
+      </select>
+      per page
+    </label>
   {{/if}}
-</div>
+</nav>

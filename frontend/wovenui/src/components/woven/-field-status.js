@@ -1,20 +1,14 @@
 // Validation status shared by Field, FieldGroup and the form controls.
 //
-// A control that resolves its own status renders `is-invalid`, `is-warning` or
-// `is-valid` plus `aria-invalid="true"` for errors. A Field or FieldGroup
-// writes the same state onto a control that has none of its own, using
-// `aria-invalid` and `data-wu-field-status`. Styles key on both, so the visual
-// state is always the one assistive technology hears.
+// A control that resolves its own status renders `data-wu-status` plus
+// `aria-invalid="true"` for errors. A Field or FieldGroup writes the same state
+// onto a control that has none of its own, using `aria-invalid` and
+// `data-wu-field-status`. The CSS kit styles only the invalid state, keyed on
+// `aria-invalid`.
 
 export const STATUSES = Object.freeze(['error', 'warning', 'success']);
 
-const STATUS_CLASSES = Object.freeze({
-  error: 'is-invalid',
-  warning: 'is-warning',
-  success: 'is-valid',
-});
-
-const OWN_STATUS = '.is-invalid, .is-warning, .is-valid';
+const OWN_STATUS = '[data-wu-status]';
 const FIELD_STATUS = 'data-wu-field-status';
 
 // Attributes a Field wrote, so it removes only what it set and never a caller's own.
@@ -42,10 +36,6 @@ export function resolveFieldStatus(args) {
   return resolveStatus(args);
 }
 
-export function statusClass(status) {
-  return STATUS_CLASSES[status] ?? null;
-}
-
 // Hint id while the hint shows, error id while the error shows; the error replaces the hint.
 export function messageIds(args, hintId, errorId) {
   if (args.error) {
@@ -57,7 +47,7 @@ export function messageIds(args, hintId, errorId) {
 function record(control) {
   let entry = written.get(control);
   if (!entry) {
-    entry = { invalid: false, required: false };
+    entry = { invalid: false, required: false, nativeRequired: false };
     written.set(control, entry);
   }
   return entry;
@@ -67,7 +57,7 @@ function record(control) {
 export function applyStatus(control, status) {
   const entry = record(control);
   if (control.matches(OWN_STATUS)) {
-    if (entry.invalid && !control.matches('.is-invalid')) {
+    if (entry.invalid && !control.matches('[data-wu-status="error"]')) {
       control.removeAttribute('aria-invalid');
     }
     entry.invalid = false;
@@ -102,6 +92,19 @@ export function applyRequired(control, required) {
   } else if (entry.required) {
     control.removeAttribute('aria-required');
     entry.required = false;
+  }
+}
+
+export function applyNativeRequired(control, required) {
+  const entry = record(control);
+  if (required) {
+    if (!control.required) {
+      control.required = true;
+      entry.nativeRequired = true;
+    }
+  } else if (entry.nativeRequired) {
+    control.required = false;
+    entry.nativeRequired = false;
   }
 }
 

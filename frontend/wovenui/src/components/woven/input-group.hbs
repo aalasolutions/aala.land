@@ -1,6 +1,6 @@
-<div class={{this.classes}} data-test-wu-input-group ...attributes>
+<div class="wu-input-group" data-test-wu-input-group ...attributes>
   {{#if this.hasPrepend}}
-    <span class="wu-input-group__addon" data-test-wu-input-group-prepend>
+    <span class="wu-input-group-text" data-test-wu-input-group-prepend>
       {{@prepend}}
     </span>
   {{/if}}
@@ -8,7 +8,7 @@
   {{yield}}
 
   {{#if this.hasAppend}}
-    <span class="wu-input-group__addon" data-test-wu-input-group-append>
+    <span class="wu-input-group-text" data-test-wu-input-group-append>
       {{@append}}
     </span>
   {{/if}}

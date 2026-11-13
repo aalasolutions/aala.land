@@ -2,8 +2,8 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
-// Mounted once in application.hbs, before Woven::TooltipHost so tooltips paint above menus.
-export default class NuLayerHostComponent extends Component {
+// Mounted once in application.hbs: the body-level layer for overlays outside any open dialog.
+export default class WovenLayerHostComponent extends Component {
   @service layer;
 
   @action

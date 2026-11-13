@@ -23,11 +23,12 @@
   {{/if}}
 
   <EmberTable
-    class="data-table wu-table-wrapper
+    class="data-table
       {{if this.isRtl 'data-table--rtl'}}
       {{if this.isTree 'data-table--tree'}}
       {{if this.hasRowClick 'data-table--row-click'}}
       {{if @stickyHeader 'data-table--sticky-header'}}"
+    {{this.kitTable hover=this.isHoverable sticky=@stickyHeader}}
     {{this.startAtReadingEdge}}
     as |t|
   >
@@ -44,7 +45,11 @@
     >
       <h.row as |r|>
         <r.cell
-          class={{if r.columnValue.numeric "m-numeric"}}
+          class={{this.cellClass r.columnValue}}
+          aria-sort={{if
+            r.columnMeta.isSorted
+            (if r.columnMeta.isSortedAsc "ascending" "descending")
+          }}
           as |column columnMeta|
         >
           {{#if (eq column.valuePath "__select__")}}
@@ -58,21 +63,17 @@
               />
             </div>
           {{else}}
-            {{column.name}}
             {{#if columnMeta.isSortable}}
-              <span
-                class="data-table__sort {{if columnMeta.isSorted 'is-active'}}"
-                aria-hidden="true"
-              >
-                <Woven::Icon
-                  @icon={{if
-                    columnMeta.isSorted
-                    (if columnMeta.isSortedAsc "caret-up" "caret-down")
-                    "caret-up-down"
-                  }}
-                  @size="12px"
-                />
-              </span>
+              {{! et-sort-toggle lets the click reach ember-table's header sort handler. }}
+              <button
+                type="button"
+                class="wu-table-sort et-sort-toggle"
+                data-test-data-table-sort={{column.valuePath}}
+                {{on "keyup" this.stopEnterKeyup}}
+                {{this.restoreSortFocus column.valuePath}}
+              ><span>{{column.name}}</span></button>
+            {{else}}
+              {{column.name}}
             {{/if}}
             <EmberTh::ResizeHandle @columnMeta={{columnMeta}} />
           {{/if}}
@@ -89,16 +90,14 @@
       as |b|
     >
       <b.row
-        class="{{if (this.isRowSelected b.rowValue) 'is-selected'}}
-          {{if b.rowMeta.depth 'is-child'}}
-          {{unless (eq @hoverable false) 'is-hoverable'}}
-          {{this.rowClassFor b.rowValue}}"
+        class={{this.rowClassFor b.rowValue}}
+        data-wu-child={{if b.rowMeta.depth "true"}}
         @onClick={{this.handleRowClick}}
         data-test-data-table-row={{b.rowValue.id}}
         as |r|
       >
         <r.cell
-          class={{if r.columnValue.numeric "m-numeric"}}
+          class={{this.cellClass r.columnValue}}
           as |value column row cellMeta columnMeta rowMeta|
         >
           {{#if (eq column.valuePath "__select__")}}
@@ -147,7 +146,8 @@
             </div>
           {{else}}
             <div
-              class="data-table__cell {{if (this.editorFor column) 'is-editable'}}"
+              class="data-table__cell"
+              data-wu-editable={{if (this.editorFor column) "true"}}
               {{on "dblclick" (fn this.startEdit row column)}}
             >
               {{yield

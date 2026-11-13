@@ -4,7 +4,7 @@ import { htmlSafe } from '@ember/template';
 const DIRECTIONAL = /(^|-)(left|right)(-|$)/;
 
 // @icon (name), @size (default "1em"), @color (default "currentColor"), @flip (mirror in RTL).
-export default class NuIconComponent extends Component {
+export default class WovenIconComponent extends Component {
   get size() {
     return this.args.size || '1em';
   }

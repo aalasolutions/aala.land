@@ -154,9 +154,21 @@ export default class DataTableComponent extends Component {
         ? { valuePath: clicked.valuePath, isAscending: false }
         : null;
 
+    if (document.activeElement?.classList.contains('wu-table-sort')) {
+      this.pendingSortFocus = clicked.valuePath;
+    }
     this.sorts = next ? [...others, next] : others;
     this.args.onSort?.(this.sorts);
   }
+
+  // ember-table rebuilds the header on every sort; focus returns to the new sort button.
+  pendingSortFocus = null;
+
+  restoreSortFocus = modifier((element, [key]) => {
+    if (this.pendingSortFocus !== key) return;
+    this.pendingSortFocus = null;
+    element.focus();
+  });
 
   @action handleResize() {
     this.saveLayout();
@@ -401,7 +413,10 @@ export default class DataTableComponent extends Component {
   @action handleEditorFocusOut(event) {
     const wrapper = event.currentTarget;
     const to = event.relatedTarget;
-    if (to && (wrapper.contains(to) || this.layer.element.contains(to))) {
+    if (
+      to &&
+      (wrapper.contains(to) || this.layer.elementFor(wrapper).contains(to))
+    ) {
       return;
     }
     if (!this.editing || wrapper.dataset.key !== this.editing.key) return;
@@ -449,6 +464,36 @@ export default class DataTableComponent extends Component {
       0,
     );
     return () => cancelTask(this, task);
+  });
+
+  get isHoverable() {
+    return this.args.hoverable !== false;
+  }
+
+  cellClass = (column) =>
+    [
+      column?.numeric ? 'wu-table-num' : '',
+      column?.valuePath === SELECT_KEY ? 'wu-table-select' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+  // Enter on the sort button already clicks it; its keyup must not sort a second time.
+  @action stopEnterKeyup(event) {
+    if (event.key === 'Enter') event.stopPropagation();
+  }
+
+  // ember-table renders the table and its scroller itself, so the kit classes are set here.
+  kitTable = modifier((element, positional, { hover, sticky }) => {
+    const table = element.querySelector('table');
+    if (table) {
+      table.classList.add('wu-table');
+      table.classList.toggle('hover', Boolean(hover));
+      table.classList.toggle('sticky-header', Boolean(sticky));
+    }
+    element
+      .querySelector('.ember-table-overflow')
+      ?.classList.add('wu-table-scroll');
   });
 
   // RTL starts scrolled to the reading edge.

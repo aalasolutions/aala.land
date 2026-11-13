@@ -8,7 +8,7 @@ import { service } from '@ember/service';
 const PLACEMENTS = ['top', 'bottom', 'start', 'end'];
 const TRIGGER_FOCUSABLE = 'input, button, [tabindex]';
 
-export default class NuPopoverComponent extends Component {
+export default class WovenPopoverComponent extends Component {
   @service layer;
 
   @tracked internalOpen = false;
@@ -19,7 +19,6 @@ export default class NuPopoverComponent extends Component {
   panelElement = null;
   clickOutsideHandler = null;
 
-  // Controlled when @open is passed, uncontrolled otherwise - same pattern as wu-dropdown.
   get isOpen() {
     return this.args.open !== undefined ? this.args.open : this.internalOpen;
   }
@@ -43,6 +42,10 @@ export default class NuPopoverComponent extends Component {
     });
   }
 
+  get layerElement() {
+    return this.layer.elementFor(this.rootElement);
+  }
+
   get placement() {
     return PLACEMENTS.includes(this.args.placement)
       ? this.args.placement
@@ -57,17 +60,6 @@ export default class NuPopoverComponent extends Component {
     return this.args.align === 'end' ? 'end' : 'center';
   }
 
-  get classes() {
-    const parts = ['wu-popover', `m-${this.placement}`];
-    if (this.args.align === 'end') {
-      parts.push('m-align-end');
-    }
-    if (this.isOpen) {
-      parts.push('is-visible');
-    }
-    return parts.join(' ');
-  }
-
   @action
   registerRoot(element) {
     this.rootElement = element;
@@ -76,11 +68,15 @@ export default class NuPopoverComponent extends Component {
   @action
   registerPanel(element) {
     this.panelElement = element;
+    // Shown before the anchor measures it; kit open styles key on :popover-open.
+    element.showPopover?.();
   }
 
   @action
-  forgetPanel() {
-    this.panelElement = null;
+  forgetPanel(element) {
+    if (this.panelElement === element) {
+      this.panelElement = null;
+    }
   }
 
   // Controlled mode: caller owns state, so report via @onToggle, not internalOpen.
@@ -110,6 +106,8 @@ export default class NuPopoverComponent extends Component {
   @action
   onKeydown(event) {
     if (event.key === 'Escape' && this.isOpen) {
+      // Cancelled too, so an open dialog underneath gets no close request.
+      event.preventDefault();
       event.stopPropagation();
       this.close();
     }

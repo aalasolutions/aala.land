@@ -1,0 +1,19 @@
+{{! The one <input> Woven::Input renders, bare or inside its affix wrapper. }}
+<input
+  type={{@control.type}}
+  class={{@class}}
+  value={{@control.args.value}}
+  placeholder={{@control.args.placeholder}}
+  disabled={{@control.args.disabled}}
+  readonly={{@control.args.readonly}}
+  maxlength={{@control.args.maxlength}}
+  autocomplete={{if @control.args.autocomplete @control.args.autocomplete "off"}}
+  inputmode={{@control.args.inputmode}}
+  aria-invalid={{if @control.isInvalid "true"}}
+  data-wu-status={{@control.status}}
+  dir={{@control.dir}}
+  data-test-wu-input
+  {{on "input" @control.handleInput}}
+  {{on "change" @control.handleChange}}
+  ...attributes
+/>

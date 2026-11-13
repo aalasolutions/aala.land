@@ -1,16 +1,14 @@
 <span class={{this.classes}} data-test-wu-tag ...attributes>
-  <span class="wu-tag__label">
-    {{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}
-  </span>
+  {{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}
 
   {{#if @closable}}
     <button
       type="button"
-      class="wu-tag__remove"
-      aria-label="Remove tag"
+      class="wu-tag-remove"
+      aria-label={{this.removeLabel}}
       disabled={{@disabled}}
       data-test-wu-tag-remove
       {{on "click" this.handleClose}}
-    >×</button>
+    ></button>
   {{/if}}
 </span>

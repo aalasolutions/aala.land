@@ -1,11 +1,12 @@
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { guidFor } from '@ember/object/internals';
 
-const VARIANTS = ['underline', 'pills', 'enclosed'];
-const SIZES = ['xs', 'sm', 'lg'];
+// Kit has no pills or sizes: pills maps to boxed, size is ignored.
+const VARIANT_CLASSES = { enclosed: 'card', pills: 'boxed' };
 
-export default class NuTabsComponent extends Component {
+export default class WovenTabsComponent extends Component {
   @tracked internalActiveTab = undefined;
 
   rootElement = null;
@@ -23,19 +24,22 @@ export default class NuTabsComponent extends Component {
 
   get classes() {
     const parts = ['wu-tabs'];
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    const variant = VARIANT_CLASSES[this.args.variant];
+    if (variant) {
+      parts.push(variant);
     }
     if (this.args.vertical) {
-      parts.push('m-vertical');
-    }
-    if (this.args.fill) {
-      parts.push('m-fill');
+      parts.push('vertical');
     }
     return parts.join(' ');
+  }
+
+  get rootId() {
+    return `wu-tabs-${guidFor(this)}`;
+  }
+
+  get panelId() {
+    return `${this.rootId}-panel`;
   }
 
   get tabs() {

@@ -13,10 +13,14 @@ function fallbackElement() {
   return fallback;
 }
 
-// Body-level host for anchored kit elements (dropdown menus, popovers), so
-// they escape overflow clipping and transformed ancestors.
+// Hosts for anchored kit elements (menus, popovers, tooltips), so they escape
+// overflow clipping. A modal dialog makes everything outside it inert, so an
+// overlay whose trigger sits in an open dialog renders into that dialog's layer.
 export default class LayerService extends Service {
   @tracked host = null;
+
+  // Weak keys, so a dialog removed without unregistering is not kept alive.
+  dialogLayers = new WeakMap();
 
   register(element) {
     this.host = element;
@@ -28,12 +32,29 @@ export default class LayerService extends Service {
     }
   }
 
+  // Called by Woven::Modal, Woven::ConfirmModal and Woven::Drawer for their own layer.
+  registerDialogLayer(dialog, element) {
+    this.dialogLayers.set(dialog, element);
+  }
+
+  unregisterDialogLayer(dialog) {
+    this.dialogLayers.delete(dialog);
+  }
+
+  // The body-level layer.
   get element() {
     return this.host ?? fallbackElement();
   }
 
+  elementFor(trigger) {
+    const dialog = trigger?.closest?.('dialog[open]');
+    const layer = dialog ? this.dialogLayers.get(dialog) : null;
+    return layer?.isConnected ? layer : this.element;
+  }
+
   willDestroy() {
     super.willDestroy(...arguments);
+    this.dialogLayers = new WeakMap();
     fallback?.remove();
     fallback = null;
   }

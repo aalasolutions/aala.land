@@ -1,26 +1,9 @@
 import Component from '@glimmer/component';
 
-export default class NuListComponent extends Component {
+// plain, inline and bordered have no CSS kit equivalent; ordered only picks the ol element.
+export default class WovenListComponent extends Component {
   get classes() {
-    const parts = ['wu-list'];
-
-    if (this.args.plain) {
-      parts.push('m-plain');
-    }
-    if (this.args.ordered) {
-      parts.push('m-ordered');
-    }
-    if (this.args.inline) {
-      parts.push('m-inline');
-    }
-    if (this.args.bordered) {
-      parts.push('m-bordered');
-    }
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-
-    return parts.join(' ');
+    return this.args.compact ? 'wu-list sm' : 'wu-list';
   }
 
   get normalizedItems() {
