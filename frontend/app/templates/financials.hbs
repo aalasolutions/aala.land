@@ -7,7 +7,7 @@
   >
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @icon="plus"
         data-test-new-transaction
         {{on "click" this.openCreate}}
@@ -46,7 +46,6 @@
             {{#each this.queue.rows key="key" as |row|}}
               <li class="finance-queue__row" data-test-queue-row={{row.kind}}>
                 <Woven::Tag
-                  @size="sm"
                   @variant={{if row.isOverdue "danger"}}
                   @text={{row.dueLabel}}
                   data-test-queue-due
@@ -165,21 +164,21 @@
 
   {{#if this.totals}}
     <div class="grid cols-1 cols-3@md gap-4">
-      <Woven::Stat
+      <StatCard
         data-test-summary="total-income"
         @variant="success"
         @label="Collected"
         @value={{format-money this.totals.income}}
         @delta={{this.rangeLabel}}
       />
-      <Woven::Stat
+      <StatCard
         data-test-summary="total-expense"
         @variant="danger"
         @label="Spent"
         @value={{format-money this.totals.expense}}
         @delta={{this.rangeLabel}}
       />
-      <Woven::Stat
+      <StatCard
         data-test-summary="net"
         @label="Net"
         @value={{format-money this.totals.net}}
@@ -306,7 +305,7 @@
           </span>
         {{else if (eq cell.key "status")}}
           <Woven::Tag
-            class="tag-txn-{{lowercase cell.value}}"
+            @variant={{tag-variant "txn" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "transactionDate")}}
@@ -316,15 +315,16 @@
             {{! The cheque owns this row; editing it is refused with a 409. }}
             <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
           {{else}}
-            <Woven::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              @icon="pencil-simple"
-              aria-label="Edit {{cell.row.description}}"
-              data-tooltip="Edit"
-              data-test-edit-transaction
-              {{on "click" (fn this.openEdit cell.row)}}
+            <RowActions
+              @label={{cell.row.description}}
+              @actions={{array
+                (hash
+                  key="edit-transaction"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                )
+              }}
             />
           {{/if}}
         {{else}}
@@ -353,7 +353,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="financials-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}

@@ -1,47 +1,40 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
+import { SIZE_MAP } from './-constants';
+import InputControl from './input-control';
 
-const SIZES = ['xs', 'sm', 'lg'];
 const LTR_TYPES = ['tel', 'number', 'email', 'url'];
 
 /**
  * Text input. `@status` (`error | warning | success`, with `@invalid` and
- * `@valid` as aliases) sets the border and `aria-invalid`.
+ * `@valid` as aliases) sets `data-wu-status`; only `error` is styled, through
+ * `aria-invalid`.
  * `@inputmode` picks the on-screen keyboard: phones use `type="tel"` with
  * `inputmode="tel"`; codes, OTPs, cheque and postal numbers use `type="text"`
  * with `inputmode="numeric"` (and `pattern="[0-9]*"`); money and quantities keep
  * `type="number"`.
  */
-export default class NuInputComponent extends Component {
-  get wrapClasses() {
-    const parts = ['wu-input-wrap'];
-    // The wrapper is what claims the row width, so @auto has to reach it too.
-    if (this.args.auto) {
-      parts.push('m-auto');
-    }
-    if (this.args.prefixIcon) {
-      parts.push('m-has-prefix');
-    }
-    if (this.hasSuffixSlot) {
-      parts.push('m-has-suffix');
-    }
-    return parts.join(' ');
+export default class WovenInputComponent extends Component {
+  InputControl = InputControl;
+
+  get size() {
+    return SIZE_MAP[this.args.size] ?? null;
+  }
+
+  // Sizes go on the affix wrapper when there is one, as the CSS kit expects.
+  get hasAffix() {
+    return Boolean(
+      this.args.prefixIcon || this.args.suffixIcon || this.args.clearable,
+    );
+  }
+
+  get affixClasses() {
+    return ['wu-input-affix', this.size].filter(Boolean).join(' ');
   }
 
   get classes() {
-    const parts = ['wu-input'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.args.auto) {
-      parts.push('m-auto');
-    }
-    const status = statusClass(this.status);
-    if (status) {
-      parts.push(status);
-    }
-    return parts.join(' ');
+    return ['wu-input', this.size].filter(Boolean).join(' ');
   }
 
   get status() {
@@ -74,10 +67,6 @@ export default class NuInputComponent extends Component {
         !this.args.readonly &&
         this.hasValue,
     );
-  }
-
-  get hasSuffixSlot() {
-    return Boolean(this.args.suffixIcon || this.args.clearable);
   }
 
   @action

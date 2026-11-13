@@ -239,8 +239,7 @@
               {{#each this.amenityOptions as |opt|}}
                 <button
                   type="button"
-                  class="wu-tag m-pill m-selectable
-                    {{if (includes this.form.amenities opt.key) 'is-selected'}}"
+                  class="wu-tag"
                   data-test-amenity={{opt.key}}
                   aria-pressed={{if
                     (includes this.form.amenities opt.key)
@@ -265,14 +264,14 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @text="Cancel"
       @onClick={{this.close}}
       data-test-unit-cancel
     />
     {{#if this.showFields}}
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @type="submit"
         form="property-form"
         @text={{this.submitLabel}}

@@ -1,21 +1,11 @@
 import Component from '@glimmer/component';
 import { VARIANTS } from './-constants';
 
-// Title renders as h5. Place the timeline under an h4 to keep heading order.
-export default class NuTimelineItemComponent extends Component {
+// active sets aria-current="step"; complete has no kit equivalent, earlier items fill on their own.
+export default class WovenTimelineItemComponent extends Component {
   get classes() {
-    const parts = ['wu-timeline__item'];
-
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (this.args.active) {
-      parts.push('is-active');
-    }
-    if (this.args.complete) {
-      parts.push('is-complete');
-    }
-
-    return parts.join(' ');
+    return VARIANTS.includes(this.args.variant)
+      ? `wu-timeline-item ${this.args.variant}`
+      : 'wu-timeline-item';
   }
 }

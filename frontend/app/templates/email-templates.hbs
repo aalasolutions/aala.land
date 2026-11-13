@@ -6,11 +6,11 @@
     @subtitle="Reusable email content for client communication."
   >
     <:meta>
-      <p class="text-muted">{{format-number @model.total unit="template"}}</p>
+      <span>{{format-number @model.total unit="template"}}</span>
     </:meta>
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @icon="plus"
         data-test-new-template
         {{on "click" this.openCreate}}
@@ -43,10 +43,10 @@
             </div>
             <div class="flex gap-1 x-center">
               {{#unless template.isActive}}
-                <Woven::Tag class="tag-enabled-inactive" @text="Inactive" />
+                <Woven::Tag @variant="secondary" @text="Inactive" />
               {{/unless}}
               <Woven::Tag
-                class="tag-email-{{lowercase template.category}}"
+                @variant={{tag-variant "email" template.category}}
                 @text={{template.category}}
               />
             </div>
@@ -61,7 +61,7 @@
           {{/if}}
           <div class="flex gap-2 email-template-card__actions">
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @size="sm"
               @icon="eye"
               data-test-preview-template
@@ -70,7 +70,7 @@
               Preview
             </Woven::Button>
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @size="sm"
               @icon="pencil-simple"
               data-test-edit-template
@@ -129,7 +129,8 @@
   </div>
   <Woven::FormActions @align="end">
     <Woven::Button
-      @variant="secondary"
+      data-test-preview-close
+      @variant="subtle"
       {{on "click" this.closePreview}}
     >Close</Woven::Button>
   </Woven::FormActions>

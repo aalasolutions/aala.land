@@ -80,7 +80,7 @@ export default class LeasesController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 160,
+      width: 100,
       isSortable: false,
       isResizable: false,
     },

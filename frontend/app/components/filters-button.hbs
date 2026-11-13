@@ -1,6 +1,6 @@
 {{! Toolbar button that opens a list page's filter fields in a drawer; @count shows how many are active. }}
 <Woven::Button
-  @variant="secondary"
+  @variant="subtle"
   @size="xs"
   @icon="funnel"
   @onClick={{this.open}}
@@ -14,7 +14,7 @@
     <Woven::Badge
       @count={{true}}
       @value={{@count}}
-      @variant="primary"
+      @variant="brand"
       data-test-filters-count
     />
   {{/if}}

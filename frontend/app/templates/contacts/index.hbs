@@ -6,11 +6,11 @@
     @subtitle="Every person you deal with. Owners, tenants, leads and portfolio owners are views into this list, not separate records."
   >
     <:meta>
-      <p class="text-muted" data-test-contacts-total>{{format-number @model.scopeTotal unit="contact"}}</p>
+      <span data-test-contacts-total>{{format-number @model.scopeTotal unit="contact"}}</span>
     </:meta>
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @icon="plus"
         data-test-new-contact
         {{on "click" this.openCreate}}
@@ -78,7 +78,7 @@
             <Woven::Input
               type="text"
               autocomplete="off"
-              placeholder="e.g. Emaar Properties"
+              placeholder="e.g. Northgate Properties"
               value={{this.company}}
               {{on "input" (fn this.updateFilter "company")}}
               data-test-company-filter
@@ -96,21 +96,19 @@
           </Woven::Field>
           <div class="flex gap-3">
             <Woven::Field class="grow" @label="Added from">
-              <input
+              <Woven::Input
                 type="date"
-                class="wu-input"
                 aria-label="Added from"
-                value={{this.dateFrom}}
+                @value={{this.dateFrom}}
                 {{on "change" this.setDateFrom}}
                 data-test-date-from-filter
               />
             </Woven::Field>
             <Woven::Field class="grow" @label="Added to">
-              <input
+              <Woven::Input
                 type="date"
-                class="wu-input"
                 aria-label="Added to"
-                value={{this.dateTo}}
+                @value={{this.dateTo}}
                 {{on "change" this.setDateTo}}
                 data-test-date-to-filter
               />
@@ -126,7 +124,7 @@
               Has WhatsApp
             </Woven::Toggle>
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @size="sm"
               @icon="x"
               @disabled={{not this.hasActiveFilters}}
@@ -171,7 +169,6 @@
               >{{contact-name cell.row}}</LinkTo>
               {{#if (is-limited-contact cell.row)}}
                 <Woven::Badge
-                  @size="sm"
                   @text="Limited"
                   data-test-limited-badge
                 />
@@ -182,11 +179,11 @@
               <div class="data-table__chips">
                 {{#each cell.value as |tag|}}
                   <Woven::Tag
-                    class="tag-contact-{{tag}}"
+                    @variant={{tag-variant "contact" tag}}
                     @text={{contact-tag-label tag}}
                   />
                 {{else}}
-                  <Woven::Tag class="tag-contact-other" @text="Contact" />
+                  <Woven::Tag @variant="secondary" @text="Contact" />
                 {{/each}}
               </div>
             {{/unless}}
@@ -219,16 +216,18 @@
                 @pending={{includes this.requestedContactIds cell.row.id}}
                 @onRequested={{this.markRequested}}
               />
-            {{else if (can-edit-contact cell.row)}}
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="pencil-simple"
-                aria-label="Edit {{contact-name cell.row}}"
-                data-tooltip="Edit"
-                data-test-edit-contact
-                {{on "click" (fn this.openEdit cell.row)}}
+            {{else}}
+              <RowActions
+                @label={{contact-name cell.row}}
+                @actions={{array
+                  (hash
+                    key="edit-contact"
+                    label="Edit"
+                    icon="pencil-simple"
+                    onSelect=(fn this.openEdit cell.row)
+                    hidden=(not (can-edit-contact cell.row))
+                  )
+                }}
               />
             {{/if}}
           {{else}}
@@ -247,7 +246,6 @@
 
       {{#if @model.total}}
         <Woven::Pagination
-          @selectId="contacts-limit"
           @page={{this.page}}
           @limit={{this.limit}}
           @total={{@model.total}}

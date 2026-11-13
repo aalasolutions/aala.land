@@ -1,6 +1,7 @@
 {{! Block param is `row`/`grp`, never `option` - that would shadow <option>. }}
 <div
-  class={{this.classes}}
+  class="wu-dropdown-wrap"
+  data-wu-align={{this.align}}
   data-test-wu-dropdown
   {{did-insert this.registerRoot}}
   {{on "keydown" this.handleKeydown}}
@@ -20,134 +21,202 @@
       @status={{this.status}}
       role="combobox"
       aria-expanded={{if this.isOpen "true" "false"}}
-      aria-controls={{this.menuId}}
+      aria-controls={{this.listboxId}}
       aria-autocomplete="list"
+      aria-activedescendant={{this.activeDescendant}}
       data-test-wu-dropdown-filter
       {{on "focus" this.onFilterFocus}}
     />
   {{else}}
-    <Woven::Button
-      @variant={{if @triggerVariant @triggerVariant "secondary"}}
-      @size={{@size}}
-      @disabled={{@disabled}}
-      @onClick={{this.toggle}}
+    {{! With in-menu search the search input is the one combobox; the trigger stays a button. }}
+    <button
+      type="button"
+      role={{unless this.showSearch "combobox"}}
+      class={{this.triggerClasses}}
+      disabled={{@disabled}}
       aria-haspopup="listbox"
       aria-expanded={{if this.isOpen "true" "false"}}
+      aria-controls={{unless this.showSearch this.listboxId}}
+      aria-activedescendant={{unless this.showSearch this.activeDescendant}}
       aria-invalid={{if (eq this.status "error") "true"}}
-      class={{this.triggerStatusClass}}
+      data-wu-status={{this.status}}
       title={{this.triggerTitle}}
       data-test-wu-dropdown-trigger
+      {{on "click" this.toggle}}
     >
       <span
-        class="wu-dropdown__value"
+        class="wu-dropdown-value"
+        data-placeholder={{unless this.selectedLabel "true"}}
         data-test-wu-dropdown-value
       >{{this.triggerLabel}}</span>
-      <span class="wu-dropdown__caret" aria-hidden="true">▾</span>
-    </Woven::Button>
+    </button>
   {{/if}}
 
-  {{! Hosted on .wu-layer so no ancestor can clip it; mounted only while open. }}
+  {{! Hosted on the nearest .wu-layer so no ancestor can clip it; mounted only while open. }}
   {{#if this.isOpen}}
-  {{#in-element this.layer.element insertBefore=null}}
-  <div
-    class={{this.menuClasses}}
-    id={{this.menuId}}
-    role="listbox"
-    data-test-wu-dropdown-menu
-    {{did-insert this.registerMenu}}
-    {{will-destroy this.forgetMenu}}
-    {{on "keydown" this.handleKeydown}}
-    {{anchor
-      this.rootElement
-      placement=this.anchorPlacement
-      align=this.anchorAlign
-      matchWidth=this.matchWidth
-      onDismiss=this.close
-    }}
-  >
-    {{#if this.showSearch}}
-      {{! No keydown here: bubbles to the root handler; binding both double-steps the highlight. }}
-      <div class="wu-menu__search">
-        <Woven::Input
-          @value={{this.searchText}}
-          @size="sm"
-          @placeholder={{if @searchPlaceholder @searchPlaceholder "Search..."}}
-          @onInput={{this.updateSearch}}
-          data-test-wu-dropdown-search
-        />
-      </div>
-    {{/if}}
-
-    {{#if this.hasResults}}
-      {{#if this.flatRows}}
-        {{#each this.flatRows key="@index" as |row|}}
-          {{#if row.separator}}
-            <div class="wu-menu__separator" role="presentation"></div>
-          {{else}}
-            <button
-              type="button"
-              class="wu-menu__item
-                {{if row.selected 'is-active'}}
-                {{if row.highlighted 'is-highlighted'}}
-                {{if row.option.disabled 'is-disabled'}}
-                {{if row.option.danger 'm-danger'}}
-                {{if row.option.isCreate 'm-create'}}"
-              role="option"
-              aria-selected={{if row.selected "true" "false"}}
-              title={{row.option.label}}
-              disabled={{row.option.disabled}}
-              data-test-wu-dropdown-item
-              {{on "click" (fn this.select row.option)}}
-            >
-              {{#if row.option.icon}}
-                <span class="wu-menu__item-icon" aria-hidden="true">
-                  {{row.option.icon}}
-                </span>
+    {{#in-element this.layerElement insertBefore=null}}
+      {{#if (has-block "trigger")}}
+        <div
+          class="wu-dropdown"
+          id={{this.menuId}}
+          role="menu"
+          popover="manual"
+          data-wu-options-align={{this.optionsAlign}}
+          data-wu-menu-block={{if (has-block "menu") "true"}}
+          data-test-wu-dropdown-menu
+          {{did-insert this.registerMenu}}
+          {{will-destroy this.forgetMenu}}
+          {{on "keydown" this.handleKeydown}}
+          {{on "click" this.onMenuBlockClick}}
+          {{anchor
+            this.rootElement
+            placement=this.anchorPlacement
+            align=this.anchorAlign
+            matchWidth=this.matchWidth
+            onDismiss=this.close
+          }}
+        >
+          {{#if (has-block "menu")}}
+            {{yield this.close to="menu"}}
+          {{else if this.hasResults}}
+            {{#each this.sections key="@index" as |grp|}}
+              {{#if grp.group}}
+                <div
+                  class="wu-dropdown-group"
+                  role="presentation"
+                >{{grp.group}}</div>
               {{/if}}
-              <span class="wu-menu__item-label">{{row.option.label}}</span>
-            </button>
+              {{#each grp.rows key="@index" as |row|}}
+                {{#if row.separator}}
+                  <hr class="wu-dropdown-separator" />
+                {{else}}
+                  <button
+                    type="button"
+                    id={{row.id}}
+                    class="wu-dropdown-item {{if row.option.danger 'danger'}}"
+                    role="menuitem"
+                    tabindex="-1"
+                    title={{row.option.label}}
+                    disabled={{row.option.disabled}}
+                    data-test-wu-dropdown-item
+                    {{on "click" (fn this.select row.option)}}
+                  >
+                    {{#if row.option.icon}}
+                      <span
+                        class="wu-dropdown-icon"
+                        aria-hidden="true"
+                      >{{row.option.icon}}</span>
+                    {{/if}}
+                    <span class="wu-dropdown-label">{{row.option.label}}</span>
+                  </button>
+                {{/if}}
+              {{/each}}
+            {{/each}}
+          {{else}}
+            <p class="wu-dropdown-empty" role="status">{{this.emptyText}}</p>
           {{/if}}
-        {{/each}}
+        </div>
       {{else}}
-      {{#each this.groupedOptions key="group" as |grp|}}
-        {{#if grp.group}}
-          <div class="wu-menu__group-label" role="presentation">
-            {{grp.group}}
-          </div>
-        {{/if}}
-
-        {{#each grp.rows key="index" as |row|}}
-          <button
-            type="button"
-            class="wu-menu__item
-              {{if row.selected 'is-active'}}
-              {{if row.highlighted 'is-highlighted'}}
-              {{if row.option.disabled 'is-disabled'}}
-              {{if row.option.danger 'm-danger'}}
-              {{if row.option.isCreate 'm-create'}}"
-            role="option"
-            aria-selected={{if row.selected "true" "false"}}
-            title={{row.option.label}}
-            disabled={{row.option.disabled}}
-            data-test-wu-dropdown-item
-            {{on "click" (fn this.select row.option)}}
+        {{! Kit autocomplete motion keys on the list being a child of .wu-autocomplete. }}
+        <div class="wu-autocomplete">
+          <div
+            class={{if
+              this.emptyOnly
+              "wu-autocomplete-empty"
+              "wu-autocomplete-list"
+            }}
+            role={{if this.emptyOnly "status"}}
+            data-wu-options-align={{this.optionsAlign}}
+            data-test-wu-dropdown-menu
+            {{did-insert this.registerMenu}}
+            {{will-destroy this.forgetMenu}}
+            {{on "keydown" this.handleKeydown}}
+            {{! template-lint-disable no-pointer-down-event-binding }}
+            {{on "mousedown" this.keepFocus}}
+            {{anchor
+              this.rootElement
+              placement=this.anchorPlacement
+              align=this.anchorAlign
+              matchWidth=this.matchWidth
+              onDismiss=this.close
+            }}
           >
-            {{#if row.option.icon}}
-              <span class="wu-menu__item-icon" aria-hidden="true">
-                {{row.option.icon}}
-              </span>
+            {{#if this.showSearch}}
+              {{! No keydown here: bubbles to the root handler; binding both double-steps the highlight. }}
+              <div class="wu-dropdown-search">
+                <Woven::Input
+                  @value={{this.searchText}}
+                  @size="sm"
+                  @placeholder={{if
+                    @searchPlaceholder
+                    @searchPlaceholder
+                    "Search..."
+                  }}
+                  @onInput={{this.updateSearch}}
+                  role="combobox"
+                  aria-expanded="true"
+                  aria-controls={{this.listboxId}}
+                  aria-autocomplete="list"
+                  aria-activedescendant={{this.activeDescendant}}
+                  data-test-wu-dropdown-search
+                />
+              </div>
             {{/if}}
-            <span class="wu-menu__item-label">{{row.option.label}}</span>
-          </button>
-        {{/each}}
-      {{/each}}
+
+            {{#if this.hasResults}}
+              <div id={{this.menuId}} role="listbox">
+                {{#each this.sections key="@index" as |grp|}}
+                  {{#if grp.group}}
+                    <div
+                      class="wu-dropdown-group"
+                      role="presentation"
+                    >{{grp.group}}</div>
+                  {{/if}}
+                  {{#each grp.rows key="@index" as |row|}}
+                    {{#if row.separator}}
+                      <hr class="wu-dropdown-separator" />
+                    {{else}}
+                      <div
+                        id={{row.id}}
+                        class="wu-autocomplete-option
+                          {{if row.option.isCreate 'create'}}"
+                        role="option"
+                        aria-selected={{if row.highlighted "true" "false"}}
+                        aria-checked={{if row.selected "true"}}
+                        aria-disabled={{if row.option.disabled "true"}}
+                        title={{row.option.label}}
+                        data-test-wu-dropdown-item
+                        data-test-wu-dropdown-create={{row.option.isCreate}}
+                        {{on "click" (fn this.select row.option)}}
+                      >
+                        {{#if row.option.icon}}
+                          <span
+                            class="wu-dropdown-icon"
+                            aria-hidden="true"
+                          >{{row.option.icon}}</span>
+                        {{/if}}
+                        <span
+                          class="wu-dropdown-label"
+                        >{{row.option.label}}</span>
+                        {{#if row.selected}}
+                          <span
+                            class="wu-dropdown-check"
+                            aria-hidden="true"
+                          ></span>
+                        {{/if}}
+                      </div>
+                    {{/if}}
+                  {{/each}}
+                {{/each}}
+              </div>
+            {{else if this.emptyOnly}}
+              {{this.emptyText}}
+            {{else}}
+              <p class="wu-dropdown-empty" role="status">{{this.emptyText}}</p>
+            {{/if}}
+          </div>
+        </div>
       {{/if}}
-    {{else}}
-      <div class="wu-menu__empty">
-        {{this.emptyText}}
-      </div>
-    {{/if}}
-  </div>
-  {{/in-element}}
+    {{/in-element}}
   {{/if}}
 </div>

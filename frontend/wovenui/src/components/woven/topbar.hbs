@@ -1,8 +1,9 @@
-<header class={{this.classes}} data-test-wu-topbar ...attributes>
+{{! The toggle shows below md only, where the sidebar is off-canvas. }}
+<header class={{if @sticky "wu-topbar pinned" "wu-topbar"}} data-test-wu-topbar ...attributes>
   {{#if @onToggle}}
     <button
       type="button"
-      class="wu-topbar__toggle"
+      class="wu-btn quiet icon hidden@md"
       aria-label="Toggle navigation"
       data-test-wu-topbar-toggle
       {{on "click" this.toggle}}
@@ -10,31 +11,27 @@
   {{/if}}
 
   {{#if (has-block "brand")}}
-    <div class="wu-topbar__brand">{{yield to="brand"}}</div>
+    <div class="wu-topbar-brand">{{yield to="brand"}}</div>
   {{else if @brand}}
-    <div class="wu-topbar__brand">{{@brand}}</div>
+    <span class="wu-topbar-brand">{{@brand}}</span>
   {{/if}}
 
-  {{#if (has-block "search")}}
-    <div class="wu-topbar__search">{{yield to="search"}}</div>
-  {{/if}}
+  {{yield to="search"}}
 
-  <div class="wu-topbar__actions">
+  <div class="wu-topbar-end">
     {{yield to="actions"}}
-  </div>
 
-  {{#if (has-block "user")}}
-    <div class="wu-topbar__divider"></div>
-    <div class="wu-topbar__user">{{yield to="user"}}</div>
-  {{else if @userName}}
-    <div class="wu-topbar__divider"></div>
-    <div class="wu-topbar__user">
-      <div class="wu-topbar__user-details">
-        <div class="wu-topbar__user-name">{{@userName}}</div>
+    {{#if (has-block "user")}}
+      <hr class="wu-divider" aria-orientation="vertical" />
+      <div class="flex x-center gap-2">{{yield to="user"}}</div>
+    {{else if @userName}}
+      <hr class="wu-divider" aria-orientation="vertical" />
+      <span class="flex col">
+        <span class="text-sm">{{@userName}}</span>
         {{#if @userRole}}
-          <div class="wu-topbar__user-role">{{@userRole}}</div>
+          <span class="text-sm text-muted">{{@userRole}}</span>
         {{/if}}
-      </div>
-    </div>
-  {{/if}}
+      </span>
+    {{/if}}
+  </div>
 </header>

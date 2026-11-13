@@ -157,48 +157,48 @@ export default class WovenTableController extends Controller {
   }
 
   code = {
-    basic: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} as |cell|>
+    basic: `<Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} as |cell|>
   {{#if (eq cell.key "role")}}
     <Woven::Badge @variant="info" @text={{cell.value}} />
   {{else}}
     {{cell.value}}
   {{/if}}
-</DataTable>
+</Woven::DataTable>
 
 // basicColumns: [{ name: 'Name', valuePath: 'displayName', width: 200 }, ..., { name: 'Units', valuePath: 'units', width: 90, numeric: true }]
 // rows: [{ id: 'c-1', displayName: 'Ahmed Khalid', role: 'owner', company: { name: 'Emaar Properties' }, ... }]`,
-    yieldBlock: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} as |cell|>
+    yieldBlock: `<Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} as |cell|>
   {{#if (eq cell.key "displayName")}}
     <LinkTo @route="contacts.detail" @model={{cell.row.id}}>{{cell.value}}</LinkTo>
   {{else if (eq cell.key "tags")}}
     <div class="data-table__chips">
-      {{#each cell.row.tags as |tag|}}<Woven::Tag @size="sm" @text={{tag}} />{{/each}}
+      {{#each cell.row.tags as |tag|}}<Woven::Tag @text={{tag}} />{{/each}}
     </div>
   {{else}}
     <span class="text-muted">{{cell.value}}</span>
   {{/if}}
-</DataTable>`,
-    pinned: `<DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} as |cell|>
+</Woven::DataTable>`,
+    pinned: `<Woven::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} as |cell|>
   {{#if (eq cell.key "id")}}
-    <Woven::Button @variant="secondary" @size="xs" @icon="pencil-simple" @text="Edit" />
+    <Woven::Button @size="xs" @icon="pencil-simple" @text="Edit" />
   {{else}}
     {{cell.value}}
   {{/if}}
-</DataTable>
+</Woven::DataTable>
 
 // pinnedColumns: first column isFixed: 'left', Actions column isFixed: 'right', isSortable: false`,
-    reorderable: `<DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @reorderable={{true}} as |cell|>
+    reorderable: `<Woven::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @reorderable={{true}} as |cell|>
   {{cell.value}}
-</DataTable>`,
-    sortable: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} as |cell|>
+</Woven::DataTable>`,
+    sortable: `<Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} as |cell|>
   {{cell.value}}
-</DataTable>
+</Woven::DataTable>
 
 // noteSort(sorts) receives [{ valuePath, isAscending }] or [] when cleared`,
-    options: `<DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @showOptions={{true}} as |cell|>
+    options: `<Woven::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @showOptions={{true}} as |cell|>
   {{cell.value}}
-</DataTable>`,
-    tableId: `<DataTable
+</Woven::DataTable>`,
+    tableId: `<Woven::DataTable
   @columns={{this.pinnedColumns}}
   @rows={{this.rows}}
   @pinColumns={{true}}
@@ -208,8 +208,8 @@ export default class WovenTableController extends Controller {
   as |cell|
 >
   {{cell.value}}
-</DataTable>`,
-    selection: `<DataTable
+</Woven::DataTable>`,
+    selection: `<Woven::DataTable
   @columns={{this.basicColumns}}
   @rows={{this.rows}}
   @selection={{this.selection}}
@@ -217,8 +217,8 @@ export default class WovenTableController extends Controller {
   as |cell|
 >
   {{cell.value}}
-</DataTable>`,
-    rowClickSelect: `<DataTable
+</Woven::DataTable>`,
+    rowClickSelect: `<Woven::DataTable
   @columns={{this.basicColumns}}
   @rows={{this.rows}}
   @selection={{this.selection}}
@@ -227,31 +227,31 @@ export default class WovenTableController extends Controller {
   as |cell|
 >
   {{cell.value}}
-</DataTable>`,
-    rowClick: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} as |cell|>
+</Woven::DataTable>`,
+    rowClick: `<Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} as |cell|>
   {{cell.value}}
-</DataTable>
+</Woven::DataTable>
 
 // noteRowClick(row, event)`,
-    tree: `<DataTable @columns={{this.treeColumns}} @rows={{this.treeRows}} @tree={{true}} as |cell|>
+    tree: `<Woven::DataTable @columns={{this.treeColumns}} @rows={{this.treeRows}} @tree={{true}} as |cell|>
   {{#if (eq cell.key "name")}}
     {{cell.value}}
     {{#if cell.hasChildren}}
-      <Woven::Badge @size="sm" @text={{if cell.isCollapsed "collapsed" "open"}} />
+      <Woven::Badge @text={{if cell.isCollapsed "collapsed" "open"}} />
     {{/if}}
   {{else}}
     {{cell.value}}
   {{/if}}
-</DataTable>
+</Woven::DataTable>
 
 // treeRows: [{ id, name, children: [{ id, name }, ...] }, { id, name, isCollapsed: true, children: [...] }, { id, name }]`,
-    editing: `<DataTable @columns={{this.editableColumns}} @rows={{this.editableRows}} @onCellEdit={{this.saveCell}} as |cell|>
+    editing: `<Woven::DataTable @columns={{this.editableColumns}} @rows={{this.editableRows}} @onCellEdit={{this.saveCell}} as |cell|>
   {{#if (eq cell.key "owner")}}
     {{if cell.value.displayName cell.value.displayName cell.value}}
   {{else}}
     {{cell.value}}
   {{/if}}
-</DataTable>
+</Woven::DataTable>
 
 // editableColumns:
 //   { name: 'Name',    valuePath: 'displayName', editable: 'text' }
@@ -259,12 +259,12 @@ export default class WovenTableController extends Controller {
 //   { name: 'Company', valuePath: 'companyName', editable: 'select', options: ['Emaar Properties', 'Damac', ...] }
 //   { name: 'Owner',   valuePath: 'owner',       editable: 'search', onSearch: searchOwners, labelKey: 'displayName' }
 // saveCell(row, key, value): value is a string, a number (or null), an option value, or the picked record`,
-    dir: `<DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" as |cell|>
+    dir: `<Woven::DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" as |cell|>
   {{cell.value}}
-</DataTable>`,
-    paged: `<DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @showOptions={{true}} @tableId="docs-paged" as |cell|>
+</Woven::DataTable>`,
+    paged: `<Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @showOptions={{true}} @tableId="docs-paged" as |cell|>
   {{cell.value}}
-</DataTable>
+</Woven::DataTable>
 
 <Woven::Pagination
   @page={{this.page}}
@@ -273,20 +273,19 @@ export default class WovenTableController extends Controller {
   @onPageChange={{this.setPage}}
   @onLimitChange={{this.setLimit}}
 />`,
-    raw: `<div class="wu-table-wrapper">
-  <table class="wu-table m-striped">
+    raw: `<div class="wu-table-scroll" tabindex="0" role="region" aria-label="Units">
+  <table class="wu-table hover">
     <thead>
       <tr>
-        <th class="is-sortable is-sorted" aria-sort="ascending"><button type="button">Unit</button></th>
-        <th class="m-align-end">Rent (AED)</th>
+        <th scope="col" aria-sort="ascending"><button type="button" class="wu-table-sort">Unit</button></th>
+        <th scope="col" class="wu-table-num">Rent (AED)</th>
       </tr>
     </thead>
     <tbody>
-      <tr class="is-hoverable is-selected"><td>Unit 204</td><td class="m-align-end">8,500</td></tr>
-      <tr class="wu-table__empty-row"><td colspan="2">No units match.</td></tr>
+      <tr><td>Unit 204</td><td class="wu-table-num">8,500</td></tr>
     </tbody>
     <tfoot>
-      <tr><td>Total</td><td class="m-align-end">8,500</td></tr>
+      <tr><th scope="row">Total</th><td class="wu-table-num">8,500</td></tr>
     </tfoot>
   </table>
 </div>`,
@@ -295,7 +294,7 @@ export default class WovenTableController extends Controller {
   argRows = [
     { name: '@columns', type: 'array', default: '[]', description: 'Column definitions; see the column shape below. A stable copy is kept per column because ember-table writes widths onto it.' },
     { name: '@rows', type: 'array', default: '[]', description: 'Row objects. Each needs a unique id: selection, editing and the row test hook match by id, not by identity.' },
-    { name: '@pinColumns', type: 'boolean', default: 'false', description: 'Honours isFixed on columns. Without it every column scrolls.' },
+    { name: '@pinColumns', type: 'boolean', default: 'false', description: 'Honors isFixed on columns. Without it every column scrolls.' },
     { name: '@reorderable', type: 'boolean', default: 'false', description: 'Drag headers to reorder. Pinned columns never move.' },
     { name: '@sortable', type: 'boolean', default: 'false', description: 'Click headers to sort on the loaded rows. Cycle: ascending, descending, cleared. Sorts the raw field, not the formatted text.' },
     { name: '@showOptions', type: 'boolean', default: 'false', description: 'Options button with a Columns menu to hide or show non-pinned columns, and Reset when @tableId is set.' },
@@ -304,8 +303,8 @@ export default class WovenTableController extends Controller {
     { name: '@selectOnRowClick', type: 'boolean', default: 'false', description: 'Clicking a row toggles it. Only with @onSelect, and switched off while the table is editable so single and double click do not compete.' },
     { name: '@tree', type: 'boolean', default: 'false', description: 'Rows with a children array nest; parents get a collapse caret. A row with isCollapsed: true starts closed.' },
     { name: '@dir', type: '"ltr" | "rtl"', default: 'html dir', description: 'Per-table direction override. RTL mirrors the column order and pinned sides; cell text reads RTL.' },
-    { name: '@hoverable', type: 'boolean', default: 'true', description: 'Rows highlight on hover (is-hoverable on each row). Pass {{false}} to opt out.' },
-    { name: '@stickyHeader', type: 'boolean', default: 'false', description: 'Header sticks inside the table scroller (data-table--sticky-header on the root). Max height is --wu-data-table--StickyMaxHeight, default calc(100dvh - 240px).' },
+    { name: '@hoverable', type: 'boolean', default: 'true', description: 'Rows highlight on hover (kit hover modifier on the table). Pass {{false}} to opt out.' },
+    { name: '@stickyHeader', type: 'boolean', default: 'false', description: 'Header sticks inside the table scroller (kit sticky-header on the table, data-table--sticky-header on the root). Max height is --wu-table--MaxHeight, default calc(100dvh - 240px).' },
   ];
 
   callbackRows = [
@@ -323,7 +322,7 @@ export default class WovenTableController extends Controller {
     { name: 'isFixed', type: '"left" | "right"', default: '', description: 'Pins the column, only when @pinColumns is set. Pinned columns cannot be reordered or hidden; the sides swap under RTL.' },
     { name: 'isSortable', type: 'boolean', default: 'true', description: 'Set false to keep a column out of sorting (actions columns).' },
     { name: 'isResizable', type: 'boolean', default: 'true', description: 'Set false to lock the width.' },
-    { name: 'numeric', type: 'boolean', default: 'false', description: 'Money, counts, percentages and dates. Header, cells and the number editor align to the logical end with tabular figures (m-numeric on th and td).' },
+    { name: 'numeric', type: 'boolean', default: 'false', description: 'Money, counts and percentages; dates stay start-aligned. Header, cells and the number editor align to the logical end with tabular figures (kit wu-table-num on th and td).' },
     { name: 'editable', type: '"text" | "number" | "select" | "search"', default: '', description: 'Editor opened by double-click when @onCellEdit is set.' },
     { name: 'options', type: 'array', default: '', description: 'Choices for a select editor; strings or value/label objects.' },
     { name: 'onSearch', type: 'function', default: '', description: 'async (term) => items, for a search editor (Woven::Autocomplete). The host owns transport.' },
@@ -354,26 +353,27 @@ export default class WovenTableController extends Controller {
     { name: 'data-test-data-table-reset', description: 'Reset columns button.' },
     { name: 'data-test-data-table-select-all / -select-row', description: 'Header and row checkboxes.' },
     { name: 'data-test-data-table-editor={key}', description: 'The open cell editor wrapper.' },
+    { name: 'data-test-data-table-sort={valuePath}', description: 'Sort button in a sortable header.' },
   ];
 
   classRows = [
     { name: 'data-table__chips', description: 'Flex row with a small gap for tag or badge cells; children never shrink.' },
     { name: 'data-table-shell', description: 'Root wrapper carrying the resolved dir; the Options toolbar sits inside it.' },
-    { name: 'data-table.wu-table-wrapper', description: 'The ember-table element, styled as the kit wrapper; its table extends wu-table.' },
-    { name: 'data-table--rtl / --tree / --row-click', description: 'State classes for the mirrored layout, tree indent and pointer cursor.' },
-    { name: 'tr.is-selected / tr.is-child', description: 'Selected row tint; nested row background in a tree.' },
-    { name: 'th.m-numeric / td.m-numeric', description: 'Set from the numeric column option: end alignment and tabular figures.' },
+    { name: 'data-table', description: 'The ember-table element: outer outline without column lines. Its scroller gets wu-table-scroll and its table wu-table.' },
+    { name: 'data-table--rtl / --tree / --row-click / --sticky-header', description: 'State classes for the mirrored layout, tree indent, pointer cursor and the bounded scroller height.' },
+    { name: 'wu-table.hover / sticky-header', description: 'Kit modifiers set from @hoverable and @stickyHeader.' },
+    { name: 'th.wu-table-num / td.wu-table-num', description: 'Set from the numeric column option: end alignment and tabular figures.' },
+    { name: 'wu-table-select', description: 'The checkbox column; a checked box tints its row with the kit selected look.' },
+    { name: 'wu-table-sort / aria-sort', description: 'Sort button in a sortable header; the sorted header carries aria-sort.' },
+    { name: 'tr[data-wu-child]', description: 'Nested row background in a tree.' },
   ];
 
   rawRows = [
-    { name: 'wu-table-wrapper', description: 'Bordered, rounded scroll container. m-with-footer squares the bottom for an attached footer bar.' },
-    { name: 'wu-table-wrapper__footer / __footer-status / __footer-controls', description: 'Bar under the wrapper for status text and pagination.' },
-    { name: 'wu-table', description: 'Full-width table with collapsed borders; DataTable extends it.' },
-    { name: 'wu-table.m-striped / m-bordered / m-compact / m-comfortable / m-sticky-head', description: 'Row stripes, vertical borders, density steps and a sticky header.' },
-    { name: 'th.is-sortable / th.is-sorted', description: 'Sortable affordance and the sorted column highlight.' },
-    { name: 'th.m-align-start / center / end, td.m-align-*', description: 'Logical cell alignment.' },
-    { name: 'th.m-numeric, td.m-numeric', description: 'End alignment plus tabular figures for money, counts, percentages and dates.' },
-    { name: 'tr.is-hoverable / is-clickable / is-selected', description: 'Row hover, pointer cursor and the selected tint with an inline-start bar.' },
-    { name: 'tr.wu-table__empty-row', description: 'Tall centred muted cell for the empty message.' },
+    { name: 'wu-table-scroll', description: 'Scroll region for a wide table with scroll shadows; give it tabindex="0", role="region" and an aria-label.' },
+    { name: 'wu-table', description: 'Full-width table; header, row lines and a summary row from tfoot.' },
+    { name: 'wu-table.sm / striped / hover / bordered / sticky-header', description: 'Tighter cells, row stripes, row hover, cell borders and a sticky header.' },
+    { name: 'wu-table-num', description: 'End alignment plus tabular figures for money, counts and percentages. Date columns stay start-aligned.' },
+    { name: 'wu-table-sort with aria-sort on the th', description: 'Sort button with arrows; one arrow shows the sorted direction.' },
+    { name: 'wu-table-select / wu-table-truncate', description: 'Checkbox column; one-line cell with an ellipsis.' },
   ];
 }

@@ -28,8 +28,8 @@ module('Integration | Component | woven/toast-region', function (hooks) {
 
     await render(hbs`<Woven::ToastRegion />`);
 
-    assert.dom('[data-test-toast-type="error"]').hasClass('m-danger');
-    assert.dom('[data-test-toast-type="success"]').hasClass('m-success');
+    assert.dom('[data-test-toast-type="error"]').hasClass('danger');
+    assert.dom('[data-test-toast-type="success"]').hasClass('success');
   });
 
   test('dismisses a toast', async function (assert) {
@@ -46,7 +46,7 @@ module('Integration | Component | woven/toast-region', function (hooks) {
 
   test('applies a position modifier', async function (assert) {
     await render(hbs`<Woven::ToastRegion @position="top-end" />`);
-    assert.dom('[data-test-wu-toast-region]').hasClass('m-top-end');
+    assert.dom('[data-test-wu-toast-region]').hasClass('top-end');
   });
 
   test('shows no toasts when service is empty', async function (assert) {

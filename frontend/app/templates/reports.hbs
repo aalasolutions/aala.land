@@ -8,31 +8,29 @@
 
   {{#if @model.kpis}}
     <div class="reports-kpis grid cols-3 gap-4" data-test-reports-kpis>
-      <Woven::Stat
+      <StatCard
         data-test-kpi="monthly-revenue"
         @route="financials"
-        @contentBleed={{true}}
         @label="Monthly Revenue"
         @value={{format-money @model.kpis.monthlyRevenue}}
       >
         <:content>
           <StatSparkline
             @points={{this.revenuePoints}}
-            @variant="primary"
+            @variant="brand"
             @caption="Completed revenue by month"
           />
         </:content>
-      </Woven::Stat>
-      <Woven::Stat
+      </StatCard>
+      <StatCard
         data-test-kpi="pending-cheques"
         @route="cheques"
-        @variant="warning"
         @size="lg"
         @label="Pending Cheques"
         @value={{format-number @model.kpis.pendingCheques}}
         @delta="Needs action"
       />
-      <Woven::Stat
+      <StatCard
         data-test-kpi="won-leads"
         @route="leads"
         @variant="success"
@@ -43,22 +41,21 @@
           @model.kpis.totalLeads
         }} leads"
       />
-      <Woven::Stat
+      <StatCard
         data-test-kpi="total-leads"
         @route="leads"
-        @variant="secondary"
         @label="Total Leads"
         @value={{format-number @model.kpis.totalLeads}}
         @delta="All stages"
       />
-      <Woven::Stat
+      <StatCard
         data-test-kpi="active-leases"
         @route="leases"
         @label="Active Leases"
         @value={{format-number @model.kpis.activeLeases}}
         @delta="Currently running"
       />
-      <Woven::Stat
+      <StatCard
         data-test-kpi="total-units"
         @route="properties"
         @label="Total Properties"
@@ -85,7 +82,7 @@
                 @variant={{group.variant}}
                 @text={{group.severityLabel}}
               />
-              <h4 class="wu-panel__title">{{group.label}}</h4>
+              <h4 class="wu-panel-title">{{group.label}}</h4>
               <span
                 class="text-muted text-sm"
                 data-test-flag-group-total={{group.type}}
@@ -113,7 +110,7 @@
                     >{{format-date flag.createdAt zone="region"}}</span>
                     {{#if flag.areaId}}
                       <Woven::Button
-                        @variant="secondary"
+                        @variant="subtle"
                         @size="xs"
                         @route="properties.unit"
                         @models={{array flag.areaId flag.entityId}}
@@ -155,7 +152,7 @@
     {{#if @model.funnel.length}}
       <Woven::Panel>
         <:header>
-          <h4 class="wu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
+          <h4 class="wu-panel-title"><Ui::Ph @icon="funnel" @size="20px" />
             Pipeline Funnel</h4>
         </:header>
         <:body>
@@ -174,7 +171,7 @@
     {{#if @model.agents.length}}
       <Woven::Panel>
         <:header>
-          <h4 class="wu-panel__title"><Ui::Ph
+          <h4 class="wu-panel-title"><Ui::Ph
               @icon="users-three"
               @size="20px"
             />
@@ -240,7 +237,7 @@
   {{#if (eq this.currentTab "activity")}}
     <Woven::Panel>
       <:header>
-        <h4 class="wu-panel__title"><Ui::Ph
+        <h4 class="wu-panel-title"><Ui::Ph
             @icon="clock-counter-clockwise"
             @size="20px"
           />
@@ -284,7 +281,6 @@
         {{/if}}
         {{#if @model.total}}
           <Woven::Pagination
-            @selectId="reports-activity-limit"
             @page={{this.page}}
             @limit={{this.limit}}
             @total={{@model.total}}

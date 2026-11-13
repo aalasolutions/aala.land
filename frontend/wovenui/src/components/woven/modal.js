@@ -1,39 +1,24 @@
 import { guidFor } from '@ember/object/internals';
-import NuDialogBaseComponent from './-dialog-base';
+import WovenDialogBaseComponent from './-dialog-base';
 
-const SIZES = ['sm', 'md', 'lg', 'xl', 'full'];
+// md is the kit default width; xl folds into lg, the widest kit size.
+const SIZE_CLASS = { sm: 'sm', lg: 'lg', xl: 'lg', full: 'full' };
 
-export default class NuModalComponent extends NuDialogBaseComponent {
+export default class WovenModalComponent extends WovenDialogBaseComponent {
   titleId = `wu-modal-title-${guidFor(this)}`;
 
   get showClose() {
     return this.args.showClose !== false;
   }
 
-  get backdropClasses() {
-    const parts = ['wu-backdrop'];
-    if (this.args.blur) {
-      parts.push('m-blur');
-    }
-    if (this.args.top) {
-      parts.push('m-top');
-    }
-    if (this.args.open) {
-      parts.push('is-open');
-    }
-    return parts.join(' ');
-  }
-
   get modalClasses() {
     const parts = ['wu-modal'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    const size = SIZE_CLASS[this.args.size];
+    if (size) {
+      parts.push(size);
     }
-    if (this.args.scrollable) {
-      parts.push('is-scrollable');
-    }
-    if (this.args.open) {
-      parts.push('is-open');
+    if (this.animated) {
+      parts.push('animated');
     }
     return parts.join(' ');
   }

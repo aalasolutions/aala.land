@@ -1,38 +1,16 @@
-<Woven::Modal
+<Woven::ConfirmModal
   @open={{@open}}
   @title={{@title}}
-  @size="sm"
-  @onClose={{this.close}}
+  @message={{@message}}
+  @confirmText={{@confirmText}}
+  @confirmingText={{@confirmingText}}
+  @cancelText={{@cancelText}}
+  @confirmVariant={{@confirmVariant}}
+  @isConfirming={{@isConfirming}}
+  @onClose={{@onClose}}
+  @onConfirm={{@onConfirm}}
   data-test-confirm-modal
   ...attributes
 >
-  <:body>
-    {{#if @message}}
-      <p class="text-muted" data-test-confirm-modal-message>{{@message}}</p>
-    {{/if}}
-    {{yield}}
-  </:body>
-
-  <:footer>
-    <Woven::Button
-      @variant="secondary"
-      data-test-confirm-modal-cancel
-      {{on "click" this.close}}
-    >
-      {{this.cancelText}}
-    </Woven::Button>
-    <Woven::Button
-      @variant={{if @confirmVariant @confirmVariant "primary"}}
-      @disabled={{@isConfirming}}
-      @loading={{@isConfirming}}
-      data-test-confirm-modal-confirm
-      {{on "click" this.confirm}}
-    >
-      {{#if @isConfirming}}
-        {{@confirmingText}}
-      {{else}}
-        {{@confirmText}}
-      {{/if}}
-    </Woven::Button>
-  </:footer>
-</Woven::Modal>
+  {{yield}}
+</Woven::ConfirmModal>

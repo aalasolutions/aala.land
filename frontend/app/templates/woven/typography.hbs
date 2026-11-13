@@ -6,19 +6,22 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      Title separates the heading level from the visual size, so the
-      document outline stays correct while the design picks the step. Text
-      is a paragraph or span with size, weight, colour, truncation and line
-      clamp. The scale comes from WovenUI core, so kit and utility sizes
-      agree.
+      Title renders the CSS kit
+      <code class="wu-code">wu-title</code>
+      and separates the heading level from the visual size, so the document
+      outline stays correct while the design picks the step. Text renders
+      <code class="wu-code">wu-text</code>
+      on a paragraph or span with size, weight, color, truncation and line
+      clamp; the xs and xl sizes, role colors, weight, subtle, truncation and
+      clamp are core utilities.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Heading tag independent of size; seven title sizes, five text sizes.</li>
-      <li class="wu-list__item">Four weights; six colour variants plus muted and subtle.</li>
-      <li class="wu-list__item">Single-line truncation and two- or three-line clamp.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Heading tag independent of size; four kit title steps, five text sizes.</span></li>
+      <li class="wu-list-item"><span>Four weights; muted, subtle and role colors.</span></li>
+      <li class="wu-list-item"><span>Single-line truncation and two- or three-line clamp.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -29,8 +32,8 @@
       @layout="block"
       @code={{this.code.tag}}
     >
-      <Woven::Title @tag="h1" @size="lg" @text="An h1 at the lg size" />
-      <Woven::Title @tag="h4" @size="lg" @text="An h4 at the same size" />
+      <Woven::Title @tag="h1" @size="xl" @text="An h1 at the xl size" />
+      <Woven::Title @tag="h4" @size="xl" @text="An h4 at the same size" />
     </WovenDocs::Example>
 
     {{#each this.titleSizeExamples as |example|}}
@@ -57,7 +60,7 @@
       @code={{this.code.titleTruncate}}
     >
       <Woven::Title
-        @size="md"
+        @size="sm"
         @tag="h4"
         @truncate={{true}}
         @text="A very long unit description that should truncate with an ellipsis when the container is narrow"
@@ -80,7 +83,7 @@
   <WovenDocs::Section @title="Text: sizes" @id="text-sizes">
     {{#each this.textSizeExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
-        <Woven::Text @size={{example.size}} @text="Text {{example.size}}" />
+        <Woven::Text @size={{example.size}} @text={{example.label}} />
       </WovenDocs::Example>
     {{/each}}
 
@@ -101,10 +104,10 @@
     {{/each}}
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Text: colours" @id="text-colours">
-    {{#each this.variantExamples as |example|}}
+  <WovenDocs::Section @title="Text: colors" @id="text-colors">
+    {{#each this.textVariantExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
-        <Woven::Text @variant={{example.variant}} @text="{{example.title}} text" />
+        <Woven::Text @variant={{example.variant}} @text="{{example.title}} text" data-test-woven-text-variant={{example.variant}} />
       </WovenDocs::Example>
     {{/each}}
 
@@ -164,15 +167,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Choose @tag by outline position, never by appearance; one h1 per page.</li>
-      <li class="wu-list__item">Truncated and clamped text is cut visually only; the full string stays in the DOM and is read in full.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Choose @tag by outline position, never by appearance; one h1 per page.</span></li>
+      <li class="wu-list-item"><span>Truncated and clamped text is cut visually only; the full string stays in the DOM and is read in full.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Alignment is inherited from the page direction; the ellipsis of truncated text appears at the inline end.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Alignment is inherited from the page direction; the ellipsis of truncated text appears at the inline end.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { service } from '@ember/service';
 
 const THEMES = {
   teal: '#1ab5a5',
@@ -11,6 +12,8 @@ const THEMES = {
 
 // Shared documentation layout: navigation, theme switch, direction switch.
 export default class WovenController extends Controller {
+  @service router;
+
   @tracked activeTheme = 'teal';
   @tracked dir = document.documentElement.dir || 'ltr';
   @tracked sidebarCollapsed = false;
@@ -88,6 +91,9 @@ export default class WovenController extends Controller {
     },
   ];
 
+  // Template helper: the kit marks the current link with aria-current, which LinkTo does not set.
+  isCurrent = (route) => this.router.isActive(route);
+
   get pageCount() {
     return this.navSections.reduce((sum, group) => sum + group.items.length, 0);
   }
@@ -103,7 +109,7 @@ export default class WovenController extends Controller {
       style.removeProperty('--wu-brand-active');
     } else {
       style.setProperty('--wu-brand', THEMES[name]);
-      // Approximates the core 800 and 900 stops so hover and active follow the demo colour.
+      // Approximates the core 800 and 900 stops so hover and active follow the demo color.
       style.setProperty(
         '--wu-brand-hover',
         `color-mix(in oklch, ${THEMES[name]}, black 20%)`,

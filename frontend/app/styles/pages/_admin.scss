@@ -1,19 +1,6 @@
-// Bespoke `.console-*` classes on kit tokens; badges use domains from _tags.scss.
+// Bespoke `.console-*` classes on kit tokens; tags take their variant from utils/tag-variant.js.
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
-
-.console-hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: wu-space(6);
-}
-
-.console-hero__figures {
-  display: flex;
-  gap: wu-space(8);
-}
 
 .console-hero__label {
   font-size: wu-font-size(xs);
@@ -24,45 +11,20 @@
 }
 
 .console-hero__value {
-  font-size: 2rem;
+  font-size: wu-font-size(3xl);
   font-weight: wu-font-weight(bold);
   color: var(--wu-text-regular);
   line-height: 1.1;
 }
 
 .console-hero__unit {
-  font-size: 1rem;
+  font-size: wu-font-size(md);
   font-weight: wu-font-weight(medium);
   color: var(--wu-text-muted);
 }
 
-.console-hero__chips,
-.console-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: wu-space(2);
-}
-
-.m-numeric .console-chip-row {
+.wu-table-num .console-chip-row {
   justify-content: flex-end;
-}
-
-.console-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: wu-space(2);
-  padding-block: wu-space(1);
-  padding-inline: wu-space(3);
-  border-radius: wu-radius(full);
-  background: var(--wu-bg-alternate);
-  font-size: wu-font-size(sm);
-  color: var(--wu-text-muted);
-}
-
-.console-chip__code {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--wu-text-regular);
 }
 
 .console-tiles {
@@ -71,6 +33,7 @@
   gap: wu-space(4);
 }
 
+// Plain 1fr tracks: the payments table keeps its min-content width instead of clipping.
 .console-rollups {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -81,31 +44,10 @@
   }
 }
 
-.console-region-row {
-  display: flex;
-  align-items: center;
-  gap: wu-space(3);
-}
-
 .console-region-row__name {
   inline-size: 5.625rem;
   font-size: wu-font-size(sm);
   color: var(--wu-text-muted);
-}
-
-.console-region-bar {
-  flex: 1;
-  block-size: 8px;
-  border-radius: wu-radius(full);
-  background: var(--wu-bg-alternate);
-  overflow: hidden;
-}
-
-.console-region-bar__fill {
-  display: block;
-  block-size: 100%;
-  border-radius: wu-radius(full);
-  background: var(--wu-brand);
 }
 
 .console-region-row__count {
@@ -114,29 +56,14 @@
   font-weight: wu-font-weight(semibold);
 }
 
-.console-list-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: wu-space(3);
-}
-
 .console-list-filters__search {
   flex: 1;
   min-inline-size: 12.5rem;
 }
 
-.console-list-filters .console-list-filters__select.wu-dropdown {
+.console-list-filters .console-list-filters__select.wu-dropdown-wrap {
   inline-size: auto;
   min-inline-size: 8.75rem;
-}
-
-// Row is clickable, but company name is also a real link so keyboard users aren't stranded.
-.console-row {
-  cursor: pointer;
-
-  &:hover {
-    background: var(--wu-bg-alternate);
-  }
 }
 
 .console-row__name-link {
@@ -146,17 +73,6 @@
   &:hover {
     color: var(--wu-brand);
   }
-}
-
-.console-expand-row td {
-  background: var(--wu-bg-alternate);
-}
-
-.console-expand {
-  display: flex;
-  flex-wrap: wrap;
-  gap: wu-space(4);
-  padding-block: wu-space(2);
 }
 
 // A three letter code needs far less room than the amount beside it.

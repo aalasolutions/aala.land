@@ -4,6 +4,7 @@ import { click, findAll } from '@ember/test-helpers';
 import template from 'land/templates/contacts/index';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import { rowActionKeys } from 'land/tests/helpers/row-actions';
 
 const FULL = {
   id: 'c-full',
@@ -101,7 +102,7 @@ module('Integration | Template | contacts/index', function (hooks) {
     assert.dom(`${row('c-full')} [data-test-limited-badge]`).doesNotExist();
     assert.dom(row('c-full')).containsText('sara@example.com');
     assert.dom(`${row('c-full')} [data-test-wa-link]`).exists();
-    assert.dom(`${row('c-full')} [data-test-edit-contact]`).exists();
+    assert.ok((await rowActionKeys(row('c-full'))).includes('edit-contact'));
   });
 
   test('a limited row already waiting shows Access pending instead of the button', async function (assert) {

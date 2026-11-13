@@ -1,5 +1,4 @@
 import Controller from '@ember/controller';
-import { htmlSafe } from '@ember/template';
 
 /** Region codes seen most often; a friendlier label than the raw code. */
 const REGION_LABELS = {
@@ -103,7 +102,7 @@ export default class AdminOverviewController extends Controller {
       regionCode: r.regionCode,
       label: REGION_LABELS[r.regionCode] ?? r.regionCode,
       customers: r.customers,
-      barStyle: htmlSafe(`width: ${Math.round((r.customers / max) * 100)}%`),
+      max,
     }));
   }
 
@@ -114,7 +113,7 @@ export default class AdminOverviewController extends Controller {
     {
       name: 'Actions',
       valuePath: 'companyId',
-      width: 110,
+      width: 90,
       isSortable: false,
     },
   ];

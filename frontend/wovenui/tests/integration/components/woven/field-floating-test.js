@@ -3,8 +3,8 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render, fillIn, select } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
-const LABEL = '.wu-field__float-label';
-const WRAPPER = '[data-test-wu-field-control]';
+const LABEL = '.wu-field-label';
+const WRAPPER = '[data-test-wu-field]';
 
 // Reads the label offset after jumping any running transition to its end.
 function labelTop(root) {
@@ -23,8 +23,8 @@ module('Integration | Component | woven/field floating label', function (hooks) 
     `);
 
     const input = this.element.querySelector('input');
-    assert.dom('[data-test-wu-field]').hasClass('m-floating');
-    assert.dom('.wu-field__label').doesNotExist('no static label');
+    assert.dom('[data-test-wu-field]').hasClass('floating');
+    assert.dom(LABEL).exists({ count: 1 }, 'one label, the floating one');
     assert.dom(LABEL).hasTagName('label');
     assert.dom(LABEL).hasText('Property name');
     assert.ok(input.id, 'the control gets an id');
@@ -37,8 +37,8 @@ module('Integration | Component | woven/field floating label', function (hooks) 
       <Woven::Field @label="Name" @placeholder="Ignored"><Woven::Input @placeholder="Jane" /></Woven::Field>
     `);
 
-    assert.dom('.wu-field__label').hasText('Name');
-    assert.dom(LABEL).doesNotExist();
+    assert.dom(LABEL).hasText('Name');
+    assert.dom('[data-test-wu-field]').doesNotHaveClass('floating');
     assert.dom('input').hasAttribute('placeholder', 'Jane');
   });
 
@@ -53,7 +53,7 @@ module('Integration | Component | woven/field floating label', function (hooks) 
     await fillIn('input', 'Marina Tower');
     assert.dom(WRAPPER).hasClass('has-value');
     assert.ok(labelTop(this.element) < resting, 'the label moved up');
-    assert.strictEqual(labelTop(this.element), 0, 'it sits on the top edge');
+    assert.strictEqual(labelTop(this.element), 4, 'it sits one space step below the top edge');
   });
 
   test('a select uses the has-value fallback', async function (assert) {

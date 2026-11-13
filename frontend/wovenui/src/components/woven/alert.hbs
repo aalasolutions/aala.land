@@ -1,37 +1,29 @@
-{{! Icon grows only when a description is present; title-only alerts stay small. }}
+{{! The kit draws the marker shape; the close button stays the last child. }}
 <div class={{this.classes}} role="alert" data-test-wu-alert ...attributes>
-  {{#if this.showIcon}}
-    <span class={{this.iconClasses}} aria-hidden="true" data-test-wu-alert-icon>
-      {{@icon}}
-    </span>
+  {{#if (has-block)}}
+    {{yield}}
+  {{else}}
+    {{#if @title}}
+      <strong class="wu-alert-title" data-test-wu-alert-title>{{@title}}</strong>
+    {{/if}}
+    {{#if @description}}
+      <p data-test-wu-alert-description>{{@description}}</p>
+    {{/if}}
   {{/if}}
 
-  <div class="wu-alert__content">
-    {{#if (has-block)}}
-      {{yield}}
-    {{else}}
-      {{#if @title}}
-        <div class="wu-alert__title" data-test-wu-alert-title>{{@title}}</div>
-      {{/if}}
-      {{#if @description}}
-        <div class="wu-alert__description" data-test-wu-alert-description>{{@description}}</div>
-      {{/if}}
-    {{/if}}
-
-    {{#if (has-block "actions")}}
-      <div class="wu-alert__actions" data-test-wu-alert-actions>
-        {{yield to="actions"}}
-      </div>
-    {{/if}}
-  </div>
+  {{#if (has-block "actions")}}
+    <div class="wu-alert-actions" data-test-wu-alert-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
 
   {{#if @closable}}
     <button
       type="button"
-      class="wu-alert__close"
+      class="wu-alert-close"
       aria-label="Dismiss alert"
       data-test-wu-alert-close
       {{on "click" this.handleClose}}
-    >×</button>
+    ></button>
   {{/if}}
 </div>

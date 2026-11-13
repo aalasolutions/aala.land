@@ -5,7 +5,7 @@
     <:actions>
       <Woven::Button
         data-test-new-vendor
-        @variant="primary"
+        @variant="brand"
         @icon="plus"
         {{on "click" this.openCreate}}
       >
@@ -31,7 +31,7 @@
         {{else if (eq cell.key "specialties")}}
           <div class="flex gap-2 wrap">
             {{#each cell.value as |sp|}}
-              <Woven::Tag class="tag-trade-{{lowercase sp}}" @text={{sp}} />
+              <Woven::Tag @variant={{tag-variant "trade" sp}} @text={{sp}} />
             {{/each}}
           </div>
         {{else if (eq cell.key "hourlyRate")}}
@@ -42,28 +42,24 @@
             / 5
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <div class="flex">
-            <Woven::Button
-              data-test-edit-vendor
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              @icon="pencil-simple"
-              aria-label="Edit {{cell.row.name}}"
-              data-tooltip="Edit"
-              {{on "click" (fn this.openEdit cell.row)}}
-            />
-            <Woven::Button
-              data-test-delete-vendor
-              @subtle={{true}}
-              @variant="danger"
-              @size="xs"
-              @icon="trash"
-              aria-label="Delete {{cell.row.name}}"
-              data-tooltip="Delete"
-              {{on "click" (fn this.openDelete cell.row)}}
-            />
-          </div>
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="edit-vendor"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+              )
+              (hash
+                key="delete-vendor"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openDelete cell.row)
+              )
+            }}
+          />
         {{else}}
           {{cell.value}}
         {{/if}}
@@ -82,7 +78,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="vendors-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}

@@ -7,7 +7,7 @@
   >
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         data-test-new-unit
         @icon="plus"
         {{on "click" this.openNewUnitModal}}
@@ -21,24 +21,25 @@
     {{#if @model.length}}
       <div class="flex col gap-3">
         {{#each @model as |loc|}}
-          <LinkTo
-            data-test-locality-card
-            @route="properties.detail"
-            @model={{loc.id}}
-            class="wu-card m-interactive flex between x-center"
-          >
-            <div class="flex gap-6">
-              <div>
-                <h4 class="text-md font-bold">{{loc.name}}</h4>
-                <p class="text-muted text-xs mt-1">{{loc.cityName}}</p>
+          <Woven::Card data-test-locality-card>
+            <div class="flex between x-center">
+              <div class="flex gap-6">
+                <div>
+                  <h4 class="text-md font-bold"><LinkTo
+                      class="wu-card-link"
+                      @route="properties.detail"
+                      @model={{loc.id}}
+                    >{{loc.name}}</LinkTo></h4>
+                  <p class="text-muted text-xs mt-1">{{loc.cityName}}</p>
+                </div>
+                <div class="flex gap-4 text-sm">
+                  <span class="text-muted">{{loc.assetCount}} Assets</span>
+                  <span class="text-muted">{{loc.unitCount}} Properties</span>
+                </div>
               </div>
-              <div class="flex gap-4 text-sm">
-                <span class="text-muted">{{loc.assetCount}} Assets</span>
-                <span class="text-muted">{{loc.unitCount}} Properties</span>
-              </div>
+              <Ui::Ph @icon="caret-right" @size="20" />
             </div>
-            <Ui::Ph @icon="caret-right" @size="20" />
-          </LinkTo>
+          </Woven::Card>
         {{/each}}
       </div>
     {{else}}
@@ -65,16 +66,18 @@
         {{else if (eq cell.key "cityName")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <Woven::Button
-            data-test-view-locality
-            @subtle={{true}}
-            @variant="primary"
-            @size="xs"
-            @icon="eye"
-            @route="properties.detail"
-            @model={{cell.value}}
-            aria-label="View {{cell.row.name}}"
-            data-tooltip="View"
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="view-locality"
+                label="View"
+                icon="eye"
+                variant="brand"
+                route="properties.detail"
+                models=(array cell.value)
+              )
+            }}
           />
         {{else}}
           {{cell.value}}
@@ -166,7 +169,7 @@
                 {{#each this.amenityOptions as |opt|}}
                   <button
                     type="button"
-                    class="wu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
+                    class="wu-tag"
                     data-test-amenity-filter={{opt.key}}
                     aria-pressed={{if
                       (includes this.filterAmenities opt.key)
@@ -184,7 +187,7 @@
 
             <div class="flex end">
               <Woven::Button
-                @variant="secondary"
+                @variant="subtle"
                 @size="sm"
                 @icon="x"
                 @disabled={{not this.hasActiveFilters}}
@@ -227,7 +230,7 @@
               data-tooltip-position="start"
             >
               <Woven::Button
-                @variant="secondary"
+                @variant="subtle"
                 @size="xs"
                 @icon={{if
                   (eq this.sortDirection "desc")
@@ -299,11 +302,11 @@
                 />
               {{/if}}
               <Woven::Tag
-                class="tag-unit-{{lowercase unit.status}}"
+                @variant={{tag-variant "unit" unit.status}}
                 @text={{capitalize unit.status}}
               />
               <Woven::Tag
-                class="tag-proptype-{{lowercase unit.propertyType}}"
+                @variant={{tag-variant "proptype" unit.propertyType}}
                 @text={{property-type-label unit.propertyType}}
               />
             </div>
@@ -360,7 +363,7 @@
         <div class="flex center gap-4" data-test-browse-pagination>
           <Woven::Button
             data-test-browse-prev
-            @variant="secondary"
+            @variant="subtle"
             @size="sm"
             @disabled={{eq this.browsePage 1}}
             {{on "click" this.browsePrevPage}}
@@ -368,7 +371,7 @@
           <span class="text-sm text-muted">Page {{this.browsePage}}</span>
           <Woven::Button
             data-test-browse-next
-            @variant="secondary"
+            @variant="subtle"
             @size="sm"
             {{on "click" this.browseNextPage}}
           >Next</Woven::Button>
@@ -377,7 +380,7 @@
         <div class="flex center gap-4" data-test-browse-pagination>
           <Woven::Button
             data-test-browse-prev-empty
-            @variant="secondary"
+            @variant="subtle"
             @size="sm"
             {{on "click" this.browsePrevPage}}
           >Previous</Woven::Button>

@@ -13,7 +13,7 @@ module('Integration | Component | woven/field', function (hooks) {
       </Woven::Field>
     `);
 
-    const label = this.element.querySelector('.wu-field__label');
+    const label = this.element.querySelector('.wu-field-label');
     const input = this.element.querySelector('input');
 
     assert.ok(input.id, 'the control gets an id');
@@ -33,7 +33,7 @@ module('Integration | Component | woven/field', function (hooks) {
 
     assert.dom('input').hasAttribute('id', 'my-own-id');
     assert
-      .dom('.wu-field__label')
+      .dom('.wu-field-label')
       .hasAttribute('for', 'my-own-id', 'the label follows the caller id');
   });
 
@@ -44,10 +44,10 @@ module('Integration | Component | woven/field', function (hooks) {
       </Woven::Field>
     `);
 
-    const label = this.element.querySelector('.wu-field__label');
+    const label = this.element.querySelector('.wu-field-label');
     assert.dom('button').hasAttribute('aria-labelledby', label.id);
     assert
-      .dom('.wu-field__label')
+      .dom('.wu-field-label')
       .doesNotHaveAttribute('for', 'no dangling for on a non-native control');
   });
 
@@ -62,27 +62,30 @@ module('Integration | Component | woven/field', function (hooks) {
     assert.dom('button').doesNotHaveAttribute('aria-labelledby');
   });
 
-  test('a tooltip button never stands in for the control', async function (assert) {
+  test('a help button never stands in for the control', async function (assert) {
     await render(hbs`
       <Woven::Field @label="Property" @tooltip="Pick the property this belongs to.">
         <button type="button" role="combobox">Select a property...</button>
       </Woven::Field>
     `);
 
-    const label = this.element.querySelector('.wu-field__label');
+    const label = this.element.querySelector('.wu-field-label');
     const control = this.element.querySelector('[role="combobox"]');
-    const info = this.element.querySelector('[data-test-wu-field-tooltip]');
+    const info = this.element.querySelector('[data-test-wu-field-help]');
+    const popover = this.element.querySelector(
+      '[data-test-wu-field-help-popover]',
+    );
 
     assert.dom(control).hasAttribute('aria-labelledby', label.id);
     assert
       .dom(info)
-      .doesNotHaveAttribute('aria-labelledby', 'the info button keeps its own name');
+      .doesNotHaveAttribute('aria-labelledby', 'the help button keeps its own name');
     assert
       .dom(info)
       .hasAttribute('aria-label', 'More information about Property');
-    assert
-      .dom(info)
-      .hasAttribute('data-tooltip', 'Pick the property this belongs to.');
+    assert.dom(info).hasAttribute('popovertarget', popover.id);
+    assert.dom(popover).hasAttribute('popover');
+    assert.dom(popover).hasText('Pick the property this belongs to.');
   });
 
   test('a field with no label renders and wires nothing', async function (assert) {
@@ -93,7 +96,7 @@ module('Integration | Component | woven/field', function (hooks) {
     `);
 
     assert.dom('[data-test-wu-field]').exists();
-    assert.dom('.wu-field__label').doesNotExist();
+    assert.dom('.wu-field-label').doesNotExist();
     assert.dom('input').doesNotHaveAttribute('id');
   });
 });

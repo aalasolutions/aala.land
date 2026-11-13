@@ -58,7 +58,7 @@ export default class LeasesSummaryComponent extends Component {
 
   get urgency() {
     const left = this.daysLeft;
-    if (!this.isActive || left === null || left > WARN_DAYS) return 'primary';
+    if (!this.isActive || left === null || left > WARN_DAYS) return 'brand';
     return left > DANGER_DAYS ? 'warning' : 'danger';
   }
 

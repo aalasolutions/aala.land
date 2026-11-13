@@ -11,7 +11,7 @@ import {
 
 const NATIVE_CONTROLS = 'input, textarea, select';
 const FALLBACK_CONTROLS = '[role="combobox"], [role="listbox"], button';
-const LABELS = '.wu-field__label, .wu-field__float-label';
+const LABELS = '.wu-field-label';
 const TEXT_CONTROLS = ['INPUT', 'TEXTAREA'];
 const VALUE_CONTROLS = ['INPUT', 'TEXTAREA', 'SELECT'];
 const VALUE_EVENTS = ['input', 'change', 'focusout'];
@@ -25,12 +25,13 @@ const VALUE_EVENTS = ['input', 'change', 'focusout'];
  *   floating label inside the control that rises on focus or once there is a
  *   value. The native placeholder is set to a single space. Put format
  *   guidance in `@hint`, since a floated label leaves no room for an example.
- * - `@hint`, `@error`: the message slot under the control. The error replaces
- *   the hint. The slot always reserves one line.
+ * - `@hint`, `@error`: the message line under the control (kit `live`). The
+ *   error replaces the hint. The line is always reserved.
  * - `@status`: `error | warning | success`. `@invalid` aliases `error`,
  *   `@valid` aliases `success`, and a non-empty `@error` implies `error`.
- * - `@required`: asterisk on the label and `aria-required` on the control.
- * - `@horizontal`, `@flush`, `@tooltip`, `@tooltipPosition`: layout and label tooltip.
+ * - `@required`: `aria-required` on the control; the CSS kit draws the label asterisk from it.
+ * - `@horizontal`: label beside the control. `@tooltip`: help text in a native
+ *   popover opened by the kit `wu-field-help` button.
  *
  * The control (first native input, textarea or select, else the first
  * combobox, listbox or button) receives, reactively:
@@ -38,7 +39,7 @@ const VALUE_EVENTS = ['input', 'change', 'focusout'];
  * - `aria-invalid="true"` while the status is `error`;
  * - `aria-describedby`: hint id, error id, then ids the caller already set;
  * - `aria-required="true"` while `@required` is set;
- * - `data-wu-field-status` for the warning and success styles.
+ * - `data-wu-field-status`.
  * A control given its own `@status`, `@invalid` or `@valid` keeps it.
  *
  * Yields a hash for controls that take the state as arguments:
@@ -47,33 +48,26 @@ const VALUE_EVENTS = ['input', 'change', 'focusout'];
  * (a single space in floating mode; pass it to a Select or Autocomplete so it
  * has an empty state the label can rest on).
  */
-export default class NuFieldComponent extends Component {
+export default class WovenFieldComponent extends Component {
   labelId = `wu-field-label-${guidFor(this)}`;
   floatLabelId = `wu-field-float-label-${guidFor(this)}`;
   controlId = `wu-field-control-${guidFor(this)}`;
   hintId = `wu-field-hint-${guidFor(this)}`;
   errorId = `wu-field-error-${guidFor(this)}`;
+  helpId = `wu-field-help-${guidFor(this)}`;
 
   get classes() {
-    const parts = ['wu-field'];
-    if (this.args.horizontal) {
-      parts.push('m-horizontal');
-    }
-    if (this.args.flush) {
-      parts.push('m-flush');
-    }
+    const parts = ['wu-field', 'live'];
     if (this.floating) {
-      parts.push('m-floating');
+      parts.push('floating');
+    } else if (this.args.horizontal) {
+      parts.push('horizontal');
     }
     return parts.join(' ');
   }
 
   get floating() {
     return !this.args.label && Boolean(this.args.placeholder);
-  }
-
-  get messageInBody() {
-    return !this.floating && Boolean(this.args.horizontal);
   }
 
   get status() {
@@ -105,10 +99,10 @@ export default class NuFieldComponent extends Component {
     if (native) {
       return native;
     }
-    // The tooltip button is a button inside the field but never the control.
+    // The help button is a button inside the field but never the control.
     return (
       Array.from(element.querySelectorAll(FALLBACK_CONTROLS)).find(
-        (candidate) => !candidate.classList.contains('wu-field__info'),
+        (candidate) => !candidate.classList.contains('wu-field-help'),
       ) ?? null
     );
   }
@@ -158,13 +152,8 @@ export default class NuFieldComponent extends Component {
     return this.trackValue(element, control);
   });
 
-  // `:placeholder-shown` needs a placeholder, and selects or custom controls have
-  // none, so `has-value` on the wrapper is the fallback the styles also read.
+  // Selects and custom controls have no `:placeholder-shown`, so `has-value` on the field is the fallback the styles read.
   trackValue(element, control) {
-    const wrapper = element.querySelector('.wu-field__control');
-    if (!wrapper) {
-      return;
-    }
     const sync = () => {
       if (TEXT_CONTROLS.includes(control.tagName)) {
         control.setAttribute('placeholder', ' ');
@@ -172,7 +161,7 @@ export default class NuFieldComponent extends Component {
       const hasValue = VALUE_CONTROLS.includes(control.tagName)
         ? control.value !== ''
         : true;
-      wrapper.classList.toggle('has-value', hasValue);
+      element.classList.toggle('has-value', hasValue);
     };
     sync();
     VALUE_EVENTS.forEach((name) => control.addEventListener(name, sync));

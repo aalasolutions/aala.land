@@ -1,13 +1,7 @@
 import Component from '@glimmer/component';
 
-export default class NuAvatarGroupComponent extends Component {
+export default class WovenAvatarGroupComponent extends Component {
   get classes() {
-    const parts = ['wu-avatar-group'];
-
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-
-    return parts.join(' ');
+    return 'wu-avatar-group';
   }
 }

@@ -1,12 +1,24 @@
 // Auth pages; Google sign-in colours are brand-locked, the one hardcoded-colour exception here.
 @use "@wovenui/ember/styles/common/var" as *;
 
+
+$shell-background-color: #4a6d92;
+$shell-background-image: radial-gradient(
+  circle at center,
+  #7ca2ca 0%,
+  #1d3c4e 90%,
+  #2b1818 100%
+);
+
 .login-page {
   display: flex;
   align-items: center;
   justify-content: center;
   min-block-size: 100vh;
-  background: radial-gradient(circle at center, #344244 0%, #0b212d 90%, #2b1818 100%);
+  background-color: $shell-background-color;
+  background-image: $shell-background-image;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 // Wordmark for pages with no shell, distinct from the sidebar's brand-title class.
@@ -35,30 +47,11 @@
   display: none;
 }
 
-.signup-owner-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 0.7rem;
-  color: var(--wu-brand-700);
-  background: var(--wu-brand-50);
-  border: 1px solid var(--wu-brand-200);
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: wu-font-weight(semibold);
-  line-height: 1;
-
-  svg {
-    flex: 0 0 auto;
-    color: var(--wu-brand);
-  }
-}
-
 .signup-invite-note {
-  margin: 0.55rem auto 0;
+  margin: wu-space(2) auto 0;
   color: var(--wu-text-muted);
-  font-size: 0.82rem;
-  line-height: 1.35;
+  font-size: wu-font-size(sm);
+  line-height: var(--wu-line-height-snug);
 }
 
 // Google sign-in styling is brand-locked: do not touch colours or turn it into <Woven::Button>.
@@ -228,11 +221,6 @@ $google-neutral-border-hover: #c6cbd1;
     color: var(--wu-text-regular);
     z-index: 2;
   }
-}
-
-.btn--google--blocked {
-  border-color: $google-neutral-border;
-  color: var(--wu-text-regular);
 }
 
 .btn--google--loading {

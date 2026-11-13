@@ -137,7 +137,7 @@ module('Unit | Controller | dashboard', function (hooks) {
       const segments = controller.assignmentSegments;
       assert.deepEqual(
         segments.map((s) => [s.stage, s.variant, s.count]),
-        [['ASSIGNED', 'primary', 10]],
+        [['ASSIGNED', 'brand', 10]],
       );
       assert.strictEqual(segments[0].style.toString(), '--seg-width:100.00%;');
     });
@@ -322,7 +322,7 @@ module('Unit | Controller | dashboard', function (hooks) {
 
       assert.strictEqual(
         controller.agentRows[0].segments[0].variant,
-        'primary',
+        'brand',
       );
     });
 

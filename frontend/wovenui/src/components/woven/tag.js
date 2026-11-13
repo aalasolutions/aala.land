@@ -1,27 +1,17 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { TAG_MODIFIERS } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
-
-export default class NuTagComponent extends Component {
+export default class WovenTagComponent extends Component {
   get classes() {
-    const parts = ['wu-tag'];
+    const modifier = TAG_MODIFIERS[this.args.variant];
+    return modifier ? `wu-tag ${modifier}` : 'wu-tag';
+  }
 
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.args.outline) {
-      parts.push('m-outline');
-    }
-    if (this.args.disabled) {
-      parts.push('is-disabled');
-    }
-
-    return parts.join(' ');
+  // Names the tag, so a row of remove buttons is told apart; block form passes @removeLabel.
+  get removeLabel() {
+    if (this.args.removeLabel) return this.args.removeLabel;
+    return this.args.text ? `Remove ${this.args.text}` : 'Remove tag';
   }
 
   @action

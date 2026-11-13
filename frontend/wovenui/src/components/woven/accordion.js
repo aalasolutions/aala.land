@@ -2,7 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
-export default class NuAccordionComponent extends Component {
+export default class WovenAccordionComponent extends Component {
   @tracked expandedIds = this.initialExpandedIds;
 
   get initialExpandedIds() {
@@ -17,17 +17,9 @@ export default class NuAccordionComponent extends Component {
   }
 
   get classes() {
-    const parts = ['wu-accordion'];
-    if (this.args.bordered) {
-      parts.push('m-bordered');
-    }
-    if (this.args.flush) {
-      parts.push('m-flush');
-    }
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-    return parts.join(' ');
+    return this.args.animated === false
+      ? 'wu-accordion'
+      : 'wu-accordion animated';
   }
 
   get items() {
@@ -38,12 +30,21 @@ export default class NuAccordionComponent extends Component {
   }
 
   @action
-  toggle(item) {
+  preventDisabledToggle(item, event) {
     if (item.disabled) {
+      event.preventDefault();
+    }
+  }
+
+  // Syncs state from the native toggle; no-op when the DOM already matches, so programmatic closes do not loop.
+  @action
+  onToggle(item, event) {
+    const open = event.target.open;
+    const isExpanded = this.expandedIds.includes(item.id);
+    if (open === isExpanded) {
       return;
     }
-    const isExpanded = this.expandedIds.includes(item.id);
-    if (isExpanded) {
+    if (!open) {
       this.expandedIds = this.expandedIds.filter((id) => id !== item.id);
     } else if (this.args.multiple) {
       this.expandedIds = [...this.expandedIds, item.id];

@@ -1,16 +1,21 @@
 <div data-test-collection-schedule ...attributes>
   <Woven::Card @title="Collection schedule">
     {{#if this.groups.length}}
-      <div class="cheque-schedule">
-        <table class="cheque-schedule__table">
+      <div
+        class="wu-table-scroll"
+        tabindex="0"
+        role="region"
+        aria-label="Collection schedule"
+      >
+        <table class="wu-table sm">
           <thead>
             <tr>
-              <th>Cheque</th>
-              <th>Bank</th>
-              <th>Account holder</th>
-              <th>Due</th>
-              <th>When</th>
-              <th class="is-num">Amount</th>
+              <th scope="col">Cheque</th>
+              <th scope="col">Bank</th>
+              <th scope="col">Account holder</th>
+              <th scope="col">Due</th>
+              <th scope="col">When</th>
+              <th scope="col" class="wu-table-num">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -23,7 +28,7 @@
                 <td colspan="5">{{group.period}}<span
                     class="cheque-schedule__count"
                   >{{group.cheques.length}}</span></td>
-                <td class="is-num" data-test-schedule-total>
+                <td class="wu-table-num" data-test-schedule-total>
                   {{#each group.totals as |total index|}}
                     {{if index " · "}}<Money
                       @amount={{total.amount}}
@@ -47,7 +52,7 @@
                     class="cheque-schedule__when"
                     data-test-schedule-when
                   >{{due-word cheque.dueDate format="relative"}}</td>
-                  <td class="is-num"><Money
+                  <td class="wu-table-num"><Money
                       @amount={{cheque.amount}}
                       @currency={{cheque.currency}}
                     /></td>

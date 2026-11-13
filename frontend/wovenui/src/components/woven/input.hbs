@@ -1,35 +1,23 @@
-<div class={{this.wrapClasses}}>
-  {{#if @prefixIcon}}
-    <span class="wu-input-wrap__prefix" aria-hidden="true">{{@prefixIcon}}</span>
-  {{/if}}
+{{#if this.hasAffix}}
+  <div class={{this.affixClasses}} data-test-wu-input-affix>
+    {{#if @prefixIcon}}
+      <span class="wu-input-prefix" aria-hidden="true">{{@prefixIcon}}</span>
+    {{/if}}
 
-  <input
-    type={{this.type}}
-    class={{this.classes}}
-    value={{@value}}
-    placeholder={{@placeholder}}
-    disabled={{@disabled}}
-    readonly={{@readonly}}
-    maxlength={{@maxlength}}
-    autocomplete={{if @autocomplete @autocomplete "off"}}
-    inputmode={{@inputmode}}
-    aria-invalid={{if this.isInvalid "true"}}
-    dir={{this.dir}}
-    data-test-wu-input
-    {{on "input" this.handleInput}}
-    {{on "change" this.handleChange}}
-    ...attributes
-  />
+    <this.InputControl @control={{this}} @class="wu-input" ...attributes />
 
-  {{#if this.showClear}}
-    <button
-      type="button"
-      class="wu-input-wrap__clear"
-      aria-label="Clear input"
-      data-test-wu-input-clear
-      {{on "click" this.handleClear}}
-    >×</button>
-  {{else if @suffixIcon}}
-    <span class="wu-input-wrap__suffix" aria-hidden="true">{{@suffixIcon}}</span>
-  {{/if}}
-</div>
+    {{#if this.showClear}}
+      <button
+        type="button"
+        class="wu-input-clear"
+        aria-label="Clear input"
+        data-test-wu-input-clear
+        {{on "click" this.handleClear}}
+      ></button>
+    {{else if @suffixIcon}}
+      <span class="wu-input-suffix" aria-hidden="true">{{@suffixIcon}}</span>
+    {{/if}}
+  </div>
+{{else}}
+  <this.InputControl @control={{this}} @class={{this.classes}} ...attributes />
+{{/if}}

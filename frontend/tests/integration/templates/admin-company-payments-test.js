@@ -3,6 +3,7 @@ import { setupRenderingTest } from 'land/tests/helpers';
 import template from 'land/templates/admin/companies/company';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import { rowActionKeys, rowMenuItem } from 'land/tests/helpers/row-actions';
 
 const squash = (text) => text.replaceAll('\u00a0', ' ').replace(/\s+/g, ' ');
 
@@ -133,12 +134,14 @@ module('Integration | Template | admin company payments', function (hooks) {
     assert.dom(`${row('h-none')} [data-test-payment-credit]`).doesNotExist();
   });
 
-  test('only the paid row offers Refund or discount', function (assert) {
-    assert.dom('[data-test-company-make-right="h-paid"]').exists();
-    assert.dom('[data-test-company-make-right="h-failed"]').doesNotExist();
-    assert.dom('[data-test-company-make-right="h-credit"]').doesNotExist();
-    assert.dom('[data-test-company-make-right="h-issued"]').doesNotExist();
-    assert.dom('[data-test-company-make-right="h-none"]').doesNotExist();
+  test('only the paid row offers Refund or discount', async function (assert) {
+    const trigger = (id) => `${row(id)} [data-test-row-actions-trigger]`;
+    assert.deepEqual(await rowActionKeys(row('h-paid')), ['company-make-right']);
+    assert.notOk(rowMenuItem('company-make-right'), 'the menu closed again');
+    assert.dom(trigger('h-failed')).doesNotExist();
+    assert.dom(trigger('h-credit')).doesNotExist();
+    assert.dom(trigger('h-issued')).doesNotExist();
+    assert.dom(trigger('h-none')).doesNotExist();
   });
 
   test('refund rows show their three labels and the refunded amount', function (assert) {
@@ -158,14 +161,9 @@ module('Integration | Template | admin company payments', function (hooks) {
   });
 
   test('a refund row never offers Refund or discount', function (assert) {
-    assert
-      .dom('[data-test-company-make-right="h-refund-pending"]')
-      .doesNotExist();
-    assert
-      .dom('[data-test-company-make-right="h-refund-approved"]')
-      .doesNotExist();
-    assert
-      .dom('[data-test-company-make-right="h-refund-rejected"]')
-      .doesNotExist();
+    const trigger = (id) => `${row(id)} [data-test-row-actions-trigger]`;
+    assert.dom(trigger('h-refund-pending')).doesNotExist();
+    assert.dom(trigger('h-refund-approved')).doesNotExist();
+    assert.dom(trigger('h-refund-rejected')).doesNotExist();
   });
 });

@@ -1,28 +1,32 @@
 <WovenDocs::Page
   @id="confirm"
   @title="Confirm dialog"
-  @subtitle="Yes/no preset over Woven::Modal, as a component or through the dialogs service."
+  @subtitle="Yes/no alert dialog on the kit confirm modal, as a component or through the dialogs service."
   @components="Woven::ConfirmModal, Woven::DialogHost"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
       Use this instead of the browser's native confirm(), which cannot be
-      styled and blocks the main thread. The component owns the footer
-      buttons, so pass text and variant as arguments rather than building a
-      footer. For one-off questions from application code, the
+      styled and blocks the main thread. The component owns the action
+      buttons, so pass text and variant as arguments; the actions block
+      replaces them only when a caller needs its own buttons. For one-off questions from application code, the
       <code class="wu-code">dialogs</code>
       service opens the same dialog through the host and resolves a
       boolean. Reach for the component when the dialog needs extra body
       content; reach for the service when a controller just needs an answer.
+      It renders the CSS kit
+      <code class="wu-code">wu-confirm-modal</code>
+      on a native dialog with its own
+      <code class="wu-code">wu-layer</code>, like Modal.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Confirm and cancel labels, confirm variant, optional subtitle and extra body.</li>
-      <li class="wu-list__item">Pending state with spinner text; every dismiss path is blocked mid-request.</li>
-      <li class="wu-list__item">Alert form with a single button.</li>
-      <li class="wu-list__item">Promise-based service API; an async onConfirm keeps the dialog busy and a rejection keeps it open.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Confirm and cancel labels, confirm variant (danger strengthens the message), optional subject line and extra body. No close button: cancel, Escape and a click outside dismiss it.</span></li>
+      <li class="wu-list-item"><span>Pending state with spinner text; every dismiss path is blocked mid-request.</span></li>
+      <li class="wu-list-item"><span>Alert form with a single button.</span></li>
+      <li class="wu-list-item"><span>Promise-based service API; an async onConfirm keeps the dialog busy and a rejection keeps it open.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -50,7 +54,6 @@
     >
       <Woven::Button
         @text="Danger"
-        @variant="secondary"
         @onClick={{fn this.setOpen "confirmDangerOpen" true}}
         data-test-open-confirm-danger
       />
@@ -67,13 +70,12 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Subtitle and size"
-      @note="subtitle names the record under the title; size widens the dialog when the message needs room."
+      @title="Subject line"
+      @note="subtitle names the record the action applies to, between the title and the message."
       @code={{this.code.subtitle}}
     >
       <Woven::Button
-        @text="Subtitle, md"
-        @variant="secondary"
+        @text="Subject line"
         @onClick={{fn this.setOpen "subtitleOpen" true}}
         data-test-woven-open-confirm-subtitle
       />
@@ -83,7 +85,6 @@
         @subtitle="Unit 1204, Marina Tower"
         @message="A new 12-month term starts on 1 Jan 2027."
         @confirmText="Renew"
-        @size="md"
         @onClose={{fn this.setOpen "subtitleOpen" false}}
         @onConfirm={{fn this.setOpen "subtitleOpen" false}}
       />
@@ -96,7 +97,6 @@
     >
       <Woven::Button
         @text="With body"
-        @variant="secondary"
         @onClick={{fn this.setOpen "bodyOpen" true}}
         data-test-woven-open-confirm-body
       />
@@ -122,7 +122,6 @@
     >
       <Woven::Button
         @text="Alert"
-        @variant="secondary"
         @onClick={{fn this.setOpen "alertOpen" true}}
         data-test-woven-open-confirm-alert
       />
@@ -146,7 +145,6 @@
     >
       <Woven::Button
         @text="Async confirm"
-        @variant="secondary"
         @onClick={{this.openConfirmBusy}}
         data-test-open-confirm-busy
       />
@@ -178,8 +176,8 @@
       @note="dialogs.confirm resolves true or false; Woven::DialogHost renders it. One dialog at a time: a second call while one is open rejects."
       @code={{this.code.service}}
     >
-      <Woven::Button @text="Confirm" @variant="secondary" @onClick={{this.askService}} data-test-woven-service-confirm />
-      <span class="wu-text m-sm m-muted" data-test-woven-service-result>Result: {{this.serviceResult}}</span>
+      <Woven::Button @text="Confirm" @onClick={{this.askService}} data-test-woven-service-confirm />
+      <span class="wu-text sm muted" data-test-woven-service-result>Result: {{this.serviceResult}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -187,7 +185,7 @@
       @note="An onConfirm that returns a promise keeps the dialog busy until it settles; a rejection keeps it open so the user can retry or cancel."
       @code={{this.code.serviceAsync}}
     >
-      <Woven::Button @text="Async confirm" @variant="secondary" @onClick={{this.askServiceAsync}} data-test-woven-service-async />
+      <Woven::Button @text="Async confirm" @onClick={{this.askServiceAsync}} data-test-woven-service-async />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -195,22 +193,22 @@
       @note="dialogs.alert is confirm with an OK button and no cancel."
       @code={{this.code.serviceAlert}}
     >
-      <Woven::Button @text="Alert" @variant="secondary" @onClick={{this.alertService}} data-test-woven-service-alert />
+      <Woven::Button @text="Alert" @onClick={{this.alertService}} data-test-woven-service-alert />
     </WovenDocs::Example>
 
     <WovenDocs::Table @kind="api" @rows={{this.serviceRows}} />
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Inherits the modal's dialog semantics, focus trap and scroll lock; the first focused control is the cancel button when shown.</li>
-      <li class="wu-list__item">While confirming, the confirm button is disabled through the loading state and the close paths are switched off, so the dialog cannot vanish under a pending request.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>A native dialog with role="alertdialog", labeled by the title and described by the message; the modal's focus trap and scroll lock; the first focused control is the cancel button when shown.</span></li>
+      <li class="wu-list-item"><span>While confirming, the confirm button is disabled through the loading state and the close paths are switched off, so the dialog cannot vanish under a pending request.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Footer buttons sit at the inline end, so cancel and confirm mirror with the reading direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Action buttons sit at the inline end, so cancel and confirm mirror with the reading direction.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

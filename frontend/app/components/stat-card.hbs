@@ -1,0 +1,50 @@
+<Woven::Card class={{@cardClass}} data-test-stat-card>
+  {{#if (and (has-block "icon") (has-block "content"))}}
+    <Woven::Stat
+      @route={{@route}}
+      @variant={{@variant}}
+      @size={{@size}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      ...attributes
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Woven::Stat>
+  {{else if (has-block "content")}}
+    <Woven::Stat
+      @route={{@route}}
+      @variant={{@variant}}
+      @size={{@size}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      ...attributes
+    >
+      <:content>{{yield to="content"}}</:content>
+    </Woven::Stat>
+  {{else if (has-block "icon")}}
+    <Woven::Stat
+      @route={{@route}}
+      @variant={{@variant}}
+      @size={{@size}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      ...attributes
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+    </Woven::Stat>
+  {{else}}
+    <Woven::Stat
+      @route={{@route}}
+      @variant={{@variant}}
+      @size={{@size}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      ...attributes
+    />
+  {{/if}}
+</Woven::Card>

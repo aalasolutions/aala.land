@@ -6,7 +6,7 @@ import { hbs } from 'ember-cli-htmlbars';
 module('Integration | Component | woven/field-group', function (hooks) {
   setupRenderingTest(hooks);
 
-  test('renders a fieldset with a legend and a message slot', async function (assert) {
+  test('renders a fieldset with a legend and marks the radio set required', async function (assert) {
     await render(hbs`
       <Woven::FieldGroup @label="Payment method" @required={{true}}>
         <Woven::Radio @name="pay" @value="cash" @label="Cash" />
@@ -19,15 +19,17 @@ module('Integration | Component | woven/field-group', function (hooks) {
     assert
       .dom('[data-test-wu-field-group-legend]')
       .includesText('Payment method');
-    assert.dom('[data-test-wu-field-group-required]').exists();
-    const slot = this.element.querySelector(
-      '[data-test-wu-field-group] [data-test-wu-field-message]',
-    );
-    assert.ok(slot, 'the message slot renders');
-    assert.ok(
-      parseFloat(getComputedStyle(slot).minHeight) > 0,
-      'the slot reserves a line outside a Field too',
-    );
+    this.element
+      .querySelectorAll('[data-test-wu-radio-input]')
+      .forEach((radio) => {
+        assert.dom(radio).hasAttribute('required');
+        assert.dom(radio).doesNotHaveAttribute('aria-required');
+      });
+    const marker = getComputedStyle(
+      this.element.querySelector('[data-test-wu-field-group-legend]'),
+      '::after',
+    ).content;
+    assert.ok(marker.includes('*'), 'the kit draws one legend marker');
   });
 
   test('status reaches every child control', async function (assert) {
@@ -44,7 +46,7 @@ module('Integration | Component | woven/field-group', function (hooks) {
     radios.forEach((radio) => {
       assert.dom(radio).hasAttribute('aria-invalid', 'true');
     });
-    const errorId = this.element.querySelector('.wu-field__error').id;
+    const errorId = this.element.querySelector('.wu-field-message.error').id;
     assert
       .dom('[data-test-wu-field-group]')
       .hasAttribute('aria-describedby', errorId);

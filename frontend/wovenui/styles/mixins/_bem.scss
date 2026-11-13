@@ -1,9 +1,9 @@
 // BEM selector generators.
 //
-//   @include b(btn)          -> .wu-btn
-//     @include e(icon)       -> .wu-btn__icon
-//     @include m(primary)    -> .wu-btn.m-primary
-//     @include when(disabled)-> .wu-btn.is-disabled
+//   @include b(card)         -> .wu-card
+//     @include e(header)     -> .wu-card__header
+//     @include m(brand)      -> .wu-card.m-brand
+//     @include when(selected)-> .wu-card.is-selected
 @use "sass:string";
 @use "sass:list";
 @use "@wovenui/core/src/styles/tools/accessibility" as a11y;

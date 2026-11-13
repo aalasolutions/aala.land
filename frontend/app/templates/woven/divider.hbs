@@ -1,12 +1,15 @@
 <WovenDocs::Page
   @id="divider"
   @title="Divider"
-  @subtitle="Horizontal or vertical rule, plain, dashed or labelled."
+  @subtitle="Horizontal or vertical rule, plain, dashed or labeled."
   @components="Woven::Divider"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      A separator with an optional label. The horizontal form takes the
+      A separator with an optional label, on the CSS kit
+      <code class="wu-code">wu-divider</code>: a bare divider is an
+      <code class="wu-code">hr</code>, a labeled one a div whose text sits
+      between two lines. The horizontal form takes the
       full inline size and splits groups of content; the vertical form
       stretches to the height of its flex row and splits controls in a
       toolbar. Prefer spacing over a divider when the groups are already
@@ -15,10 +18,10 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Solid or dashed line.</li>
-      <li class="wu-list__item">Centred, start or end label from an argument or a block.</li>
-      <li class="wu-list__item">Vertical variant for toolbars and inline groups.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Solid or dashed line.</span></li>
+      <li class="wu-list-item"><span>Centered label from an argument or a block.</span></li>
+      <li class="wu-list-item"><span>Vertical variant for toolbars and inline groups.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -44,7 +47,7 @@
 
   <WovenDocs::Section @title="Labels" @id="labels">
     <WovenDocs::Example
-      @title="Centred label"
+      @title="Centered label"
       @note="Short text on the line, for alternatives such as OR between two sign-in methods."
       @layout="stack"
       @code={{this.code.label}}
@@ -52,23 +55,7 @@
       <Woven::Divider @label="OR" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Label at the start"
-      @note="Reads as a section heading with a rule running to the end, for lists grouped by date or category."
-      @layout="stack"
-      @code={{this.code.start}}
-    >
-      <Woven::Divider @labelPosition="start" @label="Section start" />
-    </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Label at the end"
-      @note="Trailing label, for a count or a status closing a group."
-      @layout="stack"
-      @code={{this.code.end}}
-    >
-      <Woven::Divider @labelPosition="end" @label="Section end" />
-    </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Block label"
@@ -83,14 +70,14 @@
   <WovenDocs::Section @title="Orientation" @id="orientation">
     <WovenDocs::Example
       @title="Vertical"
-      @note="Fills the height of a flex row to split toolbar groups. It has no label form."
+      @note="An hr with aria-orientation vertical, which the kit stretches to the height of a flex row to split inline items. It has no label form."
       @layout="block"
       @code={{this.code.vertical}}
     >
       <div class="woven-row woven-row--full-height">
-        <span class="wu-text m-sm">Start</span>
+        <span class="wu-text sm">Start</span>
         <Woven::Divider @vertical={{true}} />
-        <span class="wu-text m-sm">End</span>
+        <span class="wu-text sm">End</span>
       </div>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -104,14 +91,14 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Renders role="separator". A label is read as part of the page text.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>A bare divider is an hr, which has the separator role; vertical sets aria-orientation. A labeled divider is a div whose label is read as page text.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Start and end label positions are logical and swap with the reading direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The label is centered and the lines are drawn on both sides, so nothing changes with direction.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

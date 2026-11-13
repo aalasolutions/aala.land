@@ -12,7 +12,7 @@
     </:breadcrumb>
     <:meta>
       <Woven::Tag
-        class="tag-plan-{{lowercase this.company.tier}}"
+        @variant={{tag-variant "plan" this.company.tier}}
         @text={{this.company.tier}}
         data-test-company-tier
       />
@@ -20,7 +20,7 @@
         <Woven::Tag @text={{this.railLabel}} data-test-company-rail />
       {{/if}}
       <Woven::Tag
-        class={{this.statusView.cls}}
+        @variant={{this.statusView.variant}}
         @text={{this.statusView.text}}
         data-test-company-status
       />
@@ -28,7 +28,7 @@
     <:actions>
       {{#if this.adminUser}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @icon="sign-in"
           data-test-company-login-as
           {{on "click" this.loginAs}}
@@ -41,82 +41,75 @@
 
   {{#if this.showLockCard}}
     {{#if this.isLocked}}
-      <div class="alert alert-error console-lock-card" data-test-lock-card>
-        <div class="flex col gap-3 w-full">
-          <div>
-            <div class="font-bold">Locked{{#if this.lock.dealExpiredAt}}, deal
-                expired
-                {{format-date this.lock.dealExpiredAt}}{{/if}}.</div>
-            <p class="text-sm mt-1">Writes are blocked; reads and export stay.
-              Their admin sees the "reduce or pay" banner.</p>
-          </div>
-          <div class="console-lock-actions">
-            <span class="text-sm">To unlock permanently:</span>
-            <button
-              type="button"
-              class="btn btn-secondary btn-xs"
-              {{on "click" this.openDealModal}}
-            >Give a new deal</button>
-            <button
-              type="button"
-              class="btn btn-secondary btn-xs"
-              {{on "click" this.openPaymentModal}}
-            >Record a payment</button>
-          </div>
-          <div class="console-lock-actions">
-            <span class="text-sm">To let them breathe:</span>
-            <input
-              type="date"
-              aria-label="Lift lock until"
-              class="form-input console-lift-date"
-              value={{this.liftDate}}
-              data-test-lock-lift-date
-              {{on "change" this.setLiftDate}}
-            />
-            <button
-              type="button"
-              class="btn btn-secondary btn-xs"
-              disabled={{this.liftBusy}}
-              data-test-lock-lift-submit
-              {{on "click" this.submitLift}}
-            >{{if this.liftBusy "Lifting…" "Lift"}}</button>
-          </div>
+      <Woven::Alert @variant="danger" role="status" data-test-lock-card>
+        <strong class="wu-alert-title">Locked{{#if this.lock.dealExpiredAt}},
+            deal expired
+            {{format-date this.lock.dealExpiredAt}}{{/if}}.</strong>
+        <p>Writes are blocked; reads and export stay. Their admin sees the
+          "reduce or pay" banner.</p>
+        <div class="wu-alert-actions x-center">
+          <span>To unlock permanently:</span>
+          <Woven::Button
+            @variant="subtle"
+            @size="sm"
+            data-test-lock-give-deal
+            {{on "click" this.openDealModal}}
+          >Give a new deal</Woven::Button>
+          <Woven::Button
+            @variant="subtle"
+            @size="sm"
+            data-test-lock-record-payment
+            {{on "click" this.openPaymentModal}}
+          >Record a payment</Woven::Button>
         </div>
-      </div>
+        <div class="wu-alert-actions x-center">
+          <span>To let them breathe:</span>
+          <Woven::Input
+            type="date"
+            aria-label="Lift lock until"
+            @size="sm"
+            @value={{this.liftDate}}
+            data-test-lock-lift-date
+            {{on "change" this.setLiftDate}}
+          />
+          <Woven::Button
+            @variant="subtle"
+            @size="sm"
+            @disabled={{this.liftBusy}}
+            data-test-lock-lift-submit
+            {{on "click" this.submitLift}}
+          >{{if this.liftBusy "Lifting…" "Lift"}}</Woven::Button>
+        </div>
+      </Woven::Alert>
     {{else}}
-      <div class="alert alert-warning console-lock-card" data-test-lock-card>
-        <div class="flex col gap-3 w-full">
-          <div>
-            <div class="font-bold">Lock lifted until
-              {{format-date this.lock.liftUntil}}.</div>
-            <p class="text-sm mt-1">Re-locks automatically then, unless a deal
-              or payment lands.</p>
-          </div>
-          <div class="console-lock-actions">
-            <input
-              type="date"
-              aria-label="Lift lock until"
-              class="form-input console-lift-date"
-              value={{this.liftDate}}
-              data-test-lock-lift-date
-              {{on "change" this.setLiftDate}}
-            />
-            <button
-              type="button"
-              class="btn btn-secondary btn-xs"
-              disabled={{this.liftBusy}}
-              data-test-lock-lift-submit
-              {{on "click" this.submitLift}}
-            >{{if this.liftBusy "Extending…" "Extend lift"}}</button>
-            <button
-              type="button"
-              class="btn btn-danger btn-xs"
-              data-test-lock-end-lift
-              {{on "click" this.openEndLiftConfirm}}
-            >End lift now</button>
-          </div>
+      <Woven::Alert @variant="warning" role="status" data-test-lock-card>
+        <strong class="wu-alert-title">Lock lifted until
+          {{format-date this.lock.liftUntil}}.</strong>
+        <p>Re-locks automatically then, unless a deal or payment lands.</p>
+        <div class="wu-alert-actions x-center">
+          <Woven::Input
+            type="date"
+            aria-label="Lift lock until"
+            @size="sm"
+            @value={{this.liftDate}}
+            data-test-lock-lift-date
+            {{on "change" this.setLiftDate}}
+          />
+          <Woven::Button
+            @variant="subtle"
+            @size="sm"
+            @disabled={{this.liftBusy}}
+            data-test-lock-lift-submit
+            {{on "click" this.submitLift}}
+          >{{if this.liftBusy "Extending…" "Extend lift"}}</Woven::Button>
+          <Woven::Button
+            @variant="danger"
+            @size="sm"
+            data-test-lock-end-lift
+            {{on "click" this.openEndLiftConfirm}}
+          >End lift now</Woven::Button>
         </div>
-      </div>
+      </Woven::Alert>
     {{/if}}
   {{/if}}
 
@@ -128,19 +121,19 @@
   />
 
   {{#if (eq this.activeTab "overview")}}
-    <div class="console-cards">
+    <div class="grid auto-fit-sm gap-4 align-start">
       <Woven::Panel @title="Billing state" data-test-company-plan-card>
         {{#if this.billing}}
-          <dl class="console-kv">
+          <dl class="wu-desc-list horizontal">
             <dt>Tier</dt>
             <dd>{{this.billing.tier}}</dd>
             {{#if this.billing.billingStatus}}
               <dt>Status</dt>
-              <dd><span
-                  class="status-badge status-{{lowercase
-                      this.billing.billingStatus
-                    }}"
-                >{{this.billing.billingStatus}}</span></dd>
+              <dd><Woven::Tag
+                  @variant={{tag-variant "sub" this.billing.billingStatus}}
+                  @text={{this.billing.billingStatus}}
+                  data-test-company-billing-status
+                /></dd>
             {{/if}}
             <dt>Seats</dt>
             <dd>{{this.billing.activeUsers}}
@@ -168,7 +161,7 @@
 
       {{#if this.deal}}
         <Woven::Panel @title="Active deal" data-test-company-deal-card>
-          <dl class="console-kv">
+          <dl class="wu-desc-list horizontal">
             <dt>Price</dt>
             <dd>{{this.dealPriceLabel}}</dd>
             <dt>Seats included</dt>
@@ -189,16 +182,16 @@
 
       <Woven::Panel>
         <:header>
-          <h3 class="wu-panel__title">Limits</h3>
-          <button
-            type="button"
-            class="btn btn-secondary btn-xs"
+          <h3 class="wu-panel-title">Limits</h3>
+          <Woven::Button
+            @variant="subtle"
+            @size="sm"
             data-test-company-limits-edit
             {{on "click" this.openLimitsModal}}
-          >Edit</button>
+          >Edit</Woven::Button>
         </:header>
         <:body>
-          <dl class="console-kv">
+          <dl class="wu-desc-list horizontal">
             <dt>Max users</dt>
             <dd>{{this.company.limits.maxUsers}}</dd>
             <dt>Max regions</dt>
@@ -213,7 +206,7 @@
   {{else if (eq this.activeTab "deal")}}
     {{#if this.deal}}
       <Woven::Panel @title="Active deal" data-test-company-deal-card>
-        <dl class="console-kv">
+        <dl class="wu-desc-list horizontal">
           <dt>Price</dt>
           <dd>{{this.dealPriceLabel}}</dd>
           <dt>Seats included</dt>
@@ -238,43 +231,41 @@
           {{/if}}
         </dl>
         <div class="flex gap-3 mt-4">
-          <button
-            type="button"
-            class="btn btn-secondary"
+          <Woven::Button
+            @variant="subtle"
             data-test-deal-edit
             {{on "click" this.openDealModal}}
-          >Edit</button>
-          <button
-            type="button"
-            class="btn btn-danger"
+          >Edit</Woven::Button>
+          <Woven::Button
+            @variant="danger"
             data-test-deal-end
             {{on "click" this.openEndDealConfirm}}
-          >End deal early</button>
+          >End deal early</Woven::Button>
         </div>
       </Woven::Panel>
     {{else}}
-      <Woven::Panel class="console-empty">
-        <Ui::Ph @icon="handshake" @size="40px" />
-        <p class="text-muted mt-2">No deal on this company yet.</p>
-        <button
-          type="button"
-          class="btn btn-primary mt-3"
-          data-test-deal-give
-          {{on "click" this.openDealModal}}
-        >Give a deal</button>
+      <Woven::Panel>
+        <div class="flex col x-center gap-3 py-6 text-center">
+          <Ui::Ph @icon="handshake" @size="40px" />
+          <p class="text-muted">No deal on this company yet.</p>
+          <Woven::Button
+            @variant="brand"
+            data-test-deal-give
+            {{on "click" this.openDealModal}}
+          >Give a deal</Woven::Button>
+        </div>
       </Woven::Panel>
     {{/if}}
 
   {{else if (eq this.activeTab "payments")}}
     <Woven::Panel>
       <:header>
-        <h3 class="wu-panel__title">Payments</h3>
-        <button
-          type="button"
-          class="btn btn-primary"
+        <h3 class="wu-panel-title">Payments</h3>
+        <Woven::Button
+          @variant="brand"
           data-test-payment-record
           {{on "click" this.openPaymentModal}}
-        >Record a payment</button>
+        >Record a payment</Woven::Button>
       </:header>
       <:body>
       {{#if this.paymentsLoading}}
@@ -315,7 +306,7 @@
           {{else if (eq cell.key "type")}}
             {{#let (billing-history-status cell.row) as |status|}}
               <Woven::Tag
-                class={{status.tagClass}}
+                @variant={{status.tagVariant}}
                 @text={{status.label}}
                 data-test-payment-status
               />
@@ -324,11 +315,12 @@
             <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
           {{else if (eq cell.key "hasReceipt")}}
             {{#if cell.value}}
-              <button
-                type="button"
-                class="btn-link"
+              <Woven::Button
+                @variant="link"
+                @size="sm"
+                data-test-company-view-receipt={{cell.row.id}}
                 {{on "click" (fn this.viewReceipt cell.row.id)}}
-              >View</button>
+              >View</Woven::Button>
             {{else if cell.row.invoiceUrl}}
               <a
                 href={{cell.row.invoiceUrl}}
@@ -340,14 +332,18 @@
               <span class="text-muted">-</span>
             {{/if}}
           {{else if (eq cell.key "id")}}
-            {{#if cell.row.paid}}
-              <button
-                type="button"
-                class="btn btn-secondary btn-xs"
-                data-test-company-make-right={{cell.row.id}}
-                {{on "click" (fn this.openRemedy cell.row)}}
-              >Refund or discount</button>
-            {{/if}}
+            <RowActions
+              @actions={{array
+                (hash
+                  key="company-make-right"
+                  testValue=cell.row.id
+                  label="Refund or discount"
+                  icon="receipt-x"
+                  onSelect=(fn this.openRemedy cell.row)
+                  hidden=(not cell.row.paid)
+                )
+              }}
+            />
           {{else}}
             {{cell.value}}
           {{/if}}
@@ -400,8 +396,6 @@
             @label="Price"
             @tooltip="Enter the amount that matches the Basis below, either per seat each month or one flat total each month."
             @error={{this.dealErrors.dealPrice}}
-            @flush={{true}}
-            class="wu-field-row__wide"
           >
             <Woven::Input
               id="deal-price"
@@ -414,11 +408,10 @@
             />
           </Woven::Field>
           <Woven::Field
+            class="narrow"
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
             @error={{this.dealErrors.dealCurrency}}
-            @flush={{true}}
-            class="wu-field-row__narrow"
           >
             <Woven::Input
               id="deal-currency"
@@ -431,10 +424,9 @@
             />
           </Woven::Field>
           <Woven::Field
+            class="wide"
             @label="Basis"
             @tooltip="Per seat charges the price for every active user each month. Flat charges the price once each month, whatever the seat count."
-            @flush={{true}}
-            class="wu-field-row__wide"
           >
             <Woven::Dropdown
               id="deal-basis"
@@ -451,7 +443,6 @@
           @label="Seats included"
           @tooltip="How many active users this price covers. Extra users above this are billed at the normal per seat rate."
           @error={{this.dealErrors.dealSeatCap}}
-          @flush={{true}}
         >
           <Woven::Input
             id="deal-seats"
@@ -464,13 +455,12 @@
           />
         </Woven::Field>
 
-        <div class="wu-field-row m-end">
+        <div class="wu-field-row">
           <Woven::Field
+            class="wide"
             @label="Until"
             @tooltip="The last day this price applies. After it, the company goes back to standard plan pricing."
             @error={{this.dealErrors.dealUntil}}
-            @flush={{true}}
-            class="wu-field-row__wide"
           >
             <Woven::Input
               id="deal-until"
@@ -481,22 +471,19 @@
               {{on "input" (fn this.setDealField "dealUntil")}}
             />
           </Woven::Field>
-          <label class="console-checkbox grow">
-            <input
-              type="checkbox"
-              checked={{this.dealLifetime}}
-              data-test-deal-lifetime
-              {{on "change" this.toggleDealLifetime}}
-            />
-            Lifetime
-          </label>
+          <Woven::Checkbox
+            class="check"
+            @label="Lifetime"
+            @checked={{this.dealLifetime}}
+            @onChange={{this.toggleDealLifetime}}
+            data-test-deal-lifetime
+          />
         </div>
 
         <Woven::Field
           @label="Why"
           @required={{true}}
           @error={{this.dealErrors.dealWhy}}
-          @flush={{true}}
         >
           <Woven::Textarea
             id="deal-why"
@@ -508,31 +495,31 @@
           />
         </Woven::Field>
 
-        <div class="alert alert-warning" data-test-deal-expiry-preview>
-          <div>
-            <div class="font-bold">What happens on expiry</div>
-            <p class="text-sm mt-1">{{this.expiryPreview}}</p>
-          </div>
-        </div>
+        <Woven::Alert
+          @variant="warning"
+          @title="What happens on expiry"
+          @description={{this.expiryPreview}}
+          role="status"
+          data-test-deal-expiry-preview
+        />
       </div>
     </:body>
     <:footer>
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Woven::Button
+        @variant="subtle"
+        data-test-deal-cancel
         {{on "click" this.closeDealModal}}
-      >Cancel</button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled={{this.dealBusy}}
+      >Cancel</Woven::Button>
+      <Woven::Button
+        @variant="brand"
+        @disabled={{this.dealBusy}}
         data-test-deal-submit
         {{on "click" this.submitDeal}}
       >{{if
           this.dealBusy
           "Saving…"
           (if this.dealEditing "Save deal" "Give deal")
-        }}</button>
+        }}</Woven::Button>
     </:footer>
   </Woven::Drawer>
 
@@ -547,10 +534,9 @@
       <div class="wu-form" data-test-payment-form>
         <div class="wu-field-row">
           <Woven::Field
+            class="wide"
             @label="Amount"
             @error={{this.payErrors.payAmount}}
-            @flush={{true}}
-            class="wu-field-row__wide"
           >
             <Woven::Input
               id="pay-amount"
@@ -563,11 +549,10 @@
             />
           </Woven::Field>
           <Woven::Field
+            class="narrow"
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
             @error={{this.payErrors.payCurrency}}
-            @flush={{true}}
-            class="wu-field-row__narrow"
           >
             <Woven::Input
               id="pay-currency"
@@ -585,8 +570,6 @@
           <Woven::Field
             @label="Date received"
             @error={{this.payErrors.payReceivedAt}}
-            @flush={{true}}
-            class="grow"
           >
             <Woven::Input
               id="pay-received"
@@ -600,8 +583,6 @@
             @label="Covers from"
             @tooltip="First day of the period this payment pays for. Paid access runs from here."
             @error={{this.payErrors.payCoversStart}}
-            @flush={{true}}
-            class="grow"
           >
             <Woven::Input
               id="pay-covers-start"
@@ -615,8 +596,6 @@
             @label="Covers to"
             @tooltip="Last day of the period this payment pays for. Access lapses after this date unless it is renewed."
             @error={{this.payErrors.payCoversEnd}}
-            @flush={{true}}
-            class="grow"
           >
             <Woven::Input
               id="pay-covers-end"
@@ -628,7 +607,7 @@
           </Woven::Field>
         </div>
 
-        <Woven::Field @label="Notes" @flush={{true}}>
+        <Woven::Field @label="Notes">
           <Woven::Textarea
             id="pay-notes"
             rows="2"
@@ -639,7 +618,7 @@
           />
         </Woven::Field>
 
-        <Woven::Field @label="Receipt image" @flush={{true}}>
+        <Woven::Field @label="Receipt image">
           <input
             id="pay-receipt"
             type="file"
@@ -660,18 +639,17 @@
       </div>
     </:body>
     <:footer>
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Woven::Button
+        @variant="subtle"
+        data-test-payment-cancel
         {{on "click" this.closePaymentModal}}
-      >Cancel</button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled={{this.payBusy}}
+      >Cancel</Woven::Button>
+      <Woven::Button
+        @variant="brand"
+        @disabled={{this.payBusy}}
         data-test-payment-submit
         {{on "click" this.submitPayment}}
-      >{{if this.payBusy "Recording…" "Record"}}</button>
+      >{{if this.payBusy "Recording…" "Record"}}</Woven::Button>
     </:footer>
   </Woven::Drawer>
 
@@ -687,50 +665,42 @@
         <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
 
         <div class="flex col gap-2">
-          <label class="console-radio">
-            <input
-              type="radio"
-              name="remedy-kind"
-              checked={{eq this.remedyKind "discount_next_bill"}}
-              data-test-remedy-discount
-              {{on "change" (fn this.setRemedyKind "discount_next_bill")}}
-            />
-            Discount the next bill
-          </label>
-          <label class="console-radio">
-            <input
-              type="radio"
-              name="remedy-kind"
-              checked={{eq this.remedyKind "refund"}}
-              data-test-remedy-refund
-              {{on "change" (fn this.setRemedyKind "refund")}}
-            />
-            Refund this payment
-          </label>
+          <Woven::Radio
+            @name="remedy-kind"
+            @value="discount_next_bill"
+            @label="Discount the next bill"
+            @checked={{eq this.remedyKind "discount_next_bill"}}
+            @onChange={{this.setRemedyKind}}
+            data-test-remedy-discount
+          />
+          <Woven::Radio
+            @name="remedy-kind"
+            @value="refund"
+            @label="Refund this payment"
+            @checked={{eq this.remedyKind "refund"}}
+            @onChange={{this.setRemedyKind}}
+            data-test-remedy-refund
+          />
         </div>
 
         {{#if this.remedyIsRefund}}
           <div class="flex gap-4">
-            <label class="console-radio">
-              <input
-                type="radio"
-                name="remedy-scope"
-                checked={{eq this.remedyScope "partial"}}
-                data-test-remedy-scope-partial
-                {{on "change" (fn this.setRemedyScope "partial")}}
-              />
-              Partial
-            </label>
-            <label class="console-radio">
-              <input
-                type="radio"
-                name="remedy-scope"
-                checked={{eq this.remedyScope "full"}}
-                data-test-remedy-scope-full
-                {{on "change" (fn this.setRemedyScope "full")}}
-              />
-              Full
-            </label>
+            <Woven::Radio
+              @name="remedy-scope"
+              @value="partial"
+              @label="Partial"
+              @checked={{eq this.remedyScope "partial"}}
+              @onChange={{this.setRemedyScope}}
+              data-test-remedy-scope-partial
+            />
+            <Woven::Radio
+              @name="remedy-scope"
+              @value="full"
+              @label="Full"
+              @checked={{eq this.remedyScope "full"}}
+              @onChange={{this.setRemedyScope}}
+              data-test-remedy-scope-full
+            />
           </div>
         {{/if}}
 
@@ -738,7 +708,6 @@
           <Woven::Field
             @label="Amount"
             @error={{this.remedyErrors.remedyAmount}}
-            @flush={{true}}
           >
             <Woven::Input
               id="remedy-amount"
@@ -757,7 +726,6 @@
           @label="Why"
           @required={{true}}
           @error={{this.remedyErrors.remedyWhy}}
-          @flush={{true}}
         >
           <Woven::Textarea
             id="remedy-why"
@@ -770,28 +738,27 @@
         </Woven::Field>
 
         {{#if this.remedyIsRefund}}
-          <div class="alert alert-warning" data-test-remedy-sla-alert>
-            <div>
-              <p class="text-sm">Refunds are initiated within 24 to 48 hours.
-                Money leaves the account. This is not undoable.</p>
-            </div>
-          </div>
+          <Woven::Alert
+            @variant="warning"
+            @description="Refunds are initiated within 24 to 48 hours. Money leaves the account. This is not undoable."
+            role="status"
+            data-test-remedy-sla-alert
+          />
         {{/if}}
       </div>
     </:body>
     <:footer>
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Woven::Button
+        @variant="subtle"
+        data-test-remedy-cancel
         {{on "click" this.closeRemedy}}
-      >Cancel</button>
-      <button
-        type="button"
-        class="btn {{if this.remedyIsRefund 'btn-danger' 'btn-primary'}}"
-        disabled={{this.remedyBusy}}
+      >Cancel</Woven::Button>
+      <Woven::Button
+        @variant={{if this.remedyIsRefund "danger" "brand"}}
+        @disabled={{this.remedyBusy}}
         data-test-remedy-submit
         {{on "click" this.submitRemedy}}
-      >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</button>
+      >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</Woven::Button>
     </:footer>
   </Woven::Drawer>
 
@@ -808,7 +775,6 @@
           @label="Max users"
           @tooltip="A hard cap on active team members for this company. It overrides the seat limit that comes with their plan."
           @error={{this.limitErrors.limitMaxUsers}}
-          @flush={{true}}
         >
           <Woven::Input
             id="limit-users"
@@ -823,7 +789,6 @@
           @label="Max regions"
           @tooltip="A hard cap on how many regions this company can switch on. It overrides the region limit from their plan."
           @error={{this.limitErrors.limitMaxRegions}}
-          @flush={{true}}
         >
           <Woven::Input
             id="limit-regions"
@@ -838,7 +803,6 @@
           @label="Max properties"
           @tooltip="A hard cap on how many properties this company can create. It overrides the limit from their plan."
           @error={{this.limitErrors.limitMaxProperties}}
-          @flush={{true}}
         >
           <Woven::Input
             id="limit-properties"
@@ -852,17 +816,17 @@
       </div>
     </:body>
     <:footer>
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Woven::Button
+        @variant="subtle"
+        data-test-limits-cancel
         {{on "click" this.closeLimitsModal}}
-      >Cancel</button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled={{this.limitsBusy}}
+      >Cancel</Woven::Button>
+      <Woven::Button
+        @variant="brand"
+        @disabled={{this.limitsBusy}}
+        data-test-limits-submit
         {{on "click" this.submitLimits}}
-      >{{if this.limitsBusy "Saving…" "Save"}}</button>
+      >{{if this.limitsBusy "Saving…" "Save"}}</Woven::Button>
     </:footer>
   </Woven::Drawer>
 
@@ -893,12 +857,14 @@
   />
 
 {{else}}
-  <Woven::Panel class="console-empty">
-    <p class="text-muted">This company could not be loaded.</p>
-    <button
-      type="button"
-      class="btn btn-secondary mt-3"
-      {{on "click" this.goBack}}
-    >Back to Companies</button>
+  <Woven::Panel>
+    <div class="flex col x-center gap-3 py-6 text-center">
+      <p class="text-muted">This company could not be loaded.</p>
+      <Woven::Button
+        @variant="subtle"
+        data-test-company-back
+        {{on "click" this.goBack}}
+      >Back to Companies</Woven::Button>
+    </div>
   </Woven::Panel>
 {{/if}}

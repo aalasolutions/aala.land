@@ -4,49 +4,32 @@
 @forward "./mixins/var";
 @forward "./mixins/bem";
 
+@use "@wovenui/components" with (
+  $components: (
+    "code-block": false,
+    "data-table": false,
+  )
+);
+
 // Components
-@use "./accordion";
-@use "./alert";
-@use "./avatar";
-@use "./badge";
-@use "./breadcrumb";
-@use "./button";
-@use "./card";
+@use "./accordion" as accordion-parts;
+@use "./breadcrumb" as breadcrumb-parts;
 @use "./code-block";
 @use "./core-bridge";
-@use "./divider";
-@use "./dot";
-@use "./drawer";
 @use "./data-table";
-@use "./dropdown";
-@use "./empty-state";
+@use "./dropdown" as dropdown-parts;
 @use "./form";
 @use "./layer";
-@use "./list";
-@use "./modal";
-@use "./page-header";
-@use "./pagination";
-@use "./panel";
-@use "./popover";
-@use "./progress";
-@use "./segmented";
-@use "./sidebar";
-@use "./skeleton";
-@use "./table";
-@use "./tabs";
-@use "./tag";
-@use "./timeline";
-@use "./title";
-@use "./toast";
-@use "./toggle";
+@use "./pagination" as pagination-parts;
+@use "./sidebar" as sidebar-parts;
+@use "./table" as table-parts;
 @use "./tooltip";
-@use "./topbar";
 
 // Logical-direction utilities filling a gap in core. Last, so they win over a
 // component's own alignment when applied directly to it.
 @use "./utilities";
 
-// Box-shadow focus rings vanish in forced colours; fall back to a system outline.
+// Box-shadow focus rings vanish in forced colors; fall back to a system outline.
 @media (forced-colors: active) {
   :focus-visible {
     outline: 2px solid Highlight !important;

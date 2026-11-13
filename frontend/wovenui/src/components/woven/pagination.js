@@ -1,17 +1,12 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { guidFor } from '@ember/object/internals';
 import { validPage } from './-page-number';
+import { SIZE_MAP } from './-constants';
 
 const DEFAULT_PER_PAGE_OPTIONS = [50, 100, 250];
 const SIZES = ['xs', 'sm', 'lg'];
 
-export default class NuPaginationComponent extends Component {
-  // Per-instance so two paginations on one page do not emit duplicate ids and break their labels.
-  get selectId() {
-    return this.args.selectId ?? `${guidFor(this)}-per-page`;
-  }
-
+export default class WovenPaginationComponent extends Component {
   get perPageOptions() {
     return this.args.perPageOptions ?? DEFAULT_PER_PAGE_OPTIONS;
   }
@@ -28,20 +23,13 @@ export default class NuPaginationComponent extends Component {
     return this.args.sm ? 'sm' : null;
   }
 
-  // The per-page trigger is sm at the default and sm sizes; xs and lg match the link size.
   get perPageSize() {
-    return { xs: 'xs', lg: 'lg' }[this.size] ?? 'sm';
+    return SIZE_MAP[this.size] ?? 'sm';
   }
 
   get classes() {
-    const parts = ['wu-pagination'];
-    if (this.size) {
-      parts.push(`m-${this.size}`);
-    }
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-    return parts.join(' ');
+    const kitSize = SIZE_MAP[this.size];
+    return kitSize ? `wu-pagination ${kitSize}` : 'wu-pagination';
   }
 
   get page() {
@@ -149,10 +137,9 @@ export default class NuPaginationComponent extends Component {
     this.goToPage(this.page + 1);
   }
 
-  // Woven::Dropdown reports the option value directly, not a DOM event.
   @action
-  changePerPage(choice) {
-    const value = Number(choice);
+  changePerPage(event) {
+    const value = Number(event.target.value);
     if (!value) return;
     this.args.onPerPageChange?.(value);
     this.args.onLimitChange?.(value);

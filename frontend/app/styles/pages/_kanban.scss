@@ -109,130 +109,6 @@
     background-color: wu-var-el("kanban", "column-accent", "Color");
     border-radius: wu-radius(full);
   }
-
-  @include e(column-count) {
-    @include wu-root-el("kanban", "column-count", (
-      "Color": var(--wu-text-muted),
-      "BackgroundColor": var(--wu-bg-surface),
-    ));
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-inline-size: 1.5rem;
-    block-size: 1.5rem;
-    padding-inline: wu-space(1);
-    font-size: wu-font-size(xs);
-    font-weight: wu-font-weight(semibold);
-    color: wu-var-el("kanban", "column-count", "Color");
-    background-color: wu-var-el("kanban", "column-count", "BackgroundColor");
-    border-radius: wu-radius(full);
-  }
-
-  @include e(column-body) {
-    @include wu-root-el("kanban", "column-body", (
-      "Gap": wu-space(3),
-      "MinBlockSize": 4rem,
-      "MaxBlockSize": 32rem,
-    ));
-
-    display: flex;
-    flex-direction: column;
-    gap: wu-var-el("kanban", "column-body", "Gap");
-    min-block-size: wu-var-el("kanban", "column-body", "MinBlockSize");
-    max-block-size: wu-var-el("kanban", "column-body", "MaxBlockSize");
-    overflow-y: auto;
-  }
-
-  @include e(card) {
-    @include wu-root-el("kanban", "card", (
-      "Padding": wu-space(3),
-      "Gap": wu-space(2),
-      "BackgroundColor": var(--wu-bg-surface),
-      "BorderWidth": 1px,
-      "BorderColor": var(--wu-border-regular),
-      "BorderRadius": wu-radius(lg),
-      "BoxShadow": wu-shadow(sm),
-      "TransitionDuration": wu-duration(fast),
-      "hover--BoxShadow": wu-shadow(md),
-      "focus--BoxShadow": wu-focus-ring(),
-    ));
-
-    display: flex;
-    flex-direction: column;
-    gap: wu-var-el("kanban", "card", "Gap");
-    padding: wu-var-el("kanban", "card", "Padding");
-    background-color: wu-var-el("kanban", "card", "BackgroundColor");
-    border: wu-var-el("kanban", "card", "BorderWidth") solid wu-var-el("kanban", "card", "BorderColor");
-    border-radius: wu-var-el("kanban", "card", "BorderRadius");
-    box-shadow: wu-var-el("kanban", "card", "BoxShadow");
-    cursor: grab;
-    transition: box-shadow wu-var-el("kanban", "card", "TransitionDuration") $wu-ease,
-      opacity wu-var-el("kanban", "card", "TransitionDuration") $wu-ease,
-      transform wu-var-el("kanban", "card", "TransitionDuration") $wu-ease;
-
-    @include reduced-motion {
-      transition: none;
-    }
-
-    &:hover {
-      box-shadow: wu-var-el("kanban", "card", "hover--BoxShadow");
-    }
-
-    &:focus-visible {
-      outline: none;
-      box-shadow: wu-var-el("kanban", "card", "focus--BoxShadow");
-    }
-
-    &:active {
-      cursor: grabbing;
-    }
-  }
-
-  @include e(card-title) {
-    margin: 0;
-    font-size: wu-font-size(sm);
-    font-weight: wu-font-weight(semibold);
-    color: var(--wu-text-regular);
-  }
-
-  @include e(card-meta) {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: wu-space(2);
-    font-size: wu-font-size(xs);
-    color: var(--wu-text-muted);
-  }
-
-  @include e(card-footer) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: wu-space(2);
-    margin-block-start: wu-space(1);
-    padding-block-start: wu-space(2);
-    border-block-start: 1px solid var(--wu-border-regular);
-  }
-}
-
-// Column accent colour variants are uniform, so looped.
-
-@each $variant in $wu-variants {
-  .wu-kanban__column.m-#{$variant} {
-    --wu-kanban__column--BorderColor: var(--wu-#{wu-role($variant)}-200);
-    --wu-kanban__column--BackgroundColor: var(--wu-#{wu-role($variant)}-50);
-
-    // Accent/count re-declare these; an inherited value from the column would lose.
-    .wu-kanban__column-accent {
-      --wu-kanban__column-accent--Color: var(--wu-#{wu-role($variant)});
-    }
-
-    .wu-kanban__column-count {
-      --wu-kanban__column-count--Color: var(--wu-#{wu-role($variant)}-700);
-      --wu-kanban__column-count--BackgroundColor: var(--wu-#{wu-role($variant)}-100);
-    }
-  }
 }
 
 .wu-kanban__column.is-collapsed {
@@ -284,11 +160,6 @@
   }
 }
 
-.wu-kanban__card.is-dragging {
-  opacity: 0.5;
-  transform: scale(1.03);
-}
-
 // Keys off [draggable] because lead cards render as panels, not `.wu-kanban__card`.
 .wu-kanban__column [draggable="true"] {
   cursor: grab;
@@ -299,7 +170,7 @@
 }
 
 // Targets the column, not the board: element vars set on an ancestor lose.
-.wu-kanban.is-dragging .wu-kanban__column {
+.wu-kanban[data-dragging] .wu-kanban__column {
   --wu-kanban__column--BorderColor: #{wu-tint(brand, 45%)};
 }
 
@@ -309,7 +180,7 @@
 }
 
 // Later than the rule above at equal specificity, so hover stays strongest.
-.wu-kanban.is-dragging .wu-kanban__column.is-drag-over {
+.wu-kanban[data-dragging] .wu-kanban__column.is-drag-over {
   --wu-kanban__column--BorderColor: var(--wu-brand);
 }
 
@@ -326,6 +197,21 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{wu-var-el("kanban", "
 
   @include reduced-motion {
     transition: none;
+  }
+}
+
+// The card opens a drawer, not a route, so it lifts on hover without a stretched card link.
+.wu-kanban__column .lead-card:hover {
+  border-color: var(--wu-border-control);
+  box-shadow: wu-shadow(md);
+  transform: translateY(-2px);
+}
+
+.wu-kanban:is([data-dragging], [data-hover-suppressed]) {
+  .lead-card:hover {
+    border-color: var(--wu-border-regular);
+    box-shadow: wu-shadow(sm);
+    transform: none;
   }
 }
 
@@ -370,24 +256,4 @@ $kanban-drag-gap: calc(var(--kanban-drag-height, 4rem) + #{wu-var-el("kanban", "
 .wu-kanban__column.is-drop-end::after {
   block-size: var(--kanban-drag-height, 4rem);
   margin-block-start: 0;
-}
-
-.wu-kanban.is-dragging,
-.wu-kanban.is-hover-suppressed {
-  .wu-panel.m-interactive:hover {
-    --wu-panel--BoxShadow: #{wu-shadow(none)};
-    --wu-panel--BorderColor: var(--wu-border-regular);
-
-    transform: none;
-  }
-}
-
-.wu-kanban__column.is-empty {
-  .wu-kanban__column-body {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--wu-text-subtle);
-    font-size: wu-font-size(xs);
-  }
 }

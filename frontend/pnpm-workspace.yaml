@@ -6,4 +6,5 @@ allowBuilds:
   core-js: false
 
 minimumReleaseAgeExclude:
-  - '@wovenui/core@2.2.1'
+  - '@wovenui/core@2.4.0'
+  - '@wovenui/components@1.2.0'

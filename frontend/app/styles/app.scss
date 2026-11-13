@@ -3,9 +3,6 @@
 @use "@wovenui/ember/styles/index" as *;
 @use "./woven-showcase";
 
-// Shared domain vocabulary. Read-only to page agents.
-@use "./pages/tags";
-
 // Shared Chart.js shell: frame, tooltip, screen-reader table.
 @use "./pages/charts";
 @use "./pages/cheques";
@@ -27,12 +24,10 @@
 @use "./pages/kanban";
 @use "./pages/leads";
 @use "./pages/maintenance";
-@use "./pages/properties-detail";
 @use "./pages/properties-index";
 @use "./pages/record-sheet";
 @use "./pages/reports";
 @use "./pages/unit";
-@use "./pages/vendors";
 @use "./pages/whatsapp";
 
-// No app-level rules here; everything belongs to the kit, the shell, tags, or a page file.
+// No app-level rules here; everything belongs to the kit, the shell, or a page file.

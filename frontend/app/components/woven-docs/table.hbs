@@ -1,9 +1,12 @@
 <div
-  class="wu-table-wrapper woven-doc__table"
+  class="wu-table-scroll woven-doc__table"
+  tabindex="0"
+  role="region"
+  aria-label="Reference"
   data-test-woven-table={{@kind}}
   ...attributes
 >
-  <table class="wu-table m-compact">
+  <table class="wu-table sm">
     <thead>
       <tr>
         {{#each this.columns as |column|}}

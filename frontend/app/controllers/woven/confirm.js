@@ -66,7 +66,7 @@ export default class WovenConfirmController extends Controller {
       message: 'Unit 1204 will leave the active list.',
       confirmText: 'Archive',
     });
-    this.serviceResult = confirmed ? 'confirmed' : 'cancelled';
+    this.serviceResult = confirmed ? 'confirmed' : 'canceled';
   }
 
   @action
@@ -119,7 +119,6 @@ export default class WovenConfirmController extends Controller {
   @subtitle="Unit 1204, Marina Tower"
   @message="A new 12-month term starts on 1 Jan 2027."
   @confirmText="Renew"
-  @size="md"
   @onClose={{this.close}}
   @onConfirm={{this.close}}
 />`,
@@ -170,25 +169,27 @@ const confirmed = await this.dialogs.confirm({
   argRows = [
     { name: '@open', type: 'boolean', default: 'false', description: 'Renders the dialog while true.' },
     { name: '@title', type: 'string', default: '', description: 'Dialog title.' },
-    { name: '@subtitle', type: 'string', default: '', description: 'Line under the title.' },
+    { name: '@subtitle', type: 'string', default: '', description: 'Subject line under the title, naming the object the action applies to.' },
     { name: '@message', type: 'string', default: '', description: 'Muted body text. A default block renders after it.' },
-    { name: '@size', type: '"sm" | "md" | "lg" | "xl" | "full"', default: '"sm"', description: 'Forwarded to Woven::Modal.' },
     { name: '@confirmText', type: 'string', default: '"Confirm"', description: 'Confirm button label.' },
     { name: '@cancelText', type: 'string', default: '"I changed my mind"', description: 'Cancel button label.' },
     { name: '@confirmingText', type: 'string', default: '', description: 'Confirm label while @isConfirming; defaults to @confirmText.' },
-    { name: '@confirmVariant', type: 'string', default: '"primary"', description: 'Confirm button variant; pass "danger" for destructive actions.' },
+    { name: '@confirmVariant', type: 'string', default: '"brand"', description: 'Woven::Button variant of the confirm button; "danger" also adds the kit danger modifier to the dialog.' },
     { name: '@showCancel', type: 'boolean', default: 'true', description: 'Set false for an alert with a single OK-style button.' },
-    { name: '@showClose', type: 'boolean', default: 'true', description: 'Header close button. Hidden automatically while confirming.' },
+    { name: '@closeOnBackdrop', type: 'boolean', default: 'true', description: 'Set false to ignore clicks outside the dialog.' },
+    { name: '@closeOnEsc', type: 'boolean', default: 'true', description: 'Set false to ignore Escape.' },
+    { name: '@animated', type: 'boolean', default: 'true', description: 'Kit animated modifier: fade and scale in when the user allows motion.' },
     { name: '@isConfirming', type: 'boolean', default: 'false', description: 'Pending state: confirm shows a spinner, both buttons disable, and every dismiss path is blocked.' },
   ];
 
   callbackRows = [
     { name: '@onConfirm', signature: '()', description: 'Confirm pressed. Ignored while confirming.' },
-    { name: '@onClose', signature: '()', description: 'Cancel, close button, backdrop or Escape. Ignored while confirming.' },
+    { name: '@onClose', signature: '()', description: 'Cancel, a click outside or Escape. Ignored while confirming.' },
   ];
 
   blockRows = [
     { name: 'default', description: 'Extra body content after the message.' },
+    { name: 'actions', description: 'Replaces the cancel and confirm buttons inside the kit wu-confirm-modal-actions row.' },
   ];
 
   serviceRows = [

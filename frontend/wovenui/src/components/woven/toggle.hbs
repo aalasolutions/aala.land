@@ -1,25 +1,20 @@
 <label class={{this.classes}} data-test-wu-toggle ...attributes>
+  {{! A native checkbox exposes its own checked state to role="switch"; aria-checked would duplicate it. }}
+  {{! template-lint-disable require-mandatory-role-attributes }}
   <input
     type="checkbox"
-    class={{this.inputClasses}}
+    role="switch"
+    class="wu-toggle-input"
     checked={{@checked}}
     disabled={{@disabled}}
     aria-invalid={{if this.isInvalid "true"}}
+    data-wu-status={{this.status}}
     aria-describedby={{@describedBy}}
     aria-required={{if @required "true"}}
     data-test-wu-toggle-input
     {{on "change" this.handleChange}}
   />
-  <span class="wu-toggle__track">
-    <span class="wu-toggle__knob"></span>
-    {{#if @activeText}}
-      <span class="wu-toggle__active-text">{{@activeText}}</span>
-    {{/if}}
-    {{#if @inactiveText}}
-      <span class="wu-toggle__inactive-text">{{@inactiveText}}</span>
-    {{/if}}
-  </span>
   {{#if (has-block)}}
-    <span class="wu-toggle__label">{{yield}}</span>
+    <span class="wu-toggle-label">{{yield}}</span>
   {{/if}}
 </label>

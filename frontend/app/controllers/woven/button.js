@@ -3,21 +3,17 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
 const VARIANT_NOTES = {
-  primary: 'The one main action of a view: save, submit, create. Keep a single primary per region so the eye has one target.',
-  secondary: 'The default for everything that is not the main action: cancel, back, filters, secondary tools. Neutral, always safe.',
-  success: 'Confirms a positive outcome, such as approve, mark paid or activate. Use it where green carries meaning, not for every save.',
-  warning: 'An action with consequences the user should weigh, such as suspend or override. Amber says pause before you click.',
-  danger: 'Destructive or irreversible: delete, revoke, cancel a lease. Pair it with a confirm dialog for anything that cannot be undone.',
-  info: 'Informational or exploratory actions: view details, learn more. Calmer than primary, still a filled button.',
-  ghost: 'No fill or border until hover. For toolbars, table rows and icon buttons where a solid button would be noise.',
-  link: 'Looks like inline text. For low-emphasis actions inside sentences, footers and empty states.',
+  default: 'No @variant: the kit base button (wu-btn). The default for everything that is not the main action: cancel, back, filters, secondary tools.',
+  brand: 'Kit wu-btn brand. The one main action of a view: save, submit, create. Keep a single brand button per region so the eye has one target.',
+  danger: 'Kit wu-btn danger. Destructive or irreversible: delete, revoke, cancel a lease. Pair it with a confirm dialog for anything that cannot be undone.',
+  ghost: 'Kit wu-btn quiet. No fill or border until hover. For toolbars, table rows and icon buttons where a solid button would be noise.',
+  link: 'Kit wu-btn link. Looks like inline text and keeps the control height. For low-emphasis actions inside sentences, footers and empty states.',
 };
 
 const SIZE_NOTES = {
-  xs: 'Dense rows and chips: table actions, tag toolbars, filter bars. The smallest target the kit allows.',
-  sm: 'Compact controls beside inputs and in card footers.',
+  sm: 'Kit sm. Compact controls beside inputs, in card footers and table rows. @size="xs" also renders sm.',
   md: 'The default. Forms, dialogs and page actions.',
-  lg: 'Hero and empty-state actions where the button is the point of the screen.',
+  lg: 'Kit lg. Hero and empty-state actions where the button is the point of the screen. @size="xl" also renders lg.',
 };
 
 function capitalize(value) {
@@ -33,10 +29,13 @@ export default class WovenButtonController extends Controller {
   }
 
   variantExamples = Object.keys(VARIANT_NOTES).map((variant) => ({
-    variant,
+    variant: variant === 'default' ? undefined : variant,
     title: capitalize(variant),
     note: VARIANT_NOTES[variant],
-    code: `<Woven::Button @variant="${variant}" @text="${capitalize(variant)}" />`,
+    code:
+      variant === 'default'
+        ? '<Woven::Button @text="Default" />'
+        : `<Woven::Button @variant="${variant}" @text="${capitalize(variant)}" />`,
   }));
 
   sizeExamples = Object.keys(SIZE_NOTES).map((size) => ({
@@ -45,73 +44,68 @@ export default class WovenButtonController extends Controller {
     note: SIZE_NOTES[size],
     code:
       size === 'md'
-        ? '<Woven::Button @variant="primary" @text="Default" />'
-        : `<Woven::Button @variant="primary" @size="${size}" @text="${size.toUpperCase()}" />`,
+        ? '<Woven::Button @variant="brand" @text="Default" />'
+        : `<Woven::Button @variant="brand" @size="${size}" @text="${size.toUpperCase()}" />`,
   }));
 
   code = {
-    outline: `<Woven::Button @variant="primary" @outline={{true}} @text="Outline" />
-<Woven::Button @variant="danger" @outline={{true}} @text="Outline" />
-<Woven::Button @variant="success" @outline={{true}} @text="Outline" />`,
-    subtle: `<Woven::Button @variant="secondary" @subtle={{true}} @icon="pencil-simple" aria-label="Edit" />
-<Woven::Button @variant="danger" @subtle={{true}} @icon="trash" aria-label="Delete" />`,
-    square: `<Woven::Button @variant="primary" @shape="square" @icon="plus" aria-label="Add" />`,
-    circle: `<Woven::Button @variant="secondary" @shape="circle" @icon="x" aria-label="Close" />`,
-    iconStart: `<Woven::Button @variant="primary" @icon="plus" @text="Add unit" />`,
-    iconEnd: `<Woven::Button @variant="secondary" @icon="arrow-right" @iconPosition="end" @text="Next" />`,
-    glyph: `<Woven::Button @variant="secondary" @icon="+" @text="Literal glyph" />`,
-    loadingIcon: `<Woven::Button @variant="secondary" @loading={{true}} @loadingIcon="circle-notch" @text="Custom spinner" />`,
-    iconSlot: `<Woven::Button @variant="primary">
+    subtle: `<Woven::Button @variant="brand" @subtle={{true}} @text="Approve" />
+<Woven::Button @variant="danger" @subtle={{true}} @icon="trash" @text="Delete" />`,
+    secondary: `<Woven::Button @variant="secondary" @text="Secondary" />`,
+    square: `<Woven::Button @variant="brand" @shape="square" @icon="plus" aria-label="Add" />`,
+    circle: `<Woven::Button @shape="circle" @icon="x" aria-label="Close" />`,
+    iconStart: `<Woven::Button @variant="brand" @icon="plus" @text="Add unit" />`,
+    iconEnd: `<Woven::Button @icon="arrow-right" @iconPosition="end" @text="Next" />`,
+    glyph: `<Woven::Button @icon="+" @text="Literal glyph" />`,
+    iconSlot: `<Woven::Button @variant="brand">
   <:icon><MyOwnIcon /></:icon>
   <:default>Custom icon</:default>
 </Woven::Button>`,
-    iconSlotLoading: `<Woven::Button @variant="primary" @loading={{true}}>
+    iconSlotLoading: `<Woven::Button @variant="brand" @loading={{true}}>
   <:icon><MyOwnIcon /></:icon>
   <:default>Saving</:default>
 </Woven::Button>`,
-    disabled: `<Woven::Button @variant="primary" @disabled={{true}} @text="Disabled" />`,
+    disabled: `<Woven::Button @variant="brand" @disabled={{true}} @text="Disabled" />`,
     loading: `<Woven::Button
-  @variant="primary"
+  @variant="brand"
   @loading={{this.loadingDemo}}
   @text={{if this.loadingDemo "Saving" "Click to load"}}
   @onClick={{this.toggleLoading}}
 />`,
-    active: `<Woven::Button @variant="secondary" @active={{true}} @text="Active" />
-<Woven::Button @variant="secondary" @text="Inactive" />`,
-    block: `<Woven::Button @variant="secondary" @block={{true}} @text="Full width" />`,
+    active: `<Woven::Button @active={{true}} @text="Active" />
+<Woven::Button @active={{false}} @text="Inactive" />`,
+    block: `<Woven::Button @block={{true}} @text="Full width" />`,
     submit: `<form {{on "submit" this.save}}>
-  <Woven::Button @type="submit" @variant="primary" @text="Save" />
+  <Woven::Button @type="submit" @variant="brand" @text="Save" />
 </form>`,
     route: `<Woven::Button @route="woven.index" @variant="link" @text="Overview" />
 <Woven::Button @route="contacts.detail" @model={{contact.id}} @query={{hash tab="leases"}} @text="Open contact" />`,
-    href: `<Woven::Button @href="#examples" @variant="secondary" @text="Anchor to this section" />`,
+    href: `<Woven::Button @href="#variants" @text="Jump to variants" />`,
     groupSpaced: `<Woven::BtnGroup>
-  <Woven::Button @variant="secondary" @text="Left" />
-  <Woven::Button @variant="secondary" @text="Middle" />
-  <Woven::Button @variant="secondary" @text="Right" />
+  <Woven::Button @text="Left" />
+  <Woven::Button @text="Middle" />
+  <Woven::Button @text="Right" />
 </Woven::BtnGroup>`,
     groupAttached: `<Woven::BtnGroup @attached={{true}}>
-  <Woven::Button @variant="secondary" @text="Day" />
-  <Woven::Button @variant="secondary" @active={{true}} @text="Week" />
-  <Woven::Button @variant="secondary" @text="Month" />
+  <Woven::Button @text="Day" />
+  <Woven::Button @active={{true}} @text="Week" />
+  <Woven::Button @text="Month" />
 </Woven::BtnGroup>`,
     groupIcons: `<Woven::BtnGroup @attached={{true}}>
-  <Woven::Button @variant="secondary" @shape="square" @icon="caret-left" aria-label="Previous" />
-  <Woven::Button @variant="secondary" @shape="square" @icon="caret-right" aria-label="Next" />
+  <Woven::Button @shape="square" @icon="caret-left" aria-label="Previous" />
+  <Woven::Button @shape="square" @icon="caret-right" aria-label="Next" />
 </Woven::BtnGroup>`,
   };
 
   argRows = [
-    { name: '@variant', type: '"primary" | "secondary" | "success" | "warning" | "danger" | "info" | "ghost" | "link"', default: '', description: 'Colour and border strategy. Unknown values render the unmodified base button.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height and padding step. Omit for the default size.' },
-    { name: '@shape', type: '"square" | "circle"', default: '', description: 'Icon-only shape. The label is dropped, so pass aria-label.' },
-    { name: '@outline', type: 'boolean', default: 'false', description: 'Transparent fill with a variant-coloured border.' },
-    { name: '@subtle', type: 'boolean', default: 'false', description: 'No border or fill, muted at rest; the variant colour and a light tint appear on hover.' },
-    { name: '@block', type: 'boolean', default: 'false', description: 'Full-width display (is-block). The docs demo passes the class instead because the project template-lint reserves the argument name.' },
-    { name: '@active', type: 'boolean', default: 'false', description: 'Pressed appearance for toggles and selected group members.' },
-    { name: '@loading', type: 'boolean', default: 'false', description: 'Swaps the icon for a spinning loading icon and disables the button.' },
-    { name: '@loadingIcon', type: 'string', default: '"spinner-gap"', description: 'Phosphor icon shown while loading.' },
-    { name: '@disabled', type: 'boolean', default: 'false', description: 'Sets the disabled attribute and blocks onClick.' },
+    { name: '@variant', type: '"brand" | "danger" | "ghost" | "link" | "secondary"', default: '', description: 'Kit modifier: brand to brand, danger to danger, ghost to quiet, link to link, secondary to subtle (no rule on its own, renders the default look). success, warning, info and unknown values render the default button.' },
+    { name: '@subtle', type: 'boolean', default: 'false', description: 'Adds the kit subtle modifier: with brand or danger a tinted fill and border, solid on hover. No effect on its own.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg. Omit for the default size.' },
+    { name: '@shape', type: '"square" | "circle"', default: '', description: 'Icon-only: square is kit icon, circle is kit icon round. The label is dropped, so pass aria-label.' },
+    { name: '@block', type: 'boolean', default: 'false', description: 'Full width through the core w-full utility.' },
+    { name: '@active', type: 'boolean', default: '', description: 'Sets aria-pressed for toggles; button mode only. Not passed means no aria-pressed.' },
+    { name: '@loading', type: 'boolean', default: 'false', description: 'Shows a kit wu-spinner sm in the icon slot, sets aria-busy and disables the button.' },
+    { name: '@disabled', type: 'boolean', default: 'false', description: 'Sets disabled on a button, aria-disabled on a link, and blocks onClick.' },
     { name: '@icon', type: 'string', default: '', description: 'Lowercase kebab-case reads as a Phosphor icon name; anything else renders as a literal glyph.' },
     { name: '@iconPosition', type: '"start" | "end"', default: '"start"', description: 'Side of the label the icon renders on. Ignored while loading.' },
     { name: '@text', type: 'string', default: '', description: 'Label when no block is given.' },
@@ -129,9 +123,10 @@ export default class WovenButtonController extends Controller {
 
   blockRows = [
     { name: 'default', description: 'Label content. Takes precedence over @text.' },
+    { name: 'icon', description: 'Replaces the built-in icon. A loading spinner still takes its place while @loading is set.' },
   ];
 
   groupArgRows = [
-    { name: '@attached', type: 'boolean', default: 'false', description: 'Joins the buttons into one segmented bar with shared borders. Omit for a spaced row.' },
+    { name: '@attached', type: 'boolean', default: 'false', description: 'Kit wu-btn-group: joins the buttons into one bar with shared borders. Omit for a spaced row (core flex inline x-center gap-2).' },
   ];
 }

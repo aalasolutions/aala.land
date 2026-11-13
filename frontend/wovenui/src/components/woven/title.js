@@ -1,21 +1,33 @@
 import Component from '@glimmer/component';
 
-const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'];
+// Kit sizes by rendered font size: sm lg, default xl, lg 2xl, xl 3xl; unset renders 2xl.
+const SIZES = {
+  xs: 'sm',
+  sm: 'sm',
+  md: 'sm',
+  lg: 'sm',
+  xl: null,
+  '2xl': 'lg',
+  '3xl': 'xl',
+};
 const WEIGHTS = ['normal', 'medium', 'semibold', 'bold'];
 const TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
-export default class NuTitleComponent extends Component {
+export default class WovenTitleComponent extends Component {
   get classes() {
     const parts = ['wu-title'];
+    const size = Object.hasOwn(SIZES, this.args.size)
+      ? SIZES[this.args.size]
+      : 'lg';
 
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    if (size) {
+      parts.push(size);
     }
     if (WEIGHTS.includes(this.args.weight)) {
-      parts.push(`m-${this.args.weight}`);
+      parts.push(`font-${this.args.weight}`);
     }
     if (this.args.truncate) {
-      parts.push('m-truncate');
+      parts.push('truncate');
     }
 
     return parts.join(' ');

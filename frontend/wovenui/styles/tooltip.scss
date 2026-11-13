@@ -48,7 +48,7 @@
     animation: none;
   }
 
-  @include e(arrow) {
+  &-arrow {
     position: absolute;
     inline-size: wu-var("tooltip", "ArrowSize");
     block-size: wu-var("tooltip", "ArrowSize");
@@ -60,7 +60,7 @@
   @include m(top) {
     transform: translateX(-50%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       left: 50%;
       margin-left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
@@ -72,7 +72,7 @@
   @include m(top-left) {
     transform: translate(-100%, -100%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       right: wu-var("tooltip", "ArrowInset");
       translate: wu-var("tooltip", "ArrowShiftX") 0;
@@ -82,7 +82,7 @@
   @include m(top-right) {
     transform: translateY(-100%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       bottom: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       left: wu-var("tooltip", "ArrowInset");
       translate: wu-var("tooltip", "ArrowShiftX") 0;
@@ -92,7 +92,7 @@
   @include m(bottom) {
     transform: translateX(-50%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       left: 50%;
       margin-left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
@@ -103,7 +103,7 @@
   @include m(bottom-left) {
     transform: translateX(-100%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       right: wu-var("tooltip", "ArrowInset");
       translate: wu-var("tooltip", "ArrowShiftX") 0;
@@ -111,7 +111,7 @@
   }
 
   @include m(bottom-right) {
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       top: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       left: wu-var("tooltip", "ArrowInset");
       translate: wu-var("tooltip", "ArrowShiftX") 0;
@@ -122,7 +122,7 @@
   @include m(left) {
     transform: translateY(-50%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       right: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
@@ -133,7 +133,7 @@
   @include m(right) {
     transform: translateY(-50%);
 
-    .wu-tooltip__arrow {
+    .wu-tooltip-arrow {
       left: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{wu-var("tooltip", "ArrowSize")} / -2);
