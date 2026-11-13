@@ -27,16 +27,6 @@
   text-wrap: balance;
 }
 
-.record-sheet__pill {
-  padding: wu-space(1) wu-space(3);
-  font-size: wu-font-size(sm);
-  font-weight: wu-font-weight(semibold);
-  white-space: nowrap;
-  color: var(--wu-brand);
-  background: wu-tint(brand, 12%);
-  border-radius: wu-radius(full);
-}
-
 .record-sheet__trio {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -106,7 +96,6 @@
 
   .wu-progress {
     --wu-progress--Height: 0.375rem;
-    --wu-progress--TrackColor: var(--wu-border-regular);
   }
 }
 

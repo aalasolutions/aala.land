@@ -165,12 +165,12 @@ $wa-tray-max-height: 16rem;
 
 // Placeholder avatars stay neutral so the fill never reads as a status colour.
 .wa-shell .wu-avatar {
-  --wu-avatar--BackgroundColor: color-mix(
+  background-color: color-mix(
     in srgb,
     var(--wu-text-muted) 25%,
     var(--wu-bg-surface)
   );
-  --wu-avatar--Color: var(--wa-meta);
+  color: var(--wa-meta);
 }
 
 // Carries the divider so it starts after the avatar, not at the row edge.
@@ -257,9 +257,7 @@ $wa-tray-max-height: 16rem;
 
 // No chat selected: the pane reads as one placeholder panel, not a card on the page.
 .wa-chat-area > .wu-empty-state {
-  --wu-empty-state--BorderRadius: 0;
-  --wu-empty-state--BackgroundColor: var(--wa-bar-bg);
-
+  background-color: var(--wa-bar-bg);
   border-block-end: wu-space(1) solid var(--wa-accent);
 }
 
@@ -563,8 +561,9 @@ $wa-tray-max-height: 16rem;
 
 // Placement and poster contrast only; the chip itself is Woven::Badge.
 .wu-badge.wa-media__badge {
-  --wu-badge--BackgroundColor: #{wu-scrim(55%)};
-  --wu-badge--Color: var(--wu-white);
+  border-color: transparent;
+  background-color: wu-scrim(55%);
+  color: var(--wu-white);
 
   position: absolute;
   inset-block-end: wu-space(1);
@@ -637,25 +636,19 @@ $wa-tray-max-height: 16rem;
   }
 }
 
-// Woven::Modal at full size, re-themed dark through its own tokens.
-.wu-backdrop:has(> .wa-viewer) {
-  --wu-backdrop--Padding: 0;
-  --wu-backdrop--BackgroundColor: #{wu-scrim(90%)};
-}
-
-// Compound selectors: the kit declares its tokens on the same element, so these must outrank it.
+// Compound selector: outranks the kit's own `.wu-modal` box rules.
 .wu-modal.wa-viewer {
-  --wu-modal--BackgroundColor: transparent;
-  --wu-modal--BorderWidth: 0;
-  --wu-modal--BoxShadow: none;
-  --wu-modal--Padding: #{wu-space(4)};
-  --wu-modal--Gap: #{wu-space(2)};
+  --wu-modal--Backdrop: #{wu-scrim(90%)};
   --wu-bg-alternate: #{wu-tint(white, 15%)};
   --wu-border-regular: #{wu-tint(white, 15%)};
   --wu-text-regular: var(--wu-white);
   --wu-text-muted: #{wu-tint(white, 75%)};
   --wa-accent: var(--wu-white);
   --wa-meta: #{wu-tint(white, 75%)};
+
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 // Fit to screen: the media never overflows the viewport.
@@ -704,7 +697,7 @@ $wa-tray-max-height: 16rem;
 
   // The kit's -50 chip fill matches the tinted bubbles, so the author chips sit on white.
   .wu-tag {
-    --wu-tag--BackgroundColor: var(--wu-bg-surface);
+    background-color: var(--wu-bg-surface);
   }
 }
 
@@ -736,12 +729,7 @@ $wa-tray-max-height: 16rem;
 }
 
 .wa-tray__item {
-  --wu-list-item--PaddingBlock: #{wu-space(2)};
-  --wu-list-item--PaddingInline: #{wu-space(3)};
-
-  &.is-error {
-    --wu-list-item--BorderColor: var(--wu-danger-600);
-  }
+  padding-block: wu-space(2);
 }
 
 .wa-tray__thumb,
@@ -811,11 +799,10 @@ $wa-tray-max-height: 16rem;
 
 // Kit textarea defaults to form-field size; composer needs one line that grows to a few.
 .wa-input-row .wu-textarea {
-  --wu-input--BackgroundColor: var(--wu-bg-surface);
-  --wu-input--BorderColor: transparent;
-  --wu-input--BorderRadius: #{wu-radius(lg)};
-
   flex: 1;
+  border-color: transparent;
+  border-radius: wu-radius(lg);
+  background-color: var(--wu-bg-surface);
   min-block-size: 2.5rem;
   max-block-size: 7.5rem;
   resize: none;

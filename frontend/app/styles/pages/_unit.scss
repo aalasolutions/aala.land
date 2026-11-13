@@ -37,8 +37,7 @@
   }
 
   .wu-spinner {
-    --wu-spinner--SpinColor: var(--wu-text-inverted);
-    --wu-spinner--TrackColor: #{wu-tint(text-inverted, 35%)};
+    color: var(--wu-text-inverted);
   }
 }
 
@@ -208,8 +207,8 @@
 .unit-thumb-actions {
   display: none;
   position: absolute;
-  top: 2px;
-  right: 2px;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
   z-index: 2;
   gap: 2px;
 }
@@ -243,7 +242,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.15);
+    background: wu-scrim(15%);
     border-radius: #{wu-radius(2xl)};
   }
 }
@@ -261,10 +260,4 @@
   background: vars.$empty-photo-tint;
   color: var(--wu-text-muted);
   font-size: 64px;
-}
-
-.unit-id-text {
-  word-break: break-all;
-  font-family: monospace;
-  font-size: 11px;
 }

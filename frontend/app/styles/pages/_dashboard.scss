@@ -12,15 +12,6 @@ $dashboard-bar-size: 10px;
   gap: wu-space(6);
 }
 
-.dashboard-region-badge {
-  --wu-tag--Color: var(--wu-brand);
-  --wu-tag--BackgroundColor: var(--wu-brand-50);
-  --wu-tag--BorderColor: transparent;
-  display: inline-flex;
-  align-items: center;
-  gap: wu-space(1);
-}
-
 // Action tier and outcome tier stack on the left, status rail runs down the right.
 .kpi-layout {
   display: grid;
@@ -55,9 +46,9 @@ $dashboard-bar-size: 10px;
 }
 
 // Headline values stay below the xl page title.
-.kpi-action .wu-stat,
-.kpi-outcome {
-  --wu-stat--ValueFontSize: #{wu-font-size(lg)};
+.kpi-action .wu-stat-value,
+.kpi-outcome .wu-stat-value {
+  font-size: wu-font-size(lg);
 }
 
 // Equal row heights keep the gaps on the scale instead of inflating them with leftover space.
