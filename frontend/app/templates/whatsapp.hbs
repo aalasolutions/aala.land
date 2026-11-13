@@ -11,7 +11,7 @@
     class="wa-connection is-{{this.connectionStatus}}"
     data-test-wa-connection-status={{this.connectionStatus}}
   >
-    <Woven::Dot @variant={{this.connectionVariant}} @size="sm" />
+    <Woven::Dot @variant={{this.connectionVariant}} />
 
     <div class="wa-connection__text">
       <span class="wa-connection__label" data-test-wa-connection-label>
@@ -49,7 +49,7 @@
         data-tooltip-position="bottom"
       >
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @size="xs"
           @icon="plugs"
           @text={{this.connectButtonText}}
@@ -76,7 +76,7 @@
             data-tooltip-position="bottom"
           >
             <Woven::Button
-              @variant={{if this.aiEnabled "info" "secondary"}}
+              @variant={{if this.aiEnabled "brand"}}
               @size="xs"
               @icon="robot"
               @text={{concat "AI: " (if this.aiEnabled "on" "off")}}
@@ -135,7 +135,7 @@
             <div class="wa-load-older-error" data-test-wa-reload-error>
               <span>Couldn't refresh messages.</span>
               <Woven::Button
-                @variant="secondary"
+                @variant="subtle"
                 @size="sm"
                 @text="Retry"
                 @loading={{this.currentChatLoadingWindow}}
@@ -148,7 +148,7 @@
             <div class="wa-load-older-error" data-test-wa-load-older-error>
               <span>Couldn't load older messages.</span>
               <Woven::Button
-                @variant="secondary"
+                @variant="subtle"
                 @size="sm"
                 @text="Retry"
                 @loading={{this.currentChatLoadingOlder}}
@@ -213,9 +213,9 @@
 
                 {{#if (and msg.fromMe (not (eq msg.mediaType "size_notice")))}}
                   {{#if msg.aiGenerated}}
-                    <Woven::Tag @variant="info" @size="sm" @text="AI" />
+                    <Woven::Tag @variant="info" @text="AI" />
                   {{else}}
-                    <Woven::Tag @variant="primary" @size="sm" @text="You" />
+                    <Woven::Tag @variant="brand" @text="You" />
                   {{/if}}
 
                   {{! No status yet means Meta hasn't called back; it reads as pending, not failed. }}
@@ -279,7 +279,6 @@
               </div>
             {{else if this.showsEmptyThread}}
               <Woven::EmptyState
-                @fill={{true}}
                 @title="No messages in this chat yet"
               />
             {{/if}}
@@ -288,7 +287,7 @@
             <div class="wa-load-older-error" data-test-wa-load-newer-error>
               <span>Couldn't load newer messages.</span>
               <Woven::Button
-                @variant="secondary"
+                @variant="subtle"
                 @size="sm"
                 @text="Retry"
                 @loading={{this.currentChatLoadingNewer}}
@@ -361,7 +360,7 @@
               {{on "keydown" this.handleKeydown}}
             />
             <Woven::Button
-              @variant="primary"
+              @variant="brand"
               @icon="paper-plane-tilt"
               @text="Send"
               @disabled={{this.composerDisabled}}
@@ -374,7 +373,6 @@
       {{else}}
 
         <Woven::EmptyState
-          @fill={{true}}
           @size="lg"
           @title="Select a chat to view its messages"
         >

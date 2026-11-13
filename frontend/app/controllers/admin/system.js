@@ -13,7 +13,7 @@ const COLUMNS = [
   {
     name: 'Actions',
     valuePath: 'id',
-    width: 240,
+    width: 100,
     isSortable: false,
     isResizable: false,
   },
@@ -99,23 +99,23 @@ export default class AdminSystemController extends Controller {
     switch (this.overallState) {
       case 'ok':
         return {
-          cls: 'tag-sub-active',
+          variant: 'success',
           text: `OK, ${this.data.registered} of ${this.data.total} active`,
         };
       case 'pending':
         return {
-          cls: 'tag-sub-incomplete',
+          variant: 'warning',
           text: `${this.data.pending} pending`,
         };
       case 'missing':
         return {
-          cls: 'tag-sub-incomplete',
+          variant: 'warning',
           text: `${this.data.missing} missing`,
         };
       case 'failed':
-        return { cls: 'tag-sub-unpaid', text: 'Sync failed' };
+        return { variant: 'danger', text: 'Sync failed' };
       default:
-        return { cls: 'tag-sub-incomplete', text: 'Unknown' };
+        return { variant: 'warning', text: 'Unknown' };
     }
   }
 

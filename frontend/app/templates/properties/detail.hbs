@@ -24,7 +24,7 @@
     </:breadcrumb>
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         data-test-new-asset
         @icon="plus"
         {{on "click" this.openCreateAsset}}
@@ -57,19 +57,19 @@
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
           <Woven::Card data-test-asset-card>
-            <div class="flex between x-center">
+            <:header>
               <div class="flex col gap-1">
-                <h4 class="text-lg font-bold flex x-center gap-2"><Ui::Ph
+                <h3 class="wu-card-title flex x-center gap-2"><Ui::Ph
                     @icon="buildings"
                     class="text-brand"
                   />
-                  {{asset.name}}</h4>
-                <p class="text-muted text-sm">{{asset.units.length}} Properties</p>
+                  {{asset.name}}</h3>
+                <p class="text-muted text-sm mb-0">{{asset.units.length}} Properties</p>
               </div>
               <div class="flex gap-2">
                 <Woven::Button
                   data-test-edit-asset
-                  @variant="secondary"
+                  @variant="subtle"
                   @size="sm"
                   @icon="pencil-simple"
                   {{on "click" (fn this.openEditAsset asset)}}
@@ -78,7 +78,7 @@
                 </Woven::Button>
                 <Woven::Button
                   data-test-add-unit
-                  @variant="primary"
+                  @variant="brand"
                   @size="sm"
                   @icon="plus"
                   {{on "click" (fn this.openCreateUnit asset.id)}}
@@ -86,123 +86,126 @@
                   Add Property
                 </Woven::Button>
               </div>
-            </div>
-            {{#if asset.units.length}}
-              <div class="grid-cols-3">
-                {{#each asset.units as |unit|}}
-                  <div
-                    data-test-unit-card
-                    data-test-unit-id={{unit.id}}
-                    class="unit-card-premium flex col gap-3"
-                  >
-                    <div
-                      class="flex between x-center border-b pb-2"
+            </:header>
+            <:body>
+              {{#if asset.units.length}}
+                <div class="grid cols-1 cols-2@sm cols-3@lg gap-4">
+                  {{#each asset.units as |unit|}}
+                    <Woven::Card
+                      data-test-unit-card
+                      data-test-unit-id={{unit.id}}
                     >
-                      <div class="flex x-center gap-2">
-                        <div class="unit-card-icon-box">
-                          <Ui::Ph @icon="door" />
-                        </div>
-                        <p class="font-bold text-md">{{unit.unitNumber}}</p>
-                      </div>
-                      <Woven::Tag
-                        class="tag-proptype-{{lowercase unit.propertyType}}"
-                        @text={{property-type-label unit.propertyType}}
-                      />
-                    </div>
-
-                    <div class="flex between x-center">
-                      <p class="text-muted text-sm flex x-center gap-1">
-                        {{#if unit.deletedAt}}
+                      <div class="flex col gap-3">
+                        <div
+                          class="flex between x-center border-b pb-2"
+                        >
+                          <div class="flex x-center gap-2">
+                            <div class="flex x-center center p-2 rounded-lg bg-alternate text-brand">
+                              <Ui::Ph @icon="door" />
+                            </div>
+                            <p class="font-bold text-md mb-0">{{unit.unitNumber}}</p>
+                          </div>
                           <Woven::Tag
-                            @variant="secondary"
-                            @text="Archived"
-                            data-test-archived-badge
+                            @variant={{tag-variant "proptype" unit.propertyType}}
+                            @text={{property-type-label unit.propertyType}}
                           />
-                        {{/if}}
-                        <Woven::Tag
-                          class="tag-unit-{{lowercase unit.status}}"
-                          @text={{capitalize unit.status}}
-                        />
-                      </p>
-                      {{#if unit.price}}
-                        <p
-                          class="text-success font-bold text-md"
-                        ><Money @amount={{unit.price}} /></p>
-                      {{/if}}
-                    </div>
+                        </div>
 
-                    <div class="unit-amenities-strip">
-                      <span
-                        class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}"
-                      >
-                        <Ui::Ph @icon="bed" />
-                        {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
-                      </span>
-                      <span
-                        class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}"
-                      >
-                        <Ui::Ph @icon="bathtub" />
-                        {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
-                      </span>
-                      <span
-                        class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}"
-                      >
-                        <Ui::Ph @icon="ruler" />
-                        {{if
-                          (has-value unit.sqFt)
-                          (format-number unit.sqFt)
-                          "-"
-                        }}
-                      </span>
-                    </div>
+                        <div class="flex between x-center">
+                          <div class="flex x-center gap-1">
+                            {{#if unit.deletedAt}}
+                              <Woven::Tag
+                                @variant="secondary"
+                                @text="Archived"
+                                data-test-archived-badge
+                              />
+                            {{/if}}
+                            <Woven::Tag
+                              @variant={{tag-variant "unit" unit.status}}
+                              @text={{capitalize unit.status}}
+                            />
+                          </div>
+                          {{#if unit.price}}
+                            <p
+                              class="text-success font-bold text-md mb-0"
+                            ><Money @amount={{unit.price}} /></p>
+                          {{/if}}
+                        </div>
 
-                    <Unit::AmenitiesPrint @amenities={{unit.amenities}} />
+                        <div class="flex around gap-4 p-2 rounded-lg bg-alternate text-sm text-muted">
+                          <span
+                            class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}"
+                          >
+                            <Ui::Ph @icon="bed" />
+                            {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
+                          </span>
+                          <span
+                            class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}"
+                          >
+                            <Ui::Ph @icon="bathtub" />
+                            {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
+                          </span>
+                          <span
+                            class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}"
+                          >
+                            <Ui::Ph @icon="ruler" />
+                            {{if
+                              (has-value unit.sqFt)
+                              (format-number unit.sqFt)
+                              "-"
+                            }}
+                          </span>
+                        </div>
 
-                    <div class="flex gap-2 pt-1">
-                      <Woven::Button
-                        @variant="primary"
-                        @size="sm"
-                        @route="properties.unit"
-                        @models={{array @model.localityId unit.id}}
-                        class="grow justify-center"
-                        data-test-view-unit
-                      >
-                        View Details
-                      </Woven::Button>
-                      {{#unless unit.deletedAt}}
-                        <Woven::Button
-                          @variant="secondary"
-                          @size="sm"
-                          aria-label="Edit property"
-                          data-tooltip="Edit property"
-                          @icon="pencil"
-                          data-test-edit-unit
-                          {{on "click" (fn this.openEditUnit unit asset.id)}}
-                        />
-                      {{/unless}}
-                    </div>
-                  </div>
-                {{/each}}
-              </div>
-            {{else}}
-              <Woven::EmptyState
-                @title="No properties yet"
-                @description="Start by adding the first property to this asset."
-              >
-                <:icon><Ui::Ph @icon="house-line" /></:icon>
-                <:actions>
-                  <Woven::Button
-                    data-test-add-unit
-                    @variant="primary"
-                    @size="sm"
-                    @icon="plus"
-                    {{on "click" (fn this.openCreateUnit asset.id)}}
-                  >
-                    Add First Property
-                  </Woven::Button>
-                </:actions>
-              </Woven::EmptyState>
-            {{/if}}
+                        <Unit::AmenitiesPrint @amenities={{unit.amenities}} />
+
+                        <div class="flex gap-2 pt-1">
+                          <Woven::Button
+                            @variant="brand"
+                            @size="sm"
+                            @route="properties.unit"
+                            @models={{array @model.localityId unit.id}}
+                            class="grow justify-center"
+                            data-test-view-unit
+                          >
+                            View Details
+                          </Woven::Button>
+                          {{#unless unit.deletedAt}}
+                            <Woven::Button
+                              @variant="subtle"
+                              @size="sm"
+                              aria-label="Edit property"
+                              data-tooltip="Edit property"
+                              @icon="pencil"
+                              data-test-edit-unit
+                              {{on "click" (fn this.openEditUnit unit asset.id)}}
+                            />
+                          {{/unless}}
+                        </div>
+                      </div>
+                    </Woven::Card>
+                  {{/each}}
+                </div>
+              {{else}}
+                <Woven::EmptyState
+                  @title="No properties yet"
+                  @description="Start by adding the first property to this asset."
+                >
+                  <:icon><Ui::Ph @icon="house-line" /></:icon>
+                  <:actions>
+                    <Woven::Button
+                      data-test-add-unit
+                      @variant="brand"
+                      @size="sm"
+                      @icon="plus"
+                      {{on "click" (fn this.openCreateUnit asset.id)}}
+                    >
+                      Add First Property
+                    </Woven::Button>
+                  </:actions>
+                </Woven::EmptyState>
+              {{/if}}
+            </:body>
           </Woven::Card>
         {{/each}}
       </div>
@@ -240,7 +243,7 @@
                 />
               {{/if}}
               <Woven::Tag
-                class="tag-unit-{{lowercase cell.value}}"
+                @variant={{tag-variant "unit" cell.value}}
                 @text={{capitalize cell.value}}
               />
             </div>
@@ -248,7 +251,7 @@
         {{else if (eq cell.key "propertyType")}}
           {{#if cell.value}}
             <Woven::Tag
-              class="tag-proptype-{{lowercase cell.value}}"
+              @variant={{tag-variant "proptype" cell.value}}
               @text={{property-type-label cell.value}}
             />
           {{/if}}
@@ -262,34 +265,39 @@
             }}</span>
         {{else if (eq cell.key "id")}}
           {{#if cell.depth}}
-            <div class="flex gap-1">
-              <Woven::Button
-                data-test-view-unit
-                @variant="primary"
-                @size="xs"
-                @route="properties.unit"
-                @models={{array @model.localityId cell.row.id}}
-              >View</Woven::Button>
-              {{#unless cell.row.deletedAt}}
-                <Woven::Button
-                  @variant="secondary"
-                  @size="xs"
-                  data-test-edit-unit
-                  {{on
-                    "click"
-                    (fn this.openEditUnit cell.row.unit cell.row.assetId)
-                  }}
-                >Edit</Woven::Button>
-              {{/unless}}
-            </div>
+            <RowActions
+              @label={{cell.row.unitNumber}}
+              @actions={{array
+                (hash
+                  key="view-unit"
+                  label="View"
+                  icon="eye"
+                  variant="brand"
+                  route="properties.unit"
+                  models=(array @model.localityId cell.row.id)
+                )
+                (hash
+                  key="edit-unit"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEditUnit cell.row.unit cell.row.assetId)
+                  hidden=cell.row.deletedAt
+                )
+              }}
+            />
           {{else if (eq cell.row.unitCount 0)}}
-            <Woven::Button
-              data-test-add-unit
-              @variant="primary"
-              @size="xs"
-              @icon="plus"
-              {{on "click" (fn this.openCreateUnit cell.row.assetId)}}
-            >Add First Property</Woven::Button>
+            <RowActions
+              @label={{cell.row.assetName}}
+              @actions={{array
+                (hash
+                  key="add-unit"
+                  label="Add first property"
+                  icon="plus"
+                  variant="brand"
+                  onSelect=(fn this.openCreateUnit cell.row.assetId)
+                )
+              }}
+            />
           {{/if}}
         {{else}}
           {{cell.value}}
@@ -305,7 +313,7 @@
       <:actions>
         <Woven::Button
           data-test-new-asset-empty
-          @variant="primary"
+          @variant="brand"
           @icon="plus"
           {{on "click" this.openCreateAsset}}
         >

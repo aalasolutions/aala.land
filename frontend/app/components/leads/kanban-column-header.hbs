@@ -6,7 +6,7 @@
   {{on "click" @onToggle}}
 >
   <span class="wu-kanban__column-title">{{yield}}</span>
-  <span class="wu-kanban__column-count">{{@count}}</span>
+  <span class="wu-badge wu-kanban__column-count">{{@count}}</span>
   <Ui::Ph
     @icon={{if @collapsed "caret-right" "caret-down"}}
     class="wu-kanban__column-toggle"

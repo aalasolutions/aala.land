@@ -59,7 +59,7 @@ export default class AccessRequestsController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 110,
+      width: 100,
       isSortable: false,
       isResizable: false,
     },

@@ -1,20 +1,22 @@
 {{! Lock blocks writes server-side; lifted grants expire at the lift date and it re-locks. }}
 {{#if @lockState.locked}}
-  <div
-    class="alert alert-error tenant-lock-banner"
+  <Woven::Alert
+    @variant="danger"
+    role="status"
+    class="tenant-lock-banner"
     data-test-tenant-lock-banner
   >
-    <Ui::Ph @icon="lock" @size="18px" />
-    <span>You are over your limits. Reduce or pay to continue. Your data is safe
-      and stays readable and exportable.</span>
-  </div>
+    <p>You are over your limits. Reduce or pay to continue. Your data is safe
+      and stays readable and exportable.</p>
+  </Woven::Alert>
 {{else if @lockState.lifted}}
-  <div
-    class="alert alert-warning tenant-lock-banner"
+  <Woven::Alert
+    @variant="warning"
+    role="status"
+    class="tenant-lock-banner"
     data-test-tenant-grace-banner
   >
-    <Ui::Ph @icon="clock" @size="18px" />
-    <span>Your account is active until
-      {{format-date @lockState.liftUntil}}. Settle before then to keep access.</span>
-  </div>
+    <p>Your account is active until
+      {{format-date @lockState.liftUntil}}. Settle before then to keep access.</p>
+  </Woven::Alert>
 {{/if}}

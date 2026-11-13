@@ -20,11 +20,11 @@
         <div class="flex gap-1 flex-wrap">
           {{#each @model.contact.tags as |tag|}}
             <Woven::Tag
-              class="tag-contact-{{tag}}"
+              @variant={{tag-variant "contact" tag}}
               @text={{contact-tag-label tag}}
             />
           {{else}}
-            <Woven::Tag class="tag-contact-other" @text="Contact" />
+            <Woven::Tag @variant="secondary" @text="Contact" />
           {{/each}}
         </div>
       {{/if}}
@@ -34,7 +34,7 @@
         <Contact::AccessAction @contact={{@model.contact}} />
       {{else if (and @model.contact (can-edit-contact @model.contact))}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @icon="pencil-simple"
           @text="Edit"
           data-test-edit-contact
@@ -50,29 +50,27 @@
       {{#if this.isLimited}}
         <Woven::Card @title="Contact Information">
           <Woven::DescList @horizontal={{true}} data-test-limited-details>
-            <div class="wu-desc-list__group">
-              <dt class="wu-desc-list__term">Phone</dt>
-              <dd class="wu-desc-list__description" data-test-limited-phone><bdi
+            <div>
+              <dt>Phone</dt>
+              <dd data-test-limited-phone><bdi
                   dir="ltr"
                 >{{or (contact-phone @model.contact) "-"}}</bdi></dd>
             </div>
-            <div class="wu-desc-list__group">
-              <dt class="wu-desc-list__term">Region</dt>
+            <div>
+              <dt>Region</dt>
               <dd
-                class="wu-desc-list__description"
                 data-test-limited-region
               >{{or @model.contact.regionCode "-"}}</dd>
             </div>
-            <div class="wu-desc-list__group">
-              <dt class="wu-desc-list__term">Added by</dt>
+            <div>
+              <dt>Added by</dt>
               <dd
-                class="wu-desc-list__description"
                 data-test-contact-added-by
               >{{or @model.contact.createdByName "-"}}</dd>
             </div>
-            <div class="wu-desc-list__group">
-              <dt class="wu-desc-list__term">Created</dt>
-              <dd class="wu-desc-list__description">{{format-date
+            <div>
+              <dt>Created</dt>
+              <dd>{{format-date
                   @model.contact.createdAt
                   zone="region"
                 }}</dd>
@@ -107,100 +105,99 @@
               <div class="flex col gap-3">
                 {{#each this.leadRows as |lead|}}
                   <Woven::Panel
-                    @compact={{true}}
-                    @interactive={{true}}
-                    class="flex col gap-2"
                     data-test-lead-card
                     {{on "click" (fn this.toggleLeadActivity lead.id)}}
                   >
-                    <div class="flex between x-center">
-                      <div class="flex gap-2 x-center">
-                        <Woven::Tag
-                          class="tag-lead-{{lowercase lead.status}}"
-                          @text={{lead.status}}
+                    <div class="flex col gap-2">
+                      <div class="flex between x-center">
+                        <div class="flex gap-2 x-center">
+                          <Woven::Tag
+                            @variant={{tag-variant "lead" lead.status}}
+                            @text={{lead.status}}
+                          />
+                          <Woven::Tag
+                            @variant={{tag-variant "temp" lead.temperature}}
+                            @text={{lead.temperature}}
+                          />
+                          {{#if lead.locality}}
+                            <span class="text-sm">{{lead.locality.name}}</span>
+                          {{/if}}
+                        </div>
+                        {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
+                        <Woven::Button
+                          @variant="subtle"
+                          @size="xs"
+                          @shape="circle"
+                          @icon={{if
+                            (eq this.expandedLeadId lead.id)
+                            "caret-up"
+                            "caret-down"
+                          }}
+                          aria-label={{if
+                            (eq this.expandedLeadId lead.id)
+                            "Collapse lead activity"
+                            "Expand lead activity"
+                          }}
+                          aria-expanded={{if
+                            (eq this.expandedLeadId lead.id)
+                            "true"
+                            "false"
+                          }}
+                          data-test-toggle-lead-activity
                         />
-                        <Woven::Tag
-                          class="tag-temp-{{lowercase lead.temperature}}"
-                          @text={{lead.temperature}}
-                        />
-                        {{#if lead.locality}}
-                          <span class="text-sm">{{lead.locality.name}}</span>
-                        {{/if}}
                       </div>
-                      {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
-                      <Woven::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @shape="circle"
-                        @icon={{if
-                          (eq this.expandedLeadId lead.id)
-                          "caret-up"
-                          "caret-down"
-                        }}
-                        aria-label={{if
-                          (eq this.expandedLeadId lead.id)
-                          "Collapse lead activity"
-                          "Expand lead activity"
-                        }}
-                        aria-expanded={{if
-                          (eq this.expandedLeadId lead.id)
-                          "true"
-                          "false"
-                        }}
-                        data-test-toggle-lead-activity
-                      />
-                    </div>
-                    <div class="flex gap-4 text-sm text-muted">
-                      <span>Source: {{lead.source}}</span>
-                      {{#if lead.budgetMin}}
-                        <span>Budget:
-                          <Money
-                            @amount={{lead.budgetMin}}
-                            @currency={{region-currency lead.regionCode}}
-                          />{{#if lead.budgetMax}}
-                            &ndash;
+                      <div class="flex gap-4 text-sm text-muted">
+                        <span>Source: {{lead.source}}</span>
+                        {{#if lead.budgetMin}}
+                          <span>Budget:
                             <Money
-                              @amount={{lead.budgetMax}}
+                              @amount={{lead.budgetMin}}
                               @currency={{region-currency lead.regionCode}}
-                            />{{/if}}</span>
-                      {{/if}}
-                      <span>Created
-                        {{format-date lead.createdAt zone="region"}}</span>
-                    </div>
-                    {{#if (eq this.expandedLeadId lead.id)}}
-                      <div class="lead-detail__scroll">
-                        {{#if (eq this.loadingActivitiesFor lead.id)}}
-                          <Woven::Spinner @size="sm" />
-                        {{else}}
-                          <Woven::Timeline @compact={{true}}>
-                            {{#each
-                              (get this.leadActivities lead.id)
-                              as |activity|
-                            }}
-                              <Woven::TimelineItem
-                                @title={{activity.type}}
-                                @timestamp={{format-date-time
-                                  activity.createdAt
-                                  region=lead.regionCode
-                                }}
-                                @description={{activity.notes}}
-                                @meta={{if
-                                  activity.performedByName
-                                  (concat "by " activity.performedByName)
-                                }}
-                              >
-                                <:icon><Ui::Ph
-                                    @icon={{get-activity-icon activity.type}}
-                                    @size="14px"
-                                  /></:icon>
-                              </Woven::TimelineItem>
-                            {{else}}
-                              <p class="text-muted text-sm">No activity yet.</p>
-                            {{/each}}
-                          </Woven::Timeline>
+                            />{{#if lead.budgetMax}}
+                              &ndash;
+                              <Money
+                                @amount={{lead.budgetMax}}
+                                @currency={{region-currency lead.regionCode}}
+                              />{{/if}}</span>
                         {{/if}}
+                        <span>Created
+                          {{format-date lead.createdAt zone="region"}}</span>
                       </div>
-                    {{/if}}
+                      {{#if (eq this.expandedLeadId lead.id)}}
+                        <div class="lead-detail__scroll">
+                          {{#if (eq this.loadingActivitiesFor lead.id)}}
+                            <Woven::Spinner @size="sm" />
+                          {{else}}
+                            <Woven::Timeline>
+                              {{#each
+                                (get this.leadActivities lead.id)
+                                as |activity|
+                              }}
+                                <Woven::TimelineItem
+                                  @title={{activity.type}}
+                                  @timestamp={{format-date-time
+                                    activity.createdAt
+                                    region=lead.regionCode
+                                  }}
+                                  @description={{activity.notes}}
+                                  @meta={{if
+                                    activity.performedByName
+                                    (concat "by " activity.performedByName)
+                                  }}
+                                >
+                                  <:icon><Ui::Ph
+                                      @icon={{get-activity-icon activity.type}}
+                                      @size="14px"
+                                    /></:icon>
+                                </Woven::TimelineItem>
+                              {{else}}
+                                <p class="text-muted text-sm mb-0">No activity yet.</p>
+                              {{/each}}
+                            </Woven::Timeline>
+                          {{/if}}
+                        </div>
+                      {{/if}}
+                    </div>
                   </Woven::Panel>
                 {{/each}}
               </div>
@@ -241,7 +238,7 @@
                 {{else if (eq cell.key "status")}}
                   <div class="flex gap-1 wrap">
                     <Woven::Tag
-                      class="tag-lease-{{lowercase cell.value}}"
+                      @variant={{tag-variant "lease" cell.value}}
                       @text={{cell.value}}
                     />
                     {{#if cell.row.deletedAt}}
@@ -304,7 +301,7 @@
                   {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
                 {{else if (eq cell.key "status")}}
                   <Woven::Tag
-                    class="tag-unit-{{lowercase cell.value}}"
+                    @variant={{tag-variant "unit" cell.value}}
                     @text={{cell.value}}
                   />
                 {{else if (eq cell.key "price")}}
@@ -313,13 +310,17 @@
                     @currency={{region-currency cell.row.regionCode}}
                   />
                 {{else if (eq cell.key "id")}}
-                  <Woven::Button
-                    @variant="secondary"
-                    @size="xs"
-                    @route="properties.unit"
-                    @models={{array cell.row.areaId cell.row.id}}
-                    @text="View"
-                    data-test-view-owned-unit
+                  <RowActions
+                    @label={{cell.row.unitNumber}}
+                    @actions={{array
+                      (hash
+                        key="view-owned-unit"
+                        label="View"
+                        icon="eye"
+                        route="properties.unit"
+                        models=(array cell.row.areaId cell.row.id)
+                      )
+                    }}
                   />
                 {{else}}
                   <span class="text-muted">{{cell.value}}</span>
@@ -365,7 +366,7 @@
                   <h2 class="text-md font-bold">Documents</h2>
                   {{#if panel.canUpload}}
                     <Woven::Button
-                      @variant="primary"
+                      @variant="brand"
                       @size="sm"
                       @icon="upload-simple"
                       @text="Upload"

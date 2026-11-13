@@ -9,7 +9,7 @@
       <div class="flex x-center gap-3">
         <h3 class="text-lg font-bold">Price catalogue</h3>
         <Woven::Tag
-          class={{this.healthBadge.cls}}
+          @variant={{this.healthBadge.variant}}
           @text={{this.healthBadge.text}}
           data-test-system-price-status
         />
@@ -17,14 +17,14 @@
       <div class="flex x-center gap-2">
         {{#if this.needsFix}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @loading={{this.fixing}}
             data-test-system-price-fix
             {{on "click" this.fix}}
           >{{if this.fixing "Syncing…" "Fix"}}</Woven::Button>
         {{/if}}
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           data-test-system-price-add
           {{on "click" this.openAdd}}
         >Add price</Woven::Button>
@@ -61,12 +61,12 @@
           {{format-money cell.value currency=cell.row.currency minor=true}}
         {{else if (eq cell.key "status")}}
           {{#if (eq cell.value "registered")}}
-            <Woven::Tag class="tag-sub-active" @text="Registered" />
+            <Woven::Tag @variant="success" @text="Registered" />
           {{else if (eq cell.value "missing")}}
-            <Woven::Tag class="tag-sub-incomplete" @text="Not yet registered" />
+            <Woven::Tag @variant="warning" @text="Not yet registered" />
           {{else if (eq cell.value "pending")}}
             <div class="flex col gap-2" data-test-system-price-pending>
-              <Woven::Tag class="tag-sub-incomplete" @text="Change pending" />
+              <Woven::Tag @variant="warning" @text="Change pending" />
               <p class="text-sm text-muted">Still selling at the previous price
                 until the provider registers this one. Use Fix to retry.</p>
               {{#if cell.row.lastError}}
@@ -77,7 +77,7 @@
             </div>
           {{else}}
             <div class="flex col gap-2">
-              <Woven::Tag class="tag-sub-unpaid" @text="Failed" />
+              <Woven::Tag @variant="danger" @text="Failed" />
               {{#if cell.row.lastError}}
                 <Woven::Alert @variant="danger" data-test-system-price-error>
                   <p class="text-sm">{{cell.row.lastError}}</p>
@@ -90,20 +90,26 @@
             </div>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="btn btn-secondary btn-xs"
-              data-test-system-price-change-amount={{cell.row.id}}
-              {{on "click" (fn this.openAmount cell.row)}}
-            >Change price</button>
-            <button
-              type="button"
-              class="btn btn-danger btn-xs"
-              data-test-system-price-deactivate={{cell.row.id}}
-              {{on "click" (fn this.openDeactivate cell.row)}}
-            >Deactivate</button>
-          </div>
+          <RowActions
+            @label={{cell.row.label}}
+            @actions={{array
+              (hash
+                key="system-price-change-amount"
+                testValue=cell.row.id
+                label="Change price"
+                icon="pencil-simple"
+                onSelect=(fn this.openAmount cell.row)
+              )
+              (hash
+                key="system-price-deactivate"
+                testValue=cell.row.id
+                label="Deactivate"
+                icon="prohibit"
+                variant="danger"
+                onSelect=(fn this.openDeactivate cell.row)
+              )
+            }}
+          />
         {{else}}
           {{cell.value}}
         {{/if}}
@@ -121,7 +127,7 @@
   >
     <:body>
       <div class="wu-form">
-        <Woven::Field @label="Kind" @flush={{true}}>
+        <Woven::Field @label="Kind">
           <Woven::Select
             @value={{this.addKind}}
             @options={{this.kindOptions}}
@@ -131,11 +137,10 @@
         </Woven::Field>
         <div class="wu-field-row">
           <Woven::Field
+            class="narrow"
             @label="Currency"
             @tooltip="Three letter code such as USD."
             @error={{this.fieldErrors.addCurrency}}
-            @flush={{true}}
-            class="wu-field-row__narrow"
           >
             <Woven::Input
               id="price-currency"
@@ -150,8 +155,6 @@
           <Woven::Field
             @label="Monthly amount"
             @error={{this.fieldErrors.addAmount}}
-            @flush={{true}}
-            class="grow"
           >
             <Woven::Input
               id="price-amount"
@@ -168,7 +171,6 @@
           @label="Countries"
           @tooltip="Leave empty for the base price. For a custom price, list 2-letter country codes separated by commas, such as PK, IN."
           @error={{this.fieldErrors.addCountries}}
-          @flush={{true}}
         >
           <Woven::Input
             id="price-countries"
@@ -210,12 +212,12 @@
     </:body>
     <:footer>
       <Woven::Button
-        @variant="secondary"
+        @variant="subtle"
         data-test-system-price-add-cancel
         {{on "click" this.closePriceModal}}
       >Cancel</Woven::Button>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @loading={{this.priceBusy}}
         @disabled={{this.priceBusy}}
         data-test-system-price-add-submit
@@ -242,7 +244,6 @@
         <Woven::Field
           @label="New monthly amount"
           @error={{this.fieldErrors.newAmount}}
-          @flush={{true}}
         >
           <Woven::Input
             id="price-new-amount"
@@ -269,13 +270,12 @@
               {{this.amountRow.tax}}.</p>
           </div>
         {{/if}}
-        <div class="alert alert-warning">
-          <div>
-            <p class="text-sm">Existing subscribers keep their current price
-              until they are migrated. New checkouts use the new price. The
-              change syncs to the billing provider immediately.</p>
-          </div>
-        </div>
+        <Woven::Alert
+          @variant="warning"
+          @description="Existing subscribers keep their current price until they are migrated. New checkouts use the new price. The change syncs to the billing provider immediately."
+          role="status"
+          data-test-system-price-amount-notice
+        />
         {{#if this.priceError}}
           <Woven::Alert
             @variant="danger"
@@ -287,12 +287,12 @@
     </:body>
     <:footer>
       <Woven::Button
-        @variant="secondary"
+        @variant="subtle"
         data-test-system-price-amount-cancel
         {{on "click" this.closePriceModal}}
       >Cancel</Woven::Button>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @loading={{this.priceBusy}}
         @disabled={{this.priceBusy}}
         data-test-system-price-amount-submit

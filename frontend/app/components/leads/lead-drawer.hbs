@@ -36,7 +36,7 @@
           <p class="text-sm flex gap-2 x-center wrap">
             {{contact-name @lead.contact}}
             {{#if (is-limited-contact @lead.contact)}}
-              <Woven::Badge @size="sm" @text="Limited" data-test-limited-badge />
+              <Woven::Badge @text="Limited" data-test-limited-badge />
             {{/if}}
             {{#if (contact-email @lead.contact)}}
               <span class="text-muted">-
@@ -136,13 +136,13 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @text="Cancel"
       @onClick={{this.close}}
       data-test-cancel-lead
     />
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="lead-form"
       @text={{this.submitLabel}}

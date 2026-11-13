@@ -22,7 +22,7 @@
     <div class="record-sheet__actions">
       {{#if @contact.phone}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @size="sm"
           @icon="phone"
           @text="Call"
@@ -32,7 +32,7 @@
       {{/if}}
       {{#if (can-whatsapp @contact)}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @size="sm"
           @icon="whatsapp-logo"
           @text="WhatsApp"
@@ -45,7 +45,7 @@
       {{/if}}
       {{#if @contact.email}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @size="sm"
           @icon="envelope-simple"
           @text="Email"

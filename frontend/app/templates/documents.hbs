@@ -16,15 +16,15 @@
         @subtitle="Store and organise property paperwork."
       >
         <:meta>
-          <p class="text-muted">{{format-number
+          <span>{{format-number
               panel.total
               unit="document"
-            }}</p>
+            }}</span>
         </:meta>
         <:actions>
           {{#if panel.canUpload}}
             <Woven::Button
-              @variant="primary"
+              @variant="brand"
               data-test-upload-btn
               @icon="upload-simple"
               {{on "click" panel.openUpload}}
@@ -91,21 +91,19 @@
                 />
               </Woven::Field>
               <Woven::Field @label="Uploaded from">
-                <input
+                <Woven::Input
                   type="date"
-                  class="wu-input"
                   aria-label="Uploaded from"
-                  value={{this.dateFrom}}
+                  @value={{this.dateFrom}}
                   {{on "change" this.setDateFrom}}
                   data-test-date-from-filter
                 />
               </Woven::Field>
               <Woven::Field @label="Uploaded to">
-                <input
+                <Woven::Input
                   type="date"
-                  class="wu-input"
                   aria-label="Uploaded to"
-                  value={{this.dateTo}}
+                  @value={{this.dateTo}}
                   {{on "change" this.setDateTo}}
                   data-test-date-to-filter
                 />

@@ -1,16 +1,17 @@
 {{page-title "AALA.LAND"}}
 
 {{#if this.session.isAuthenticated}}
-  <div
-    class="app-shell {{if this.desktopCollapsed 'is-collapsed'}}"
-  >
-    <aside
-      class="wu-sidebar m-plain
-        {{if this.desktopCollapsed 'is-collapsed'}}
-        {{if this.sidebarMobileOpen 'is-open'}}"
+  <div class="app-shell">
+    <Woven::Sidebar
+      @pinned={{true}}
+      @animated={{true}}
+      @collapsed={{this.desktopCollapsed}}
+      @dismissible={{true}}
+      @open={{this.sidebarMobileOpen}}
+      @onDismiss={{this.closeMobileSidebar}}
       data-test-sidebar
     >
-      <div class="wu-sidebar__brand app-shell__user">
+      <:brand>
         <LinkTo
           @route="profile"
           class="app-shell__user-full"
@@ -76,540 +77,344 @@
             </:body>
           </Woven::Popover>
         </div>
-      </div>
+      </:brand>
+      <:default>
+        <ul class="wu-sidebar-list" data-test-sidebar-nav>
+          <Shell::NavLink
+            @route="dashboard"
+            @icon="gauge"
+            @label="Dashboard"
+            @current={{this.isNavCurrent "dashboard"}}
+            data-test-nav-dashboard
+          />
 
-      <nav data-test-sidebar-nav class="wu-sidebar__nav">
-        <LinkTo
-          @route="dashboard"
-          class="wu-sidebar__link"
-          data-tooltip={{if this.desktopCollapsed "Dashboard"}}
-          data-tooltip-position="end"
-          data-tooltip-light
-          data-test-nav-dashboard
-        >
-          <Ui::Ph @icon="gauge" />
-          <span class="wu-sidebar__link-label">Dashboard</span>
-        </LinkTo>
-
-        {{#if this.sidebarGroups.properties}}
-          <div
-            class="wu-sidebar__group
-              {{if
-                (or
-                  (eq this.expandedGroup 'properties')
-                  (eq this.activeGroup 'properties')
-                )
-                'is-expanded'
-              }}
-              {{if (eq this.activeGroup 'properties') 'is-active-group'}}"
-          >
-            <button
-              data-test-nav-group-toggle="properties"
-              type="button"
-              class="wu-sidebar__group-toggle
-                {{if
-                  (eq this.activeGroup 'properties')
-                  'is-active'
-                }}"
-              {{on "click" (fn this.toggleGroup "properties" "properties")}}
+          {{#if this.sidebarGroups.properties}}
+            <Shell::NavGroup
+              @group="properties"
+              @icon="buildings"
+              @label="Properties"
+              @open={{this.isGroupOpen "properties"}}
+              @onToggle={{fn this.toggleGroup "properties" "properties"}}
             >
-              <Ui::Ph @icon="buildings" />
-              <span class="wu-sidebar__link-label">Properties</span>
-              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
-            </button>
-            <div class="wu-sidebar__group-items">
-              <div>
-                <p class="wu-sidebar__group-title">Properties</p>
-                <LinkTo
-                  @route="properties"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "All Properties"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-properties
-                >
-                  <Ui::Ph @icon="house-line" />
-                  <span class="wu-sidebar__link-label">All Properties</span>
-                </LinkTo>
-                <LinkTo
-                  @route="leases"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "properties")) "Leases"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-leases
-                >
-                  <Ui::Ph @icon="file-text" />
-                  <span class="wu-sidebar__link-label">Leases</span>
-                </LinkTo>
-              </div>
-            </div>
-          </div>
-        {{/if}}
-
-        {{#if this.sidebarGroups.crm}}
-          <div
-            class="wu-sidebar__group
-              {{if
-                (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm'))
-                'is-expanded'
-              }}
-              {{if (eq this.activeGroup 'crm') 'is-active-group'}}"
-          >
-            <button
-              data-test-nav-group-toggle="crm"
-              type="button"
-              class="wu-sidebar__group-toggle
-                {{if (eq this.activeGroup 'crm') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "crm" "contacts")}}
-            >
-              <Ui::Ph @icon="address-book" />
-              <span class="wu-sidebar__link-label">People</span>
-              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
-            </button>
-            <div class="wu-sidebar__group-items">
-              <div>
-                <p class="wu-sidebar__group-title">People</p>
-                <LinkTo
-                  @route="contacts"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Contacts"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-contacts
-                >
-                  <Ui::Ph @icon="users" />
-                  <span class="wu-sidebar__link-label">Contacts</span>
-                </LinkTo>
-                <LinkTo
-                  @route="leads"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "crm")) "Lead Pipeline"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-leads
-                >
-                  <Ui::Ph @icon="kanban" />
-                  <span class="wu-sidebar__link-label">Lead Pipeline</span>
-                </LinkTo>
-                {{#if this.sidebarGroups.accessRequests}}
-                  <LinkTo
-                    @route="access-requests"
-                    class="wu-sidebar__sublink"
-                    data-tooltip={{if
-                      (and this.desktopCollapsed (eq this.activeGroup "crm"))
-                      "Access Requests"
-                    }}
-                    data-tooltip-position="end"
-                    data-tooltip-light
-                    data-test-nav-access-requests
-                  >
-                    <Ui::Ph @icon="key" />
-                    <span class="wu-sidebar__link-label">Access Requests</span>
-                    {{#if this.pendingAccessCount}}
-                      <Woven::Badge
-                        @count={{true}}
-                        @value={{this.pendingAccessCount}}
-                        @max={{99}}
-                        data-test-nav-access-requests-pending
-                      />
-                    {{/if}}
-                  </LinkTo>
-                {{/if}}
-              </div>
-            </div>
-          </div>
-        {{/if}}
-
-        {{#if this.sidebarGroups.documents}}
-          <LinkTo
-            @route="documents"
-            class="wu-sidebar__link"
-            data-tooltip={{if this.desktopCollapsed "Documents"}}
-            data-tooltip-position="end"
-            data-tooltip-light
-            data-test-nav-documents
-          >
-            <Ui::Ph @icon="files" />
-            <span class="wu-sidebar__link-label">Documents</span>
-          </LinkTo>
-        {{/if}}
-
-        {{#if this.sidebarGroups.finance}}
-          <div
-            class="wu-sidebar__group
-              {{if
-                (or
-                  (eq this.expandedGroup 'finance')
-                  (eq this.activeGroup 'finance')
-                )
-                'is-expanded'
-              }}
-              {{if (eq this.activeGroup 'finance') 'is-active-group'}}"
-          >
-            <button
-              data-test-nav-group-toggle="finance"
-              type="button"
-              class="wu-sidebar__group-toggle
-                {{if (eq this.activeGroup 'finance') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "finance" "financials")}}
-            >
-              <Ui::Ph @icon="currency-circle-dollar" />
-              <span class="wu-sidebar__link-label">Finance</span>
-              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
-            </button>
-            <div class="wu-sidebar__group-items">
-              <div>
-                <p class="wu-sidebar__group-title">Finance</p>
-                <LinkTo
-                  @route="financials"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Transactions"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-financials
-                >
-                  <Ui::Ph @icon="receipt" />
-                  <span class="wu-sidebar__link-label">Transactions</span>
-                </LinkTo>
-                <LinkTo
-                  @route="cheques"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Cheques Received"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-cheques
-                >
-                  <Ui::Ph @icon="money" />
-                  <span class="wu-sidebar__link-label">Cheques Received</span>
-                </LinkTo>
-                <LinkTo
-                  @route="commissions"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "finance")) "Commissions"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-commissions
-                >
-                  <Ui::Ph @icon="percent" />
-                  <span class="wu-sidebar__link-label">Commissions</span>
-                </LinkTo>
-              </div>
-            </div>
-          </div>
-        {{/if}}
-
-        {{#if this.sidebarGroups.outreach}}
-          {{#if this.whatsappDisabled}}
-            <span
-              class="wu-sidebar__link is-disabled"
-              role="link"
-              aria-disabled="true"
-              tabindex="0"
-              data-tooltip={{this.whatsappTooltip}}
-              data-tooltip-position="end"
-              data-tooltip-light
-              data-test-nav-whatsapp
-              data-test-nav-whatsapp-disabled
-            >
-              <Ui::Ph @icon="whatsapp-logo" />
-              <span class="wu-sidebar__link-label">WhatsApp</span>
-            </span>
-          {{else}}
-            <LinkTo
-              @route="whatsapp"
-              class="wu-sidebar__link"
-              data-tooltip={{this.whatsappTooltip}}
-              data-tooltip-position="end"
-              data-tooltip-light
-              data-test-nav-whatsapp
-            >
-              <Ui::Ph @icon="whatsapp-logo" />
-              <span class="wu-sidebar__link-label">WhatsApp</span>
-              {{#if this.whatsappUnreadCount}}
-                <Woven::Badge
-                  @count={{true}}
-                  @value={{this.whatsappUnreadCount}}
-                  @max={{99}}
-                  data-test-nav-whatsapp-unread
-                />
-              {{/if}}
-            </LinkTo>
+              <Shell::NavLink
+                @route="properties"
+                @icon="house-line"
+                @label="All Properties"
+                @current={{this.isNavCurrent "properties"}}
+                data-test-nav-properties
+              />
+              <Shell::NavLink
+                @route="leases"
+                @icon="file-text"
+                @label="Leases"
+                @current={{this.isNavCurrent "leases"}}
+                data-test-nav-leases
+              />
+            </Shell::NavGroup>
           {{/if}}
-        {{/if}}
 
-        {{#if this.sidebarGroups.operations}}
-          <div
-            class="wu-sidebar__group
-              {{if
-                (or
-                  (eq this.expandedGroup 'operations')
-                  (eq this.activeGroup 'operations')
-                )
-                'is-expanded'
-              }}
-              {{if (eq this.activeGroup 'operations') 'is-active-group'}}"
-          >
-            <button
-              data-test-nav-group-toggle="operations"
-              type="button"
-              class="wu-sidebar__group-toggle
-                {{if
-                  (eq this.activeGroup 'operations')
-                  'is-active'
-                }}"
-              {{on "click" (fn this.toggleGroup "operations" "maintenance")}}
+          {{#if this.sidebarGroups.crm}}
+            <Shell::NavGroup
+              @group="crm"
+              @icon="address-book"
+              @label="People"
+              @open={{this.isGroupOpen "crm"}}
+              @onToggle={{fn this.toggleGroup "crm" "contacts"}}
             >
-              <Ui::Ph @icon="wrench" />
-              <span class="wu-sidebar__link-label">Operations</span>
-              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
-            </button>
-            <div class="wu-sidebar__group-items">
-              <div>
-                <p class="wu-sidebar__group-title">Operations</p>
-                <LinkTo
-                  @route="maintenance"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Maintenance"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-maintenance
+              <Shell::NavLink
+                @route="contacts"
+                @icon="users"
+                @label="Contacts"
+                @current={{this.isNavCurrent "contacts"}}
+                data-test-nav-contacts
+              />
+              <Shell::NavLink
+                @route="leads"
+                @icon="kanban"
+                @label="Lead Pipeline"
+                @current={{this.isNavCurrent "leads"}}
+                data-test-nav-leads
+              />
+              {{#if this.sidebarGroups.accessRequests}}
+                <Shell::NavLink
+                  @route="access-requests"
+                  @icon="key"
+                  @label="Access Requests"
+                  @current={{this.isNavCurrent "access-requests"}}
+                  data-test-nav-access-requests
                 >
-                  <Ui::Ph @icon="toolbox" />
-                  <span class="wu-sidebar__link-label">Maintenance</span>
-                </LinkTo>
-                <LinkTo
-                  @route="vendors"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "operations")) "Vendors"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-vendors
-                >
-                  <Ui::Ph @icon="storefront" />
-                  <span class="wu-sidebar__link-label">Vendors</span>
-                </LinkTo>
-              </div>
-            </div>
-          </div>
-        {{/if}}
+                  {{#if this.pendingAccessCount}}
+                    <Woven::Badge
+                      @count={{true}}
+                      @value={{this.pendingAccessCount}}
+                      @max={{99}}
+                      data-test-nav-access-requests-pending
+                    />
+                  {{/if}}
+                </Shell::NavLink>
+              {{/if}}
+            </Shell::NavGroup>
+          {{/if}}
 
-        {{#if this.sidebarGroups.reports}}
-          <LinkTo
-            @route="reports"
-            class="wu-sidebar__link"
-            data-tooltip={{if this.desktopCollapsed "Reports"}}
-            data-tooltip-position="end"
-            data-tooltip-light
-            data-test-nav-reports
-          >
-            <Ui::Ph @icon="chart-bar" />
-            <span class="wu-sidebar__link-label">Reports</span>
-          </LinkTo>
-        {{/if}}
+          {{#if this.sidebarGroups.documents}}
+            <Shell::NavLink
+              @route="documents"
+              @icon="files"
+              @label="Documents"
+              @current={{this.isNavCurrent "documents"}}
+              data-test-nav-documents
+            />
+          {{/if}}
 
-        {{#if this.sidebarGroups.team}}
-          {{#unless this.isSuperAdmin}}
-            <LinkTo
-              @route="team"
-              class="wu-sidebar__link"
-              data-tooltip={{if this.desktopCollapsed "Team"}}
-              data-tooltip-position="end"
-              data-tooltip-light
-              data-test-nav-team
+          {{#if this.sidebarGroups.finance}}
+            <Shell::NavGroup
+              @group="finance"
+              @icon="currency-circle-dollar"
+              @label="Finance"
+              @open={{this.isGroupOpen "finance"}}
+              @onToggle={{fn this.toggleGroup "finance" "financials"}}
             >
-              <Ui::Ph @icon="users-three" />
-              <span class="wu-sidebar__link-label">Team</span>
-            </LinkTo>
-          {{/unless}}
-        {{/if}}
+              <Shell::NavLink
+                @route="financials"
+                @icon="receipt"
+                @label="Transactions"
+                @current={{this.isNavCurrent "financials"}}
+                data-test-nav-financials
+              />
+              <Shell::NavLink
+                @route="cheques"
+                @icon="money"
+                @label="Cheques Received"
+                @current={{this.isNavCurrent "cheques"}}
+                data-test-nav-cheques
+              />
+              <Shell::NavLink
+                @route="commissions"
+                @icon="percent"
+                @label="Commissions"
+                @current={{this.isNavCurrent "commissions"}}
+                data-test-nav-commissions
+              />
+            </Shell::NavGroup>
+          {{/if}}
 
-        {{#if this.sidebarGroups.history}}
-          {{#unless this.isSuperAdmin}}
-            <LinkTo
-              @route="history"
-              class="wu-sidebar__link"
-              data-tooltip={{if this.desktopCollapsed "History"}}
-              data-tooltip-position="end"
-              data-tooltip-light
-              data-test-nav-history
+          {{#if this.sidebarGroups.outreach}}
+            {{#if this.whatsappDisabled}}
+              <li>
+                <span
+                  class="wu-sidebar-link"
+                  role="link"
+                  aria-disabled="true"
+                  tabindex="0"
+                  data-tooltip={{this.whatsappTooltip}}
+                  data-tooltip-position="end"
+                  data-tooltip-light
+                  data-test-nav-whatsapp
+                  data-test-nav-whatsapp-disabled
+                >
+                  <Ui::Ph @icon="whatsapp-logo" />
+                  <span class="wu-sidebar-label">WhatsApp</span>
+                </span>
+              </li>
+            {{else}}
+              <Shell::NavLink
+                @route="whatsapp"
+                @icon="whatsapp-logo"
+                @label="WhatsApp"
+                @current={{this.isNavCurrent "whatsapp"}}
+                data-test-nav-whatsapp
+              >
+                {{#if this.whatsappUnreadCount}}
+                  <Woven::Badge
+                    @count={{true}}
+                    @value={{this.whatsappUnreadCount}}
+                    @max={{99}}
+                    data-test-nav-whatsapp-unread
+                  />
+                {{/if}}
+              </Shell::NavLink>
+            {{/if}}
+          {{/if}}
+
+          {{#if this.sidebarGroups.operations}}
+            <Shell::NavGroup
+              @group="operations"
+              @icon="wrench"
+              @label="Operations"
+              @open={{this.isGroupOpen "operations"}}
+              @onToggle={{fn this.toggleGroup "operations" "maintenance"}}
             >
-              <Ui::Ph @icon="clock-counter-clockwise" />
-              <span class="wu-sidebar__link-label">History</span>
-            </LinkTo>
-          {{/unless}}
-        {{/if}}
+              <Shell::NavLink
+                @route="maintenance"
+                @icon="toolbox"
+                @label="Maintenance"
+                @current={{this.isNavCurrent "maintenance"}}
+                data-test-nav-maintenance
+              />
+              <Shell::NavLink
+                @route="vendors"
+                @icon="storefront"
+                @label="Vendors"
+                @current={{this.isNavCurrent "vendors"}}
+                data-test-nav-vendors
+              />
+            </Shell::NavGroup>
+          {{/if}}
 
-        {{#if this.sidebarGroups.admin}}
-          <div
-            class="wu-sidebar__group
-              {{if
-                (or
-                  (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')
-                )
-                'is-expanded'
-              }}
-              {{if (eq this.activeGroup 'admin') 'is-active-group'}}"
-          >
-            <button
-              data-test-nav-group-toggle="admin"
-              type="button"
-              class="wu-sidebar__group-toggle
-                {{if (eq this.activeGroup 'admin') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "admin" "admin.overview")}}
+          {{#if this.sidebarGroups.reports}}
+            <Shell::NavLink
+              @route="reports"
+              @icon="chart-bar"
+              @label="Reports"
+              @current={{this.isNavCurrent "reports"}}
+              data-test-nav-reports
+            />
+          {{/if}}
+
+          {{#if this.sidebarGroups.team}}
+            {{#unless this.isSuperAdmin}}
+              <Shell::NavLink
+                @route="team"
+                @icon="users-three"
+                @label="Team"
+                @current={{this.isNavCurrent "team"}}
+                data-test-nav-team
+              />
+            {{/unless}}
+          {{/if}}
+
+          {{#if this.sidebarGroups.history}}
+            {{#unless this.isSuperAdmin}}
+              <Shell::NavLink
+                @route="history"
+                @icon="clock-counter-clockwise"
+                @label="History"
+                @current={{this.isNavCurrent "history"}}
+                data-test-nav-history
+              />
+            {{/unless}}
+          {{/if}}
+
+          {{#if this.sidebarGroups.admin}}
+            <Shell::NavGroup
+              @group="admin"
+              @icon="gear"
+              @label="Admin"
+              @open={{this.isGroupOpen "admin"}}
+              @onToggle={{fn this.toggleGroup "admin" "admin.overview"}}
             >
-              <Ui::Ph @icon="gear" />
-              <span class="wu-sidebar__link-label">Admin</span>
-              <Ui::Ph @icon="caret-down" class="wu-sidebar__chevron" />
-            </button>
-            <div class="wu-sidebar__group-items">
-              <div>
-                <p class="wu-sidebar__group-title">Admin</p>
-                <LinkTo
-                  @route="admin.overview"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Overview"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-overview
-                >
-                  <Ui::Ph @icon="squares-four" />
-                  <span class="wu-sidebar__link-label">Overview</span>
-                </LinkTo>
-                <LinkTo
-                  @route="admin.companies"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Companies"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-companies
-                >
-                  <Ui::Ph @icon="buildings" />
-                  <span class="wu-sidebar__link-label">Companies</span>
-                </LinkTo>
-                <LinkTo
-                  @route="admin.marketers"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Marketers"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-marketers
-                >
-                  <Ui::Ph @icon="megaphone" />
-                  <span class="wu-sidebar__link-label">Marketers</span>
-                </LinkTo>
-                <LinkTo
-                  @route="team"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Team"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-team
-                >
-                  <Ui::Ph @icon="users-three" />
-                  <span class="wu-sidebar__link-label">Team</span>
-                </LinkTo>
-                <LinkTo
-                  @route="documents"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Documents"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-documents
-                >
-                  <Ui::Ph @icon="files" />
-                  <span class="wu-sidebar__link-label">Documents</span>
-                </LinkTo>
-                <LinkTo
-                  @route="audit"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "Audit Log"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-audit
-                >
-                  <Ui::Ph @icon="list-checks" />
-                  <span class="wu-sidebar__link-label">Audit Log</span>
-                </LinkTo>
-                <LinkTo
-                  @route="admin.system"
-                  class="wu-sidebar__sublink"
-                  data-tooltip={{if (and this.desktopCollapsed (eq this.activeGroup "admin")) "System"}}
-                  data-tooltip-position="end"
-                  data-tooltip-light
-                  data-test-nav-system
-                >
-                  <Ui::Ph @icon="sliders" />
-                  <span class="wu-sidebar__link-label">System</span>
-                </LinkTo>
-              </div>
-            </div>
-          </div>
-        {{/if}}
-      </nav>
-
-      <div class="app-shell__spacer"></div>
-
-      <button
-        data-test-sidebar-collapse
-        type="button"
-        class="app-shell__collapse"
-        aria-label="Toggle sidebar"
-        {{on "click" this.toggleSidebar}}
-      >
-        <Ui::Ph
-          @icon={{if
-            this.sidebarRailed
-            "caret-double-right"
-            "caret-double-left"
-          }}
-        />
-      </button>
-    </aside>
-
-    {{#if this.sidebarMobileOpen}}
-      <button
-        type="button"
-        class="wu-sidebar-backdrop"
-        tabindex="-1"
-        aria-hidden="true"
-        aria-label="Close menu"
-        data-test-sidebar-backdrop
-        {{on "click" this.closeMobileSidebar}}
-      ></button>
-    {{/if}}
+              <Shell::NavLink
+                @route="admin.overview"
+                @icon="squares-four"
+                @label="Overview"
+                @current={{this.isNavCurrent "admin.overview"}}
+                data-test-nav-overview
+              />
+              <Shell::NavLink
+                @route="admin.companies"
+                @icon="buildings"
+                @label="Companies"
+                @current={{this.isNavCurrent "admin.companies"}}
+                data-test-nav-companies
+              />
+              <Shell::NavLink
+                @route="admin.marketers"
+                @icon="megaphone"
+                @label="Marketers"
+                @current={{this.isNavCurrent "admin.marketers"}}
+                data-test-nav-marketers
+              />
+              <Shell::NavLink
+                @route="team"
+                @icon="users-three"
+                @label="Team"
+                @current={{this.isNavCurrent "team"}}
+                data-test-nav-team
+              />
+              <Shell::NavLink
+                @route="documents"
+                @icon="files"
+                @label="Documents"
+                @current={{this.isNavCurrent "documents"}}
+                data-test-nav-documents
+              />
+              <Shell::NavLink
+                @route="audit"
+                @icon="list-checks"
+                @label="Audit Log"
+                @current={{this.isNavCurrent "audit"}}
+                data-test-nav-audit
+              />
+              <Shell::NavLink
+                @route="admin.system"
+                @icon="sliders"
+                @label="System"
+                @current={{this.isNavCurrent "admin.system"}}
+                data-test-nav-system
+              />
+            </Shell::NavGroup>
+          {{/if}}
+        </ul>
+      </:default>
+      <:footer>
+        <button
+          type="button"
+          class="wu-sidebar-link"
+          aria-label="Toggle sidebar"
+          data-test-sidebar-collapse
+          {{on "click" this.toggleSidebar}}
+        >
+          <Ui::Ph
+            @icon={{if
+              this.sidebarRailed
+              "caret-double-right"
+              "caret-double-left"
+            }}
+          />
+        </button>
+      </:footer>
+    </Woven::Sidebar>
 
     {{! tabindex so a dialog can hand focus back here when its trigger is gone. }}
     <main class="app-shell__main" tabindex="-1">
       {{#if this.session.isImpersonating}}
-        <div class="impersonation-banner" data-test-impersonation-banner>
-          <span>
-            Impersonating
-            <strong>{{this.session.data.authenticated.user.name}}</strong>
-            ({{this.session.data.authenticated.user.email}})
-          </span>
-          <button
-            type="button"
-            class="btn btn-warning btn-sm"
-            data-test-exit-impersonation
-            {{on "click" this.exitImpersonation}}
-          >
-            Exit Impersonation
-          </button>
-        </div>
+        <Woven::Alert
+          @variant="warning"
+          role="status"
+          class="impersonation-banner"
+          data-test-impersonation-banner
+        >
+          <:default>
+            <p>
+              Impersonating
+              <strong>{{this.session.data.authenticated.user.name}}</strong>
+              ({{this.session.data.authenticated.user.email}})
+            </p>
+          </:default>
+          <:actions>
+            <Woven::Button
+              @variant="subtle"
+              @size="sm"
+              data-test-exit-impersonation
+              {{on "click" this.exitImpersonation}}
+            >
+              Exit Impersonation
+            </Woven::Button>
+          </:actions>
+        </Woven::Alert>
       {{/if}}
       <TenantLockBanner @lockState={{this.session.lockState}} />
-      <header class="wu-topbar m-sticky m-plain">
-        <button
-          type="button"
-          class="wu-topbar__toggle"
+      <header class="wu-topbar">
+        <Woven::Button
+          @variant="ghost"
+          @shape="square"
+          @icon="list"
+          class="hidden@md"
           aria-label="Open navigation"
           aria-expanded={{if this.sidebarMobileOpen "true" "false"}}
           data-test-nav-toggle
-          {{on "click" this.toggleSidebar}}
-        >
-          <Ui::Ph @icon="list" @size="20px" />
-        </button>
+          @onClick={{this.toggleSidebar}}
+        />
         {{!-- Global search hidden until it covers contacts, leads and units.
         <div class="wu-topbar__search">
           {{! Explicit combobox is the ARIA pattern for a text box that owns a listbox. }}
@@ -652,184 +457,178 @@
           ></button>
         {{/if}}
         --}}
-        <div class="wu-topbar__actions">
+        <div class="wu-topbar-end">
           {{#if this.showRegionSwitcher}}
-            <div class="region-switcher" data-test-region-switcher>
-              <button
-                data-test-region-trigger
-                type="button"
-                class="app-shell__region-btn"
-                {{on "click" this.toggleRegionDropdown}}
-              >
-                <Ui::Ph @icon="globe" @size="18px" />
-                <span
-                  class="region-name"
-                >{{this.region.activeRegion.name}}</span>
-                <Ui::Ph @icon="caret-down" @size="12px" />
-              </button>
-              {{#if this.showRegionDropdown}}
+            <Woven::Dropdown
+              @placement="end"
+              @onOpen={{this.loadRegionMenu}}
+              data-test-region-switcher
+            >
+              <:trigger as |toggle|>
                 <button
                   type="button"
-                  class="region-overlay"
-                  tabindex="-1"
-                  aria-hidden="true"
-                  aria-label="Close region menu"
-                  data-test-region-overlay
-                  {{on "click" this.closeRegionDropdown}}
-                ></button>
-                <div class="wu-topbar-menu" data-test-region-dropdown>
+                  class="wu-btn round caret"
+                  aria-haspopup="menu"
+                  data-test-region-trigger
+                  {{on "click" toggle}}
+                >
+                  <Ui::Ph @icon="globe" @size="18px" />
+                  <span class="region-name">{{this.region.activeRegion.name}}</span>
+                </button>
+              </:trigger>
+              <:menu>
+                <div role="group" aria-label="Regions" data-test-region-dropdown>
                   {{#each this.groupedRegions as |grp|}}
                     <div
-                      class="app-shell__menu-label"
+                      class="wu-dropdown-group"
+                      role="presentation"
                       data-test-region-group={{grp.countryName}}
                     >{{grp.countryName}}</div>
                     {{#each grp.regions as |r|}}
                       <button
                         type="button"
-                        class="wu-topbar-menu__item
-                          {{if
-                            (eq r.code this.region.activeRegion.code)
-                            'is-active'
-                          }}"
+                        class="wu-dropdown-item"
+                        role="menuitemradio"
+                        aria-checked={{if
+                          (eq r.code this.region.activeRegion.code)
+                          "true"
+                          "false"
+                        }}
+                        tabindex="-1"
                         data-test-region-option={{r.code}}
                         {{on "click" (fn this.selectRegion r)}}
                       >
-                        <span>{{r.name}}</span>
+                        <span class="wu-dropdown-label">{{r.name}}</span>
                         <span class="region-meta">
                           {{#unless (eq r.unitCount null)}}
                             <span
-                              class="region-unit-count
-                                {{unless r.unitCount 'is-zero'}}"
+                              class="wu-badge {{if r.unitCount 'brand'}}"
                               data-test-region-unit-count={{r.code}}
                             >{{r.unitCount}}</span>
                           {{/unless}}
                           <span class="region-currency-tag">{{r.currency}}</span>
                         </span>
+                        <span class="wu-dropdown-check {{unless (eq r.code this.region.activeRegion.code) 'invisible'}}" aria-hidden="true"></span>
                       </button>
                     {{/each}}
                   {{/each}}
                   {{#if this.canManageRegions}}
-                    <div class="wu-topbar-menu__divider"></div>
+                    <hr class="wu-dropdown-separator" />
                     <LinkTo
                       @route="company"
                       @query={{hash tab="regions"}}
-                      class="wu-topbar-menu__item"
+                      class="wu-dropdown-item"
+                      role="menuitem"
+                      tabindex="-1"
                       data-test-region-manage
-                      {{on "click" this.closeRegionDropdown}}
                     >
-                      <span>Manage regions</span>
+                      Manage regions
                     </LinkTo>
                   {{/if}}
                 </div>
-              {{/if}}
-            </div>
+              </:menu>
+            </Woven::Dropdown>
           {{else if this.showRegionLabel}}
-            <div class="wu-tag m-pill" data-test-region-label>
+            <div class="wu-tag" data-test-region-label>
               <Ui::Ph @icon="globe" @size="16px" />
               <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
           {{/if}}
-          <div class="notification-wrapper">
-            <button
-              data-test-notifications-trigger
-              type="button"
-              class="wu-topbar__icon-btn"
-              aria-label="Notifications"
-              {{on "click" this.toggleNotifications}}
-            >
-              <Ui::Ph @icon="bell" @size="22px" />
-              {{#if this.unreadCount}}
-                <span class="wu-topbar__badge">{{this.unreadCount}}</span>
-              {{/if}}
-            </button>
-
-            {{#if this.showNotifications}}
-              <button
-                data-test-notifications-overlay
-                type="button"
-                class="notification-overlay"
-                tabindex="-1"
-                aria-hidden="true"
-                aria-label="Close notifications"
-                {{on "click" this.closeNotifications}}
-              ></button>
-              <div class="wu-topbar-menu">
-                <div class="wu-topbar-menu__header">
+          <Woven::Dropdown @placement="end" @onOpen={{this.loadNotifications}}>
+            <:trigger as |toggle|>
+              <Woven::Badge
+                @value={{this.unreadCount}}
+                @hidden={{not this.unreadCount}}
+                @max={{99}}
+              >
+                <Woven::Button
+                  @variant="ghost"
+                  @shape="square"
+                  @icon="bell"
+                  aria-label="Notifications"
+                  aria-haspopup="menu"
+                  data-test-notifications-trigger
+                  @onClick={{toggle}}
+                />
+              </Woven::Badge>
+            </:trigger>
+            <:menu>
+              <div class="app-shell__notifications" role="group" aria-label="Notifications">
+                <div class="flex between x-center gap-3 px-3 py-2">
                   <span class="text-sm font-bold">Notifications</span>
                   {{#if this.unreadCount}}
-                    <button
+                    <Woven::Button
+                      @variant="link"
+                      @size="sm"
                       data-test-mark-all-read
-                      type="button"
-                      class="btn-link text-xs"
                       {{on "click" this.markAllRead}}
-                    >Mark all read</button>
+                    >Mark all read</Woven::Button>
                   {{/if}}
                 </div>
-                <div class="app-shell__menu-list">
-                  {{#each this.notifications as |notif|}}
-                    <button
-                      data-test-notification-item={{notif.id}}
-                      type="button"
-                      class="wu-topbar-menu__item
-                        {{unless notif.isRead 'unread'}}"
-                      {{on "click" (fn this.markAsRead notif)}}
-                    >
-                      <div class="notification-icon {{notif.type}}">
-                        <Ui::Ph
-                          @icon={{get-notification-icon notif.type}}
-                          @size="18px"
-                        />
-                      </div>
-                      <div class="notification-content">
-                        <span class="notification-title">{{notif.title}}</span>
-                        <span
-                          class="notification-message"
-                        >{{notif.message}}</span>
-                        {{#if notif.regionName}}
-                          <span
-                            class="notification-region"
-                            data-test-notification-region
-                          >Region: {{notif.regionName}}</span>
-                        {{/if}}
-                        <span class="notification-time">{{format-date-time
-                            notif.createdAt
-                            region=notif.regionCode
-                          }}</span>
-                      </div>
-                    </button>
-                  {{else}}
-                    <div class="wu-topbar-menu__empty">
+                <hr class="wu-dropdown-separator" />
+                {{#each this.notifications as |notif|}}
+                  <button
+                    data-test-notification-item={{notif.id}}
+                    type="button"
+                    class="wu-dropdown-item {{unless notif.isRead 'unread'}}"
+                    role="menuitem"
+                    tabindex="-1"
+                    {{on "click" (fn this.markAsRead notif)}}
+                  >
+                    <div class="notification-icon {{notif.type}}">
                       <Ui::Ph
-                        @icon="bell-slash"
-                        @size="24px"
-                        @color="var(--wu-text-muted)"
+                        @icon={{get-notification-icon notif.type}}
+                        @size="18px"
                       />
-                      <p class="text-xs text-muted mt-2">No notifications</p>
                     </div>
-                  {{/each}}
-                </div>
+                    <div class="notification-content">
+                      <span class="notification-title">{{notif.title}}</span>
+                      <span
+                        class="notification-message"
+                      >{{notif.message}}</span>
+                      {{#if notif.regionName}}
+                        <span
+                          class="notification-region"
+                          data-test-notification-region
+                        >Region: {{notif.regionName}}</span>
+                      {{/if}}
+                      <span class="notification-time">{{format-date-time
+                          notif.createdAt
+                          region=notif.regionCode
+                        }}</span>
+                    </div>
+                  </button>
+                {{else}}
+                  <div class="wu-dropdown-empty flex col x-center gap-2 py-6">
+                    <Ui::Ph
+                      @icon="bell-slash"
+                      @size="24px"
+                      @color="var(--wu-text-muted)"
+                    />
+                    <span class="text-xs">No notifications</span>
+                  </div>
+                {{/each}}
               </div>
-            {{/if}}
-          </div>
+            </:menu>
+          </Woven::Dropdown>
           {{#if this.isCompanyAdmin}}
-            <LinkTo
-              data-test-nav-company
+            <Woven::Button
               @route="company"
-              class="wu-topbar__icon-btn"
+              @variant="ghost"
+              @shape="square"
+              @icon="building-office"
               aria-label="Company settings"
-            >
-              <Ui::Ph @icon="building-office" @size="20px" />
-            </LinkTo>
+              data-test-nav-company
+            />
           {{/if}}
-          <button
-            data-test-logout-button
-            type="button"
-            class="wu-topbar__icon-btn topbar-logout"
+          <Woven::Button
+            @variant="ghost"
+            @shape="square"
+            @icon="sign-out"
             aria-label="Logout"
-            {{on "click" this.logout}}
-          >
-            <Ui::Ph @icon="sign-out" @size="20px" />
-          </button>
+            data-test-logout-button
+            @onClick={{this.logout}}
+          />
         </div>
       </header>
 

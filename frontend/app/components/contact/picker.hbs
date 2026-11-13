@@ -18,7 +18,6 @@
 
   {{#if (and this.conflict (not this.isAttached))}}
     <Woven::Panel
-      @compact={{true}}
       class="flex col gap-2"
       data-test-contact-conflict
     >
@@ -40,7 +39,7 @@
           {{/if}}
         </div>
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           @size="sm"
           @text="Use this contact"
           @onClick={{this.useConflict}}
@@ -53,7 +52,8 @@
   {{#unless this.isAttached}}
     {{#unless this.isCreating}}
       <Woven::Button
-        @variant="secondary"
+        @variant="danger"
+        @subtle={{true}}
         @size="sm"
         @text="Not in contacts? Add a new one"
         @onClick={{this.startCreating}}
@@ -69,7 +69,7 @@
           <Woven::Input
             id="{{this.fieldPrefix}}-first-name"
             @type="text"
-            @placeholder="e.g. Ahmed"
+            @placeholder="e.g. Jane"
             @value={{if
               this.isAttached
               this.contact.firstName
@@ -86,7 +86,7 @@
           <Woven::Input
             id="{{this.fieldPrefix}}-last-name"
             @type="text"
-            @placeholder="e.g. Al Mansouri"
+            @placeholder="e.g. Smith"
             @value={{if
               this.isAttached
               this.attachedLastName

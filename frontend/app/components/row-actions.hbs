@@ -1,0 +1,54 @@
+{{#if this.visible.length}}
+  <Woven::Dropdown @placement="end" data-test-row-actions="menu" ...attributes>
+    <:trigger as |toggle isOpen|>
+      <Woven::Button
+        @size="sm"
+        @shape="square"
+        @icon="dots-three"
+        @onClick={{toggle}}
+        aria-label={{this.triggerLabel}}
+        aria-haspopup="menu"
+        aria-expanded={{if isOpen "true" "false"}}
+        data-test-row-actions-trigger
+      />
+    </:trigger>
+    <:menu as |close|>
+      <div role="group" aria-label={{this.triggerLabel}}>
+        {{#each this.menuActions as |action|}}
+          {{#if action.route}}
+            <LinkTo
+              @route={{action.route}}
+              @models={{this.linkModels action}}
+              class="wu-dropdown-item"
+              role="menuitem"
+              tabindex="-1"
+              data-test-row-action={{action.key}}
+              {{this.testAttr action}}
+            >
+              <span class="wu-dropdown-icon" aria-hidden="true"><Woven::Icon
+                  @icon={{action.icon}}
+                /></span>
+              <span class="wu-dropdown-label">{{action.label}}</span>
+            </LinkTo>
+          {{else}}
+            <button
+              type="button"
+              class="wu-dropdown-item {{if (this.isDanger action) 'danger'}}"
+              role="menuitem"
+              tabindex="-1"
+              disabled={{this.isUnavailable action}}
+              data-test-row-action={{action.key}}
+              {{this.testAttr action}}
+              {{on "click" (fn this.select close action)}}
+            >
+              <span class="wu-dropdown-icon" aria-hidden="true"><Woven::Icon
+                  @icon={{action.icon}}
+                /></span>
+              <span class="wu-dropdown-label">{{action.label}}</span>
+            </button>
+          {{/if}}
+        {{/each}}
+      </div>
+    </:menu>
+  </Woven::Dropdown>
+{{/if}}

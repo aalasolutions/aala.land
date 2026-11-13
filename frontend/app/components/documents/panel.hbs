@@ -20,7 +20,7 @@
       </p>
       {{#if this.canUpload}}
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           @size="sm"
           @icon="upload-simple"
           data-test-documents-upload
@@ -66,8 +66,6 @@
             {{#if cell.row.derivedLabel}}
               <Woven::Badge
                 @variant="secondary"
-                @size="sm"
-                @quiet={{true}}
                 @text={{cell.row.derivedLabel}}
                 data-test-document-derived
               />
@@ -75,12 +73,12 @@
           </div>
         {{else if (eq cell.key "category")}}
           <Woven::Tag
-            class="tag-doc-{{lowercase cell.value}}"
+            @variant={{tag-variant "doc" cell.value}}
             @text={{this.categoryLabel cell.value}}
           />
         {{else if (eq cell.key "accessLevel")}}
           <Woven::Tag
-            class="tag-access-{{lowercase cell.value}}"
+            @variant={{tag-variant "access" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "unit.assetName")}}
@@ -144,44 +142,32 @@
               zone="region"
             }}</span>
         {{else if (eq cell.key "id")}}
-          <div class="flex">
-            <Woven::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              aria-label="Download {{cell.row.name}}"
-              data-tooltip="Download"
-              data-test-download-btn
-              @icon="download-simple"
-              {{on "click" (fn this.downloadDocument cell.row)}}
-            />
-            {{#unless cell.row.isDerived}}
-              {{#if (this.canEditRow cell.row)}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  aria-label="Edit {{cell.row.name}}"
-                  data-tooltip="Edit"
-                  data-test-edit-btn
-                  @icon="pencil-simple"
-                  {{on "click" (fn this.openEdit cell.row)}}
-                />
-              {{/if}}
-              {{#if this.canDelete}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="danger"
-                  @size="xs"
-                  aria-label="Delete {{cell.row.name}}"
-                  data-tooltip="Delete"
-                  data-test-delete-btn
-                  @icon="trash"
-                  {{on "click" (fn this.openDelete cell.row)}}
-                />
-              {{/if}}
-            {{/unless}}
-          </div>
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="download-btn"
+                label="Download"
+                icon="download-simple"
+                onSelect=(fn this.downloadDocument cell.row)
+              )
+              (hash
+                key="edit-btn"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+                hidden=(or cell.row.isDerived (not (this.canEditRow cell.row)))
+              )
+              (hash
+                key="delete-btn"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openDelete cell.row)
+                hidden=(or cell.row.isDerived (not this.canDelete))
+              )
+            }}
+          />
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
@@ -209,7 +195,6 @@
 
   {{#if this.showPagination}}
     <Woven::Pagination
-      @selectId="{{this.fieldPrefix}}-limit"
       @page={{this.page}}
       @limit={{this.pageSize}}
       @total={{this.total}}
@@ -248,7 +233,7 @@
                 }})</span></span>
             <Woven::Button
               @subtle={{true}}
-              @variant="secondary"
+              @variant="subtle"
               @size="xs"
               @icon="download-simple"
               aria-label="Download {{this.editDocument.originalFileName}}"
@@ -399,12 +384,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.closeDrawer}}
       data-test-cancel-btn
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form={{this.formId}}
       @loading={{this.isSaving}}

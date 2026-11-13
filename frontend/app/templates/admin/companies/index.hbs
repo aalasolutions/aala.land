@@ -7,7 +7,7 @@
   />
 
   <div class="flex col gap-3">
-    <div class="console-list-filters">
+    <div class="flex wrap gap-3 console-list-filters">
       <div class="console-list-filters__search">
         <Woven::Input
           type="text"
@@ -61,7 +61,7 @@
           </span>
         {{else if (eq cell.key "tier")}}
           <Woven::Tag
-            class="tag-plan-{{lowercase cell.value}}"
+            @variant={{tag-variant "plan" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "rail")}}
@@ -81,14 +81,14 @@
         {{else if (eq cell.key "status")}}
           <span data-test-companies-status={{cell.row.id}}>
             {{#if (eq cell.value "locked")}}
-              <Woven::Tag class="tag-account-locked" @text="LOCKED" />
+              <Woven::Tag @variant="danger" @text="LOCKED" />
             {{else if (eq cell.value "lifted")}}
-              <Woven::Tag class="tag-account-lifted">
+              <Woven::Tag @variant="warning">
                 lifted until
                 {{format-date cell.row.lockState.liftUntil}}
               </Woven::Tag>
             {{else if (eq cell.value "deal")}}
-              <Woven::Tag class="tag-account-on_deal">
+              <Woven::Tag @variant="warning">
                 {{#if cell.row.deal.lifetime}}
                   lifetime deal
                 {{else}}
@@ -97,19 +97,21 @@
                 {{/if}}
               </Woven::Tag>
             {{else}}
-              <Woven::Tag class="tag-account-active" @text="active" />
+              <Woven::Tag @variant="success" @text="active" />
             {{/if}}
           </span>
         {{else if (eq cell.key "id")}}
-          <Woven::Button
-            @subtle={{true}}
-            @variant="secondary"
-            @size="xs"
-            @icon="caret-right"
-            aria-label="Open {{cell.row.name}}"
-            data-tooltip="Open"
-            data-test-companies-open={{cell.row.id}}
-            {{on "click" (fn this.openCompany cell.row)}}
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="companies-open"
+                testValue=cell.row.id
+                label="Open"
+                icon="caret-right"
+                onSelect=(fn this.openCompany cell.row)
+              )
+            }}
           />
         {{else}}
           {{cell.value}}
@@ -120,7 +122,6 @@
     {{/if}}
 
     <Woven::Pagination
-      @selectId="console-companies-limit"
       @page={{this.page}}
       @limit={{this.limit}}
       @total={{this.total}}
