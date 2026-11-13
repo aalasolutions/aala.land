@@ -1,37 +1,15 @@
 // Layout and helpers for the /woven documentation routes only, not part of the shipped kit.
 @use "@wovenui/ember/styles/common/var" as *;
 
-// wu-sidebar is position:fixed, so main region reserves space via margin, not flex flow.
 .woven-shell {
+  display: flex;
   min-block-size: 100vh;
 
   &__main {
     display: flex;
+    flex: 1;
     flex-direction: column;
     min-inline-size: 0;
-    margin-inline-start: 240px;
-    transition: margin-inline-start 200ms cubic-bezier(0.4, 0, 0.2, 1);
-
-    @media (prefers-reduced-motion: reduce) {
-      transition: none;
-    }
-  }
-
-  @media (max-width: 768px) {
-    &__main {
-      margin-inline-start: 0;
-    }
-  }
-}
-
-// Follows the collapsed sidebar width.
-.woven-shell:has(.wu-sidebar.is-collapsed) .woven-shell__main {
-  margin-inline-start: 60px;
-}
-
-@media (max-width: 768px) {
-  .woven-shell:has(.wu-sidebar.is-collapsed) .woven-shell__main {
-    margin-inline-start: 0;
   }
 }
 
@@ -178,13 +156,6 @@
   }
 }
 
-.woven-stack {
-  display: flex;
-  flex-direction: column;
-  gap: wu-space(3);
-  max-inline-size: 26rem;
-}
-
 .woven-note {
   margin-block: 0 wu-space(2);
   color: var(--wu-text-muted);
@@ -205,18 +176,6 @@
   color: var(--wu-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-// Sort control inside a raw wu-table header cell; inherits the cell's type styles.
-.woven-sort-button {
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  background: none;
-  border: 0;
-  cursor: pointer;
 }
 
 // A demo that must show a scrolling body or sticky header inside a bounded box.

@@ -6,12 +6,13 @@
 >
   <WovenDocs::Section @title="Full form" @id="full-form">
     <p class="woven-doc__intro">
-      A New Property form with gap-1 between fields. Press Save with the form empty to see every error at once;
-      typing in a field clears its own error.
+      A New Property form inside the app wu-form container: fields are one space step apart and rely on the
+      message line each kit live field reserves; other children get section spacing. Press Save with the form
+      empty to see every error at once; typing in a field clears its own error.
     </p>
 
     {{#if this.saved}}
-      <Woven::Alert @variant="success" @icon="✓" @title="Saved (demo only)" data-test-woven-form-saved />
+      <Woven::Alert @variant="success" @title="Saved (demo only)" role="status" data-test-woven-form-saved />
     {{/if}}
 
     <Woven::Card @title="New property">
@@ -47,7 +48,7 @@
           />
         </Woven::Field>
 
-        <div class="flex gap-4">
+        <div class="wu-field-row">
           <Woven::Field @label="Bedrooms">
             <Woven::Input @type="number" @value={{this.fields.bedrooms}} @onInput={{fn this.setField "bedrooms"}} data-test-woven-form-bedrooms />
           </Woven::Field>
@@ -81,8 +82,8 @@
         </Woven::Field>
 
         <Woven::FormActions>
-          <Woven::Button @variant="primary" @type="submit" @text="Save" data-test-woven-form-save />
-          <Woven::Button @variant="secondary" @text="Reset" @onClick={{this.reset}} data-test-woven-form-reset />
+          <Woven::Button @variant="brand" @type="submit" @text="Save" data-test-woven-form-save />
+          <Woven::Button @text="Reset" @onClick={{this.reset}} data-test-woven-form-reset />
         </Woven::FormActions>
       </form>
     </Woven::Card>
@@ -115,8 +116,8 @@
     </p>
     <div class="wu-form">
       <div class="flex gap-4">
-        <Woven::Button @variant="primary" @text="Fill" @onClick={{this.fillFloating}} data-test-woven-form-fill />
-        <Woven::Button @variant="secondary" @text="Clear programmatically" @onClick={{this.clearFloating}} data-test-woven-form-clear />
+        <Woven::Button @variant="brand" @text="Fill" @onClick={{this.fillFloating}} data-test-woven-form-fill />
+        <Woven::Button @text="Clear programmatically" @onClick={{this.clearFloating}} data-test-woven-form-clear />
       </div>
       <Woven::Field @placeholder="Property name (sm)" @hint="Shown to tenants">
         <Woven::Input @size="sm" @value={{this.floating.small}} @onInput={{fn this.setFloating "small"}} data-test-woven-form-float-sm />
@@ -164,7 +165,7 @@
     <p class="woven-doc__intro">Combobox controls take the Field label, hint and error like native inputs.</p>
     <div class="wu-form">
       <div class="flex gap-4">
-        <Woven::Button @variant="secondary" @text="Toggle error" @onClick={{this.toggleDropdownError}} data-test-woven-form-dropdown-error />
+        <Woven::Button @text="Toggle error" @onClick={{this.toggleDropdownError}} data-test-woven-form-dropdown-error />
       </div>
       <Woven::Field @label="Property kind" @hint="Pick one" @error={{if this.dropdownError "Choose the property kind"}}>
         <Woven::Dropdown @options={{this.kindOptions}} @placeholder="Choose the property kind" data-test-woven-form-dropdown />

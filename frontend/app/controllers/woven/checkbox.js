@@ -2,39 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
-const TOGGLE_VARIANT_NOTES = {
-  primary: 'The default brand track for ordinary settings.',
-  secondary: 'A neutral track for secondary or grouped settings.',
-  success: 'A switch that enables something good, such as a feature going live.',
-  warning: 'A switch with consequences, such as sending notifications to tenants.',
-  danger: 'A switch that disables protection or exposes data.',
-  info: 'A purely informational preference.',
-};
-
-function capitalize(value) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 export default class WovenCheckboxController extends Controller {
   @tracked checkboxValue = true;
   @tracked radioValue = 'apartment';
   @tracked toggleValue = true;
-  @tracked toggleWithTextValue = false;
-  @tracked variantToggles = {
-    primary: true,
-    secondary: true,
-    success: true,
-    warning: true,
-    danger: true,
-    info: true,
-  };
-
-  toggleVariantExamples = Object.keys(TOGGLE_VARIANT_NOTES).map((variant) => ({
-    variant,
-    title: capitalize(variant),
-    note: TOGGLE_VARIANT_NOTES[variant],
-    code: `<Woven::Toggle @variant="${variant}" @checked={{this.on}} @onChange={{this.setOn}} />`,
-  }));
 
   @action
   updateCheckbox(value) {
@@ -51,24 +22,13 @@ export default class WovenCheckboxController extends Controller {
     this.toggleValue = value;
   }
 
-  @action
-  updateToggleWithText(value) {
-    this.toggleWithTextValue = value;
-  }
-
-  @action
-  updateVariantToggle(variant, value) {
-    this.variantToggles = { ...this.variantToggles, [variant]: value };
-  }
-
   code = {
     checkbox: `<Woven::Checkbox @checked={{this.checkboxValue}} @label="Include archived units" @onChange={{this.updateCheckbox}} />`,
     indeterminate: `<Woven::Checkbox @indeterminate={{true}} @label="Some selected" />`,
     disabledChecked: `<Woven::Checkbox @checked={{true}} @disabled={{true}} @label="Disabled checked" />`,
     disabledUnchecked: `<Woven::Checkbox @disabled={{true}} @label="Disabled unchecked" />`,
-    unlabelled: `<Woven::Checkbox @checked={{true}} aria-label="Select row" />`,
-    checkboxSizes: `<Woven::Checkbox @size="xs" @checked={{true}} @label="Extra small" />
-<Woven::Checkbox @size="sm" @checked={{true}} @label="Small" />
+    unlabeled: `<Woven::Checkbox @checked={{true}} aria-label="Select row" />`,
+    checkboxSizes: `<Woven::Checkbox @size="sm" @checked={{true}} @label="Small" />
 <Woven::Checkbox @checked={{true}} @label="Default" />
 <Woven::Checkbox @size="lg" @checked={{true}} @label="Large" />`,
     group: `<div class="wu-check-group">
@@ -81,21 +41,18 @@ export default class WovenCheckboxController extends Controller {
   <Woven::Radio @name="property-type" @value="villa" @checked={{eq this.radioValue "villa"}} @label="Villa" @onChange={{this.updateRadio}} />
   <Woven::Radio @name="property-type" @value="townhouse" @checked={{eq this.radioValue "townhouse"}} @label="Townhouse" @onChange={{this.updateRadio}} />
 </div>`,
-    radioSizes: `<Woven::Radio @name="radio-size-xs" @size="xs" @checked={{true}} @label="Extra small" />
-<Woven::Radio @name="radio-size-sm" @size="sm" @checked={{true}} @label="Small" />
+    radioSizes: `<Woven::Radio @name="radio-size-sm" @size="sm" @checked={{true}} @label="Small" />
 <Woven::Radio @name="radio-size-md" @checked={{true}} @label="Default" />
 <Woven::Radio @name="radio-size-lg" @size="lg" @checked={{true}} @label="Large" />`,
     radioDisabled: `<Woven::Radio @name="property-type-disabled" @disabled={{true}} @label="Disabled" />`,
     radioBlock: `<Woven::Radio @name="plan" @value="growth" @checked={{true}}>
-  <strong>Growth</strong> <span class="wu-text m-xs m-muted">multi-region</span>
+  <strong>Growth</strong> <span class="wu-text sm muted">multi-region</span>
 </Woven::Radio>`,
     toggle: `<Woven::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} />`,
-    toggleSizes: `<Woven::Toggle @size="xs" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Extra small</Woven::Toggle>
-<Woven::Toggle @size="sm" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Small</Woven::Toggle>
+    toggleSizes: `<Woven::Toggle @size="sm" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Small</Woven::Toggle>
 <Woven::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Default</Woven::Toggle>
 <Woven::Toggle @size="lg" @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>Large</Woven::Toggle>`,
     toggleDisabled: `<Woven::Toggle @disabled={{true}} @checked={{true}} />`,
-    toggleText: `<Woven::Toggle @checked={{this.toggleWithTextValue}} @activeText="ON" @inactiveText="OFF" @onChange={{this.updateToggleWithText}} />`,
     toggleLabel: `<Woven::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>
   Auto-assign leads
 </Woven::Toggle>`,
@@ -105,9 +62,12 @@ export default class WovenCheckboxController extends Controller {
     { name: '@checked', type: 'boolean', default: '', description: 'Checked state. Controlled; update it from @onChange.' },
     { name: '@label', type: 'string', default: '', description: 'Visible label rendered inside the label element.' },
     { name: '@value', type: 'string', default: '', description: 'Native value attribute.' },
-    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the label gets is-disabled.' },
-    { name: '@indeterminate', type: 'boolean', default: 'false', description: 'Sets the DOM indeterminate property on insert and on change.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Box and label size step. Omit for the default size.' },
+    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the kit dims the control and label.' },
+    { name: '@indeterminate', type: 'boolean', default: 'false', description: 'Sets the DOM indeterminate property on insert and on change; the kit draws a dash.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg. Omit for the default size.' },
+    { name: '@required', type: 'boolean', default: 'false', description: 'Sets aria-required="true" on the input.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'data-wu-status on the input; error also sets aria-invalid. @invalid and @valid alias it.' },
+    { name: '@describedBy', type: 'string', default: '', description: 'aria-describedby on the input, for a message outside a Field.' },
   ];
 
   checkboxCallbackRows = [
@@ -119,8 +79,10 @@ export default class WovenCheckboxController extends Controller {
     { name: '@value', type: 'string', default: '', description: 'Value reported to @onChange when this radio is chosen.' },
     { name: '@checked', type: 'boolean', default: '', description: 'Checked state. Derive it from the group value.' },
     { name: '@label', type: 'string', default: '', description: 'Visible label when no block is given.' },
-    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the label gets is-disabled.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Circle and label size step. Omit for the default size.' },
+    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the kit dims the control and label.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'data-wu-status on this input only; the invalid state of a set belongs to Woven::FieldGroup.' },
+    { name: '@describedBy', type: 'string', default: '', description: 'aria-describedby on the input.' },
   ];
 
   radioCallbackRows = [
@@ -129,11 +91,11 @@ export default class WovenCheckboxController extends Controller {
 
   toggleArgRows = [
     { name: '@checked', type: 'boolean', default: '', description: 'On/off state. Controlled; update it from @onChange.' },
-    { name: '@variant', type: '"primary" | "secondary" | "success" | "warning" | "danger" | "info"', default: '', description: 'Track colour while on.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Track size step. Omit for the default size.' },
-    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute plus is-disabled.' },
-    { name: '@activeText', type: 'string', default: '', description: 'Short text shown inside the track while on. Adds m-with-text.' },
-    { name: '@inactiveText', type: 'string', default: '', description: 'Short text shown inside the track while off. Adds m-with-text.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg switch and label; xs renders sm and xl renders lg.' },
+    { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; the kit dims the switch.' },
+    { name: '@required', type: 'boolean', default: 'false', description: 'Sets aria-required="true" on the input.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'data-wu-status on the input; error also sets aria-invalid. @invalid and @valid alias it.' },
+    { name: '@describedBy', type: 'string', default: '', description: 'aria-describedby on the input.' },
   ];
 
   toggleCallbackRows = [
@@ -141,7 +103,7 @@ export default class WovenCheckboxController extends Controller {
   ];
 
   toggleBlockRows = [
-    { name: 'default', description: 'Label text rendered beside the track, inside the label element.' },
+    { name: 'default', description: 'Label text in the kit wu-toggle-label beside the switch, inside the label element.' },
   ];
 
   classRows = [

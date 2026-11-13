@@ -1,7 +1,7 @@
 <WovenDocs::Page
   @id="field"
   @title="Field and form layout"
-  @subtitle="Label, hint, error and tooltip around any control; action rows and filter rows."
+  @subtitle="Label, hint, error and help around any control; action rows and filter rows."
   @components="Woven::Field, Woven::FieldGroup, Woven::FormActions"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
@@ -10,7 +10,7 @@
       textarea or select gets a
       <code class="wu-code">for</code>/<code class="wu-code">id</code>
       pair; a combobox, listbox or button gets
-      <code class="wu-code">aria-labelledby</code>. The optional tooltip
+      <code class="wu-code">aria-labelledby</code>. The optional help
       button renders outside the label element on purpose, because anything
       inside a label joins the control's accessible name. Every form control
       on a page belongs inside a Field.
@@ -18,14 +18,14 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Label, required marker, hint and error; the error replaces the hint in a slot that always reserves one line.</li>
-      <li class="wu-list__item">Validation status (error, warning, success) wired to aria-invalid and aria-describedby on any control.</li>
-      <li class="wu-list__item">Floating label mode, and FieldGroup for radio and checkbox sets.</li>
-      <li class="wu-list__item">Automatic label association for native and ARIA controls.</li>
-      <li class="wu-list__item">Horizontal and flush layouts.</li>
-      <li class="wu-list__item">Label tooltip with a placement override.</li>
-      <li class="wu-list__item">FormActions aligns a button row; wu-filter-row lays out a responsive filter bar.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Label, required marker, hint and error; the error replaces the hint on a line the kit live field always reserves.</span></li>
+      <li class="wu-list-item"><span>Validation status (error, warning, success) wired to aria-invalid and aria-describedby on any control.</span></li>
+      <li class="wu-list-item"><span>Floating label mode, and FieldGroup for radio and checkbox sets.</span></li>
+      <li class="wu-list-item"><span>Automatic label association for native and ARIA controls.</span></li>
+      <li class="wu-list-item"><span>Horizontal layout.</span></li>
+      <li class="wu-list-item"><span>Label help button that opens a native popover.</span></li>
+      <li class="wu-list-item"><span>FormActions aligns a button row; wu-field-row and wu-filter-row lay out rows of fields.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -43,12 +43,12 @@
 
     <WovenDocs::Example
       @title="Required"
-      @note="Adds the asterisk; it is decorative, so also set required on the control for the browser and assistive technology."
+      @note="Sets aria-required on the control, so assistive technology announces it, and the kit draws the label asterisk from that attribute. Add the native required attribute too when the browser should block submit."
       @layout="stack"
       @code={{this.code.required}}
     >
       <Woven::Field @label="Property name" @required={{true}}>
-        <Woven::Input @placeholder="Marina Tower" required />
+        <Woven::Input @placeholder="Marina Tower" />
       </Woven::Field>
     </WovenDocs::Example>
 
@@ -65,7 +65,7 @@
 
     <WovenDocs::Example
       @title="Error"
-      @note="Replaces the hint with the validation message and an icon. The control gets aria-invalid and the red border automatically."
+      @note="Replaces the hint with the validation message and the kit error marker. The control gets aria-invalid and the danger border automatically."
       @layout="stack"
       @code={{this.code.error}}
     >
@@ -78,7 +78,7 @@
   <WovenDocs::Section @title="Validation" @id="validation">
     <WovenDocs::Example
       @title="Status"
-      @note="The status argument takes error, warning or success. Field writes aria-invalid, aria-describedby and data-wu-field-status onto the control, so the border always matches what assistive technology hears. A non-empty error message implies error."
+      @note="The status argument takes error, warning or success. Field writes aria-invalid, aria-describedby and data-wu-field-status onto the control; only error is styled, through aria-invalid, so the border always matches what assistive technology hears. A warning hint renders as info. A non-empty error message implies error."
       @layout="stack"
       @code={{this.code.statuses}}
     >
@@ -117,8 +117,8 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Live error and numeric keyboard"
-      @note="The message slot always reserves one line, so the error appears without moving anything below it. @inputmode=&quot;numeric&quot; opens the number pad for a code that is not a quantity."
+      @title="Live message line and numeric keyboard"
+      @note="Every Field renders the kit live modifier, which always reserves one message line, so a hint or error appears without moving anything below it. Type a letter to see the error. @inputmode=&quot;numeric&quot; opens the number pad for a code that is not a quantity."
       @layout="stack"
       @code={{this.code.liveError}}
     >
@@ -159,7 +159,7 @@
   <WovenDocs::Section @title="Field group" @id="field-group">
     <WovenDocs::Example
       @title="Radios with an error"
-      @note="FieldGroup renders a fieldset and legend with one message slot. Its status reaches every control inside; the message ids go on the fieldset."
+      @note="FieldGroup renders a fieldset and legend with one message. @required marks the radios required, and the kit draws the legend asterisk. Its status reaches every control inside; the message ids go on the fieldset."
       @layout="stack"
       @code={{this.code.fieldGroup}}
     >
@@ -192,9 +192,9 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Autofill and keyboards" @id="autofill">
-    <ul class="wu-list">
-      <li class="wu-list__item">Browser autofill keeps the surface color and regular text color in both themes; the focus ring and status borders stay visible over it.</li>
-      <li class="wu-list__item">Phones: type="tel" with @inputmode="tel". Codes, OTPs, cheque and postal numbers: type="text" with @inputmode="numeric" and pattern="[0-9]*". Money and quantities keep type="number".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Browser autofill keeps the surface color and regular text color in both themes; the focus ring and status borders stay visible over it.</span></li>
+      <li class="wu-list-item"><span>Phones: type="tel" with @inputmode="tel". Codes, OTPs, cheque and postal numbers: type="text" with @inputmode="numeric" and pattern="[0-9]*". Money and quantities keep type="number".</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -210,22 +210,12 @@
       </Woven::Field>
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Flush"
-      @note="Drops the outer margin for a field that sits inside a table cell, a toolbar or another component with its own spacing."
-      @layout="stack"
-      @code={{this.code.flush}}
-    >
-      <Woven::Field @label="Region" @horizontal={{true}} @flush={{true}}>
-        <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
-      </Woven::Field>
-    </WovenDocs::Example>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Field: tooltip" @id="field-tooltip">
+  <WovenDocs::Section @title="Field: help" @id="field-tooltip">
     <WovenDocs::Example
-      @title="Label tooltip"
-      @note="A question-mark button beside the label carries the text on hover and focus. For definitions too long for a hint; the button stays outside the label so it does not become part of the control's name."
+      @title="Label help"
+      @note="The kit wu-field-help button beside the label opens the text in a native popover, by click, touch or keyboard. For definitions too long for a hint; the button stays outside the label so it does not become part of the control's name."
       @layout="stack"
       @code={{this.code.tooltip}}
     >
@@ -236,23 +226,12 @@
         <Woven::Input @placeholder="TR-2026-00001" />
       </Woven::Field>
     </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Tooltip position"
-      @note="tooltipPosition overrides the default top; end keeps a long hint from covering the field above."
-      @layout="stack"
-      @code={{this.code.tooltipPosition}}
-    >
-      <Woven::Field @label="Deposit" @tooltip="Held until the lease ends." @tooltipPosition="end">
-        <Woven::Input @placeholder="5%" />
-      </Woven::Field>
-    </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Field: non-native controls" @id="field-aria">
     <WovenDocs::Example
       @title="Combobox"
-      @note="A Dropdown has no native input to label, so the field sets aria-labelledby on the combobox or trigger button, skipping the tooltip button."
+      @note="A Dropdown has no native input to label, so the field sets aria-labelledby on the combobox or trigger button, skipping the help button."
       @layout="stack"
       @code={{this.code.combobox}}
     >
@@ -281,7 +260,7 @@
   <WovenDocs::Section @title="Filter row" @id="filter-row">
     <WovenDocs::Example
       @title="Responsive filter bar"
-      @note="An auto-fitting grid whose column count follows the viewport. The unlabelled control uses wu-field__label-spacer to share the baseline. Use it above every list."
+      @note="An auto-fitting grid whose column count follows the viewport. The unlabeled control takes a wu-field-label visually-hidden label to share the baseline. Use it above every list."
       @layout="block"
       @code={{this.code.filterRow}}
     >
@@ -303,9 +282,8 @@
           />
         </Woven::Field>
         <div class="wu-field">
-          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <label class="wu-field-label visually-hidden">Actions</label>
           <Woven::Button
-            @variant="secondary"
             @text="Clear"
             @onClick={{this.clearFilters}}
             data-test-woven-clear-filters
@@ -324,8 +302,8 @@
       @code={{this.code.actionsStart}}
     >
       <Woven::FormActions>
-        <Woven::Button @variant="primary" @text="Save" />
-        <Woven::Button @variant="secondary" @text="Cancel" />
+        <Woven::Button @variant="brand" @text="Save" />
+        <Woven::Button @text="Cancel" />
       </Woven::FormActions>
     </WovenDocs::Example>
 
@@ -336,8 +314,8 @@
       @code={{this.code.actionsEnd}}
     >
       <Woven::FormActions @align="end">
-        <Woven::Button @variant="secondary" @text="Cancel" />
-        <Woven::Button @variant="primary" @text="Save" />
+        <Woven::Button @text="Cancel" />
+        <Woven::Button @variant="brand" @text="Save" />
       </Woven::FormActions>
     </WovenDocs::Example>
 
@@ -349,7 +327,7 @@
     >
       <Woven::FormActions @align="between">
         <Woven::Button @variant="ghost" @text="Delete" />
-        <Woven::Button @variant="primary" @text="Save changes" />
+        <Woven::Button @variant="brand" @text="Save changes" />
       </Woven::FormActions>
     </WovenDocs::Example>
 
@@ -358,20 +336,20 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The label receives a stable id and a for attribute pointing at the control; an existing id on the control is respected.</li>
-      <li class="wu-list__item">The required asterisk is aria-hidden. Set the required attribute on the control so assistive technology announces it.</li>
-      <li class="wu-list__item">The tooltip button is labelled "More information about {label}" and is skipped when the dialog focus trap picks a first control.</li>
-      <li class="wu-list__item">The control receives aria-invalid while the status is error, aria-describedby pointing at the hint or error (caller ids are kept after them), and aria-required with @required.</li>
-      <li class="wu-list__item">The message slot is aria-live="polite" and the error icon is aria-hidden; color is never the only signal.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The label receives a stable id and a for attribute pointing at the control; an existing id on the control is respected.</span></li>
+      <li class="wu-list-item"><span>The required asterisk is drawn in CSS from aria-required, which the field sets on the control, so assistive technology announces it.</span></li>
+      <li class="wu-list-item"><span>The help button is labeled "More information about {label}", opens its popover by click, touch or keyboard, and is skipped when the dialog focus trap picks a first control.</span></li>
+      <li class="wu-list-item"><span>The control receives aria-invalid while the status is error, aria-describedby pointing at the hint or error (caller ids are kept after them), and aria-required with @required.</span></li>
+      <li class="wu-list-item"><span>The active message id joins aria-describedby, so it is read when the control is focused; the error icon is aria-hidden and color is never the only signal.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Horizontal fields place the label on the inline-start side, so it moves to the right under dir="rtl".</li>
-      <li class="wu-list__item">The filter row grid and FormActions alignment are logical: end alignment sits on the left in RTL.</li>
-      <li class="wu-list__item">The floating label is placed with logical insets and moves only vertically, so it needs no mirroring.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Horizontal fields place the label on the inline-start side, so it moves to the right under dir="rtl".</span></li>
+      <li class="wu-list-item"><span>The filter row grid and FormActions alignment are logical: end alignment sits on the left in RTL.</span></li>
+      <li class="wu-list-item"><span>The floating label is placed with logical insets and moves only vertically, so it needs no mirroring.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

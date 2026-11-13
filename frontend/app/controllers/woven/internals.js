@@ -64,29 +64,31 @@ export default class WovenInternalsController extends Controller {
 <Woven::DialogHost />`,
     toastPosition: `<Woven::ToastRegion @position="bottom-end" />`,
     anchor: `{{#if this.isOpen}}
-  {{#in-element this.layer.element insertBefore=null}}
-    <div
-      class="wu-menu is-open"
-      {{did-insert this.registerMenu}}
-      {{will-destroy this.forgetMenu}}
-      {{on "keydown" this.handleKeydown}}
-      {{anchor this.rootElement placement="bottom" align="start" gap=4 matchWidth=true onDismiss=this.close}}
-    >
-      ...
+  {{#in-element this.layerElement insertBefore=null}}
+    <div class="wu-autocomplete">
+      <div
+        class="wu-autocomplete-list"
+        {{did-insert this.registerMenu}}
+        {{will-destroy this.forgetMenu}}
+        {{on "keydown" this.handleKeydown}}
+        {{anchor this.rootElement placement="bottom" align="start" gap=4 matchWidth=true onDismiss=this.close}}
+      >
+        ...
+      </div>
     </div>
   {{/in-element}}
 {{/if}}`,
-    dialog: `<div
-  class="wu-modal is-open"
-  role="dialog"
-  aria-modal="true"
-  tabindex="-1"
-  {{dialog onEscape=this.onClose closeOnEsc=@closeOnEsc}}
->`,
-    transition: `<div
-  class={{this.backdropClasses}}
-  {{dialog-transition @open onOpen=this.onOpen onVisible=this.onVisible onHide=this.onHide onHidden=this.onHidden}}
->`,
+    dialog: `<dialog
+  class="wu-modal animated"
+  {{dialog true onClose=this.onClose closeOnEsc=@closeOnEsc closeOnBackdrop=this.closeOnBackdrop}}
+>
+  ...
+  <div class="wu-layer"></div>
+</dialog>`,
+    transition: `<span
+  hidden
+  {{dialog-transition @open onOpen=this.onOpen onVisible=this.onVisible onHide=this.onHide onHidden=this.onHidden durationFrom=this.getDialogElement}}
+></span>`,
     sticky: `const id = this.notifications.add('Syncing contacts...', 'info', 0);
 // later
 this.notifications.remove(id);`,
@@ -99,12 +101,14 @@ this.notifications.remove(id);`,
   hostRows = [
     { name: 'Woven::ToastRegion', signature: '@position', description: 'Renders notifications.toasts as role="log" aria-live="polite". Position: top-start, top-end, bottom-start, bottom-end. Sits at the toast z-index, above everything.' },
     { name: 'Woven::LayerHost', signature: '', description: 'A zero-size fixed div (.wu-layer) at the modal z-index that registers itself with the layer service. Dropdown menus and popovers render into it.' },
-    { name: 'Woven::TooltipHost', signature: '', description: 'Installs delegated document listeners and renders one .wu-tooltip only while a tooltip is visible.' },
+    { name: 'Woven::TooltipHost', signature: '', description: 'Installs delegated document listeners and renders one .wu-tooltip only while a tooltip is visible, into the layer nearest its trigger.' },
     { name: 'Woven::DialogHost', signature: '', description: 'Renders Woven::ConfirmModal from the dialogs service\'s current dialog.' },
   ];
 
   layerRows = [
-    { name: 'layer.element', signature: 'HTMLElement', description: 'The registered .wu-layer, or a body-level fallback div so rendering tests without the host still work.' },
+    { name: 'layer.element', signature: 'HTMLElement', description: 'The body-level .wu-layer from LayerHost, or a body-level fallback div so rendering tests without the host still work.' },
+    { name: 'layer.elementFor', signature: '(trigger) => HTMLElement', description: 'The registered layer of the nearest open dialog holding the trigger, else layer.element. Dropdown, popover and tooltip render here.' },
+    { name: 'layer.registerDialogLayer / unregisterDialogLayer', signature: '(dialog, element) / (dialog)', description: 'Called by the dialog modifier when its dialog opens and closes.' },
     { name: 'layer.register', signature: '(element)', description: 'Called by LayerHost on insert.' },
     { name: 'layer.unregister', signature: '(element)', description: 'Called by LayerHost on destroy.' },
   ];
@@ -112,24 +116,26 @@ this.notifications.remove(id);`,
   anchorRows = [
     { name: 'trigger', type: 'HTMLElement (positional)', default: '', description: 'Element to anchor to; the dropdown passes its root, the popover its root.' },
     { name: 'placement', type: '"top" | "bottom" | "start" | "end"', default: '"bottom"', description: 'Preferred side, logical, resolved against the trigger\'s computed direction. Flips only when the other side fits.' },
-    { name: 'align', type: '"start" | "center" | "end"', default: '"start"', description: 'Alignment along the other axis for top and bottom. Side placements are vertically centred.' },
+    { name: 'align', type: '"start" | "center" | "end"', default: '"start"', description: 'Alignment along the other axis for top and bottom. Side placements are vertically centered.' },
     { name: 'gap', type: 'number', default: '4', description: 'Pixels between trigger and element (popover passes 8).' },
     { name: 'matchWidth', type: 'boolean', default: 'false', description: 'Writes min-inline-size equal to the trigger width for select-like menus.' },
-    { name: 'onDismiss', type: 'function', default: '', description: 'Called on any scroll outside the element (capture) or on resize; armed one frame after open.' },
+    { name: 'onDismiss', type: 'function', default: '', description: 'Called once the trigger leaves the viewport. Scroll (capture) and resize otherwise reposition the element, coalesced to one pass per frame.' },
   ];
 
   anchorWritesRows = [
     { name: 'dir', description: 'Copied from the trigger.' },
     { name: 'position, inset, margin, transform', description: 'fixed, auto, 0, none; then left and top in px after clamping to the viewport with an 8px edge.' },
-    { name: 'data-placement', description: 'Physical side after flip: top, bottom, left or right. popover.scss positions the arrow from it.' },
-    { name: '--wu-anchor--ArrowX / --wu-anchor--ArrowY', description: 'Trigger centre relative to the element, in px, for arrows.' },
+    { name: 'position-try-fallbacks', description: 'none, so the CSS anchor fallbacks on kit menus and popovers cannot flip the computed coordinates.' },
+    { name: 'min-inline-size', description: 'The trigger width with matchWidth, else cleared.' },
+    { name: 'data-placement', description: 'Physical side after flip: top, bottom, left or right.' },
+    { name: '--wu-anchor--ArrowX / --wu-anchor--ArrowY', description: 'Trigger center relative to the element, in px. No current panel draws an arrow.' },
   ];
 
   tooltipRows = [
     { name: 'tooltip.show', signature: '(trigger)', description: 'Reads data-tooltip, data-tooltip-position and data-tooltip-light; shows after 120ms; sets aria-describedby; observes the attribute for live text.' },
     { name: 'tooltip.hide', signature: '()', description: 'Hides and releases the trigger.' },
     { name: 'tooltip.isCurrentTrigger', signature: '(element)', description: 'True while the element owns the visible tooltip.' },
-    { name: 'tooltip.content / placement / light / anchor / isVisible', signature: 'tracked', description: 'State the host renders from; anchor is a DOMRect snapshot of the trigger.' },
+    { name: 'tooltip.content / placement / light / anchor / target / isVisible', signature: 'tracked', description: 'State the host renders from; anchor is a DOMRect snapshot of the trigger, target the trigger element used to pick its layer.' },
     { name: 'TOOLTIP_ID', signature: '"wu-tooltip-active"', description: 'Id of the rendered element and value of the trigger\'s aria-describedby.' },
   ];
 
@@ -140,22 +146,25 @@ this.notifications.remove(id);`,
 
   dialogFocusRows = [
     { name: 'openDialog', signature: '(element) => release', description: 'Locks body scroll, pushes onto the dialog stack, traps Tab on the document in capture. The returned function releases and restores focus to the opener.' },
-    { name: 'focusFirstControl', signature: '(element)', description: 'Focuses the first visible focusable control, skipping wu-modal__close, wu-drawer__close and wu-field__info.' },
+    { name: 'focusFirstControl', signature: '(element)', description: 'Focuses the first visible focusable control, skipping wu-modal-close, wu-drawer-close and wu-field-help.' },
     { name: 'isTopmostDialog', signature: '(element)', description: 'Whether this element owns Escape and the Tab trap.' },
     { name: 'resetDialogStateForTesting', signature: '()', description: 'Clears the module stack between tests; compiled out of production by @embroider/macros.' },
   ];
 
   dialogModifierRows = [
+    { name: 'open', type: 'boolean (positional)', default: 'true', description: 'showModal() when true, close() when false.' },
+    { name: 'onClose', type: 'function', default: '', description: 'Called on Escape (the cancel event, always canceled) and on a click outside the dialog box.' },
     { name: 'closeOnEsc', type: 'boolean', default: 'true', description: 'Read at event time; set false to ignore Escape.' },
-    { name: 'onEscape', type: 'function', default: '', description: 'Called on Escape when the dialog is topmost.' },
+    { name: 'closeOnBackdrop', type: 'boolean', default: 'true', description: 'Read at event time; set false to ignore clicks outside.' },
   ];
 
   transitionRows = [
     { name: 'open', type: 'boolean (positional)', default: '', description: 'Drives enter and leave.' },
     { name: 'onOpen', type: 'function', default: '', description: 'Mount the panel.' },
-    { name: 'onVisible', type: 'function', default: '', description: 'Next task after mount, after a forced style flush: add the open classes.' },
-    { name: 'onHide', type: 'function', default: '', description: 'Remove the open classes.' },
+    { name: 'onVisible', type: 'function', default: '', description: 'Next task after mount, after a forced style flush: open the dialog.' },
+    { name: 'onHide', type: 'function', default: '', description: 'Close the dialog; the kit animates it out.' },
     { name: 'onHidden', type: 'function', default: '', description: 'After the computed transition-duration: unmount.' },
+    { name: 'durationFrom', type: '() => HTMLElement', default: 'the marker', description: 'Returns the element whose transition-duration times onHidden.' },
   ];
 
   notificationRows = [
@@ -170,15 +179,24 @@ this.notifications.remove(id);`,
   iconRows = [
     { name: '@icon', type: 'string', default: '', description: 'Phosphor icon name, rendered as <i class="ph ph-{name}" role="img">.' },
     { name: '@size', type: 'string', default: '"1em"', description: 'Font size of the glyph.' },
-    { name: '@color', type: 'string', default: '"currentColor"', description: 'Glyph colour.' },
+    { name: '@color', type: 'string', default: '"currentColor"', description: 'Glyph color.' },
     { name: '@flip', type: 'boolean', default: '', description: 'Overrides the automatic RTL mirror. Names matching left or right mirror by default.' },
+  ];
+
+  integrationRows = [
+    { name: 'Nearest dialog layer', signature: 'layer.elementFor(trigger)', description: 'An overlay renders into the layer of the open dialog that contains its trigger, else the body layer, resolved when it opens.' },
+    { name: 'Kit script not loaded', signature: '@wovenui/components/js', description: 'Components own state and set aria-selected, aria-current, aria-expanded, hidden and open themselves; two owners of one attribute fight.' },
+    { name: 'Resets in @layer base', signature: 'core-bridge.scss', description: 'Resets for raw button, input and select sit in the layer core uses for its base, so kit components in @layer components override them.' },
+    { name: 'Bundle entry', signature: '@use "@wovenui/components" with ($components: ...)', description: 'wovenui/styles/index.scss loads the kit bundle once with unused components switched off; never mix it with per-component entries.' },
+    { name: 'hidden on a kit part', signature: '[hidden] { display: none }', description: 'Added per part when a wrapper drives a kit part that sets display with the hidden attribute.' },
+    { name: 'Menus close after item handlers', signature: 'Woven::Dropdown <:menu>', description: 'The menu closes on bubbling after the item\'s own click handlers, so a LinkTo item still navigates.' },
   ];
 
   dependencyRows = [
     { name: 'ember-modifier', signature: 'anchor, tooltip-fit, dialog, dialog-transition, field.linkControl', description: 'Class and function modifiers.' },
     { name: 'ember-lifeline', signature: 'runTask, cancelTask', description: 'Timers in dropdown, tooltip, notifications, dialog and dialog-transition.' },
     { name: '@ember/render-modifiers', signature: 'did-insert, did-update, will-destroy', description: 'Checkbox indeterminate sync, dropdown, popover, layer-host, segmented, tabs.' },
-    { name: 'ember-truth-helpers', signature: 'eq', description: 'The only truth helper kit templates use.' },
+    { name: 'ember-truth-helpers', signature: 'eq, or, not, and', description: 'The truth helpers kit templates use.' },
     { name: '@embroider/macros', signature: 'macroCondition, isTesting', description: 'Strips the dialog test reset from production.' },
   ];
 }

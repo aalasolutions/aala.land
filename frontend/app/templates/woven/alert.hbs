@@ -1,32 +1,31 @@
 <WovenDocs::Page
   @id="alert"
   @title="Alert"
-  @subtitle="Inline message in six tones, with optional description, actions and dismiss."
+  @subtitle="Inline message in five role colors, with optional description, actions and dismiss."
   @components="Woven::Alert"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      An alert reports a condition in place. The icon slot grows when a
-      description is present and stays small for title-only alerts, so the
-      layout follows the data you give it. Dismissal is a callback: the
-      alert does not hide itself. For transient feedback after an action use
-      a toast instead.
+      An alert reports a condition in place. It renders the CSS kit
+      <code class="wu-code">wu-alert</code>, which draws its own marker shape,
+      so there is no icon argument. Meaning is carried by the title text; the
+      marker repeats it. Dismissal is a callback: the alert does not hide
+      itself. For transient feedback after an action use a toast instead.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Six colour variants; title, description or custom block content.</li>
-      <li class="wu-list__item">Icon size follows the presence of a description.</li>
-      <li class="wu-list__item">Inline and banner layouts.</li>
-      <li class="wu-list__item">Closable with a labelled dismiss button; actions slot.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Five role colors plus a neutral default; success, warning and danger also change the marker shape.</span></li>
+      <li class="wu-list-item"><span>Title and description, or custom block content.</span></li>
+      <li class="wu-list-item"><span>Actions row and a labeled dismiss button.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Variants" @id="variants">
     {{#each this.variantExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
-        <Woven::Alert @variant={{example.variant}} @icon="ℹ" @title="{{example.title}} alert" />
+        <Woven::Alert @variant={{example.variant}} @title="{{example.title}} alert" />
       </WovenDocs::Example>
     {{/each}}
   </WovenDocs::Section>
@@ -34,100 +33,67 @@
   <WovenDocs::Section @title="Content" @id="content">
     <WovenDocs::Example
       @title="Title and description"
-      @note="The description adds a second line and the icon grows to match. For anything the user needs a sentence to understand."
+      @note="The description adds a paragraph under the title. For anything the user needs a sentence to understand."
       @layout="block"
       @code={{this.code.description}}
     >
       <Woven::Alert
         @variant="success"
-        @icon="✓"
         @title="Rent collected"
         @description="AED 42,000 was collected across 6 units this week."
       />
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Icon suppressed"
-      @note="showIcon false hides the glyph while the data keeps it, for a stack of alerts where icons would repeat."
-      @layout="block"
-      @code={{this.code.noIcon}}
-    >
-      <Woven::Alert
-        @variant="info"
-        @icon="ℹ"
-        @showIcon={{false}}
-        @title="Icon suppressed"
-        @description="showIcon false keeps the data but hides the glyph."
-      />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
       @title="Block content"
-      @note="A block replaces title and description for markup such as links and emphasis."
+      @note="A block replaces title and description for markup such as links and emphasis. Use the kit wu-alert-title part for the first line."
       @layout="block"
       @code={{this.code.block}}
     >
-      <Woven::Alert @variant="warning" @icon="⚠">
-        <strong>Custom body.</strong> Block content replaces title and description.
+      <Woven::Alert @variant="warning">
+        <strong class="wu-alert-title">Document expiring</strong>
+        <p>The trade license for Marina Heights expires in <strong>12 days</strong>.</p>
       </Woven::Alert>
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Actions"
-      @note="The actions slot puts the next step inside the alert, so the user does not have to hunt for it."
+      @note="The actions block renders the kit wu-alert-actions row, so the next step sits inside the alert and the user does not have to hunt for it."
       @layout="block"
       @code={{this.code.actions}}
     >
       <Woven::Alert
         @variant="warning"
-        @icon="⚠"
         @title="Cheque bounced"
         @description="Post-dated cheque #4821 was returned by the bank."
       >
         <:actions>
-          <Woven::Button @variant="secondary" @size="sm" @text="Contact tenant" />
+          <Woven::Button @size="sm" @text="Contact tenant" />
           <Woven::Button @variant="ghost" @size="sm" @text="Dismiss" />
         </:actions>
       </Woven::Alert>
     </WovenDocs::Example>
-  </WovenDocs::Section>
-
-  <WovenDocs::Section @title="Layouts" @id="layouts">
-    <WovenDocs::Example
-      @title="Inline"
-      @note="Title and description on one line, for a compact note above a table or inside a form."
-      @layout="block"
-      @code={{this.code.inline}}
-    >
-      <Woven::Alert
-        @variant="info"
-        @icon="ℹ"
-        @inline={{true}}
-        @title="Inline alert"
-        @description="stays on one line"
-      />
-    </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Banner"
-      @note="Edge to edge without radius, for a page-level notice at the top of the content area."
+      @title="Status role"
+      @note="The alert renders role alert, which interrupts a screen reader. Pass role status for messages that are not urgent."
       @layout="block"
-      @code={{this.code.banner}}
+      @code={{this.code.status}}
     >
-      <Woven::Alert @variant="primary" @icon="🏠" @banner={{true}} @title="Banner alert spans full width" />
+      <Woven::Alert @variant="info" @title="Sync scheduled" @description="Listings refresh every night at 02:00." role="status" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Dismissal" @id="dismissal">
     <WovenDocs::Example
       @title="Closable"
-      @note="A labelled dismiss button reports through onClose; render the alert conditionally so it is removed rather than hidden."
+      @note="A labeled kit wu-alert-close button reports through onClose; render the alert conditionally so it is removed rather than hidden."
       @layout="block"
       @code={{this.code.closable}}
     >
       {{#if this.alertDismissed}}
         <div class="woven-row">
-          <span class="wu-text m-sm m-muted">Danger alert dismissed.</span>
+          <span class="wu-text sm muted">Danger alert dismissed.</span>
           <Woven::Button
             @variant="link"
             @size="sm"
@@ -139,7 +105,6 @@
       {{else}}
         <Woven::Alert
           @variant="danger"
-          @icon="⛔"
           @title="Maintenance overdue"
           @description="Unit 118, JVC Residence has an unresolved AC repair ticket open for 9 days."
           @closable={{true}}
@@ -162,15 +127,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Renders role="alert", so content is announced when it appears. Render alerts conditionally rather than toggling visibility.</li>
-      <li class="wu-list__item">The icon is aria-hidden; the dismiss button is labelled "Dismiss alert".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Renders role="alert", so content is announced when it appears; pass role="status" for messages that are not urgent. Render alerts conditionally rather than toggling visibility.</span></li>
+      <li class="wu-list-item"><span>The marker is drawn in CSS and has no text; the title carries the meaning. The dismiss button is labeled "Dismiss alert".</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Icon, content and dismiss button are laid out with logical gaps and paddings, so the icon leads and the dismiss button trails in both directions.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The kit lays out marker, content and dismiss button with logical properties, so the marker leads and the dismiss button sits in the end corner in both directions.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

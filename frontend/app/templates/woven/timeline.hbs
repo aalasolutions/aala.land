@@ -1,25 +1,27 @@
 <WovenDocs::Page
   @id="timeline"
   @title="Timeline"
-  @subtitle="Vertical sequence of events with coloured markers."
+  @subtitle="Vertical sequence of events with colored markers."
   @components="Woven::Timeline, Woven::TimelineItem"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      Timeline is an ordered list; each TimelineItem is a list item with a
-      marker, a connector to the next item, and a heading row of title,
-      timestamp and optional icon. Item titles render as h5, so place the
-      timeline under an h4 to keep the heading order. Use it for activity
-      logs and lead histories.
+      Timeline renders the CSS kit
+      <code class="wu-code">wu-timeline</code>
+      ordered list; each TimelineItem is a
+      <code class="wu-code">wu-timeline-item</code>
+      with a marker, a rail to the next item, a title, a time line and text.
+      Titles are paragraphs, not headings. Use it for activity logs and lead
+      histories. Woven::Timeline takes no arguments.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Marker colours in six variants, plus active and complete states.</li>
-      <li class="wu-list__item">Title, timestamp, description and meta line per item.</li>
-      <li class="wu-list__item">Compact and alternating layouts.</li>
-      <li class="wu-list__item">Block content and icon slot per item.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Five marker role colors; success, warning and danger also change the shape.</span></li>
+      <li class="wu-list-item"><span>Progress rail from one active item.</span></li>
+      <li class="wu-list-item"><span>Title, timestamp, description and meta line per item.</span></li>
+      <li class="wu-list-item"><span>Block content and icon slot per item.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -43,14 +45,14 @@
 
     <WovenDocs::Example
       @title="Icon and block content"
-      @note="The icon slot puts a glyph in the heading row; block content replaces the description for badges and links."
+      @note="The icon slot puts a glyph before the title; block content replaces the description for tags and links."
       @layout="block"
       @code={{this.code.blocks}}
     >
       <Woven::Timeline>
         <Woven::TimelineItem @title="Payment received" @timestamp="Today">
           <:icon><Woven::Icon @icon="check" /></:icon>
-          <:default><Woven::Badge @variant="success" @text="AED 8,500" /></:default>
+          <:default><Woven::Tag @variant="success" @text="AED 8,500" /></:default>
         </Woven::TimelineItem>
       </Woven::Timeline>
     </WovenDocs::Example>
@@ -58,35 +60,20 @@
 
   <WovenDocs::Section @title="States" @id="states">
     <WovenDocs::Example
-      @title="Complete"
-      @note="Marks a step as done; past events in a process such as a lease signing."
+      @title="Progress rail"
+      @note="active sets aria-current step on one item, and the kit turns the list into a progress rail: earlier items filled, the current one ringed, later ones hollow. Say completed in the item text too, since the fill is visual only."
       @layout="block"
-      @code={{this.code.complete}}
+      @code={{this.code.progress}}
     >
       <Woven::Timeline>
-        <Woven::TimelineItem
-          @title="Created"
-          @timestamp="09:14"
-          @complete={{true}}
-          @description="Lead captured from the website form."
-        />
-      </Woven::Timeline>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Active"
-      @note="Highlights the current step so the eye lands on what happens next."
-      @layout="block"
-      @code={{this.code.active}}
-    >
-      <Woven::Timeline>
+        <Woven::TimelineItem @title="Offer accepted (completed)" @timestamp="Mon" />
         <Woven::TimelineItem
           @title="Site visit"
-          @timestamp="14:30"
+          @timestamp="Thu"
           @active={{true}}
-          @variant="warning"
           @description="Scheduled for Thursday."
         />
+        <Woven::TimelineItem @title="Lease signed" />
       </Woven::Timeline>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -94,7 +81,7 @@
   <WovenDocs::Section @title="Marker variants" @id="variants">
     {{#each this.variantExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
-        <Woven::Timeline @compact={{true}}>
+        <Woven::Timeline>
           <Woven::TimelineItem
             @title={{example.title}}
             @variant={{example.variant}}
@@ -106,36 +93,8 @@
     {{/each}}
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Layouts" @id="layouts">
-    <WovenDocs::Example
-      @title="Compact"
-      @note="Tighter rows for long activity logs in a sidebar."
-      @layout="block"
-      @code={{this.code.compact}}
-    >
-      <Woven::Timeline @compact={{true}}>
-        <Woven::TimelineItem @title="Created" @timestamp="09:14" @description="Compact row." />
-        <Woven::TimelineItem @title="Contacted" @timestamp="11:02" @description="Compact row." />
-      </Woven::Timeline>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Alternate"
-      @note="Items alternate sides of a centred line, for a wide overview of a process."
-      @layout="block"
-      @code={{this.code.alternate}}
-    >
-      <Woven::Timeline @alternate={{true}}>
-        <Woven::TimelineItem @title="First" @description="Alternating layout." />
-        <Woven::TimelineItem @title="Second" @description="Second item flips." />
-        <Woven::TimelineItem @title="Third" @description="Third returns." />
-      </Woven::Timeline>
-    </WovenDocs::Example>
-  </WovenDocs::Section>
 
   <WovenDocs::Section @title="Arguments" @id="arguments">
-    <h3 class="woven-subtitle">Woven::Timeline</h3>
-    <WovenDocs::Table @kind="args" @rows={{this.timelineArgRows}} />
     <h3 class="woven-subtitle">Woven::TimelineItem</h3>
     <WovenDocs::Table @kind="args" @rows={{this.itemArgRows}} />
   </WovenDocs::Section>
@@ -145,15 +104,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Renders an ol of li items, so order and count are announced.</li>
-      <li class="wu-list__item">Marker, connector and icon are aria-hidden; state is conveyed by the title and description text.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Renders an ol of li items, so order and count are announced.</span></li>
+      <li class="wu-list-item"><span>Marker and rail are drawn in CSS and the icon is aria-hidden; state is conveyed by the title and description text. The active item carries aria-current="step".</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The line and markers sit on the inline-start edge using logical insets, so the timeline hangs from the right under dir="rtl"; the alternate layout mirrors likewise.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The kit places the rail and markers on the inline-start edge, so the timeline hangs from the right under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

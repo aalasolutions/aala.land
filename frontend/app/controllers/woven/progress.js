@@ -2,13 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
-const VARIANT_TYPE =
-  '"primary" | "secondary" | "success" | "warning" | "danger" | "info"';
+const VARIANT_TYPE = '"success" | "warning" | "danger" | "info"';
 
 const VARIANT_NOTES = {
-  default: 'Neutral fill for progress with no judgement, such as an upload.',
-  primary: 'The brand fill for a task the user started.',
-  secondary: 'A muted fill for background work.',
+  default: 'No @variant: the kit default fill, for a task the user started such as an upload. brand and secondary render the same.',
   success: 'Completion or a target that is being met.',
   warning: 'A quota that is filling up.',
   danger: 'A limit that is about to be exceeded.',
@@ -48,37 +45,33 @@ export default class WovenProgressController extends Controller {
   }
 
   code = {
-    live: `<Woven::Progress @value={{this.progressValue}} @variant="primary" @showText={{true}} />
-<Woven::Button @variant="secondary" @size="sm" @text="Bump progress" @onClick={{this.bumpProgress}} />`,
+    live: `<Woven::Progress @value={{this.progressValue}} @showText={{true}} />
+<Woven::Button @size="sm" @text="Bump progress" @onClick={{this.bumpProgress}} />`,
     sm: `<Woven::Progress @value={{50}} @size="sm" />`,
     md: `<Woven::Progress @value={{50}} />`,
     lg: `<Woven::Progress @value={{50}} @size="lg" />`,
-    indeterminate: `<Woven::Progress @indeterminate={{true}} />`,
-    striped: `<Woven::Progress @value={{60}} @striped={{true}} @variant="info" />`,
+    indeterminate: `<Woven::Progress @indeterminate={{true}} aria-label="Loading" />`,
     label: `<Woven::Progress @value={{35}} @showText={{true}} @label="7 of 20 units" />`,
     clamp: `<Woven::Progress @value={{140}} @showText={{true}} />`,
     circleSm: `<Woven::ProgressCircle @value={{45}} @variant="success" @showText={{true}} @size="sm" />`,
     circleMd: `<Woven::ProgressCircle @value={{75}} @showText={{true}} />`,
     circleLg: `<Woven::ProgressCircle @value={{90}} @variant="danger" @showText={{true}} @size="lg" />`,
-    circleStroke: `<Woven::ProgressCircle @value={{30}} @variant="warning" @strokeWidth={{10}} @showText={{true}} />`,
-    circleNoText: `<Woven::ProgressCircle @value={{30}} @variant="primary" />`,
+    circleNoText: `<Woven::ProgressCircle @value={{30}} aria-label="Storage used" />`,
   };
 
   barArgRows = [
-    { name: '@value', type: 'number', default: '0', description: 'Percentage, clamped to 0..100. Non-numeric input renders 0.' },
-    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Bar colour.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Track height step.' },
-    { name: '@indeterminate', type: 'boolean', default: 'false', description: 'Sweeping animation for unknown progress.' },
-    { name: '@striped', type: 'boolean', default: 'false', description: 'Diagonal stripes on the bar.' },
-    { name: '@showText', type: 'boolean', default: 'false', description: 'Renders the label beside the track.' },
-    { name: '@label', type: 'string', default: '', description: 'Label text; defaults to "{value}%".' },
+    { name: '@value', type: 'number', default: '0', description: 'Native value attribute, clamped to 0..100. Non-numeric input renders 0.' },
+    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Kit role modifier for the fill. brand, secondary and unknown values render the default fill.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm (thinner) or lg (thicker); xs renders sm and xl renders lg.' },
+    { name: '@indeterminate', type: 'boolean', default: 'false', description: 'Omits the value attribute, so the kit shows its sliding segment.' },
+    { name: '@showText', type: 'boolean', default: 'false', description: 'Renders a kit wu-progress-label above the bar, linked with for.' },
+    { name: '@label', type: 'string', default: '', description: 'Label text when @showText is set; defaults to "{value}%".' },
   ];
 
   circleArgRows = [
     { name: '@value', type: 'number', default: '0', description: 'Percentage, clamped to 0..100.' },
-    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Arc colour.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Diameter step.' },
-    { name: '@strokeWidth', type: 'number', default: '6', description: 'Ring thickness in viewBox units (0..100 box).' },
-    { name: '@showText', type: 'boolean', default: 'false', description: 'Renders "{value}%" in the centre.' },
+    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Kit role modifier for the ring. brand, secondary and unknown values render the default ring.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm (2.5rem) or lg (6rem); xs renders sm and xl renders lg. Default 4rem.' },
+    { name: '@showText', type: 'boolean', default: 'false', description: 'Renders "{value}%" in the kit wu-progress-circle-label at the center.' },
   ];
 }

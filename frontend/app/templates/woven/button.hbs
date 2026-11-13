@@ -15,13 +15,13 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Eight variants, four sizes, outline and block forms.</li>
-      <li class="wu-list__item">Icon at the start or end; Phosphor names or literal glyphs.</li>
-      <li class="wu-list__item">Square and circle icon-only shapes that drop the label.</li>
-      <li class="wu-list__item">Loading state swaps the icon for a spinner and disables the control.</li>
-      <li class="wu-list__item">Route and href modes render a LinkTo or an anchor with the same classes.</li>
-      <li class="wu-list__item">BtnGroup joins buttons, attached or spaced.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Renders the CSS kit wu-btn: default, brand, danger, quiet and link looks, a subtle tint for brand and danger, sm and lg sizes.</span></li>
+      <li class="wu-list-item"><span>Icon at the start or end; Phosphor names or literal glyphs.</span></li>
+      <li class="wu-list-item"><span>Square and circle icon-only shapes that drop the label.</span></li>
+      <li class="wu-list-item"><span>Loading shows a kit spinner, sets aria-busy and disables the control.</span></li>
+      <li class="wu-list-item"><span>Route and href modes render a LinkTo or an anchor with the same classes.</span></li>
+      <li class="wu-list-item"><span>BtnGroup joins buttons, attached or spaced.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -33,30 +33,27 @@
     {{/each}}
 
     <WovenDocs::Example
-      @title="Outline"
-      @note="Transparent fill with the variant's border and text colour. Use it for the second action beside a filled button of the same colour, or for a set of equal-weight choices."
-      @code={{this.code.outline}}
+      @title="Subtle"
+      @note="The subtle argument adds the kit subtle modifier: with brand or danger it gives a tinted fill and border that turns solid on hover. Use it for a second action of the same role beside a solid one."
+      @code={{this.code.subtle}}
     >
-      <Woven::Button @variant="primary" @outline={{true}} @text="Outline" />
-      <Woven::Button @variant="danger" @outline={{true}} @text="Outline" />
-      <Woven::Button @variant="success" @outline={{true}} @text="Outline" />
+      <Woven::Button @variant="brand" @subtle={{true}} @text="Approve" />
+      <Woven::Button @variant="danger" @subtle={{true}} @icon="trash" @text="Delete" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Subtle"
-      @note="No border or fill and a muted colour at rest; the variant colour and a light tint appear on hover. Use it for dense rows of icon actions, such as table-row actions."
-      @code={{this.code.subtle}}
+      @title="Secondary"
+      @note="Kept for older callers: secondary maps to the kit subtle modifier, which has no rule without brand or danger, so it renders the default look. success, warning and info have no kit button and render the default look too."
+      @code={{this.code.secondary}}
     >
-      <Woven::Button @variant="secondary" @subtle={{true}} @icon="pencil-simple" aria-label="Edit" />
-      <Woven::Button @variant="success" @subtle={{true}} @icon="check" aria-label="Approve" />
-      <Woven::Button @variant="danger" @subtle={{true}} @icon="trash" aria-label="Delete" />
+      <Woven::Button @variant="secondary" @text="Secondary" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Sizes" @id="sizes">
     {{#each this.sizeExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
-        <Woven::Button @variant="primary" @size={{example.size}} @text={{example.title}} />
+        <Woven::Button @variant="brand" @size={{example.size}} @text={{example.title}} />
       </WovenDocs::Example>
     {{/each}}
   </WovenDocs::Section>
@@ -67,7 +64,7 @@
       @note="Icon-only, same height as a text button, square corners. For toolbar and table-row actions that line up with text buttons. The label is dropped, so aria-label carries the name."
       @code={{this.code.square}}
     >
-      <Woven::Button @variant="primary" @shape="square" @icon="plus" aria-label="Add" />
+      <Woven::Button @variant="brand" @shape="square" @icon="plus" aria-label="Add" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -75,17 +72,17 @@
       @note="Icon-only, fully round. For floating or standalone controls such as close, dismiss and avatar actions."
       @code={{this.code.circle}}
     >
-      <Woven::Button @variant="secondary" @shape="circle" @icon="x" aria-label="Close" />
+      <Woven::Button @shape="circle" @icon="x" aria-label="Close" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Icons" @id="icons">
     <WovenDocs::Example
       @title="Icon before the label"
-      @note="A lowercase kebab-case name is a Phosphor icon. Lead with an icon when the glyph is recognised faster than the word: add, search, filter."
+      @note="A lowercase kebab-case name is a Phosphor icon. Lead with an icon when the glyph is recognized faster than the word: add, search, filter."
       @code={{this.code.iconStart}}
     >
-      <Woven::Button @variant="primary" @icon="plus" @text="Add unit" />
+      <Woven::Button @variant="brand" @icon="plus" @text="Add unit" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -93,7 +90,7 @@
       @note="iconPosition end suits forward motion: next, continue, open in new tab. Directional icons mirror under RTL automatically."
       @code={{this.code.iconEnd}}
     >
-      <Woven::Button @variant="secondary" @icon="arrow-right" @iconPosition="end" @text="Next" />
+      <Woven::Button @icon="arrow-right" @iconPosition="end" @text="Next" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -101,15 +98,7 @@
       @note="Anything that is not a kebab-case name renders as text in the icon slot. Use it for a character that has no icon, or in a fixture that must not load the font."
       @code={{this.code.glyph}}
     >
-      <Woven::Button @variant="secondary" @icon="+" @text="Literal glyph" />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Custom loading icon"
-      @note="loadingIcon replaces the default spinner-gap while loading. Keep the default unless the brand asks for a specific spinner."
-      @code={{this.code.loadingIcon}}
-    >
-      <Woven::Button @variant="secondary" @loading={{true}} @loadingIcon="circle-notch" @text="Custom spinner" />
+      <Woven::Button @icon="+" @text="Literal glyph" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -117,7 +106,7 @@
       @note="The :icon block replaces the built-in icon entirely, so a host can pass its own SVG or icon component instead of a Phosphor name. Supplying the block means the label moves into :default. @icon keeps working when no block is given."
       @code={{this.code.iconSlot}}
     >
-      <Woven::Button @variant="primary">
+      <Woven::Button @variant="brand">
         <:icon>
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="2" />
@@ -132,7 +121,7 @@
       @note="A supplied :icon never replaces the spinner. While @loading is set the button shows its spinner and stays disabled, so a caller's icon cannot hide the busy state."
       @code={{this.code.iconSlotLoading}}
     >
-      <Woven::Button @variant="primary" @loading={{true}}>
+      <Woven::Button @variant="brand" @loading={{true}}>
         <:icon>
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="2" />
@@ -149,16 +138,16 @@
       @note="Sets the real disabled attribute and drops onClick. Use it when the action is impossible right now; explain why nearby, because a disabled button receives no tooltip on its own."
       @code={{this.code.disabled}}
     >
-      <Woven::Button @variant="primary" @disabled={{true}} @text="Disabled" />
+      <Woven::Button @variant="brand" @disabled={{true}} @text="Disabled" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Loading"
-      @note="The icon slot becomes a spinner and the button disables itself, so a double submit is impossible. Swap the label to the in-progress verb while it runs."
+      @note="The icon slot becomes a kit spinner, aria-busy is set and the button disables itself, so a double submit is impossible. Swap the label to the in-progress verb while it runs."
       @code={{this.code.loading}}
     >
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @loading={{this.loadingDemo}}
         @text={{if this.loadingDemo "Saving" "Click to load"}}
         @onClick={{this.toggleLoading}}
@@ -168,20 +157,20 @@
 
     <WovenDocs::Example
       @title="Active"
-      @note="Pressed appearance without changing the variant. For toggles and the selected member of an attached group; set aria-pressed alongside it."
+      @note="The active argument sets aria-pressed, which the kit styles as pressed. For toggles and the selected member of an attached group. Leave it unset on plain buttons so they carry no toggle state."
       @code={{this.code.active}}
     >
-      <Woven::Button @variant="secondary" @active={{true}} @text="Active" aria-pressed="true" />
-      <Woven::Button @variant="secondary" @text="Inactive" aria-pressed="false" />
+      <Woven::Button @active={{true}} @text="Active" />
+      <Woven::Button @active={{false}} @text="Inactive" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Block"
-      @note="Full width of its container, for mobile forms and stacked dialog footers. The argument is @block; this demo applies the resulting is-block class because the project lint reserves the name."
-      @layout="stack"
+      @note="Full width of its container through the core w-full utility, for mobile forms and stacked dialog footers. This demo passes the class because the project template lint reserves the block argument name."
+      @layout="block"
       @code={{this.code.block}}
     >
-      <Woven::Button @variant="secondary" @text="Full width" class="is-block" />
+      <Woven::Button @text="Full width" class="w-full" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -191,7 +180,7 @@
       @note="type submit inside a form triggers the form's submit handler on click and on Enter in any field. Every other button defaults to type button so it never submits by accident."
       @code={{this.code.submit}}
     >
-      <Woven::Button @type="submit" @variant="primary" @text="Save" />
+      <Woven::Button @type="submit" @variant="brand" @text="Save" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -207,7 +196,7 @@
       @note="href renders an anchor for external or in-page links that are outside the router."
       @code={{this.code.href}}
     >
-      <Woven::Button @href="#examples" @variant="secondary" @text="Anchor to this section" />
+      <Woven::Button @href="#variants" @text="Jump to variants" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -218,9 +207,9 @@
       @code={{this.code.groupSpaced}}
     >
       <Woven::BtnGroup>
-        <Woven::Button @variant="secondary" @text="Left" />
-        <Woven::Button @variant="secondary" @text="Middle" />
-        <Woven::Button @variant="secondary" @text="Right" />
+        <Woven::Button @text="Left" />
+        <Woven::Button @text="Middle" />
+        <Woven::Button @text="Right" />
       </Woven::BtnGroup>
     </WovenDocs::Example>
 
@@ -230,9 +219,9 @@
       @code={{this.code.groupAttached}}
     >
       <Woven::BtnGroup @attached={{true}}>
-        <Woven::Button @variant="secondary" @text="Day" />
-        <Woven::Button @variant="secondary" @active={{true}} @text="Week" />
-        <Woven::Button @variant="secondary" @text="Month" />
+        <Woven::Button @text="Day" />
+        <Woven::Button @active={{true}} @text="Week" />
+        <Woven::Button @text="Month" />
       </Woven::BtnGroup>
     </WovenDocs::Example>
 
@@ -242,8 +231,8 @@
       @code={{this.code.groupIcons}}
     >
       <Woven::BtnGroup @attached={{true}}>
-        <Woven::Button @variant="secondary" @shape="square" @icon="caret-left" aria-label="Previous" />
-        <Woven::Button @variant="secondary" @shape="square" @icon="caret-right" aria-label="Next" />
+        <Woven::Button @shape="square" @icon="caret-left" aria-label="Previous" />
+        <Woven::Button @shape="square" @icon="caret-right" aria-label="Next" />
       </Woven::BtnGroup>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -264,18 +253,18 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Button mode renders a native button with an explicit type; disabled and loading set the real disabled attribute.</li>
-      <li class="wu-list__item">Icons are aria-hidden. Square and circle shapes drop the label, so pass aria-label for the accessible name.</li>
-      <li class="wu-list__item">A tooltip on a disabled button never fires because disabled buttons receive no pointer events; wrap the button in a span carrying data-tooltip.</li>
-      <li class="wu-list__item">Keyboard focus shows the kit focus ring; it is never removed without a replacement.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Button mode renders a native button with an explicit type; disabled and loading set the real disabled attribute.</span></li>
+      <li class="wu-list-item"><span>Icons are aria-hidden. Square and circle shapes drop the label, so pass aria-label for the accessible name.</span></li>
+      <li class="wu-list-item"><span>A tooltip on a disabled button never fires because disabled buttons receive no pointer events; wrap the button in a span carrying data-tooltip.</span></li>
+      <li class="wu-list-item"><span>Keyboard focus shows the kit focus ring; it is never removed without a replacement.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Icon spacing uses inline margins, so start and end positions mirror with the reading direction.</li>
-      <li class="wu-list__item">Phosphor icons named left or right (caret-left, arrow-right) are mirrored automatically under dir="rtl".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Icon spacing uses inline margins, so start and end positions mirror with the reading direction.</span></li>
+      <li class="wu-list-item"><span>Phosphor icons named left or right (caret-left, arrow-right) are mirrored automatically under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

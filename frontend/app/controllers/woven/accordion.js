@@ -32,24 +32,18 @@ export default class WovenAccordionController extends Controller {
     multiple: `<Woven::Accordion @items={{this.accordionItems}} @multiple={{true}} />`,
     defaultExpanded: `<Woven::Accordion @items={{this.accordionItems}} @defaultExpanded="lease-terms" />`,
     defaultExpandedMany: `<Woven::Accordion @items={{this.accordionItems}} @multiple={{true}} @defaultExpanded={{array "unit-details" "cheque-schedule"}} />`,
-    bordered: `<Woven::Accordion @items={{this.accordionItems}} @bordered={{true}} />`,
-    flush: `<Woven::Card @title="Inside a card">
-  <Woven::Accordion @items={{this.accordionItems}} @flush={{true}} />
-</Woven::Card>`,
-    compact: `<Woven::Accordion @items={{this.accordionItems}} @compact={{true}} />`,
+    static: `<Woven::Accordion @items={{this.accordionItems}} @animated={{false}} />`,
     block: `<Woven::Accordion @items={{this.accordionItems}} as |entry|>
   <Woven::Text @size="sm" @text={{entry.content}} />
-  <Woven::Tag @size="sm" @variant="info" @text={{entry.id}} />
+  <Woven::Tag @variant="info" @text={{entry.id}} />
 </Woven::Accordion>`,
   };
 
   argRows = [
-    { name: '@items', type: 'array', default: '[]', description: 'Objects with id, title, content and optional disabled.' },
+    { name: '@items', type: 'array', default: '[]', description: 'Objects with id, title, content and optional disabled; each renders a kit wu-accordion-item details element.' },
     { name: '@multiple', type: 'boolean', default: 'false', description: 'Allow several panels open at once. Otherwise opening one closes the rest.' },
     { name: '@defaultExpanded', type: 'string | array', default: '', description: 'Item id, or ids, expanded on first render. Internal state after that.' },
-    { name: '@bordered', type: 'boolean', default: 'false', description: 'Border around the whole accordion.' },
-    { name: '@flush', type: 'boolean', default: 'false', description: 'No outer border or radius, for use inside a card.' },
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter trigger and panel padding.' },
+    { name: '@animated', type: 'boolean', default: 'true', description: 'Kit animated modifier: the chevron turns and the panel height glides when the user allows motion. False opens and closes instantly.' },
   ];
 
   blockRows = [

@@ -11,7 +11,7 @@ const LTR_NOTES = {
 
 const RESIZE_NOTES = {
   none: 'Fixed size, for a note field inside a tight dialog.',
-  vertical: 'The user can grow it downwards only, the usual choice in forms.',
+  vertical: 'The user can grow it downward only, the usual choice in forms.',
   horizontal: 'Width only; rare, for a code snippet field.',
   both: 'Free resize, for a large editor.',
 };
@@ -88,7 +88,6 @@ export default class WovenInputController extends Controller {
     clearable: `<Woven::Input @value={{this.clearableValue}} @clearable={{true}} @onInput={{this.updateClearable}} />`,
     prefix: `<Woven::Input @prefixIcon="⌕" @placeholder="Search units" />`,
     suffix: `<Woven::Input @suffixIcon="AED" @placeholder="Monthly rent" />`,
-    xs: `<Woven::Input @size="xs" @placeholder="Extra small" />`,
     sm: `<Woven::Input @size="sm" @placeholder="Small" />`,
     lg: `<Woven::Input @size="lg" @placeholder="Large" />`,
     invalid: `<Woven::Input @invalid={{true}} @value="-100" />`,
@@ -96,23 +95,17 @@ export default class WovenInputController extends Controller {
     disabled: `<Woven::Input @disabled={{true}} @value="Disabled" />`,
     readonly: `<Woven::Input @readonly={{true}} @value="Read only" />`,
     maxlength: `<Woven::Input @maxlength={{6}} @placeholder="Max 6 characters" />`,
-    auto: `<Woven::Input @auto={{true}} @placeholder="Auto width" />`,
     textareaBasic: `<Woven::Textarea @value={{this.textareaValue}} @rows={{4}} @placeholder="Unit notes" @onInput={{this.updateTextarea}} />`,
     textareaInvalid: `<Woven::Textarea @invalid={{true}} @value="Too long for this field" @rows={{2}} />`,
     textareaDisabled: `<Woven::Textarea @disabled={{true}} @value="Disabled" @rows={{2}} />`,
     textareaReadonly: `<Woven::Textarea @readonly={{true}} @value="Read only" @rows={{2}} />`,
     textareaMaxlength: `<Woven::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />`,
-    textareaSizes: `<Woven::Textarea @size="xs" @rows={{2}} @placeholder="Extra small" />
-<Woven::Textarea @size="sm" @rows={{2}} @placeholder="Small" />
-<Woven::Textarea @rows={{2}} @placeholder="Default" />
-<Woven::Textarea @size="lg" @rows={{2}} @placeholder="Large" />`,
     selectBasic: `<Woven::Select @value={{this.selectValue}} @options={{this.regionOptions}} @onChange={{this.updateSelect}} />
 
 // regionOptions: [{ value: 'dubai-marina', label: 'Dubai Marina' }, ...]`,
     selectStrings: `<Woven::Select @options={{this.propertyTypeOptions}} @placeholder="Choose a property type" />
 
 // propertyTypeOptions: ['Villa', 'Apartment', 'Townhouse']`,
-    selectXs: `<Woven::Select @size="xs" @options={{this.propertyTypeOptions}} @placeholder="Extra small" />`,
     selectSm: `<Woven::Select @size="sm" @options={{this.propertyTypeOptions}} @placeholder="Small" />`,
     selectLg: `<Woven::Select @size="lg" @options={{this.propertyTypeOptions}} @placeholder="Large" />`,
     selectDisabled: `<Woven::Select @disabled={{true}} @options={{this.propertyTypeOptions}} @placeholder="Disabled" />`,
@@ -125,16 +118,13 @@ export default class WovenInputController extends Controller {
     both: `<Woven::InputGroup @prepend="AED" @append=".00">
   <Woven::Input @value={{this.groupInputValue}} @onInput={{this.updateGroupInput}} />
 </Woven::InputGroup>`,
-    groupSizes: `<Woven::InputGroup @size="xs" @prepend="AED">
-  <Woven::Input @size="xs" @placeholder="Extra small" />
-</Woven::InputGroup>
-<Woven::InputGroup @size="sm" @prepend="AED">
+    groupSizes: `<Woven::InputGroup @prepend="AED">
   <Woven::Input @size="sm" @placeholder="Small" />
 </Woven::InputGroup>
 <Woven::InputGroup @prepend="AED">
   <Woven::Input @placeholder="Default" />
 </Woven::InputGroup>
-<Woven::InputGroup @size="lg" @prepend="AED">
+<Woven::InputGroup @prepend="AED">
   <Woven::Input @size="lg" @placeholder="Large" />
 </Woven::InputGroup>`,
   };
@@ -142,18 +132,19 @@ export default class WovenInputController extends Controller {
   inputArgRows = [
     { name: '@value', type: 'string | number', default: '', description: 'Current value. The component is controlled; update it from @onInput.' },
     { name: '@type', type: 'string', default: '"text"', description: 'Native input type. tel, number, email and url are pinned to dir="ltr".' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height step. Omit for the default size.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg (on the wu-input-affix wrapper when there is one); xs renders sm and xl renders lg.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Native placeholder.' },
+    { name: '@inputmode', type: 'string', default: '', description: 'Native inputmode: tel for phones, numeric for codes and postal numbers.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute; hides the clear button.' },
     { name: '@readonly', type: 'boolean', default: 'false', description: 'Native readonly attribute; hides the clear button.' },
     { name: '@maxlength', type: 'number', default: '', description: 'Native maxlength.' },
     { name: '@autocomplete', type: 'string', default: '"off"', description: 'Native autocomplete token.' },
-    { name: '@invalid', type: 'boolean', default: 'false', description: 'Adds is-invalid and aria-invalid="true".' },
-    { name: '@valid', type: 'boolean', default: 'false', description: 'Adds is-valid. Ignored when @invalid is set.' },
-    { name: '@auto', type: 'boolean', default: 'false', description: 'Adds m-auto so the input takes the browser default width (about 20 characters) instead of filling the row. It does not grow with the text.' },
-    { name: '@clearable', type: 'boolean', default: 'false', description: 'Shows a clear button whenever there is a value.' },
-    { name: '@prefixIcon', type: 'string', default: '', description: 'Glyph rendered before the input inside the wrap.' },
-    { name: '@suffixIcon', type: 'string', default: '', description: 'Glyph rendered after the input. Replaced by the clear button while clearable and non-empty.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'Sets data-wu-status; error also sets aria-invalid="true", the only state the kit styles. Wins over @invalid and @valid.' },
+    { name: '@invalid', type: 'boolean', default: 'false', description: 'Alias of @status="error".' },
+    { name: '@valid', type: 'boolean', default: 'false', description: 'Alias of @status="success"; no visual style. Ignored when @invalid is set.' },
+    { name: '@clearable', type: 'boolean', default: 'false', description: 'Shows the kit wu-input-clear button whenever there is a value.' },
+    { name: '@prefixIcon', type: 'string', default: '', description: 'Text or glyph in the kit wu-input-prefix, inside the wu-input-affix wrapper.' },
+    { name: '@suffixIcon', type: 'string', default: '', description: 'Text or glyph in the kit wu-input-suffix. Replaced by the clear button while clearable and non-empty.' },
   ];
 
   inputCallbackRows = [
@@ -165,13 +156,14 @@ export default class WovenInputController extends Controller {
   textareaArgRows = [
     { name: '@value', type: 'string', default: '', description: 'Current value; update it from @onInput.' },
     { name: '@rows', type: 'number', default: '3', description: 'Visible rows.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Font and padding step, matching Input. Omit for the default size.' },
-    { name: '@resize', type: '"none" | "both" | "horizontal" | "vertical"', default: '', description: 'CSS resize behaviour. Unknown values leave the browser default.' },
+    { name: '@resize', type: '"none" | "both" | "horizontal" | "vertical"', default: '', description: 'CSS resize behavior. Unknown values leave the kit default.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Native placeholder.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute.' },
     { name: '@readonly', type: 'boolean', default: 'false', description: 'Native readonly attribute.' },
     { name: '@maxlength', type: 'number', default: '', description: 'Native maxlength.' },
-    { name: '@invalid', type: 'boolean', default: 'false', description: 'Adds is-invalid and aria-invalid="true".' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'As on Input: data-wu-status, and aria-invalid for error.' },
+    { name: '@invalid', type: 'boolean', default: 'false', description: 'Alias of @status="error".' },
+    { name: '@valid', type: 'boolean', default: 'false', description: 'Alias of @status="success".' },
   ];
 
   textareaCallbackRows = [
@@ -183,8 +175,9 @@ export default class WovenInputController extends Controller {
     { name: '@value', type: 'string | number', default: '', description: 'Selected option value.' },
     { name: '@options', type: 'array', default: '[]', description: 'Strings, or objects with value and label.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Renders a disabled first option, selected while nothing matches @value.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Height step. Omit for the default size.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg.' },
     { name: '@disabled', type: 'boolean', default: 'false', description: 'Native disabled attribute.' },
+    { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'As on Input; @invalid and @valid are aliases.' },
   ];
 
   selectCallbackRows = [
@@ -192,9 +185,8 @@ export default class WovenInputController extends Controller {
   ];
 
   groupArgRows = [
-    { name: '@prepend', type: 'string', default: '', description: 'Addon text before the control.' },
-    { name: '@append', type: 'string', default: '', description: 'Addon text after the control.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Addon text and padding step. Pass the same @size to the input inside.' },
+    { name: '@prepend', type: 'string', default: '', description: 'Kit wu-input-group-text addon before the control.' },
+    { name: '@append', type: 'string', default: '', description: 'Kit wu-input-group-text addon after the control.' },
   ];
 
   groupBlockRows = [

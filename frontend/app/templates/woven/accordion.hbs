@@ -6,26 +6,31 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      The accordion owns its expanded state. Pass the items, optionally the
-      ids to start open, and either let each item render its
+      Each item is a native
+      <code class="wu-code">details</code>
+      element with a
+      <code class="wu-code">summary</code>
+      trigger. The accordion keeps its expanded state in sync with the
+      native toggle. Pass the items, optionally the ids to start open, and
+      either let each item render its
       <code class="wu-code">content</code>
       string or supply a block that receives the item. Use it for optional
       detail the user opens on demand; use Tabs when one panel must always
-      be visible.
+      be visible. It renders the CSS kit
+      <code class="wu-code">wu-accordion</code>.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Single-open by default; multiple with one flag.</li>
-      <li class="wu-list__item">Initial expansion by id or list of ids.</li>
-      <li class="wu-list__item">Disabled items stay closed and skip the toggle.</li>
-      <li class="wu-list__item">Bordered, flush and compact styles.</li>
-      <li class="wu-list__item">Animated panel height with reduced-motion respected.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Single-open by default; multiple with one flag.</span></li>
+      <li class="wu-list-item"><span>Initial expansion by id or list of ids.</span></li>
+      <li class="wu-list-item"><span>Disabled items stay closed and skip the toggle.</span></li>
+      <li class="wu-list-item"><span>Animated chevron and panel height, reduced motion respected; opt out per accordion.</span></li>
     </ul>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Behaviour" @id="behaviour">
+  <WovenDocs::Section @title="Behavior" @id="behavior">
     <WovenDocs::Example
       @title="Single open"
       @note="Opening one panel closes the others, so the list stays short. The last item is disabled and cannot open."
@@ -67,34 +72,14 @@
     </WovenDocs::Example>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Styles" @id="styles">
+  <WovenDocs::Section @title="Motion" @id="motion">
     <WovenDocs::Example
-      @title="Bordered"
-      @note="A border around the whole accordion when it stands alone on the page background."
+      @title="Without animation"
+      @note="Animation is on by default: the chevron turns and the panel height glides when the user allows motion. Pass false to open and close instantly."
       @layout="block"
-      @code={{this.code.bordered}}
+      @code={{this.code.static}}
     >
-      <Woven::Accordion @items={{this.accordionItems}} @bordered={{true}} />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Flush"
-      @note="No outer border or radius, for an accordion inside a card that already has both."
-      @layout="block"
-      @code={{this.code.flush}}
-    >
-      <Woven::Card @title="Inside a card">
-        <Woven::Accordion @items={{this.accordionItems}} @flush={{true}} />
-      </Woven::Card>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Compact"
-      @note="Tighter trigger and panel padding for sidebars and filter groups."
-      @layout="block"
-      @code={{this.code.compact}}
-    >
-      <Woven::Accordion @items={{this.accordionItems}} @compact={{true}} />
+      <Woven::Accordion @items={{this.accordionItems}} @animated={{false}} />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -107,7 +92,7 @@
     >
       <Woven::Accordion @items={{this.accordionItems}} as |entry|>
         <Woven::Text @size="sm" @text={{entry.content}} />
-        <Woven::Tag @size="sm" @variant="info" @text={{entry.id}} />
+        <Woven::Tag @variant="info" @text={{entry.id}} />
       </Woven::Accordion>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -121,15 +106,16 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Each trigger is a native button with aria-expanded; disabled items carry the disabled attribute.</li>
-      <li class="wu-list__item">The chevron is aria-hidden. Panels stay in the DOM while collapsed, so content is only visually hidden.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Native details and summary give the disclosure role, expanded state and Enter and Space keys without extra ARIA.</span></li>
+      <li class="wu-list-item"><span>Disabled items carry aria-disabled on the summary and ignore activation; the summary stays in the Tab order.</span></li>
+      <li class="wu-list-item"><span>The chevron is drawn in CSS. Collapsed content stays in the DOM and is found by in-page search, which opens its item.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The chevron glyph is not bidi-mirrored, so the stylesheet flips it with scaleX(-1) under dir="rtl"; the expanded rotation is adjusted to match.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The trigger uses flex layout, so the title and chevron swap sides under dir="rtl". The chevron points down and up, so it needs no mirroring.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

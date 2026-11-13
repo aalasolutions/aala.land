@@ -11,16 +11,20 @@
       to control the selection from outside, or omit it and the component
       keeps its own. The block receives the active id so one template can
       render every panel. For a control that sets a value rather than
-      showing a panel, use Segmented.
+      showing a panel, use Segmented. It renders the CSS kit
+      <code class="wu-code">wu-tabs</code>; the kit script is not loaded, so
+      the component sets aria-selected and tabindex itself. Counts render as
+      a kit
+      <code class="wu-code">wu-badge</code>.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Underline, pills and enclosed variants; vertical and fill layouts.</li>
-      <li class="wu-list__item">Icons and counts per tab; disabled tabs are skipped by the keyboard.</li>
-      <li class="wu-list__item">Roving tabindex with arrow, Home and End keys.</li>
-      <li class="wu-list__item">Controlled and uncontrolled modes.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Kit line (default), boxed and card styles through underline, pills and enclosed; vertical layout. No sizes.</span></li>
+      <li class="wu-list-item"><span>Icons and counts per tab; disabled tabs are skipped by the keyboard.</span></li>
+      <li class="wu-list-item"><span>Roving tabindex with arrow, Home and End keys.</span></li>
+      <li class="wu-list-item"><span>Controlled and uncontrolled modes.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -77,7 +81,7 @@
     >
       <Woven::Tabs @tabs={{this.unitTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}}>
         <:icon as |tab|>
-          <span class="wu-tabs__icon" aria-hidden="true">{{if tab.count "*" "-"}}</span>
+          <span aria-hidden="true">{{if tab.count "*" "-"}}</span>
         </:icon>
       </Woven::Tabs>
     </WovenDocs::Example>
@@ -86,7 +90,7 @@
   <WovenDocs::Section @title="Variants" @id="variants">
     <WovenDocs::Example
       @title="Underline"
-      @note="A bar under the active tab; the default and the lightest, for page-level sections."
+      @note="underline adds no modifier: the kit default line style, a bar under the active tab, for page-level sections."
       @layout="block"
       @code={{this.code.underline}}
     >
@@ -95,54 +99,37 @@
 
     <WovenDocs::Example
       @title="Pills"
-      @note="A filled pill on the active tab, for compact switchers inside cards and toolbars."
+      @note="pills adds the kit boxed modifier: tabs and panel inside one bordered box, for compact switchers inside cards."
       @layout="block"
       @code={{this.code.pills}}
     >
-      <Woven::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+      <Woven::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} as |tabId|>
+        <Woven::Text @text="Panel for {{tabId}}." />
+      </Woven::Tabs>
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Enclosed"
-      @note="Folder-style tabs joined to the panel below, for settings pages where the panel has its own border."
+      @note="enclosed adds the kit card modifier: joined tab boxes, and the selected tab opens into the framed panel below."
       @layout="block"
       @code={{this.code.enclosed}}
     >
-      <Woven::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
-    </WovenDocs::Example>
-  </WovenDocs::Section>
-
-  <WovenDocs::Section @title="Sizes" @id="sizes">
-    <WovenDocs::Example
-      @title="Sizes"
-      @note="xs, sm, md (default) and lg. Trigger height is 28, 32, 36 and 48px, matching buttons and inputs of the same size."
-      @layout="stack"
-      @code={{this.code.sizes}}
-    >
-      <Woven::Tabs @tabs={{this.plainTabs}} @size="xs" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="xs" />
-      <Woven::Tabs @tabs={{this.plainTabs}} @size="sm" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="sm" />
-      <Woven::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="md" />
-      <Woven::Tabs @tabs={{this.plainTabs}} @size="lg" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} data-test-woven-tabs-size="lg" />
+      <Woven::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} as |tabId|>
+        <Woven::Text @text="Panel for {{tabId}}." />
+      </Woven::Tabs>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Layouts" @id="layouts">
     <WovenDocs::Example
       @title="Vertical"
-      @note="The list stacks on the inline-start side and arrow keys switch to up and down. For long lists of sections in a settings area."
+      @note="The list stacks on the inline-start side with the selected bar on its inline-end edge, and arrow keys switch to up and down. For long lists of sections in a settings area."
       @layout="block"
       @code={{this.code.vertical}}
     >
-      <Woven::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Fill"
-      @note="Tabs share the full width equally, for two to four tabs on a narrow card or a phone."
-      @layout="block"
-      @code={{this.code.fill}}
-    >
-      <Woven::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+      <Woven::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} as |tabId|>
+        <Woven::Text @text="Panel for {{tabId}}." />
+      </Woven::Tabs>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -159,17 +146,17 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The list has role="tablist" with aria-orientation; each tab is a button with role="tab" and aria-selected.</li>
-      <li class="wu-list__item">Only the active tab is in the tab order; arrows, Home and End move between enabled tabs and focus follows selection.</li>
-      <li class="wu-list__item">The panel has role="tabpanel" and tabindex="0" so it can be reached from the list.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The list has role="tablist" with aria-orientation; each tab is a button with role="tab" and aria-selected.</span></li>
+      <li class="wu-list-item"><span>Only the active tab is in the tab order; arrows, Home and End move between enabled tabs and focus follows selection.</span></li>
+      <li class="wu-list-item"><span>The panel has role="tabpanel" and tabindex="0" so it can be reached from the list.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Horizontal arrow keys follow the reading direction: under dir="rtl" ArrowLeft moves forward and ArrowRight moves back.</li>
-      <li class="wu-list__item">Layout uses logical properties; the vertical variant keeps the list on the inline-start side.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Horizontal arrow keys follow the reading direction: under dir="rtl" ArrowLeft moves forward and ArrowRight moves back.</span></li>
+      <li class="wu-list-item"><span>Layout uses logical properties; the vertical variant keeps the list on the inline-start side.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -13,15 +13,16 @@
       href, or buttons when they carry an onClick. In a page header, pass
       <code class="wu-code">@parentsOnly</code>
       so every item is a parent link and the header title names the current
-      page.
+      page. It renders the CSS kit
+      <code class="wu-code">wu-breadcrumb</code>.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Router link, anchor or button items from one items array.</li>
-      <li class="wu-list__item">Current page derived from position, or none with parentsOnly.</li>
-      <li class="wu-list__item">Compact style.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Router link, anchor or button items from one items array.</span></li>
+      <li class="wu-list-item"><span>Current page derived from position, or none with parentsOnly.</span></li>
+      <li class="wu-list-item"><span>Compact size and a slash separator.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -51,7 +52,7 @@
       @code={{this.code.click}}
     >
       <Woven::Breadcrumb @items={{this.clickItems}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-crumb-clicked>Last clicked: {{this.lastCrumb}}</span>
+      <span class="wu-text sm muted" data-test-woven-crumb-clicked>Last clicked: {{this.lastCrumb}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -67,11 +68,20 @@
   <WovenDocs::Section @title="Styles" @id="styles">
     <WovenDocs::Example
       @title="Compact"
-      @note="Smaller type and tighter separators, the form used inside a page header."
+      @note="compact adds the kit sm modifier: smaller type, the form used inside a page header."
       @layout="block"
       @code={{this.code.compact}}
     >
       <Woven::Breadcrumb @items={{this.breadcrumbItems}} @compact={{true}} />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Slash separator"
+      @note="separator slash adds the kit slash modifier instead of the default chevron. Any other value keeps the chevron."
+      @layout="block"
+      @code={{this.code.slash}}
+    >
+      <Woven::Breadcrumb @items={{this.breadcrumbItems}} @separator="slash" />
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -82,15 +92,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Renders a nav labelled "Breadcrumb" wrapping an ordered list.</li>
-      <li class="wu-list__item">The current item carries aria-current="page"; separators are drawn by CSS and not read aloud.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Renders a nav labeled "Breadcrumb" wrapping an ordered list.</span></li>
+      <li class="wu-list-item"><span>The current item carries aria-current="page"; separators are drawn by CSS and not read aloud.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Separators and item spacing are inline-logical, so the trail reads right to left under dir="rtl".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Item spacing is inline-logical and the chevron separator mirrors, so the trail reads right to left under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -1,26 +1,31 @@
 <WovenDocs::Page
   @id="popover"
   @title="Popover"
-  @subtitle="Click-triggered panel with an arrow, hosted on the anchored layer."
+  @subtitle="Click-triggered panel, hosted on the nearest layer."
   @components="Woven::Popover"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      A popover holds rich content next to its trigger. Like the dropdown
-      menu it renders on the layer host while open, so it escapes clipping
-      ancestors, and the anchor modifier positions it, flips it and draws
-      the arrow at the trigger's centre. Use it for a small form or a
+      A popover holds rich content next to its trigger in a CSS kit
+      <code class="wu-code">wu-popover</code>
+      panel. Like the dropdown menu it renders while open into the layer the
+      layer service resolves from the trigger: the nearest open dialog's own
+      <code class="wu-code">wu-layer</code>, else the body layer. So it
+      escapes clipping ancestors and stays usable inside a modal or drawer,
+      and the anchor modifier positions and flips it. The kit script and the
+      native popover attribute are not used; the component owns the open
+      state. Use it for a small form or a
       confirmation that does not deserve a modal; use a tooltip for text
       alone.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Four logical placements with automatic flip and viewport clamp.</li>
-      <li class="wu-list__item">Optional title with a close button; body and footer slots.</li>
-      <li class="wu-list__item">Closes on Escape, outside click, outside scroll and resize; focus returns to the trigger.</li>
-      <li class="wu-list__item">Controlled and uncontrolled modes.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Four logical placements with automatic flip and viewport clamp.</span></li>
+      <li class="wu-list-item"><span>Optional title; body and footer slots. No close button and no arrow: Escape and an outside click close it.</span></li>
+      <li class="wu-list-item"><span>Closes on Escape, an outside click, or once the trigger scrolls out of view; scroll and resize otherwise reposition it. Focus inside the panel returns to the trigger.</span></li>
+      <li class="wu-list-item"><span>Controlled and uncontrolled modes.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -34,7 +39,6 @@
         <:trigger as |toggle isOpen|>
           <Woven::Button
             @text="Open"
-            @variant="secondary"
             @onClick={{toggle}}
             aria-expanded={{if isOpen "true" "false"}}
             data-test-woven-popover-uncontrolled
@@ -60,7 +64,6 @@
         <:trigger as |toggle|>
           <Woven::Button
             @text="Unit actions"
-            @variant="secondary"
             @onClick={{toggle}}
             data-test-open-popover
           />
@@ -72,7 +75,7 @@
           <Woven::Button @text="Close" @size="sm" @variant="ghost" @onClick={{this.closePopover}} />
         </:footer>
       </Woven::Popover>
-      <span class="wu-text m-sm m-muted" data-test-woven-popover-state>Open: {{this.popoverOpen}}</span>
+      <span class="wu-text sm muted" data-test-woven-popover-state>Open: {{this.popoverOpen}}</span>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -83,8 +86,7 @@
           <:trigger as |toggle|>
             <Woven::Button
               @text={{example.placement}}
-              @variant="secondary"
-              @onClick={{toggle}}
+                @onClick={{toggle}}
               data-test-woven-popover-placement={{example.placement}}
             />
           </:trigger>
@@ -100,7 +102,7 @@
 
     <WovenDocs::Example
       @title="Align end"
-      @note="Hangs from the trigger's end edge instead of centring, for a control at the end of a row so the panel stays on screen."
+      @note="Hangs from the trigger's end edge instead of centering, for a control at the end of a row so the panel stays on screen."
       @code={{this.code.alignEnd}}
     >
       <Woven::Popover @placement="bottom" @align="end">
@@ -108,7 +110,6 @@
           <Woven::Button
             @icon="dots-three"
             @shape="square"
-            @variant="secondary"
             @onClick={{toggle}}
             aria-label="More"
           />
@@ -123,15 +124,15 @@
   <WovenDocs::Section @title="Slots" @id="slots">
     <WovenDocs::Example
       @title="No title"
-      @note="Without a title there is no header or close button; Escape and an outside click still close it. For a small panel whose content is self-explanatory."
+      @note="Without a title the panel holds only its body; Escape and an outside click close it. For a small panel whose content is self-explanatory."
       @code={{this.code.noTitle}}
     >
       <Woven::Popover>
         <:trigger as |toggle|>
-          <Woven::Button @text="No title" @variant="secondary" @onClick={{toggle}} />
+          <Woven::Button @text="No title" @onClick={{toggle}} />
         </:trigger>
         <:body>
-          <Woven::Text @size="sm" @text="No header or close button. Escape and outside click still close it." />
+          <Woven::Text @size="sm" @text="No title. Escape and outside click close it." />
         </:body>
       </Woven::Popover>
     </WovenDocs::Example>
@@ -143,7 +144,7 @@
     >
       <Woven::Popover @title="Confirm">
         <:trigger as |toggle|>
-          <Woven::Button @text="With footer" @variant="secondary" @onClick={{toggle}} />
+          <Woven::Button @text="With footer" @onClick={{toggle}} />
         </:trigger>
         <:body>
           <Woven::Text @size="sm" @text="Archive this unit?" />
@@ -168,17 +169,17 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The panel is role="dialog", labelled by the title when one is given. It does not trap focus; Tab leaves the panel.</li>
-      <li class="wu-list__item">Escape closes it and stops propagation, so a modal or drawer underneath stays open. Closing returns focus to the trigger when focus was inside.</li>
-      <li class="wu-list__item">Set aria-expanded on the trigger from the yielded isOpen when the trigger is a button.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The panel is role="dialog", labeled by the title when one is given. It does not trap focus; Tab leaves the panel.</span></li>
+      <li class="wu-list-item"><span>Escape closes it and stops propagation, so a modal or drawer underneath stays open. Closing returns focus to the trigger when focus was inside.</span></li>
+      <li class="wu-list-item"><span>Set aria-expanded on the trigger from the yielded isOpen when the trigger is a button.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">start and end placements resolve against the trigger's computed direction; the panel copies the trigger's dir.</li>
-      <li class="wu-list__item">The arrow is positioned from the anchor's centre with physical borders under data-placement, and the stylesheet flips its transform sign under dir="rtl".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>start and end placements resolve against the trigger's computed direction; the panel copies the trigger's dir.</span></li>
+      <li class="wu-list-item"><span>The panel has no arrow, so nothing else needs mirroring.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>
