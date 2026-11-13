@@ -9,11 +9,11 @@ module('Integration | Helper | billing-history-status', function (hooks) {
   async function statusOf(context, row) {
     context.set('row', row);
     await render(
-      hbs`{{#let (billing-history-status this.row) as |s|}}<span data-test-label>{{s.label}}</span><span data-test-class>{{s.tagClass}}</span><span data-test-credit>{{if s.creditAmount "credit" "none"}}</span>{{/let}}`,
+      hbs`{{#let (billing-history-status this.row) as |s|}}<span data-test-label>{{s.label}}</span><span data-test-class>{{s.tagVariant}}</span><span data-test-credit>{{if s.creditAmount "credit" "none"}}</span>{{/let}}`,
     );
     return {
       label: document.querySelector('[data-test-label]').textContent,
-      tagClass: document.querySelector('[data-test-class]').textContent,
+      tagVariant: document.querySelector('[data-test-class]').textContent,
       credit: document.querySelector('[data-test-credit]').textContent,
     };
   }
@@ -32,11 +32,11 @@ module('Integration | Helper | billing-history-status', function (hooks) {
       refundStatus: 'rejected',
     });
     assert.strictEqual(pending.label, 'Refund requested');
-    assert.strictEqual(pending.tagClass, 'tag-txn-pending');
+    assert.strictEqual(pending.tagVariant, 'warning');
     assert.strictEqual(approved.label, 'Refunded');
-    assert.strictEqual(approved.tagClass, 'tag-txn-completed');
+    assert.strictEqual(approved.tagVariant, 'success');
     assert.strictEqual(rejected.label, 'Refund rejected');
-    assert.strictEqual(rejected.tagClass, 'tag-txn-failed');
+    assert.strictEqual(rejected.tagVariant, 'danger');
   });
 
   test('a refund row never shows a credit figure', async function (assert) {
@@ -65,7 +65,7 @@ module('Integration | Helper | billing-history-status', function (hooks) {
     );
     const unknown = await statusOf(this, { type: 'something_new' });
     assert.strictEqual(unknown.label, 'Failed');
-    assert.strictEqual(unknown.tagClass, 'tag-txn-failed');
+    assert.strictEqual(unknown.tagVariant, 'danger');
     assert.strictEqual(
       (await statusOf(this, { type: 'settled_without_charge' })).label,
       'No charge',

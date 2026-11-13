@@ -54,9 +54,7 @@ module('Integration | Component | whatsapp/pending-media', function (hooks) {
     assert.dom('[data-test-wa-pending-name]').doesNotExist();
     assert.dom('[data-test-wa-pending-size]').hasText('5 B');
     assert.dom('[data-test-wa-pending-caption]').hasText('Kitchen');
-    assert
-      .dom('[data-test-wa-pending-progress] [role="progressbar"]')
-      .hasAttribute('aria-valuenow', '45');
+    assert.dom('progress[data-test-wa-pending-progress]').hasProperty('value', 45);
     assert.dom('[data-test-wa-pending-uploading]').hasText('Uploading');
     assert.dom('[data-test-wa-pending-error]').doesNotExist();
     assert.dom('[data-test-wa-pending-retry]').doesNotExist();
