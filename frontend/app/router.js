@@ -50,6 +50,7 @@ Router.map(function () {
   this.route('signup');
   this.route('accept-invite');
   this.route('reset-password');
+  this.route('onboarding');
 
   this.route('dashboard');
   this.route('properties', function () {

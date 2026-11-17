@@ -13,12 +13,7 @@
           invite link.</p>
       </div>
 
-      <SignupForm
-        @regions={{this.model.regions}}
-        @grouped={{this.model.grouped}}
-        @countries={{this.model.countries}}
-        @marketerCode={{this.model.marketerCode}}
-      />
+      <SignupForm @marketerCode={{this.model.marketerCode}} />
 
       <div class="text-center">
         <p class="text-sm text-muted">

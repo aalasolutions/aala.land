@@ -8,38 +8,17 @@ export default class SignupFormComponent extends Component {
   @service router;
   @service googleAuth;
 
-  @tracked companyName = '';
-  @tracked companySlug = '';
   @tracked userName = '';
   @tracked email = '';
   @tracked password = '';
   @tracked confirmPassword = '';
-  @tracked selectedRegion = '';
   @tracked isLoading = false;
   @tracked isGoogleLoading = false;
   @tracked errorMessage = '';
   @tracked fieldErrors = {};
 
-  get regionOptions() {
-    return (this.args.grouped || []).flatMap((group) =>
-      (group.regions || []).map((r) => ({
-        value: r.code,
-        label: `${r.name} (${r.currency})`,
-        group: group.countryName,
-      })),
-    );
-  }
-
   validate() {
     const errors = {};
-    if (!this.companyName.trim()) {
-      errors.companyName = 'Enter a company name';
-    } else if (!this.companySlug.trim()) {
-      errors.companyName = 'Use letters or numbers in the company name';
-    }
-    if (!this.companySlug.trim())
-      errors.companySlug = 'Enter a company URL slug';
-    if (!this.selectedRegion) errors.region = 'Choose a region';
     if (!this.userName.trim()) errors.userName = 'Enter your name';
     if (!this.email.trim()) errors.email = 'Enter your email address';
     if (!this.password) {
@@ -62,20 +41,11 @@ export default class SignupFormComponent extends Component {
     this.fieldErrors = errors;
   }
 
-  get canSubmit() {
-    return Boolean(
-      this.companyName.trim() &&
-      this.companySlug.trim() &&
-      this.userName.trim() &&
-      this.email.trim() &&
-      this.password.length >= 8 &&
-      this.password === this.confirmPassword &&
-      this.selectedRegion,
-    );
-  }
-
-  get canGoogleSignup() {
-    return Boolean(this.companyName.trim() && this.selectedRegion);
+  @action
+  checkField(field) {
+    if (!this[field]) return;
+    const error = this.validate()[field];
+    if (error) this.fieldErrors = { ...this.fieldErrors, [field]: error };
   }
 
   @action
@@ -83,22 +53,6 @@ export default class SignupFormComponent extends Component {
     this[field] = value;
     this.errorMessage = '';
     this.dropFieldErrors(field);
-
-    if (field === 'companyName') {
-      this.companySlug = value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .substring(0, 100);
-    }
-  }
-
-  @action
-  selectRegion(code) {
-    this.selectedRegion = code;
-    this.errorMessage = '';
-    this.dropFieldErrors('region');
   }
 
   @action
@@ -119,9 +73,6 @@ export default class SignupFormComponent extends Component {
 
     try {
       await this.auth.register({
-        companyName: this.companyName.trim(),
-        companySlug: this.companySlug.trim(),
-        defaultRegionCode: this.selectedRegion,
         userName: this.userName.trim(),
         email: this.email.trim(),
         password: this.password,
@@ -129,7 +80,7 @@ export default class SignupFormComponent extends Component {
         marketerCode: this.args.marketerCode || undefined,
       });
 
-      this.router.transitionTo('dashboard');
+      this.router.transitionTo('onboarding');
     } catch (err) {
       this.errorMessage =
         err.message || 'Something went wrong. Please try again.';
@@ -156,36 +107,16 @@ export default class SignupFormComponent extends Component {
     }
   }
 
-  @action
-  showGoogleSignupRequirements() {
-    if (!this.companyName.trim() && !this.selectedRegion) {
-      this.errorMessage =
-        'Company name and region are required for Google signup';
-    } else if (!this.companyName.trim()) {
-      this.errorMessage = 'Company name is required for Google signup';
-    } else {
-      this.errorMessage = 'Please select a region for Google signup';
-    }
-  }
-
   async signupWithGoogle(idToken) {
-    if (!this.canGoogleSignup) {
-      this.errorMessage =
-        'Company name and region are required for Google signup';
-      return;
-    }
-
     this.isGoogleLoading = true;
     this.errorMessage = '';
 
     try {
       await this.auth.signupWithGoogle({
         idToken,
-        companyName: this.companyName.trim(),
-        regionCode: this.selectedRegion,
         marketerCode: this.args.marketerCode || undefined,
       });
-      this.router.transitionTo('dashboard');
+      this.router.transitionTo('onboarding');
     } catch (err) {
       this.errorMessage =
         err.message || 'Google signup failed. Please try again.';

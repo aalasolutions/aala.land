@@ -189,4 +189,75 @@ module('Unit | Service | session', function (hooks) {
     assert.strictEqual(localStorage.getItem('aala-session'), null);
     assert.strictEqual(localStorage.getItem('aala-impersonator-session'), null);
   });
+
+  test('needsOnboarding is true for a company with no name or no default region', function (assert) {
+    const service = this.owner.lookup('service:session');
+    const user = { id: 'u1', companyId: 'c1', role: 'company_admin' };
+
+    service.establish({
+      user,
+      regions: [],
+      defaultRegionCode: '',
+      companyName: '',
+    });
+    assert.true(service.needsOnboarding, 'brand new company');
+
+    service.establish({
+      user,
+      regions: [],
+      defaultRegionCode: '',
+      companyName: 'Acme',
+    });
+    assert.true(service.needsOnboarding, 'named, no region');
+
+    service.establish({
+      user,
+      regions: [],
+      defaultRegionCode: 'dubai',
+      companyName: '',
+    });
+    assert.true(service.needsOnboarding, 'region, no name');
+
+    service.establish({
+      user,
+      regions: [],
+      defaultRegionCode: 'dubai',
+      companyName: 'Acme',
+    });
+    assert.false(service.needsOnboarding, 'both set');
+  });
+
+  test('needsOnboarding is false without a company or a session', function (assert) {
+    const service = this.owner.lookup('service:session');
+    assert.false(service.needsOnboarding, 'no session');
+
+    service.establish({
+      user: { id: 'sa', companyId: null, role: 'super_admin' },
+      regions: [],
+      defaultRegionCode: '',
+      companyName: null,
+    });
+    assert.false(service.needsOnboarding, 'super admin');
+  });
+
+  test('hydrate stores companyName from the bootstrap bundle', function (assert) {
+    const service = this.owner.lookup('service:session');
+    const user = { id: 'u1', companyId: 'c1', role: 'company_admin' };
+    service.establish({
+      user,
+      regions: [],
+      defaultRegionCode: '',
+      companyName: '',
+    });
+
+    service.hydrate({
+      user,
+      regions: [],
+      defaultRegionCode: 'dubai',
+      companyName: 'Acme',
+    });
+
+    assert.strictEqual(service.data.authenticated.companyName, 'Acme');
+    assert.false(service.needsOnboarding);
+  });
 });

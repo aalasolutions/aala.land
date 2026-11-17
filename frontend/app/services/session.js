@@ -15,6 +15,7 @@ export default class SessionService extends Service {
       refreshToken: null,
       regions: [],
       defaultRegionCode: null,
+      companyName: null,
       subscriptionTier: null,
       lockState: null,
       whatsappConfigured: false,
@@ -34,6 +35,13 @@ export default class SessionService extends Service {
   // Strict: missing or false both mean not configured; only the server knows env validity.
   get whatsappConfigured() {
     return this.data.authenticated?.whatsappConfigured === true;
+  }
+
+  // A new company has an empty name and no default region until onboarding saves them.
+  get needsOnboarding() {
+    const authData = this.data.authenticated;
+    if (!this.isAuthenticated || !authData?.user?.companyId) return false;
+    return authData.companyName === '' || !authData.defaultRegionCode;
   }
 
   restoreFromStorage() {
@@ -82,6 +90,7 @@ export default class SessionService extends Service {
         refreshToken: authData.refreshToken,
         regions: authData.regions || [],
         defaultRegionCode: authData.defaultRegionCode || null,
+        companyName: authData.companyName ?? null,
         subscriptionTier: authData.subscriptionTier ?? null,
         lockState: authData.lockState ?? null,
         whatsappConfigured: authData.whatsappConfigured === true,
@@ -104,6 +113,7 @@ export default class SessionService extends Service {
         user: bundle.user,
         regions: bundle.regions || [],
         defaultRegionCode: bundle.defaultRegionCode || null,
+        companyName: bundle.companyName ?? null,
         subscriptionTier: bundle.subscriptionTier ?? null,
         lockState: bundle.lockState ?? null,
         whatsappConfigured: bundle.whatsappConfigured === true,
@@ -197,6 +207,7 @@ export default class SessionService extends Service {
         refreshToken: null,
         regions: [],
         defaultRegionCode: null,
+        companyName: null,
         subscriptionTier: null,
         whatsappConfigured: false,
       },

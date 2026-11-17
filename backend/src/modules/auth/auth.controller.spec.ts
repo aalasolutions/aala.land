@@ -148,19 +148,15 @@ describe('AuthController', () => {
   });
 
   describe('googleSignup', () => {
-    it('delegates Google signup with company name and region', async () => {
+    it('delegates Google signup with the token and marketer code', async () => {
       googleService.googleSignup.mockResolvedValue(mockLoginResponse as any);
 
       const result = await controller.googleSignup({
         idToken: 'google-id-token',
-        companyName: 'Acme Real Estate',
-        regionCode: 'dubai',
       });
 
       expect(googleService.googleSignup).toHaveBeenCalledWith(
         'google-id-token',
-        'Acme Real Estate',
-        'dubai',
         undefined,
       );
       expect(result).toEqual(mockLoginResponse);

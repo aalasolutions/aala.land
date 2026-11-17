@@ -1,14 +1,6 @@
-const CACHE_NAME = 'aala-land-v2';
+const CACHE_NAME = 'aala-land-v3';
 
-// Vite emits content-hashed asset names; they are cached on first fetch below
-const STATIC_ASSETS = ['/'];
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }),
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -44,30 +36,52 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets, network fallback
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache new static assets (CSS, JS, fonts, images)
-        if (
-          networkResponse.ok &&
-          (url.pathname.endsWith('.css') ||
-            url.pathname.endsWith('.js') ||
-            url.pathname.endsWith('.woff2') ||
-            url.pathname.endsWith('.woff') ||
-            url.pathname.endsWith('.png') ||
-            url.pathname.endsWith('.svg'))
-        ) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+  // Navigations are network-first; the cached shell is only an offline fallback
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse.ok) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/', responseClone));
+          }
+          return networkResponse;
+        })
+        .catch(() =>
+          caches.match('/').then(
+            (cached) =>
+              cached ||
+              new Response(
+                '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Offline</title><p style="font-family:system-ui,sans-serif;text-align:center;margin-top:20vh">You are offline. Check your connection and try again.</p>',
+                { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+              ),
+          ),
+        ),
+    );
+    return;
+  }
+
+  // Content-hashed build files never change, so they are cache-first
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
         }
-        return networkResponse;
-      });
-    }),
-  );
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse.ok) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        });
+      }),
+    );
+    return;
+  }
+
+  // Everything else goes straight to the network
+  event.respondWith(fetch(event.request));
 });

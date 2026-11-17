@@ -8,22 +8,11 @@ class MockRouterService extends Service {
   transitionTo() {}
 }
 
-const GROUPED = [
-  {
-    countryName: 'Saudi Arabia',
-    regions: [{ code: 'makkah', name: 'Makkah', currency: 'SAR' }],
-  },
-];
-
 async function fillEmailForm() {
-  await fillIn('[data-test-company-name]', 'Acme Realty');
   await fillIn('[data-test-user-name]', 'Jane Doe');
   await fillIn('[data-test-email-input]', 'jane@acme.test');
   await fillIn('[data-test-password-input]', 'Password123!');
   await fillIn('[data-test-confirm-password]', 'Password123!');
-  await click('[data-test-region-select] [data-test-wu-dropdown-trigger]');
-  // The menu is hosted on .wu-layer, outside the component subtree.
-  await click(document.querySelector('[data-test-wu-dropdown-item]'));
 }
 
 module('Integration | Component | signup-form', function (hooks) {
@@ -50,16 +39,29 @@ module('Integration | Component | signup-form', function (hooks) {
         }
       },
     );
-    this.set('grouped', GROUPED);
-
-    await render(
-      hbs`<SignupForm @grouped={{this.grouped}} @marketerCode="MKT-TEST" />`,
-    );
+    await render(hbs`<SignupForm @marketerCode="MKT-TEST" />`);
     await fillEmailForm();
     await click('[data-test-submit-button]');
 
     assert.strictEqual(payload.marketerCode, 'MKT-TEST');
     assert.strictEqual(payload.email, 'jane@acme.test');
+    assert.deepEqual(
+      Object.keys(payload).sort(),
+      ['email', 'marketerCode', 'password', 'userName'],
+      'no company or region fields',
+    );
+  });
+
+  test('asks only for name, email and password', async function (assert) {
+    this.owner.register('service:auth', class extends Service {});
+    await render(hbs`<SignupForm />`);
+
+    assert.dom('[data-test-company-name]').doesNotExist();
+    assert.dom('[data-test-company-slug]').doesNotExist();
+    assert.dom('[data-test-region-select]').doesNotExist();
+    assert.dom('[data-test-user-name]').exists();
+    assert.dom('[data-test-email-input]').exists();
+    assert.dom('[data-test-password-input]').exists();
   });
 
   test('email signup payload omits marketerCode when absent', async function (assert) {
@@ -72,9 +74,7 @@ module('Integration | Component | signup-form', function (hooks) {
         }
       },
     );
-    this.set('grouped', GROUPED);
-
-    await render(hbs`<SignupForm @grouped={{this.grouped}} />`);
+    await render(hbs`<SignupForm />`);
     await fillEmailForm();
     await click('[data-test-submit-button]');
 
@@ -106,21 +106,15 @@ module('Integration | Component | signup-form', function (hooks) {
         }
       },
     );
-    this.set('grouped', GROUPED);
-
-    await render(
-      hbs`<SignupForm @grouped={{this.grouped}} @marketerCode="MKT-TEST" />`,
-    );
-    // Google signup needs company name + region only
-    await fillIn('[data-test-company-name]', 'Acme Realty');
-    await click('[data-test-region-select] [data-test-wu-dropdown-trigger]');
-    await click(document.querySelector('[data-test-wu-dropdown-item]'));
-
+    await render(hbs`<SignupForm @marketerCode="MKT-TEST" />`);
+    // The Google button renders without any other field filled in.
     assert.ok(tokenCallback, 'google button rendered with a token callback');
     await tokenCallback('fake-id-token');
 
     assert.strictEqual(payload.marketerCode, 'MKT-TEST');
-    assert.strictEqual(payload.idToken, 'fake-id-token');
-    assert.strictEqual(payload.regionCode, 'makkah');
+    assert.deepEqual(payload, {
+      idToken: 'fake-id-token',
+      marketerCode: 'MKT-TEST',
+    });
   });
 });

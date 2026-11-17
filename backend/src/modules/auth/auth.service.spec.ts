@@ -186,6 +186,7 @@ describe('AuthService', () => {
       expect(result.user.id).toBe(mockUser.id);
       expect(result.user).not.toHaveProperty('password');
       expect(result.defaultRegionCode).toBe('dubai');
+      expect(result.companyName).toBe('Test Company');
       // mockUser is an ADMIN assigned one region, so the bootstrap offers that
       // one, not both of the company's.
       expect(result.regions).toHaveLength(1);
@@ -214,6 +215,79 @@ describe('AuthService', () => {
 
       expect(result.regions).toEqual([]);
       expect(result.defaultRegionCode).toBe('dubai');
+    });
+  });
+
+  describe('register', () => {
+    const dto = {
+      userName: 'Test User',
+      email: 'user@example.com',
+      password: 'Password123!',
+    };
+    let companyRepo: { create: jest.Mock; save: jest.Mock };
+    let userRepo: { create: jest.Mock; save: jest.Mock };
+    let systemEmail: jest.Mocked<SystemEmailService>;
+
+    beforeEach(() => {
+      companyRepo = {
+        create: jest.fn((v) => v),
+        save: jest.fn((v) => Promise.resolve({ ...v, id: 'company-new' })),
+      };
+      userRepo = {
+        create: jest.fn((v) => v),
+        save: jest.fn((v) => Promise.resolve({ ...v, id: 'user-new' })),
+      };
+      const manager = {
+        getRepository: jest.fn((name: string) =>
+          name === 'Company' ? companyRepo : userRepo,
+        ),
+      };
+      const dataSource = (service as unknown as { dataSource: DataSource })
+        .dataSource as unknown as { transaction: jest.Mock };
+      dataSource.transaction.mockImplementation((cb) => cb(manager));
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
+      usersService.findByEmail.mockResolvedValue(null);
+      systemEmail = (service as unknown as { systemEmail: unknown })
+        .systemEmail as jest.Mocked<SystemEmailService>;
+    });
+
+    it('creates an unnamed company with no region and a generated slug', async () => {
+      const result = await service.register(dto);
+
+      const companyArg = companyRepo.create.mock.calls[0][0];
+      expect(companyArg.name).toBe('');
+      expect(companyArg.slug).toMatch(/^company-/);
+      expect(companyArg.defaultRegionCode).toBeNull();
+      expect(companyArg.activeRegions).toEqual([]);
+      expect(result.regions).toEqual([]);
+      expect(result.defaultRegionCode).toBe('');
+      expect(result.companyName).toBe('');
+      expect(result.user.role).toBe('company_admin');
+    });
+
+    it('sends the welcome email with the user name only', async () => {
+      await service.register(dto);
+
+      expect(systemEmail.sendWelcome).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        name: 'Test User',
+      });
+    });
+
+    it('does not fail signup when the welcome email fails', async () => {
+      systemEmail.sendWelcome.mockRejectedValue(new Error('smtp down'));
+
+      await expect(service.register(dto)).resolves.toHaveProperty(
+        'accessToken',
+      );
+    });
+
+    it('rejects an email that is already registered', async () => {
+      usersService.findByEmail.mockResolvedValue(mockUser as any);
+
+      await expect(service.register(dto)).rejects.toThrow(
+        'Email already registered',
+      );
     });
   });
 
@@ -498,6 +572,7 @@ describe('AuthService', () => {
       expect(companiesService.findOne).not.toHaveBeenCalled();
       expect(result.regions).toEqual([]);
       expect(result.defaultRegionCode).toBe('');
+      expect(result.companyName).toBeNull();
       expect(result.subscriptionTier).toBeNull();
       expect(result.lockState).toBeNull();
       expect(result.whatsappConfigured).toBe(false);

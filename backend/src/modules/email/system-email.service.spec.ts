@@ -54,11 +54,12 @@ describe('SystemEmailService', () => {
 
   describe('account emails', () => {
     it('sends welcome with both html and text', async () => {
-      await service.sendWelcome({ email: 'a@b.com', name: 'Jane' }, 'Acme');
+      await service.sendWelcome({ email: 'a@b.com', name: 'Jane' });
       const arg = mail.sendMail.mock.calls[0][0];
       expect(arg.to).toBe('a@b.com');
-      expect(arg.html).toContain('Welcome');
-      expect(arg.html).toContain('Acme');
+      expect(arg.subject).toBe('Welcome to AALA.LAND, Jane');
+      expect(arg.html).toContain('Your workspace is ready.');
+      expect(arg.text).toContain('Your workspace is ready.');
       expect(arg.text).toContain('Jane');
       expect(arg.html).toContain('https://app.aala.land');
     });
@@ -88,10 +89,10 @@ describe('SystemEmailService', () => {
     });
 
     it('escapes HTML in interpolated values', async () => {
-      await service.sendWelcome(
-        { email: 'a@b.com', name: '<script>x</script>' },
-        'Acme',
-      );
+      await service.sendWelcome({
+        email: 'a@b.com',
+        name: '<script>x</script>',
+      });
       const arg = mail.sendMail.mock.calls[0][0];
       expect(arg.html).not.toContain('<script>x</script>');
       expect(arg.html).toContain('&lt;script&gt;');

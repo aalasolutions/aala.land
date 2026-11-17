@@ -21,7 +21,9 @@ describe('AuthGoogleService', () => {
       | 'linkGoogleAccount'
     >
   >;
-  let authService: jest.Mocked<Pick<AuthService, 'login'>>;
+  let authService: jest.Mocked<
+    Pick<AuthService, 'login' | 'sendWelcomeEmail'>
+  >;
   let companiesService: jest.Mocked<
     Pick<CompaniesService, 'createGoogleCompanyAdmin'>
   >;
@@ -54,6 +56,7 @@ describe('AuthGoogleService', () => {
     };
     authService = {
       login: jest.fn().mockResolvedValue({ accessToken: 'token' }),
+      sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
     };
     companiesService = {
       createGoogleCompanyAdmin: jest.fn(),
@@ -100,41 +103,38 @@ describe('AuthGoogleService', () => {
     expect(authService.login).not.toHaveBeenCalled();
   });
 
-  it('propagates signup slug conflicts from company creation', async () => {
-    usersService.findByEmailOrGoogleId.mockResolvedValue(null);
-    companiesService.createGoogleCompanyAdmin.mockRejectedValue(
-      new ConflictException(
-        'This company name is already taken. Please choose a different one.',
-      ),
-    );
-
-    await expect(
-      service.googleSignup('id-token', 'Acme Real Estate', 'dubai'),
-    ).rejects.toThrow(ConflictException);
-    expect(companiesService.createGoogleCompanyAdmin).toHaveBeenCalledWith({
-      companyName: 'Acme Real Estate',
-      slug: 'acme-real-estate',
-      regionCode: 'dubai',
-      googleId: 'google-123',
-      email: 'owner@example.com',
-      name: 'Owner User',
-    });
-  });
-
-  it('truncates generated company slugs to the database limit', async () => {
+  it('creates the company admin from the Google identity only', async () => {
     usersService.findByEmailOrGoogleId.mockResolvedValue(null);
     companiesService.createGoogleCompanyAdmin.mockResolvedValue(user as any);
 
-    await service.googleSignup(
-      'id-token',
-      `${'Long Company Name '.repeat(10)}Dubai`,
-      'dubai',
-    );
+    await service.googleSignup('id-token', 'REF01');
 
-    const createArg =
-      companiesService.createGoogleCompanyAdmin.mock.calls[0][0];
-    expect(createArg.slug).toHaveLength(100);
-    expect(createArg.slug).not.toMatch(/^-|-$/);
+    expect(companiesService.createGoogleCompanyAdmin).toHaveBeenCalledWith({
+      googleId: 'google-123',
+      email: 'owner@example.com',
+      name: 'Owner User',
+      marketerCode: 'REF01',
+    });
+    expect(authService.login).toHaveBeenCalledWith(user);
+  });
+
+  it('sends the welcome email after a Google signup', async () => {
+    usersService.findByEmailOrGoogleId.mockResolvedValue(null);
+    companiesService.createGoogleCompanyAdmin.mockResolvedValue(user as any);
+
+    await service.googleSignup('id-token');
+
+    expect(authService.sendWelcomeEmail).toHaveBeenCalledWith(user);
+  });
+
+  it('rejects Google signup when the account already exists', async () => {
+    usersService.findByEmailOrGoogleId.mockResolvedValue(user as any);
+
+    await expect(service.googleSignup('id-token')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(companiesService.createGoogleCompanyAdmin).not.toHaveBeenCalled();
+    expect(authService.sendWelcomeEmail).not.toHaveBeenCalled();
   });
 
   it('rejects linking when Google email does not match the user email', async () => {
