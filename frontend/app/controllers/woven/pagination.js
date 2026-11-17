@@ -6,7 +6,7 @@ export default class WovenPaginationController extends Controller {
   @tracked page = 1;
   @tracked limit = 50;
   @tracked smallPage = 2;
-  @tracked compactPage = 3;
+  @tracked longPage = 3;
   @tracked stepPage = 1;
 
   total = 430;
@@ -29,8 +29,8 @@ export default class WovenPaginationController extends Controller {
   }
 
   @action
-  setCompactPage(page) {
-    this.compactPage = page;
+  setLongPage(page) {
+    this.longPage = page;
   }
 
   @action
@@ -67,7 +67,7 @@ export default class WovenPaginationController extends Controller {
 <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="sm" />
 <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} />
 <Woven::Pagination @page={{this.page}} @limit={{this.limit}} @total={{this.total}} @onPageChange={{this.setPage}} @onLimitChange={{this.setLimit}} @size="lg" />`,
-    compact: `<Woven::Pagination @page={{this.compactPage}} @perPage={{10}} @total={{240}} @onPageChange={{this.setCompactPage}} @compact={{true}} />`,
+    longRange: `<Woven::Pagination @page={{this.longPage}} @perPage={{10}} @total={{240}} @onPageChange={{this.setLongPage}} />`,
     steps: `<Woven::Pagination
   @page={{this.stepPage}}
   @perPage={{10}}
@@ -84,10 +84,8 @@ export default class WovenPaginationController extends Controller {
     { name: '@perPage', type: 'number', default: '50', description: 'Rows per page. @limit is accepted as an alias and is what the app\'s paginated controllers pass.' },
     { name: '@total', type: 'number', default: '0', description: 'Total row count; drives the page list and the status text.' },
     { name: '@perPageOptions', type: 'array', default: '[50, 100, 250]', description: 'Choices in the per-page select.' },
-    { name: '@selectId', type: 'string', default: '', description: 'Id for the per-page select; generated per instance when omitted.' },
-    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Page button and text step. Omit for the default size.' },
+    { name: '@size', type: '"xs" | "sm" | "lg"', default: '', description: 'Kit sm or lg modifier on the nav and the page size select; xs renders sm. Omit for the kit default size.' },
     { name: '@sm', type: 'boolean', default: 'false', description: 'Older spelling of @size="sm"; @size wins when both are set.' },
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter spacing.' },
   ];
 
   callbackRows = [

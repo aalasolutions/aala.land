@@ -14,17 +14,17 @@
       {{#if @model.workOrder}}
         <div class="flex gap-1 wrap">
           <Woven::Tag
-            class="tag-wo-{{lowercase @model.workOrder.status}}"
+            @variant={{tag-variant "wo" @model.workOrder.status}}
             @text={{@model.workOrder.status}}
             data-test-work-order-status
           />
           <Woven::Tag
-            class="tag-priority-{{lowercase @model.workOrder.priority}}"
+            @variant={{tag-variant "priority" @model.workOrder.priority}}
             @text={{@model.workOrder.priority}}
             data-test-work-order-priority
           />
           <Woven::Tag
-            class="tag-trade-{{lowercase @model.workOrder.category}}"
+            @variant={{tag-variant "trade" @model.workOrder.category}}
             @text={{@model.workOrder.category}}
             data-test-work-order-category
           />
@@ -34,7 +34,7 @@
     <:actions>
       {{#if (and @model.workOrder this.canEdit)}}
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @icon="pencil-simple"
           @text="Edit"
           data-test-edit-work-order
@@ -68,7 +68,7 @@
             <h2 class="text-md font-bold">Documents</h2>
             {{#if panel.canUpload}}
               <Woven::Button
-                @variant="primary"
+                @variant="brand"
                 @size="sm"
                 @icon="upload-simple"
                 @text="Upload"

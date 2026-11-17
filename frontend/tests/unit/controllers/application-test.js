@@ -64,12 +64,12 @@ module('Unit | Controller | application', function (hooks) {
     );
   });
 
-  test('whatsappTooltip falls back to the collapsed-rail label once configured', function (assert) {
+  test('whatsappTooltip is empty once configured: the collapsed rail shows the label itself', function (assert) {
     const controller = makeController(this);
     controller.session.whatsappConfigured = true;
 
     controller.uiSettings.sidebarCollapsed = true;
-    assert.strictEqual(controller.whatsappTooltip, 'WhatsApp');
+    assert.strictEqual(controller.whatsappTooltip, null);
 
     controller.uiSettings.sidebarCollapsed = false;
     assert.strictEqual(controller.whatsappTooltip, null);
@@ -410,6 +410,103 @@ module('Unit | Controller | application', function (hooks) {
       assert.deepEqual(controller.router.transitions, [
         ['contacts.index', { queryParams: { tab: 'requests' } }],
       ]);
+    });
+  });
+
+  module('sidebar helpers', function () {
+    test('isNavCurrent asks the router whether the route is active', function (assert) {
+      const controller = makeController(this);
+      const asked = [];
+      controller.router.isActive = (route) => {
+        asked.push(route);
+        return route === 'leads';
+      };
+
+      assert.true(controller.isNavCurrent('leads'));
+      assert.false(controller.isNavCurrent('contacts'));
+      assert.deepEqual(asked, ['leads', 'contacts']);
+    });
+
+    test('isGroupOpen is true for the expanded group and for the current route group', function (assert) {
+      const controller = makeController(this);
+      controller.router.currentRouteName = 'cheques';
+      controller.expandedGroup = null;
+
+      assert.true(controller.isGroupOpen('finance'), 'route group');
+      assert.false(controller.isGroupOpen('crm'));
+
+      controller.expandedGroup = 'crm';
+      assert.true(controller.isGroupOpen('crm'), 'expanded group');
+      assert.true(controller.isGroupOpen('finance'), 'route group stays open');
+    });
+  });
+
+  module('topbar menus', function (nested) {
+    nested.beforeEach(function () {
+      const ctx = this;
+      this.reads = [];
+      this.respond = () => ({});
+      this.owner.register(
+        'service:auth',
+        class extends Service {
+          currentUser = { id: 'user-1', companyId: 'company-1', role: 'admin' };
+          async fetchJson(path) {
+            ctx.reads.push(path);
+            return ctx.respond(path);
+          }
+        },
+      );
+    });
+
+    test('loadNotifications reads the first page into the menu', async function (assert) {
+      const controller = makeController(this);
+      this.respond = () => ({ data: { data: [{ id: 'n-1' }] } });
+
+      await controller.loadNotifications();
+
+      assert.deepEqual(this.reads, ['/notifications?page=1&limit=10']);
+      assert.deepEqual(controller.notifications, [{ id: 'n-1' }]);
+    });
+
+    test('loadNotifications empties the menu when the request fails', async function (assert) {
+      const controller = makeController(this);
+      controller.notifications = [{ id: 'stale' }];
+      this.respond = () => {
+        throw new Error('offline');
+      };
+      const originalError = console.error;
+      console.error = () => {};
+      try {
+        await controller.loadNotifications();
+      } finally {
+        console.error = originalError;
+      }
+
+      assert.deepEqual(controller.notifications, []);
+    });
+
+    test('loadRegionMenu loads unit counts once per company and user', async function (assert) {
+      const controller = makeController(this);
+      this.respond = () => ({ data: { dxb: 2 } });
+
+      await controller.loadRegionUnitCounts();
+      assert.deepEqual(controller.regionUnitCounts, { dxb: 2 });
+      this.reads.length = 0;
+
+      controller.loadRegionMenu();
+      assert.deepEqual(this.reads, [], 'same context does not reload');
+      assert.deepEqual(controller.regionUnitCounts, { dxb: 2 });
+    });
+
+    test('loadRegionMenu clears old counts before loading for a new context', function (assert) {
+      const controller = makeController(this);
+      controller.regionUnitCounts = { dxb: 9 };
+      controller.regionUnitCountsKey = 'other-company:user-1';
+
+      controller.loadRegionMenu();
+
+      assert.strictEqual(controller.regionUnitCounts, null);
+      assert.deepEqual(this.reads, ['/properties/units/count-by-region']);
     });
   });
 

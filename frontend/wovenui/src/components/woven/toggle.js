@@ -1,32 +1,11 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
+import { SIZE_MAP } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['xs', 'sm', 'lg'];
-
-export default class NuToggleComponent extends Component {
+export default class WovenToggleComponent extends Component {
   get classes() {
-    const parts = ['wu-toggle'];
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.hasText) {
-      parts.push('m-with-text');
-    }
-    if (this.args.disabled) {
-      parts.push('is-disabled');
-    }
-    return parts.join(' ');
-  }
-
-  get inputClasses() {
-    return ['wu-toggle__input', statusClass(this.status)]
-      .filter(Boolean)
-      .join(' ');
+    return ['wu-toggle', SIZE_MAP[this.args.size]].filter(Boolean).join(' ');
   }
 
   get status() {
@@ -35,10 +14,6 @@ export default class NuToggleComponent extends Component {
 
   get isInvalid() {
     return this.status === 'error';
-  }
-
-  get hasText() {
-    return Boolean(this.args.activeText || this.args.inactiveText);
   }
 
   @action

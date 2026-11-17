@@ -100,12 +100,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.close}}
       data-test-cancel-template-form
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="email-template-form"
       @loading={{this.isSaving}}

@@ -7,7 +7,10 @@
     <:header>
       <Woven::Toolbar class="flex-wrap">
         <Woven::Field>
-          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <label
+            id="audit-filter-action-label"
+            class="wu-field-label visually-hidden"
+          >Action</label>
           <Woven::Dropdown
             @searchable={{true}}
             @align="start"
@@ -19,7 +22,10 @@
         </Woven::Field>
 
         <Woven::Field>
-          <span class="wu-field__label-spacer" aria-hidden="true"></span>
+          <label
+            id="audit-filter-entity-label"
+            class="wu-field-label visually-hidden"
+          >Entity</label>
           <Woven::Dropdown
             @searchable={{true}}
             @align="start"
@@ -32,7 +38,8 @@
 
         {{#if (or this.filterAction this.filterEntityType)}}
           <Woven::Button
-            @variant="secondary"
+            data-test-audit-clear-filters
+            @variant="subtle"
             @text="Clear Filters"
             {{on "click" this.clearFilters}}
           />
@@ -64,7 +71,7 @@
                   {{on "click" (fn this.toggleExpand log.id)}}
                 >
                   <Woven::Tag
-                    class="tag-audit-{{lowercase log.action}}"
+                    @variant={{tag-variant "audit" log.action}}
                     @text={{log.action}}
                   />
                   <span class="audit-entity">{{log.entityType}}</span>
@@ -90,7 +97,7 @@
                     </Woven::InfoRow>
                     {{#if log.oldValue}}
                       <div class="audit-detail-section">
-                        <span class="wu-info-row__label">Old Value:</span>
+                        <span class="wu-info-row-label">Old Value:</span>
                         <div class="wu-code-block">
                           <pre class="wu-code-block__content">{{this.formatJson
                               log.oldValue
@@ -100,7 +107,7 @@
                     {{/if}}
                     {{#if log.newValue}}
                       <div class="audit-detail-section">
-                        <span class="wu-info-row__label">New Value:</span>
+                        <span class="wu-info-row-label">New Value:</span>
                         <div class="wu-code-block">
                           <pre class="wu-code-block__content">{{this.formatJson
                               log.newValue
@@ -142,7 +149,8 @@
     </:body>
     <:footer>
       <Woven::Button
-        @variant="secondary"
+        data-test-purge-cancel
+        @variant="subtle"
         @text="Cancel"
         {{on "click" this.closePurge}}
       />

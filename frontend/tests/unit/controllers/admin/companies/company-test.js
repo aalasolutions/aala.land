@@ -156,4 +156,17 @@ module('Unit | Controller | admin/companies/company', function (hooks) {
     assert.true(what['e-2'].includes('12.00'));
     assert.strictEqual(what['e-3'], 'Downgrade request dropped');
   });
+  test('toggleDealLifetime takes the checked boolean and clears the end date', function (assert) {
+    const controller = this.owner.lookup('controller:admin/companies/company');
+    controller.dealUntil = '2027-01-01';
+
+    controller.toggleDealLifetime(true);
+    assert.true(controller.dealLifetime);
+    assert.strictEqual(controller.dealUntil, '');
+
+    controller.dealUntil = '2027-02-01';
+    controller.toggleDealLifetime(false);
+    assert.false(controller.dealLifetime);
+    assert.strictEqual(controller.dealUntil, '2027-02-01', 'unchecking keeps the date');
+  });
 });

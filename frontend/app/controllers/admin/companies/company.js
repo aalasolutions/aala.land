@@ -143,7 +143,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 150,
+      width: 90,
       isSortable: false,
       isResizable: false,
     },
@@ -229,11 +229,11 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   get statusView() {
-    if (this.isLocked) return { text: 'LOCKED', cls: 'tag-account-locked' };
-    if (this.isLifted) return { text: 'lifted', cls: 'tag-account-lifted' };
+    if (this.isLocked) return { text: 'LOCKED', variant: 'danger' };
+    if (this.isLifted) return { text: 'lifted', variant: 'warning' };
     if (this.deal && !this.deal.expired)
-      return { text: 'on a deal', cls: 'tag-account-on_deal' };
-    return { text: 'active', cls: 'tag-account-active' };
+      return { text: 'on a deal', variant: 'warning' };
+    return { text: 'active', variant: 'success' };
   }
 
   get dealPriceLabel() {
@@ -358,8 +358,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   @action
-  toggleDealLifetime(event) {
-    this.dealLifetime = event.target.checked;
+  toggleDealLifetime(checked) {
+    this.dealLifetime = checked;
     if (this.dealLifetime) this.dealUntil = '';
     this.dealErrors = withoutKeys(this.dealErrors, 'dealUntil');
   }

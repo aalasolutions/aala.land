@@ -1,7 +1,22 @@
-import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { guidFor } from '@ember/object/internals';
+import WovenDialogBaseComponent from './-dialog-base';
 
-export default class NuConfirmModalComponent extends Component {
+export default class WovenConfirmModalComponent extends WovenDialogBaseComponent {
+  titleId = `wu-confirm-title-${guidFor(this)}`;
+  messageId = `wu-confirm-message-${guidFor(this)}`;
+
+  get classes() {
+    const parts = ['wu-modal', 'wu-confirm-modal'];
+    if (this.confirmVariant === 'danger') {
+      parts.push('danger');
+    }
+    if (this.animated) {
+      parts.push('animated');
+    }
+    return parts.join(' ');
+  }
+
   get confirmText() {
     return this.args.confirmText ?? 'Confirm';
   }
@@ -18,9 +33,8 @@ export default class NuConfirmModalComponent extends Component {
     return this.args.showCancel !== false;
   }
 
-  // Confirming is not deleting, so this defaults to primary and `danger` is opt-in.
   get confirmVariant() {
-    return this.args.confirmVariant ?? 'primary';
+    return this.args.confirmVariant ?? 'brand';
   }
 
   get isConfirming() {
@@ -28,12 +42,12 @@ export default class NuConfirmModalComponent extends Component {
   }
 
   // Dismissing mid-confirm would resolve the caller's request against a gone dialog.
-  get allowDismiss() {
-    return !this.isConfirming;
+  get allowEsc() {
+    return !this.isConfirming && this.args.closeOnEsc !== false;
   }
 
-  get showClose() {
-    return this.args.showClose !== false && this.allowDismiss;
+  get allowBackdrop() {
+    return !this.isConfirming && this.closeOnBackdrop;
   }
 
   @action

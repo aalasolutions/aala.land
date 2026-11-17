@@ -5,15 +5,15 @@ import { isDestroyed, registerDestructor } from '@ember/destroyable';
 import { guidFor } from '@ember/object/internals';
 import { service } from '@ember/service';
 import { cancelTask, runTask } from 'ember-lifeline';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
+import { SIZE_MAP } from './-constants';
 
-const PLACEMENTS = ['start', 'end', 'up'];
 const ALIGNMENTS = ['start', 'center', 'end'];
 
-const CREATE_VALUE = '__nu_dropdown_create__';
+const CREATE_VALUE = '__wu_dropdown_create__';
 const TRIGGER_FOCUSABLE = 'input, button, [tabindex]';
 
-export default class NuDropdownComponent extends Component {
+export default class WovenDropdownComponent extends Component {
   @service layer;
 
   menuId = `wu-menu-${guidFor(this)}`;
@@ -29,10 +29,16 @@ export default class NuDropdownComponent extends Component {
   rootElement = null;
   menuElement = null;
   clickOutsideHandler = null;
+  escapeHandler = null;
   searchTimer = null;
   searchSeq = 0;
   // The first page from @searchOnOpen is fetched once per instance; typed terms always hit @onSearch.
   browseCache = null;
+
+  // Inside an open dialog the menu must render in that dialog's layer, or it is inert.
+  get layerElement() {
+    return this.layer.elementFor(this.rootElement);
+  }
 
   // The menu lives on .wu-layer; these map the kit's placement args to the anchor.
   get anchorPlacement() {
@@ -65,29 +71,34 @@ export default class NuDropdownComponent extends Component {
         this.close();
       }
     };
+    // Escape closes only the menu wherever focus is, before a dialog's cancel can see it.
+    this.escapeHandler = (event) => {
+      if (this.isOpen && event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        this.rootElement?.querySelector(TRIGGER_FOCUSABLE)?.focus();
+        this.close();
+      }
+    };
     document.addEventListener('click', this.clickOutsideHandler, true);
+    document.addEventListener('keydown', this.escapeHandler, true);
     registerDestructor(this, () => {
       document.removeEventListener('click', this.clickOutsideHandler, true);
+      document.removeEventListener('keydown', this.escapeHandler, true);
       this.clickOutsideHandler = null;
+      this.escapeHandler = null;
     });
   }
 
-  get classes() {
-    const parts = ['wu-dropdown'];
-    if (PLACEMENTS.includes(this.args.placement)) {
-      parts.push(`m-${this.args.placement}`);
-    }
-    if (ALIGNMENTS.includes(this.args.align)) {
-      parts.push(`m-align-${this.args.align}`);
-    }
-    // Independent of the trigger: a menu can centre options while a select keeps them at start.
-    if (ALIGNMENTS.includes(this.args.optionsAlign)) {
-      parts.push(`m-options-${this.args.optionsAlign}`);
-    }
-    if (this.isOpen) {
-      parts.push('is-open');
-    }
-    return parts.join(' ');
+  get align() {
+    return ALIGNMENTS.includes(this.args.align) ? this.args.align : null;
+  }
+
+  // Independent of the trigger: a menu can center options while a select keeps them at start.
+  get optionsAlign() {
+    return ALIGNMENTS.includes(this.args.optionsAlign)
+      ? this.args.optionsAlign
+      : null;
   }
 
   // `@status` (`error | warning | success`, `@invalid`/`@valid` aliases) lands on
@@ -96,19 +107,29 @@ export default class NuDropdownComponent extends Component {
     return resolveStatus(this.args);
   }
 
-  get triggerStatusClass() {
-    return statusClass(this.status);
+  get triggerClasses() {
+    const size = SIZE_MAP[this.args.size];
+    return size ? `wu-select ${size}` : 'wu-select';
   }
 
-  get menuClasses() {
-    const parts = ['wu-menu'];
-    if (ALIGNMENTS.includes(this.args.optionsAlign)) {
-      parts.push(`m-options-${this.args.optionsAlign}`);
+  get emptyOnly() {
+    return !this.hasResults && !this.showSearch;
+  }
+
+  optionId(index) {
+    return `${this.menuId}-${index}`;
+  }
+
+  // The listbox id while it is rendered, so aria-controls never points at a missing element.
+  get listboxId() {
+    return this.isOpen && this.hasResults ? this.menuId : null;
+  }
+
+  get activeDescendant() {
+    if (!this.isOpen || this.highlightedIndex < 0) {
+      return null;
     }
-    if (this.isOpen) {
-      parts.push('is-open');
-    }
-    return parts.join(' ');
+    return this.optionId(this.highlightedIndex);
   }
 
   get optionSource() {
@@ -228,33 +249,40 @@ export default class NuDropdownComponent extends Component {
     return row ? [row, ...this.matchedOptions] : this.matchedOptions;
   }
 
+  row(option, index) {
+    return {
+      option,
+      index,
+      id: this.optionId(index),
+      selected: option.value === this.currentValue,
+      highlighted: index === this.highlightedIndex,
+    };
+  }
+
   // Separators only make sense in the unfiltered, ungrouped list order.
-  @cached
-  get flatRows() {
+  get keepsSeparators() {
     if (this.args.remote || this.args.allowCreate || this.args.filterable) {
-      return null;
+      return false;
     }
-    if (this.searchText.trim() || this.normalizedOptions.some((o) => o.group)) {
-      return null;
-    }
-    let index = -1;
-    return this.normalizedOptions.map((option) => {
-      if (option.separator) {
-        return { separator: true };
-      }
-      index += 1;
-      return {
-        option,
-        index,
-        selected: option.value === this.currentValue,
-        highlighted: index === this.highlightedIndex,
-      };
-    });
+    return (
+      !this.searchText.trim() && !this.normalizedOptions.some((o) => o.group)
+    );
   }
 
   // Flat index is assigned here so keyboard nav and rendering agree.
   @cached
-  get groupedOptions() {
+  get sections() {
+    if (this.keepsSeparators) {
+      let index = -1;
+      const rows = this.normalizedOptions.map((option) => {
+        if (option.separator) {
+          return { separator: true };
+        }
+        index += 1;
+        return this.row(option, index);
+      });
+      return [{ group: null, rows }];
+    }
     const groups = [];
     let current = null;
     this.filteredOptions.forEach((option, index) => {
@@ -263,12 +291,7 @@ export default class NuDropdownComponent extends Component {
         current = { group: name, rows: [] };
         groups.push(current);
       }
-      current.rows.push({
-        option,
-        index,
-        selected: option.value === this.currentValue,
-        highlighted: index === this.highlightedIndex,
-      });
+      current.rows.push(this.row(option, index));
     });
     return groups;
   }
@@ -342,11 +365,23 @@ export default class NuDropdownComponent extends Component {
   @action
   registerMenu(element) {
     this.menuElement = element;
+    // Shown before the anchor measures it; kit open styles key on :popover-open.
+    if (element.hasAttribute('popover')) element.showPopover?.();
   }
 
   @action
-  forgetMenu() {
-    this.menuElement = null;
+  forgetMenu(element) {
+    if (this.menuElement === element) {
+      this.menuElement = null;
+    }
+  }
+
+  // Options are not focusable; a press on one must not move focus off the trigger or search box.
+  @action
+  keepFocus(event) {
+    if (!event.target.closest('input')) {
+      event.preventDefault();
+    }
   }
 
   // Focus that was inside the hosted menu goes back to the trigger.
@@ -370,6 +405,7 @@ export default class NuDropdownComponent extends Component {
     this.highlightedIndex = -1;
     this.focusSearch();
     this.loadOnOpen();
+    this.args.onOpen?.();
   }
 
   loadOnOpen() {
@@ -382,7 +418,7 @@ export default class NuDropdownComponent extends Component {
     runTask(
       this,
       () => {
-        this.menuElement?.querySelector('.wu-menu__search input')?.focus();
+        this.menuElement?.querySelector('.wu-dropdown-search input')?.focus();
       },
       0,
     );
@@ -454,7 +490,7 @@ export default class NuDropdownComponent extends Component {
     }
   }
 
-  // NuInput yields (value, event), not a raw DOM event.
+  // Woven::Input yields (value, event), not a raw DOM event.
   @action
   updateSearch(value) {
     this.searchText = value ?? '';
@@ -547,6 +583,11 @@ export default class NuDropdownComponent extends Component {
       return;
     }
 
+    if (this.menuElement?.hasAttribute('data-wu-menu-block')) {
+      this.handleMenuBlockKeydown(event);
+      return;
+    }
+
     // A native button also fires click on Enter/Space, which would close then reopen the menu.
     if (['Enter', ' ', 'Spacebar'].includes(event.key)) {
       event.stopPropagation();
@@ -575,11 +616,39 @@ export default class NuDropdownComponent extends Component {
           this.select(this.filteredOptions[this.highlightedIndex]);
         }
         break;
-      case 'Escape':
-        event.preventDefault();
-        // The menu is the innermost layer; a drawer underneath must stay open.
-        event.stopPropagation();
+      case 'Tab':
         this.close();
+        break;
+    }
+  }
+
+  // A pick in a yielded <:menu> closes it on bubbling, after the item's own click handlers have run.
+  @action
+  onMenuBlockClick(event) {
+    if (
+      this.menuElement?.hasAttribute('data-wu-menu-block') &&
+      event.target.closest('[role^="menuitem"]')
+    ) {
+      this.close();
+    }
+  }
+
+  // A yielded <:menu> owns its items: arrows move focus between them, Enter and Space stay native.
+  handleMenuBlockKeydown(event) {
+    const items = [
+      ...this.menuElement.querySelectorAll(
+        '[role^="menuitem"]:not([disabled])',
+      ),
+    ];
+    const index = items.indexOf(document.activeElement);
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        items[(index + 1) % items.length]?.focus();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        items[index <= 0 ? items.length - 1 : index - 1]?.focus();
         break;
       case 'Tab':
         this.close();
@@ -587,13 +656,22 @@ export default class NuDropdownComponent extends Component {
     }
   }
 
+  // An action menu moves focus onto the item; a listbox keeps focus and only scrolls.
   scrollToHighlighted() {
     runTask(
       this,
       () => {
-        this.menuElement
-          ?.querySelector('.wu-menu__item.is-highlighted')
-          ?.scrollIntoView({ block: 'nearest' });
+        const item = document.getElementById(
+          this.optionId(this.highlightedIndex),
+        );
+        if (!item) {
+          return;
+        }
+        if (this.menuElement?.getAttribute('role') === 'menu') {
+          item.focus();
+        } else {
+          item.scrollIntoView({ block: 'nearest' });
+        }
       },
       0,
     );

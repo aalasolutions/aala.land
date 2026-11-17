@@ -1,21 +1,19 @@
 import Component from '@glimmer/component';
+import { SIZE_MAP } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
+// Only the change line takes a role in the kit; row and contentBleed have no kit equivalent.
+const DELTA_ROLES = ['success', 'danger'];
 
-export default class NuStatComponent extends Component {
+export default class WovenStatComponent extends Component {
   get classes() {
-    const parts = ['wu-stat'];
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.args.row) {
-      parts.push('m-row');
-    }
-    return parts.join(' ');
+    const size = SIZE_MAP[this.args.size];
+    return size ? `wu-stat ${size}` : 'wu-stat';
+  }
+
+  get deltaClasses() {
+    return DELTA_ROLES.includes(this.args.variant)
+      ? `wu-stat-delta ${this.args.variant}`
+      : 'wu-stat-delta';
   }
 
   get linkModels() {

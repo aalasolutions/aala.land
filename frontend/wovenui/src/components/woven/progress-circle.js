@@ -1,20 +1,20 @@
 import Component from '@glimmer/component';
 import { htmlSafe } from '@ember/template';
+import { SIZE_MAP } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
-const VIEWBOX = 100;
-const CENTER = 50;
+// Ring roles the kit supports; brand is the default ring. strokeWidth has no kit equivalent.
+const ROLES = ['success', 'danger', 'warning', 'info'];
 
-export default class NuProgressCircleComponent extends Component {
+export default class WovenProgressCircleComponent extends Component {
   get classes() {
     const parts = ['wu-progress-circle'];
+    const size = SIZE_MAP[this.args.size];
 
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
+    if (ROLES.includes(this.args.variant)) {
+      parts.push(this.args.variant);
     }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    if (size) {
+      parts.push(size);
     }
 
     return parts.join(' ');
@@ -28,35 +28,8 @@ export default class NuProgressCircleComponent extends Component {
     return Math.min(100, Math.max(0, raw));
   }
 
-  get strokeWidth() {
-    const width = Number(this.args.strokeWidth);
-    return Number.isNaN(width) || width <= 0 ? 6 : width;
-  }
-
-  get radius() {
-    return CENTER - this.strokeWidth / 2;
-  }
-
-  get circumference() {
-    return 2 * Math.PI * this.radius;
-  }
-
-  get dashoffset() {
-    return this.circumference * (1 - this.value / 100);
-  }
-
-  get viewBox() {
-    return `0 0 ${VIEWBOX} ${VIEWBOX}`;
-  }
-
-  get trackStyle() {
-    return htmlSafe(`stroke-width: ${this.strokeWidth}`);
-  }
-
-  get barStyle() {
-    return htmlSafe(
-      `stroke-width: ${this.strokeWidth}; stroke-dasharray: ${this.circumference}; stroke-dashoffset: ${this.dashoffset}`,
-    );
+  get style() {
+    return htmlSafe(`--wu-progress-circle--Value: ${this.value}`);
   }
 
   get showText() {

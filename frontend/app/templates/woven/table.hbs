@@ -2,7 +2,7 @@
   @id="table"
   @title="Table"
   @subtitle="DataTable, the ember-table wrapper with the kit's table look: pinning, reorder, sort, column options, selection, trees and inline editing."
-  @components="DataTable, table.scss"
+  @components="Woven::DataTable, wu-table"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
@@ -17,23 +17,23 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Pinned first and last columns, drag reorder, resize, and a Columns menu with per-user persistence.</li>
-      <li class="wu-list__item">Client-side sort on the loaded rows with a server hook.</li>
-      <li class="wu-list__item">Checkbox selection with a tri-state header, optional row-click selection, and a row click callback.</li>
-      <li class="wu-list__item">Tree rows with collapse carets and depth in the yield.</li>
-      <li class="wu-list__item">Double-click cell editing with text, number, select and search editors.</li>
-      <li class="wu-list__item">RTL by mirroring columns, per table or from the page direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Pinned first and last columns, drag reorder, resize, and a Columns menu with per-user persistence.</span></li>
+      <li class="wu-list-item"><span>Client-side sort on the loaded rows with a server hook.</span></li>
+      <li class="wu-list-item"><span>Checkbox selection with a tri-state header, optional row-click selection, and a row click callback.</span></li>
+      <li class="wu-list-item"><span>Tree rows with collapse carets and depth in the yield.</span></li>
+      <li class="wu-list-item"><span>Double-click cell editing with text, number, select and search editors.</span></li>
+      <li class="wu-list-item"><span>RTL by mirroring columns, per table or from the page direction.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="App-wide rules" @id="rules">
     <p class="woven-note">How the application's lists use the table today.</p>
-    <ul class="wu-list">
-      <li class="wu-list__item">Every list passes pinColumns, reorderable, sortable, showOptions and a tableId; Options is everywhere.</li>
-      <li class="wu-list__item">The first column and the Actions column are pinned; the Actions column is not sortable.</li>
-      <li class="wu-list__item">Product lists do not edit inline and do not show checkboxes; the contacts list is the reference that carries selection and inline editing.</li>
-      <li class="wu-list__item">Lists are server-paged at 50 rows by default with 50, 100 and 250 as choices, and Woven::Pagination sits under the table.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Every list passes pinColumns, reorderable, sortable, showOptions and a tableId; Options is everywhere.</span></li>
+      <li class="wu-list-item"><span>The first column and the Actions column are pinned; the Actions column is not sortable.</span></li>
+      <li class="wu-list-item"><span>Product lists do not edit inline and do not show checkboxes; the contacts list is the reference that carries selection and inline editing.</span></li>
+      <li class="wu-list-item"><span>Lists are server-paged at 50 rows by default with 50, 100 and 250 as choices, and Woven::Pagination sits under the table.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -65,7 +65,7 @@
         {{else if (eq cell.key "role")}}
           <div class="data-table__chips">
             {{#each cell.row.tags as |tag|}}
-              <Woven::Tag @size="sm" @text={{tag}} />
+              <Woven::Tag @text={{tag}} />
             {{/each}}
           </div>
         {{else}}
@@ -83,13 +83,13 @@
   <WovenDocs::Section @title="Layout options" @id="layout">
     <WovenDocs::Example
       @title="Pinned columns"
-      @note="pinColumns honours isFixed on the column: left keeps the identity column in view while the rest scroll, right keeps actions reachable. Pinned columns cannot be hidden or moved. Scroll the table sideways to see it."
+      @note="pinColumns honors isFixed on the column: left keeps the identity column in view while the rest scroll, right keeps actions reachable. Pinned columns cannot be hidden or moved. Scroll the table sideways to see it."
       @layout="block"
       @code={{this.code.pinned}}
     >
       <Woven::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} data-test-woven-dt-pinned as |cell|>
         {{#if (eq cell.key "id")}}
-          <Woven::Button @variant="secondary" @size="xs" @icon="pencil-simple" @text="Edit" />
+          <Woven::Button @size="xs" @icon="pencil-simple" @text="Edit" />
         {{else}}
           {{cell.value}}
         {{/if}}
@@ -149,7 +149,7 @@
       <Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} data-test-woven-dt-sort as |cell|>
         {{cell.value}}
       </Woven::DataTable>
-      <span class="wu-text m-sm m-muted" data-test-woven-dt-sort-state>onSort: {{this.lastSort}}</span>
+      <span class="wu-text sm muted" data-test-woven-dt-sort-state>onSort: {{this.lastSort}}</span>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -170,7 +170,7 @@
       >
         {{cell.value}}
       </Woven::DataTable>
-      <span class="wu-text m-sm m-muted" data-test-woven-dt-selection>Selected: {{this.selectionSummary}}</span>
+      <span class="wu-text sm muted" data-test-woven-dt-selection>Selected: {{this.selectionSummary}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -201,7 +201,7 @@
       <Woven::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} data-test-woven-dt-row-click as |cell|>
         {{cell.value}}
       </Woven::DataTable>
-      <span class="wu-text m-sm m-muted" data-test-woven-dt-clicked>Clicked: {{this.clickedRow}}</span>
+      <span class="wu-text sm muted" data-test-woven-dt-clicked>Clicked: {{this.clickedRow}}</span>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -216,7 +216,7 @@
         {{#if (eq cell.key "name")}}
           {{cell.value}}
           {{#if cell.hasChildren}}
-            <Woven::Badge @size="sm" @text={{if cell.isCollapsed "collapsed" "open"}} />
+            <Woven::Badge @text={{if cell.isCollapsed "collapsed" "open"}} />
           {{/if}}
         {{else}}
           {{cell.value}}
@@ -239,10 +239,10 @@
           {{cell.value}}
         {{/if}}
       </Woven::DataTable>
-      <span class="wu-text m-sm m-muted" data-test-woven-dt-edit-state>Last edit: {{this.lastEdit}}</span>
+      <span class="wu-text sm muted" data-test-woven-dt-edit-state>Last edit: {{this.lastEdit}}</span>
     </WovenDocs::Example>
 
-    <h3 class="woven-subtitle">Editing behaviour</h3>
+    <h3 class="woven-subtitle">Editing behavior</h3>
     <WovenDocs::Table @kind="classes" @rows={{this.editingRows}} />
   </WovenDocs::Section>
 
@@ -304,37 +304,34 @@
   <WovenDocs::Section @title="The look it extends" @id="raw">
     <WovenDocs::Example
       @title="Raw wu-table markup"
-      @note="The same classes on a plain HTML table, for static or tiny lists that do not need ember-table. DataTable's table extends wu-table, so both render identically."
+      @note="The CSS kit wu-table on a plain HTML table, for static or tiny lists that do not need ember-table. DataTable puts the same classes on ember-table's table, so both render alike."
       @layout="block"
       @code={{this.code.raw}}
     >
-      <div class="wu-table-wrapper">
-        <table class="wu-table m-striped" data-test-woven-raw-table>
+      <div class="wu-table-scroll" tabindex="0" role="region" aria-label="Units">
+        <table class="wu-table hover" data-test-woven-raw-table>
           <thead>
             <tr>
-              <th class="is-sortable is-sorted" aria-sort="ascending">
-                <button type="button" class="woven-sort-button" data-test-woven-raw-sort>Unit</button>
+              <th scope="col" aria-sort="ascending">
+                <button type="button" class="wu-table-sort" data-test-woven-raw-sort>Unit</button>
               </th>
-              <th class="m-align-end">Rent (AED)</th>
+              <th scope="col" class="wu-table-num">Rent (AED)</th>
             </tr>
           </thead>
           <tbody>
-            <tr class="is-hoverable is-selected">
+            <tr>
               <td>Unit 204</td>
-              <td class="m-align-end">8,500</td>
+              <td class="wu-table-num">8,500</td>
             </tr>
-            <tr class="is-hoverable">
+            <tr>
               <td>Unit 512</td>
-              <td class="m-align-end">11,200</td>
-            </tr>
-            <tr class="wu-table__empty-row">
-              <td colspan="2">No more units match.</td>
+              <td class="wu-table-num">11,200</td>
             </tr>
           </tbody>
           <tfoot>
             <tr>
-              <td>Total</td>
-              <td class="m-align-end">19,700</td>
+              <th scope="row">Total</th>
+              <td class="wu-table-num">19,700</td>
             </tr>
           </tfoot>
         </table>
@@ -344,18 +341,18 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">ember-table renders a real table with thead and tbody; header and row checkboxes are labelled ("Select all rows", "Select row").</li>
-      <li class="wu-list__item">Sort arrows are aria-hidden; the header cell itself is the sort control. Editing needs a pointer for the double-click, so keep an Edit action for keyboard users.</li>
-      <li class="wu-list__item">The collapse caret in a tree is a native checkbox styled as an arrow, so it stays keyboard-operable.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>ember-table renders a real table with thead and tbody; header and row checkboxes are labeled ("Select all rows", "Select row").</span></li>
+      <li class="wu-list-item"><span>A sortable header holds a wu-table-sort button, so sorting works from the keyboard; the sorted header carries aria-sort. Editing needs a pointer for the double-click, so keep an Edit action for keyboard users.</span></li>
+      <li class="wu-list-item"><span>The collapse caret in a tree is a native checkbox styled as an arrow, so it stays keyboard-operable.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Columns are reversed and isFixed sides swapped in RTL; resizing switches to fluid mode and the wrapper starts scrolled to the reading edge.</li>
-      <li class="wu-list__item">The table element stays LTR while th and td set direction: rtl, and the cell fade mask flips to the other edge. The tree caret flips with a direction sign token.</li>
-      <li class="wu-list__item">Raw wu-table alignment is logical, and the selected-row bar flips to the inline-start edge.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Columns are reversed and isFixed sides swapped in RTL; resizing switches to fluid mode and the wrapper starts scrolled to the reading edge.</span></li>
+      <li class="wu-list-item"><span>The table element stays LTR while th and td set direction: rtl. The tree caret flips with a direction sign token.</span></li>
+      <li class="wu-list-item"><span>Raw wu-table alignment is logical, and the selected-row bar flips to the inline-start edge.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

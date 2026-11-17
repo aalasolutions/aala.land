@@ -144,7 +144,7 @@ module('Integration | Component | stat-sparkline', function (hooks) {
     assert.strictEqual(cells().length, 0);
   });
 
-  test('@variant picks the line colour, defaulting to primary', async function (assert) {
+  test('@variant picks the line colour, defaulting to brand', async function (assert) {
     await render(hbs`<StatSparkline @points={{this.points}} />`);
     let dataset = Chart.getChart(find('[data-test-chart-canvas-el]')).data
       .datasets[0];

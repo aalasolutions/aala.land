@@ -218,7 +218,7 @@ module('Acceptance | leases/detail', function (hooks) {
     await click('[data-test-terminate-lease]');
     await waitFor('[data-test-reason-input]');
     await fillIn('[data-test-reason-input]', 'Tenant moved out');
-    await click('[data-test-confirm-modal-confirm]');
+    await click('[data-test-wu-confirm-modal-confirm]');
 
     const call = this.calls.find((c) => c.path === '/leases/lease-1/terminate');
     assert.ok(call, 'terminate sent');

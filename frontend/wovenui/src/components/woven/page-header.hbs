@@ -1,30 +1,36 @@
+{{! A breadcrumb block renders as a direct child, so the kit gives it its own row above the title. }}
 <header class={{this.classes}} data-test-wu-page-header ...attributes>
-  <div class="wu-page-header__main">
-    {{#if (has-block "breadcrumb")}}
-      <div class="wu-page-header__breadcrumb" data-test-wu-page-header-breadcrumb>
-        {{yield to="breadcrumb"}}
-      </div>
-    {{/if}}
+  {{#if (has-block "breadcrumb")}}
+    {{yield to="breadcrumb"}}
+  {{/if}}
 
-    {{#if @title}}
-      <h1 class="wu-page-header__title" data-test-wu-page-header-title>
-        {{@title}}
-      </h1>
-    {{/if}}
+  {{#if (or @title @subtitle (has-block "meta"))}}
+    <div class="wu-page-header-main">
+      {{#if (has-block "meta")}}
+        <div class="flex x-center gap-3 wrap">
+          {{#if @title}}
+            <h1 class="wu-page-header-title" data-test-wu-page-header-title>
+              {{@title}}
+            </h1>
+          {{/if}}
+          <div class="flex x-center gap-2 wrap text-sm text-muted" data-test-wu-page-header-meta>
+            {{yield to="meta"}}
+          </div>
+        </div>
+      {{else if @title}}
+        <h1 class="wu-page-header-title" data-test-wu-page-header-title>
+          {{@title}}
+        </h1>
+      {{/if}}
 
-    {{#if @subtitle}}
-      <p class="wu-page-header__subtitle" data-test-wu-page-header-subtitle>{{@subtitle}}</p>
-    {{/if}}
-
-    {{#if (has-block "meta")}}
-      <div class="wu-page-header__meta" data-test-wu-page-header-meta>
-        {{yield to="meta"}}
-      </div>
-    {{/if}}
-  </div>
+      {{#if @subtitle}}
+        <p class="wu-page-header-text" data-test-wu-page-header-subtitle>{{@subtitle}}</p>
+      {{/if}}
+    </div>
+  {{/if}}
 
   {{#if (has-block "actions")}}
-    <div class="wu-page-header__actions" data-test-wu-page-header-actions>
+    <div class="wu-page-header-actions" data-test-wu-page-header-actions>
       {{yield to="actions"}}
     </div>
   {{/if}}

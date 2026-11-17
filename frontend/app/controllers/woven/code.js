@@ -6,7 +6,7 @@ import { runTask } from 'ember-lifeline';
 const COPIED_RESET = 1500;
 
 const VARIANT_NOTES = {
-  primary: 'A highlighted token such as the current value.',
+  brand: 'A highlighted token such as the current value.',
   secondary: 'A second neutral tone.',
   success: 'A value that passed, such as a matching checksum.',
   warning: 'A deprecated flag.',
@@ -95,6 +95,6 @@ export default class WovenCodeController extends Controller {
     { name: 'wu-code-block.m-numbered', description: 'Numbers every __line with a CSS counter.' },
     { name: 'wu-clipboard-copy', description: 'Inline input-plus-button group for copyable values.' },
     { name: 'wu-clipboard-copy__input / __button / __feedback', description: 'The read-only value, the copy control, and the success text.' },
-    { name: 'wu-clipboard-copy.is-copied', description: 'Colours the button with the feedback colour after a copy.' },
+    { name: 'wu-clipboard-copy.is-copied', description: 'Colors the button with the feedback color after a copy.' },
   ];
 }

@@ -431,4 +431,13 @@ module('Unit | Controller | leads', function (hooks) {
       assert.strictEqual(controller.dropTarget, null);
     });
   });
+  test('loadFor buckets the agent workload by lead count', function (assert) {
+    const controller = makeController(this);
+
+    assert.deepEqual(controller.loadFor(0), { variant: 'success', value: 25 });
+    assert.deepEqual(controller.loadFor(4), { variant: 'success', value: 25 });
+    assert.deepEqual(controller.loadFor(5), { variant: 'warning', value: 60 });
+    assert.deepEqual(controller.loadFor(8), { variant: 'warning', value: 60 });
+    assert.deepEqual(controller.loadFor(9), { variant: 'danger', value: 100 });
+  });
 });

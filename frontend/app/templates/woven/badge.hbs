@@ -11,18 +11,22 @@
       <code class="wu-code">@count</code>, and a fixed corner bubble when it
       wraps a block. A numeric
       <code class="wu-code">@max</code>
-      caps the display at "max+". Use a badge for state and counts; use a Tag
-      for categories the user can add or remove.
+      caps the display at "max+". It renders the CSS kit
+      <code class="wu-code">wu-badge</code>
+      (or
+      <code class="wu-code">wu-dot</code>
+      for dots). Use a badge for counts; use a Tag for status words and
+      categories.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Six colour variants plus a neutral default.</li>
-      <li class="wu-list__item">Solid, outline, pill and quiet styles; two extra sizes.</li>
-      <li class="wu-list__item">Dot form for presence without a value.</li>
-      <li class="wu-list__item">Overflow cap: value 120 with max 99 renders 99+.</li>
-      <li class="wu-list__item">Zero displays; null and undefined hide the bubble.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Five role colors plus a neutral default; secondary renders the neutral badge.</span></li>
+      <li class="wu-list-item"><span>Tinted by default, solid for emphasis; one size, no outline, pill or quiet style in the kit.</span></li>
+      <li class="wu-list-item"><span>Dot form for presence without a value.</span></li>
+      <li class="wu-list-item"><span>Overflow cap: value 120 with max 99 renders 99+.</span></li>
+      <li class="wu-list-item"><span>Zero displays; null and undefined hide a corner bubble.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -37,35 +41,14 @@
   <WovenDocs::Section @title="Styles" @id="styles">
     <WovenDocs::Example
       @title="Solid"
-      @note="Filled with the variant colour and inverted text. Higher contrast for a badge that must be read at a glance, such as a status column."
+      @note="Kit solid modifier: filled with the role color and inverted text, gray without a role. Higher contrast for a badge that must be read at a glance, such as a status column."
       @code={{this.code.solid}}
     >
-      <Woven::Badge @variant="primary" @solid={{true}} @value="Solid" />
+      <Woven::Badge @variant="brand" @solid={{true}} @value="Solid" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Outline"
-      @note="Coloured border on a transparent background. Lighter weight for secondary labels beside a filled badge."
-      @code={{this.code.outline}}
-    >
-      <Woven::Badge @variant="success" @outline={{true}} @value="Outline" />
-    </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Pill"
-      @note="Fully rounded ends. Reads as a chip; pair it with Tag chips so the row looks consistent."
-      @code={{this.code.pill}}
-    >
-      <Woven::Badge @variant="info" @pill={{true}} @value="Pill" />
-    </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Quiet"
-      @note="Lower-contrast surface for badges that appear on every row and would otherwise dominate the table."
-      @code={{this.code.quiet}}
-    >
-      <Woven::Badge @variant="warning" @quiet={{true}} @value="Quiet" />
-    </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Text alias"
@@ -76,28 +59,10 @@
     </WovenDocs::Example>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Sizes" @id="sizes">
-    <WovenDocs::Example
-      @title="Small"
-      @note="For dense table cells and inline use inside small text."
-      @code={{this.code.sm}}
-    >
-      <Woven::Badge @variant="danger" @size="sm" @value="Small" />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Large"
-      @note="For headers and cards where the badge is a primary signal."
-      @code={{this.code.lg}}
-    >
-      <Woven::Badge @variant="danger" @size="lg" @value="Large" />
-    </WovenDocs::Example>
-  </WovenDocs::Section>
-
   <WovenDocs::Section @title="Values" @id="values">
     <WovenDocs::Example
       @title="Zero"
-      @note="0 is a real value and displays. Only null or undefined hides the badge, so an empty count never renders an empty pill."
+      @note="0 is a real value and displays. On a corner bubble only null or undefined hides it, so an empty count never renders an empty bubble; an inline badge always renders, so leave it out when there is nothing to show."
       @code={{this.code.zero}}
     >
       <Woven::Badge @variant="warning" @value={{0}} />
@@ -113,7 +78,7 @@
 
     <WovenDocs::Example
       @title="Dot"
-      @note="Presence without a number: online, has unread, needs attention. Never hidden for lacking a value."
+      @note="Presence without a number: online, has unread, needs attention. Renders a kit wu-dot, never hidden for lacking a value."
       @code={{this.code.dot}}
     >
       <Woven::Badge @variant="secondary" @isDot={{true}} />
@@ -127,7 +92,7 @@
       @code={{this.code.count}}
     >
       <Woven::Badge @count={{true}} @value={{3}} />
-      <Woven::Badge @count={{true}} @variant="primary" @value={{12}} />
+      <Woven::Badge @count={{true}} @variant="brand" @value={{12}} />
       <Woven::Badge @count={{true}} @variant="success" @value={{99}} />
     </WovenDocs::Example>
 
@@ -151,21 +116,21 @@
   <WovenDocs::Section @title="Wrapped content" @id="wrapped">
     <WovenDocs::Example
       @title="Corner count"
-      @note="A block turns the badge into a fixed bubble on the wrapped element's corner. The classic unread marker on an icon button."
+      @note="A block wraps the content in kit wu-badge-host and pins a solid corner badge to its corner. The classic unread marker on an icon button."
       @code={{this.code.wrapped}}
     >
       <Woven::Badge @variant="danger" @value={{5}}>
-        <Woven::Button @variant="secondary" @icon="envelope" @shape="square" aria-label="Messages" />
+        <Woven::Button @icon="envelope" @shape="square" aria-label="Messages" />
       </Woven::Badge>
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Corner dot"
-      @note="Presence on a control without a number."
+      @note="Presence on a control without a number: a kit wu-dot corner."
       @code={{this.code.wrappedDot}}
     >
       <Woven::Badge @variant="success" @isDot={{true}}>
-        <Woven::Button @variant="secondary" @icon="bell" @shape="square" aria-label="Notifications" />
+        <Woven::Button @icon="bell" @shape="square" aria-label="Notifications" />
       </Woven::Badge>
     </WovenDocs::Example>
 
@@ -174,8 +139,8 @@
       @note="Zero still renders on a wrapped badge, so a count that dropped to none stays visible as 0 until you hide it."
       @code={{this.code.wrappedZero}}
     >
-      <Woven::Badge @variant="primary" @value={{0}}>
-        <Woven::Button @variant="secondary" @icon="star" @shape="square" aria-label="Favourites" />
+      <Woven::Badge @variant="brand" @value={{0}}>
+        <Woven::Button @icon="star" @shape="square" aria-label="Favorites" />
       </Woven::Badge>
     </WovenDocs::Example>
 
@@ -185,7 +150,7 @@
       @code={{this.code.hidden}}
     >
       <Woven::Badge @variant="danger" @value={{7}} @hidden={{true}}>
-        <Woven::Button @variant="secondary" @icon="chat-circle" @shape="square" aria-label="Chats" />
+        <Woven::Button @icon="chat-circle" @shape="square" aria-label="Chats" />
       </Woven::Badge>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -199,15 +164,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The badge is a plain span; it carries no role and is read as part of the surrounding text.</li>
-      <li class="wu-list__item">A dot badge has no text. Convey the state in the wrapped control's label or a tooltip.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The badge is a plain span; it carries no role and is read as part of the surrounding text.</span></li>
+      <li class="wu-list-item"><span>A dot badge has no text. Convey the state in the wrapped control's label or a tooltip.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The fixed corner bubble is placed with a logical inset and its translate sign flips under dir="rtl", so it stays on the trailing corner.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The kit pins a corner badge to the top inline-end corner, so it stays on the trailing corner under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -123,7 +123,7 @@ export default class PropertiesDetailController extends Controller {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 170,
+      width: 100,
       isSortable: false,
       isResizable: false,
     },

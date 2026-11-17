@@ -6,20 +6,25 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      Both components clamp the value to 0..100 and expose it through
-      <code class="wu-code">role="progressbar"</code>. The bar width and the
-      ring dash offset are the only inline styles in the kit, because they
-      are genuinely dynamic values. Use the bar inside rows and forms, the
-      ring in KPI tiles and avatars.
+      Both components clamp the value to 0..100. The bar is the CSS kit
+      <code class="wu-code">wu-progress</code>
+      on a native
+      <code class="wu-code">progress</code>
+      element; the ring is
+      <code class="wu-code">wu-progress-circle</code>
+      with
+      <code class="wu-code">role="progressbar"</code>
+      and its value in the
+      <code class="wu-code">--wu-progress-circle--Value</code>
+      variable. Use the bar inside rows and forms, the ring in KPI tiles.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Six colours, three bar heights, two ring diameters.</li>
-      <li class="wu-list__item">Indeterminate sweep and striped fill.</li>
-      <li class="wu-list__item">Optional label, default "{value}%" or custom text.</li>
-      <li class="wu-list__item">Configurable ring stroke width.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Default fill plus four role colors; three bar heights and three ring sizes.</span></li>
+      <li class="wu-list-item"><span>Indeterminate bar with the kit sliding segment.</span></li>
+      <li class="wu-list-item"><span>Optional label, default "{value}%" or custom text.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -30,10 +35,9 @@
       @layout="stack"
       @code={{this.code.live}}
     >
-      <Woven::Progress @value={{this.progressValue}} @variant="primary" @showText={{true}} />
+      <Woven::Progress @value={{this.progressValue}} @showText={{true}} />
       <div>
         <Woven::Button
-          @variant="secondary"
           @size="sm"
           @text="Bump progress"
           @onClick={{this.bumpProgress}}
@@ -70,7 +74,7 @@
     {{/each}}
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Bar: sizes and styles" @id="bar-styles">
+  <WovenDocs::Section @title="Bar: sizes and states" @id="bar-styles">
     <WovenDocs::Example
       @title="Small"
       @note="A thin track for table cells and list rows."
@@ -100,21 +104,13 @@
 
     <WovenDocs::Example
       @title="Indeterminate"
-      @note="A sweeping bar when the total is unknown; stops under reduced motion. Prefer a real value as soon as one exists."
+      @note="No value attribute, so the kit slides a segment across the track. Prefer a real value as soon as one exists."
       @layout="stack"
       @code={{this.code.indeterminate}}
     >
-      <Woven::Progress @indeterminate={{true}} />
+      <Woven::Progress @indeterminate={{true}} aria-label="Loading" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Striped"
-      @note="Diagonal stripes to mark a bar that is still moving, such as a queued job."
-      @layout="stack"
-      @code={{this.code.striped}}
-    >
-      <Woven::Progress @value={{60}} @striped={{true}} @variant="info" />
-    </WovenDocs::Example>
 
     <h3 class="woven-subtitle">Bar arguments</h3>
     <WovenDocs::Table @kind="args" @rows={{this.barArgRows}} />
@@ -128,7 +124,7 @@
     {{/each}}
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Circle: sizes and stroke" @id="circle-styles">
+  <WovenDocs::Section @title="Circle: sizes" @id="circle-styles">
     <WovenDocs::Example
       @title="Small"
       @note="A ring beside a value in a stat tile or a table row."
@@ -153,20 +149,13 @@
       <Woven::ProgressCircle @value={{90}} @variant="danger" @showText={{true}} @size="lg" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Stroke width"
-      @note="strokeWidth in viewBox units; thicker rings read better at small sizes."
-      @code={{this.code.circleStroke}}
-    >
-      <Woven::ProgressCircle @value={{30}} @variant="warning" @strokeWidth={{10}} @showText={{true}} />
-    </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Without text"
-      @note="The ring alone, when the value is printed elsewhere or the ring decorates an avatar."
+      @note="The ring alone, when the value is printed elsewhere. Pass aria-label so the progressbar has a name."
       @code={{this.code.circleNoText}}
     >
-      <Woven::ProgressCircle @value={{30}} @variant="primary" />
+      <Woven::ProgressCircle @value={{30}} aria-label="Storage used" />
     </WovenDocs::Example>
 
     <h3 class="woven-subtitle">Circle arguments</h3>
@@ -174,16 +163,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Both render role="progressbar" with aria-valuenow, aria-valuemin="0" and aria-valuemax="100".</li>
-      <li class="wu-list__item">Pass aria-label through ...attributes to say what is progressing; the label text is visual only.</li>
-      <li class="wu-list__item">The indeterminate sweep and stripes stop under prefers-reduced-motion.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The bar is a native progress element; with @showText its label element names it through for. Otherwise pass aria-label.</span></li>
+      <li class="wu-list-item"><span>The ring renders role="progressbar" with aria-valuenow, aria-valuemin="0" and aria-valuemax="100"; pass aria-label to name it.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The bar fills from the inline start. The indeterminate keyframe has a mirrored twin selected under dir="rtl", so the sweep travels with the reading direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The native bar fills from the inline start, so it mirrors under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

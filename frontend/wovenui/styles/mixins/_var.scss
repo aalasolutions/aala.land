@@ -16,8 +16,8 @@
 }
 
 // Declare tokens for a sub-element.
-//   @include wu-root-el("btn", "icon", ("MarginInlineEnd": 0.5rem));
-// emits --wu-btn__icon--MarginInlineEnd: 0.5rem;
+//   @include wu-root-el("card", "header", ("Gap": 0.5rem));
+// emits --wu-card__header--Gap: 0.5rem;
 @mixin wu-root-el($block, $element, $tokens) {
   @each $name, $value in $tokens {
     --#{$wu-prefix}-#{$block}__#{$element}--#{$name}: #{$value};
@@ -44,14 +44,14 @@
 }
 
 // Point a base token at one of its own sub-tokens.
-//   @include wu-set("btn", "BackgroundColor", "m-primary");
-// emits --wu-btn--BackgroundColor: var(--wu-btn--m-primary--BackgroundColor);
+//   @include wu-set("btn", "BackgroundColor", "m-brand");
+// emits --wu-btn--BackgroundColor: var(--wu-btn--m-brand--BackgroundColor);
 @mixin wu-set($block, $name, $scope) {
   --#{$wu-prefix}-#{$block}--#{$name}: #{wu-var($block, "#{$scope}--#{$name}")};
 }
 
 // Bulk version of wu-set for a whole variant/state scope.
-//   @include wu-set-all("btn", "m-primary", ("Color", "BackgroundColor"));
+//   @include wu-set-all("btn", "m-brand", ("Color", "BackgroundColor"));
 @mixin wu-set-all($block, $scope, $names) {
   @each $name in $names {
     @include wu-set($block, $name, $scope);

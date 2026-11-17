@@ -3,7 +3,7 @@
 <div data-test-maintenance-page class="flex col gap-6">
   <Woven::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
     <:actions>
-      <Woven::Button @variant="primary" {{on "click" this.openCreate}} @icon="plus">
+      <Woven::Button @variant="brand" @icon="plus" data-test-work-order-new {{on "click" this.openCreate}}>
         New Work Order
       </Woven::Button>
     </:actions>
@@ -11,23 +11,19 @@
 
   {{#if @model.costSummary}}
     <div class="grid cols-4 gap-4">
-      <Woven::Stat
-        @variant="primary"
+      <StatCard
         @label="Total Estimated"
         @value={{format-money @model.costSummary.totalEstimated}}
       />
-      <Woven::Stat
-        @variant="primary"
+      <StatCard
         @label="Total Actual"
         @value={{format-money @model.costSummary.totalActual}}
       />
-      <Woven::Stat
-        @variant="warning"
+      <StatCard
         @label="Pending Cost"
         @value={{format-money @model.costSummary.pendingCost}}
       />
-      <Woven::Stat
-        @variant="secondary"
+      <StatCard
         @label="Work Orders"
         @value={{@model.costSummary.workOrderCount}}
       />
@@ -103,12 +99,12 @@
               </span>
             {{else if (eq cell.key "category")}}
               <Woven::Tag
-                class="tag-trade-{{lowercase cell.value}}"
+                @variant={{tag-variant "trade" cell.value}}
                 @text={{cell.value}}
               />
             {{else if (eq cell.key "priority")}}
               <Woven::Tag
-                class="tag-priority-{{lowercase cell.value}}"
+                @variant={{tag-variant "priority" cell.value}}
                 @text={{cell.value}}
               />
             {{else if (eq cell.key "estimatedCost")}}
@@ -127,34 +123,29 @@
                   }}{{else}}-{{/if}}</span>
             {{else if (eq cell.key "status")}}
               <Woven::Tag
-                class="tag-wo-{{lowercase cell.value}}"
+                @variant={{tag-variant "wo" cell.value}}
                 @text={{cell.value}}
               />
             {{else if (eq cell.key "id")}}
-              <div class="flex">
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="pencil-simple"
-                  aria-label="Edit {{cell.row.title}}"
-                  data-tooltip="Edit"
-                  data-test-edit-work-order
-                  {{on "click" (fn this.openEdit cell.row)}}
-                />
-                {{#if (this.canDeleteWorkOrder cell.row)}}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="danger"
-                    @size="xs"
-                    @icon="trash"
-                    aria-label="Delete {{cell.row.title}}"
-                    data-tooltip="Delete"
-                    data-test-delete-work-order
-                    {{on "click" (fn this.openDelete cell.row)}}
-                  />
-                {{/if}}
-              </div>
+              <RowActions
+                @label={{cell.row.title}}
+                @actions={{array
+                  (hash
+                    key="edit-work-order"
+                    label="Edit"
+                    icon="pencil-simple"
+                    onSelect=(fn this.openEdit cell.row)
+                  )
+                  (hash
+                    key="delete-work-order"
+                    label="Delete"
+                    icon="trash"
+                    variant="danger"
+                    onSelect=(fn this.openDelete cell.row)
+                    hidden=(not (this.canDeleteWorkOrder cell.row))
+                  )
+                }}
+              />
             {{else}}
               <span class="text-muted">{{cell.value}}</span>
             {{/if}}
@@ -174,7 +165,6 @@
 
         {{#if @model.total}}
           <Woven::Pagination
-            @selectId="maintenance-limit"
             @page={{this.page}}
             @limit={{this.limit}}
             @total={{@model.total}}
@@ -206,11 +196,12 @@
               </div>
               <div class="flex x-center gap-3">
                 <Woven::Tag
-                  class="tag-priority-{{lowercase wo.priority}}"
+                  @variant={{tag-variant "priority" wo.priority}}
                   @text={{wo.priority}}
                 />
                 <Woven::Button
-                  @variant="secondary"
+                  data-test-work-order-edit
+                  @variant="subtle"
                   @size="xs"
                   @icon="pencil-simple"
                   {{on "click" (fn this.openEdit wo)}}

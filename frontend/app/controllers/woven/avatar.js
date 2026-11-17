@@ -1,28 +1,27 @@
 import Controller from '@ember/controller';
 
 const SIZE_NOTES = {
-  xs: 'Inline with small text: activity feeds, comment bylines.',
-  sm: 'Table cells and list rows.',
+  sm: 'Kit sm. Table cells, list rows and activity feeds. @size="xs" also renders sm.',
   md: 'The default for cards and headers.',
-  lg: 'Profile panels and detail headers.',
-  xl: 'A profile page hero.',
+  lg: 'Kit lg. Profile panels and detail headers. @size="xl" also renders lg.',
 };
 
 const STATUS_NOTES = {
-  success: 'Online or available.',
-  warning: 'Away or idle.',
-  danger: 'Busy or offline.',
-  secondary: 'Unknown or inactive.',
-  primary: 'Highlighted, for the current user.',
-  info: 'Informational, such as an external account.',
+  success: 'Renders data-status="online": a solid dot. Online or available.',
+  warning: 'Renders data-status="away": a half-filled dot. Away or idle.',
+  danger: 'Renders data-status="busy": a filled dot with a bar. Busy, do not disturb.',
+  secondary: 'Renders data-status="offline": a hollow ring. brand and info render the same.',
 };
 
 export default class WovenAvatarController extends Controller {
   sizeExamples = Object.keys(SIZE_NOTES).map((size) => ({
-    size,
+    size: size === 'md' ? undefined : size,
     title: size.toUpperCase(),
     note: SIZE_NOTES[size],
-    code: `<Woven::Avatar @initials="${size.toUpperCase()}" @size="${size}" />`,
+    code:
+      size === 'md'
+        ? '<Woven::Avatar @initials="MD" />'
+        : `<Woven::Avatar @initials="${size.toUpperCase()}" @size="${size}" />`,
   }));
 
   statusExamples = Object.keys(STATUS_NOTES).map((status) => ({
@@ -43,10 +42,10 @@ export default class WovenAvatarController extends Controller {
   <Woven::Avatar @initials="ON" />
   <Woven::Avatar @src="https://i.pravatar.cc/100?img=12" @alt="User avatar" />
 </Woven::AvatarGroup>`,
-    groupCompact: `<Woven::AvatarGroup @compact={{true}}>
+    groupOverflow: `<Woven::AvatarGroup role="group" aria-label="Assignees">
   <Woven::Avatar @initials="AM" @size="sm" />
   <Woven::Avatar @initials="SQ" @size="sm" />
-  <Woven::Avatar @initials="ON" @size="sm" />
+  <Woven::Avatar @initials="+3" @size="sm" />
 </Woven::AvatarGroup>`,
   };
 
@@ -55,12 +54,8 @@ export default class WovenAvatarController extends Controller {
     { name: '@alt', type: 'string', default: '', description: 'Alt text for the image.' },
     { name: '@initials', type: 'string', default: '', description: 'Text fallback when there is no image.' },
     { name: '@icon', type: 'string', default: '', description: 'Glyph fallback when there is neither image nor initials.' },
-    { name: '@size', type: '"xs" | "sm" | "md" | "lg" | "xl"', default: '', description: 'Diameter step.' },
-    { name: '@square', type: 'boolean', default: 'false', description: 'Rounded square instead of a circle.' },
-    { name: '@status', type: '"primary" | "secondary" | "success" | "warning" | "danger" | "info"', default: '', description: 'Renders a status dot on the avatar in the given colour.' },
-  ];
-
-  groupArgRows = [
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter overlap between stacked avatars.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg. Omit for the default (medium).' },
+    { name: '@square', type: 'boolean', default: 'false', description: 'Kit tile modifier: rounded square instead of a circle.' },
+    { name: '@status', type: '"success" | "warning" | "danger" | "secondary" | "brand" | "info"', default: '', description: 'Kit data-status dot: success online, warning away, danger busy; secondary, brand and info offline.' },
   ];
 }

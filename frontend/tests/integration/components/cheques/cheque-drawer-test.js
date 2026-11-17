@@ -33,7 +33,7 @@ async function drawerSettled() {
   await waitUntil(() => {
     const drawer = document.querySelector('[data-test-wu-drawer]');
     return (
-      drawer?.classList.contains('is-open') &&
+      drawer?.open &&
       drawer.getAnimations().length === 0
     );
   });

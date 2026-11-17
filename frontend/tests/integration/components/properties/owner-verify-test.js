@@ -68,7 +68,7 @@ module(
 
     async function pickFrom(root, label) {
       await focus(`${root} [data-test-wu-dropdown-filter]`);
-      const selector = '.wu-menu.is-open [data-test-wu-dropdown-item]';
+      const selector = '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]';
       await waitUntil(() => document.querySelector(selector));
       const item = [...document.querySelectorAll(selector)].find((el) =>
         el.textContent.includes(label),
@@ -81,7 +81,7 @@ module(
         document.querySelectorAll(
           '[data-test-remote-autocomplete] [data-test-wu-dropdown-filter]',
         );
-      const selector = '.wu-menu.is-open [data-test-wu-dropdown-item]';
+      const selector = '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]';
       for (const [index, label] of [
         [0, 'Dubai'],
         [1, 'Marina'],

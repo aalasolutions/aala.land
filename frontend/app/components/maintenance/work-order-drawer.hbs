@@ -231,14 +231,14 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       data-test-cancel-work-order
       {{on "click" this.close}}
     >
       Cancel
     </Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="work-order-form"
       @loading={{this.isSaving}}

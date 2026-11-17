@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { render, settled } from '@ember/test-helpers';
+import { fillIn, render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 module('Integration | Component | pagination', function (hooks) {
@@ -38,7 +38,7 @@ module('Integration | Component | pagination', function (hooks) {
     assert.dom('[data-test-wu-pagination-status]').hasText('21-25 of 25');
   });
 
-  test('it shows the current limit on the per-page trigger', async function (assert) {
+  test('it shows the current limit on the per-page select', async function (assert) {
     this.setProperties({
       page: 1,
       limit: '20',
@@ -57,8 +57,29 @@ module('Integration | Component | pagination', function (hooks) {
       />
     `);
 
-    assert.dom('[data-test-wu-pagination-select]').containsText('20');
-    assert.dom('[data-test-wu-pagination-select]').hasAria('haspopup', 'listbox');
+    assert.dom('[data-test-wu-pagination-select]').hasValue('20');
+  });
+
+  test('it reports the chosen per-page value as a number', async function (assert) {
+    const calls = [];
+    this.setProperties({
+      onLimitChange: (value) => calls.push(value),
+      perPageOptions: [10, 20, 50],
+    });
+
+    await render(hbs`
+      <Woven::Pagination
+        @page={{1}}
+        @limit={{20}}
+        @total={{100}}
+        @perPageOptions={{this.perPageOptions}}
+        @onLimitChange={{this.onLimitChange}}
+      />
+    `);
+
+    await fillIn('[data-test-wu-pagination-select]', '50');
+
+    assert.deepEqual(calls, [50]);
   });
 
   test('it falls back to 50 per page when @limit is missing', async function (assert) {
@@ -77,6 +98,6 @@ module('Integration | Component | pagination', function (hooks) {
     `);
 
     assert.dom('[data-test-wu-pagination-status]').hasText('1-50 of 120');
-    assert.dom('[data-test-wu-pagination-select]').containsText('50');
+    assert.dom('[data-test-wu-pagination-select]').hasValue('50');
   });
 });

@@ -1,13 +1,15 @@
 import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { guidFor } from '@ember/object/internals';
+import { SIZE_MAP } from './-constants';
 
-const SIZES = ['sm', 'lg'];
-
-export default class NuSegmentedComponent extends Component {
+export default class WovenSegmentedComponent extends Component {
   @tracked internalValue = undefined;
 
   rootElement = null;
+
+  name = `wu-segmented-${guidFor(this)}`;
 
   get multiple() {
     return Boolean(this.args.multiple);
@@ -45,16 +47,14 @@ export default class NuSegmentedComponent extends Component {
     }));
   }
 
+  // The CSS kit has no fill modifier; core's `w-full` stretches the grid and segments share it.
   get classes() {
     const parts = ['wu-segmented'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.args.iconOnly) {
-      parts.push('m-icon-only');
+    if (SIZE_MAP[this.args.size]) {
+      parts.push(SIZE_MAP[this.args.size]);
     }
     if (this.args.fill) {
-      parts.push('m-fill');
+      parts.push('w-full');
     }
     return parts.join(' ');
   }
@@ -99,7 +99,7 @@ export default class NuSegmentedComponent extends Component {
 
     // Multiple mode has no "current": arrows walk from the focused segment.
     const focused = this.rootElement?.querySelector(
-      '.wu-segmented__item:focus',
+      '.wu-segmented-input:focus',
     );
     const focusedId = focused?.getAttribute('data-segment-id');
     const from = this.multiple ? focusedId : this.currentValue;

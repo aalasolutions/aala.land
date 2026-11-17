@@ -11,12 +11,12 @@
     <p class="text-muted mt-2">No charge was made. You can restart the upgrade
       any time.</p>
   </div>
-  <LinkTo
+  <Woven::Button
     @route="company"
-    class="btn btn-primary"
+    @variant="brand"
+    @icon="building-office"
     data-test-billing-back-to-settings
   >
-    <Ui::Ph @icon="building-office" />
     Back to Company Settings
-  </LinkTo>
+  </Woven::Button>
 </div>

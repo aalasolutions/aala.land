@@ -11,6 +11,7 @@ import {
 } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
+import { clickRowAction, rowActionKeys } from 'land/tests/helpers/row-actions';
 
 const DOCS = [
   {
@@ -108,7 +109,7 @@ function row(id) {
 function menuItem(text) {
   const items = [
     ...document.querySelectorAll(
-      '.wu-menu.is-open [data-test-wu-dropdown-item]',
+      '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
     ),
   ];
   return items.find((el) => el.textContent.trim() === text);
@@ -118,10 +119,7 @@ function menuItem(text) {
 async function drawerSettled() {
   await waitUntil(() => {
     const drawer = document.querySelector('[data-test-wu-drawer]');
-    return (
-      drawer?.classList.contains('is-open') &&
-      drawer.getAnimations().length === 0
-    );
+    return drawer?.open && drawer.getAnimations().length === 0;
   });
 }
 
@@ -244,15 +242,14 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert
       .dom(`${row('doc-lease')} [data-test-document-derived]`)
       .hasText('via lease');
-    assert.dom(`${row('doc-lease')} [data-test-download-btn]`).exists();
-    assert.dom(`${row('doc-lease')} [data-test-edit-btn]`).doesNotExist();
-    assert.dom(`${row('doc-lease')} [data-test-delete-btn]`).doesNotExist();
+    assert.deepEqual(await rowActionKeys(row('doc-lease')), ['download-btn']);
 
     assert
       .dom(`${row('doc-unit')} [data-test-document-derived]`)
       .doesNotExist();
-    assert.dom(`${row('doc-unit')} [data-test-edit-btn]`).exists();
-    assert.dom(`${row('doc-unit')} [data-test-delete-btn]`).exists();
+    const unitKeys = await rowActionKeys(row('doc-unit'));
+    assert.ok(unitKeys.includes('edit-btn'));
+    assert.ok(unitKeys.includes('delete-btn'));
   });
 
   test('@canUpload=false hides the upload button', async function (assert) {
@@ -265,7 +262,7 @@ module('Integration | Component | documents/panel', function (hooks) {
   function openMenuLabels() {
     return [
       ...document.querySelectorAll(
-        '.wu-menu.is-open [data-test-wu-dropdown-item]',
+        '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
   }
@@ -310,9 +307,9 @@ module('Integration | Component | documents/panel', function (hooks) {
   test('editing shows the uploaded file name with a download, and no file picker', async function (assert) {
     this.responses.list = [DOCS[0]];
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-edit-btn]');
+    await waitFor('[data-test-row-actions]');
 
-    await click('[data-test-edit-btn]');
+    await clickRowAction('', 'edit-btn');
     await drawerSettled();
 
     assert.dom('[data-test-file-input]').doesNotExist();
@@ -410,7 +407,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await render(hbs`<Documents::Panel />`);
     await waitFor(row('doc-unit'));
 
-    await click(`${row('doc-unit')} [data-test-edit-btn]`);
+    await clickRowAction(row('doc-unit'), 'edit-btn');
     await drawerSettled();
     await chooseOption('[data-test-field-related-type]', 'Work Order');
     await focus(
@@ -439,7 +436,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await render(hbs`<Documents::Panel />`);
     await waitFor(row('doc-work-order'));
 
-    await click(`${row('doc-work-order')} [data-test-edit-btn]`);
+    await clickRowAction(row('doc-work-order'), 'edit-btn');
     await drawerSettled();
     await chooseOption('[data-test-field-related-type]', 'Library only');
     await click('[data-test-save-btn]');
@@ -448,7 +445,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     assert.deepEqual(JSON.parse(patch.options.body).workOrderId, null);
 
     this.calls.length = 0;
-    await click(`${row('doc-asset')} [data-test-edit-btn]`);
+    await clickRowAction(row('doc-asset'), 'edit-btn');
     await drawerSettled();
     await fillIn('[data-test-field-name]', 'Building NOC 2026');
     await click('[data-test-save-btn]');
@@ -511,7 +508,7 @@ module('Integration | Component | documents/panel', function (hooks) {
     await click('[data-test-field-access] [data-test-wu-dropdown-trigger]');
     const labels = [
       ...document.querySelectorAll(
-        '.wu-menu.is-open [data-test-wu-dropdown-item]',
+        '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
       ),
     ].map((el) => el.textContent.trim());
     assert.deepEqual(labels, ['Share with Team', 'Share with Admin']);
@@ -523,38 +520,45 @@ module('Integration | Component | documents/panel', function (hooks) {
 
     auth.currentUser = { id: 'user-1', role: 'agent' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-download-btn]');
+    await waitFor('[data-test-row-actions-trigger]');
     assert.dom('[data-test-documents-upload]').exists('an agent may upload');
-    assert
-      .dom('[data-test-edit-btn]')
-      .doesNotExist('not on a file someone else uploaded');
-    assert.dom('[data-test-delete-btn]').doesNotExist();
+    assert.deepEqual(
+      await rowActionKeys(),
+      ['download-btn'],
+      'no edit on a file someone else uploaded',
+    );
 
     auth.currentUser = { id: 'user-2', role: 'agent' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-edit-btn]');
-    assert.dom('[data-test-delete-btn]').doesNotExist();
+    await waitFor('[data-test-row-actions-trigger]');
+    let keys = await rowActionKeys();
+    assert.ok(keys.includes('edit-btn'));
+    assert.notOk(keys.includes('delete-btn'));
 
     auth.currentUser = { id: 'user-1', role: 'manager' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-download-btn]');
-    assert.dom('[data-test-edit-btn]').doesNotExist();
+    await waitFor('[data-test-row-actions-trigger]');
+    assert.deepEqual(await rowActionKeys(), ['download-btn']);
 
     auth.currentUser = { id: 'user-2', role: 'manager' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-edit-btn]');
-    assert.dom('[data-test-delete-btn]').doesNotExist();
+    await waitFor('[data-test-row-actions-trigger]');
+    keys = await rowActionKeys();
+    assert.ok(keys.includes('edit-btn'));
+    assert.notOk(keys.includes('delete-btn'));
 
     auth.currentUser = { id: 'user-1', role: 'admin' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-edit-btn]');
-    assert.dom('[data-test-delete-btn]').exists();
+    await waitFor('[data-test-row-actions-trigger]');
+    keys = await rowActionKeys();
+    assert.ok(keys.includes('edit-btn'));
+    assert.ok(keys.includes('delete-btn'));
 
     auth.currentUser = { id: 'user-1', role: 'accountant' };
     await render(hbs`<Documents::Panel />`);
-    await waitFor('[data-test-download-btn]');
+    await waitFor('[data-test-row-actions-trigger]');
     assert.dom('[data-test-documents-upload]').doesNotExist();
-    assert.dom('[data-test-edit-btn]').doesNotExist();
+    assert.notOk((await rowActionKeys()).includes('edit-btn'));
   });
 
   test('a controlled page is reported to the host, not changed internally', async function (assert) {

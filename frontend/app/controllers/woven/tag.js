@@ -3,13 +3,13 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
 const VARIANT_NOTES = {
-  default: 'Neutral grey for categories that carry no judgement.',
-  primary: 'Brand colour for the category the user is filtering by or has just added.',
-  secondary: 'A second neutral tone to tell two kinds of tag apart on one row.',
-  success: 'Positive attributes: verified, paid, furnished.',
-  warning: 'Attributes that need a look: expiring, unverified.',
-  danger: 'Attributes that block or fail: blacklisted, overdue.',
-  info: 'Descriptive metadata such as source or channel.',
+  default: 'Neutral tag for categories that carry no judgment.',
+  brand: 'Brand role color for the category the user is filtering by or has just added.',
+  secondary: 'Gray hue, a second neutral tone to tell two kinds of tag apart on one row.',
+  success: 'Success role color for positive states: verified, paid, furnished.',
+  warning: 'Warning role color for states that need a look: expiring, unverified.',
+  danger: 'Danger role color for states that block or fail: blacklisted, overdue.',
+  info: 'Info role color for descriptive metadata such as source or channel.',
 };
 
 function capitalize(value) {
@@ -44,18 +44,15 @@ export default class WovenTagController extends Controller {
   }
 
   code = {
-    outline: `<Woven::Tag @variant="primary" @outline={{true}} @text="Outline" />`,
-    sm: `<Woven::Tag @variant="success" @size="sm" @text="Small" />`,
-    lg: `<Woven::Tag @variant="success" @size="lg" @text="Large" />`,
     closable: `<Woven::Tag @variant="info" @closable={{true}} @text="Closable" @onClose={{fn this.noteClose "Closable"}} />`,
     disabled: `<Woven::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />`,
-    block: `<Woven::Tag @variant="primary">
+    block: `<Woven::Tag @variant="brand">
   <Woven::Icon @icon="car" /> Parking
 </Woven::Tag>`,
     chips: `{{#each this.chipOptions as |chip|}}
   <button
     type="button"
-    class="wu-tag m-pill m-selectable {{if (includes this.selectedChips chip) 'is-selected'}}"
+    class="wu-tag"
     aria-pressed={{if (includes this.selectedChips chip) "true" "false"}}
     {{on "click" (fn this.toggleChip chip)}}
   >{{chip}}</button>
@@ -63,11 +60,9 @@ export default class WovenTagController extends Controller {
   };
 
   argRows = [
-    { name: '@variant', type: '"primary" | "secondary" | "success" | "warning" | "danger" | "info"', default: '', description: 'Colour scale. Unknown values render the neutral tag.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Size step.' },
-    { name: '@outline', type: 'boolean', default: 'false', description: 'Transparent background with a coloured border.' },
-    { name: '@closable', type: 'boolean', default: 'false', description: 'Renders a remove button after the label.' },
-    { name: '@disabled', type: 'boolean', default: 'false', description: 'Adds is-disabled, disables the remove button and blocks onClose.' },
+    { name: '@variant', type: '"brand" | "secondary" | "success" | "warning" | "danger" | "info"', default: '', description: 'Role colors map to the kit role modifiers of the same name; secondary renders the kit gray hue. Unknown values render the neutral tag. Other kit hues (blue, purple) have no argument; pass them as a class.' },
+    { name: '@closable', type: 'boolean', default: 'false', description: 'Renders the kit wu-tag-remove button after the label.' },
+    { name: '@disabled', type: 'boolean', default: 'false', description: 'Disables the remove button and blocks onClose. The tag itself keeps its look.' },
     { name: '@text', type: 'string', default: '', description: 'Label when no block is given.' },
   ];
 
@@ -80,8 +75,6 @@ export default class WovenTagController extends Controller {
   ];
 
   classRows = [
-    { name: 'wu-tag.m-pill', description: 'Fully rounded ends.' },
-    { name: 'wu-tag.m-selectable', description: 'Hover and pressed affordance for a tag used as a toggle. Apply to a real button.' },
-    { name: 'wu-tag.is-selected', description: 'Selected state of a selectable tag.' },
+    { name: 'button.wu-tag[aria-pressed]', description: 'A tag on a real button is a checkable chip; aria-pressed="true" shows the selected state.' },
   ];
 }

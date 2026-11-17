@@ -1,19 +1,9 @@
 import Component from '@glimmer/component';
+import { SIZE_MAP } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['xs', 'sm', 'md', 'lg'];
-
-export default class NuSpinnerComponent extends Component {
+export default class WovenSpinnerComponent extends Component {
   get classes() {
-    const parts = ['wu-spinner'];
-
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-
-    return parts.join(' ');
+    const size = SIZE_MAP[this.args.size];
+    return size ? `wu-spinner ${size}` : 'wu-spinner';
   }
 }

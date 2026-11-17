@@ -12,7 +12,7 @@
       <div class="flex col gap-4 text-center">
         <p class="text-success text-sm">Your password has been set. You can now
           sign in.</p>
-        <Woven::Button @variant="primary" {{on "click" this.goToLogin}}>
+        <Woven::Button @variant="brand" data-test-accept-invite-login {{on "click" this.goToLogin}}>
           Go to Login
         </Woven::Button>
       </div>
@@ -53,8 +53,9 @@
         {{/if}}
 
         <Woven::Button
+          data-test-accept-invite-submit
           type="submit"
-          @variant="primary"
+          @variant="brand"
           @disabled={{this.isSubmitting}}
           @loading={{this.isSubmitting}}
         >

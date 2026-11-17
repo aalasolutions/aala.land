@@ -8,17 +8,20 @@
     <p class="woven-doc__intro">
       The avatar picks its content by precedence: image, then initials, then
       icon, so one invocation can be given all three and degrade on its own.
-      AvatarGroup overlaps a run of avatars into one stack for assignees and
-      participants.
+      It renders the CSS kit
+      <code class="wu-code">wu-avatar</code>; AvatarGroup renders
+      <code class="wu-code">wu-avatar-group</code>, which overlaps a run of
+      avatars into one stack for assignees and participants. AvatarGroup takes
+      no arguments.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Image, initials and icon sources with a fixed precedence.</li>
-      <li class="wu-list__item">Five sizes; circle or square.</li>
-      <li class="wu-list__item">Status dot in any of the six colours.</li>
-      <li class="wu-list__item">Stacked groups, regular or compact.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Image, initials and icon sources with a fixed precedence.</span></li>
+      <li class="wu-list-item"><span>Three sizes (sm, default, lg); circle or square tile.</span></li>
+      <li class="wu-list-item"><span>Kit status dot: online, away, busy or offline.</span></li>
+      <li class="wu-list-item"><span>Stacked groups with a ring between avatars.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -33,7 +36,7 @@
 
     <WovenDocs::Example
       @title="Initials"
-      @note="Two letters on the variant surface when there is no photo. The usual default for people records."
+      @note="Two letters on the kit avatar surface when there is no photo. The usual default for people records."
       @code={{this.code.initials}}
     >
       <Woven::Avatar @initials="AM" />
@@ -51,7 +54,7 @@
   <WovenDocs::Section @title="Shape" @id="shape">
     <WovenDocs::Example
       @title="Square"
-      @note="Rounded square instead of a circle. Use it for organisations and properties so they read differently from people."
+      @note="Rounded square instead of a circle. Use it for organizations and properties so they read differently from people."
       @code={{this.code.square}}
     >
       <Woven::Avatar @initials="SQ" @square={{true}} />
@@ -89,14 +92,14 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Compact"
-      @note="Tighter overlap for table cells and small sizes, where the regular spacing would take too much width."
-      @code={{this.code.groupCompact}}
+      @title="Overflow count"
+      @note="Put the overflow count in a last avatar as real text. Give the group role group and a label so the stack reads as one unit."
+      @code={{this.code.groupOverflow}}
     >
-      <Woven::AvatarGroup @compact={{true}}>
+      <Woven::AvatarGroup role="group" aria-label="Assignees">
         <Woven::Avatar @initials="AM" @size="sm" />
         <Woven::Avatar @initials="SQ" @size="sm" />
-        <Woven::Avatar @initials="ON" @size="sm" />
+        <Woven::Avatar @initials="+3" @size="sm" />
       </Woven::AvatarGroup>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -104,20 +107,19 @@
   <WovenDocs::Section @title="Arguments" @id="arguments">
     <h3 class="woven-subtitle">Woven::Avatar</h3>
     <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
-    <h3 class="woven-subtitle">Woven::AvatarGroup</h3>
-    <WovenDocs::Table @kind="args" @rows={{this.groupArgRows}} />
+    <p class="woven-note">Woven::AvatarGroup takes no arguments; attributes pass through to the wu-avatar-group element.</p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Always pass @alt with @src. Initials render as visible text; the icon fallback is aria-hidden.</li>
-      <li class="wu-list__item">The status dot is decorative. State the presence in text or a tooltip on the surrounding control.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Always pass @alt with @src. Initials render as visible text; the icon fallback is aria-hidden.</span></li>
+      <li class="wu-list-item"><span>The status dot is decorative and the avatar carries no role. State the presence in text, or pass role="img" and an aria-label that includes it.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The status dot and the group overlap use logical insets and margins, so the stack mirrors with the reading direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The status dot and the group overlap use logical insets and margins, so the stack mirrors with the reading direction.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

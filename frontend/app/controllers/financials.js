@@ -51,7 +51,7 @@ export default class FinancialsController extends PaginatedController {
     {
       name: 'Actions',
       valuePath: 'id',
-      width: 110,
+      width: 90,
       isSortable: false,
       isResizable: false,
     },

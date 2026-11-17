@@ -32,8 +32,6 @@
                 data-test-wa-attachment-name
               ><bdi>{{item.file.name}}</bdi></Woven::Text>
               <Woven::Badge
-                @size="sm"
-                @quiet={{true}}
                 @text={{format-bytes item.file.size}}
                 data-test-wa-attachment-size
               />
@@ -86,7 +84,7 @@
       data-test-wa-attachment-clear
     />
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @size="sm"
       @icon="paper-plane-tilt"
       @text={{this.sendLabel}}

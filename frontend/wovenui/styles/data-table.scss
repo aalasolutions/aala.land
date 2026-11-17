@@ -1,37 +1,35 @@
-// DataTable: ember-table markup with the Woven table look.
-@use "./table";
+// DataTable: ember-table markup on the kit wu-table. Only what the kit has no part for lives here.
 @use "./mixins/bem" as *;
 @use "./common/var" as *;
 
+// Outer outline without lines between columns; the kit's bordered adds both.
+.data-table {
+  overflow: hidden;
+  background-color: var(--wu-bg-surface);
+  border: 1px solid var(--wu-border-regular);
+  border-radius: wu-radius(md);
+}
+
+// ember-table sizes columns itself.
 .data-table table {
-  @extend .wu-table;
-
-  // ember-table sizes columns itself.
   min-inline-size: 0;
+}
 
-  // Pinned cells need a solid fill.
-  td.is-fixed-left,
-  td.is-fixed-right {
-    background-color: var(--wu-bg-surface);
-  }
+// ember-table keeps every header cell sticky, so headers always need a fill.
+.data-table thead th {
+  background-color: var(--wu-table--Background, var(--wu-bg-surface));
+}
 
-  thead th,
-  th.is-fixed-left,
-  th.is-fixed-right {
-    background-color: var(--wu-table--HeadBackgroundColor);
-  }
+// Pinned cells: opaque fill with the kit row tint (hover, selected) laid over it.
+.data-table :is(th, td):is(.is-fixed-left, .is-fixed-right) {
+  background:
+    linear-gradient(var(--wu-kit-table-tint, transparent), var(--wu-kit-table-tint, transparent)),
+    var(--wu-table--Background, var(--wu-bg-surface));
+}
 
-  // Sticky pinned cells paint over collapsed borders, so header cells draw their own rule.
-  thead th {
-    border-block-end: 0;
-    box-shadow: inset 0 -1px 0 var(--wu-table--HeadBorderColor);
-  }
-
-  // Pinned body cells follow the row hover fill.
-  tbody tr.is-hoverable:hover td.is-fixed-left,
-  tbody tr.is-hoverable:hover td.is-fixed-right {
-    background-color: var(--wu-table--hover--RowBackgroundColor);
-  }
+// vertical-collection ends the body with an occluded-content element, so the kit's last-row rule misses.
+.data-table tbody > tr:nth-last-child(1 of tr) > td {
+  border-block-end: 0;
 }
 
 // RTL: table stays LTR (columns are mirrored), cell content reads RTL.
@@ -46,15 +44,6 @@
 
 .data-table--row-click tbody tr {
   cursor: pointer;
-}
-
-// Selected tint layered over the solid pinned fill.
-.data-table tbody tr.is-selected td.is-fixed-left,
-.data-table tbody tr.is-selected td.is-fixed-right {
-  background-image: linear-gradient(
-    var(--wu-table--selected--RowBackgroundColor),
-    var(--wu-table--selected--RowBackgroundColor)
-  );
 }
 
 .data-table .et-cell-container {
@@ -116,15 +105,14 @@
   }
 }
 
-.data-table--tree tbody tr.is-child td {
+.data-table--tree tbody tr[data-wu-child] td {
   background-color: var(--wu-bg-base);
 }
 
-// Checkbox column.
-.data-table td:has(.data-table__select),
-.data-table th:has(.data-table__select) {
+.data-table .wu-table-select {
   padding-block: wu-space(1);
   padding-inline: 0;
+  vertical-align: middle;
 }
 
 .data-table__select {
@@ -152,13 +140,11 @@
     display: block;
     padding-block: wu-space(3);
     padding-inline: wu-space(4);
-    font-size: wu-font-size(xs);
+    font-size: wu-font-size(sm);
     font-weight: wu-font-weight(normal);
     color: var(--wu-text-muted);
     text-align: start;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    background-color: var(--wu-bg-alternate);
+    background-color: var(--wu-bg-surface);
   }
 }
 
@@ -221,9 +207,9 @@
   display: none;
 }
 
-// Opt-in: the table scrolls inside a bounded height so the header stays in view.
+// ember-table's own max-height is unlayered, so the kit's --wu-table--MaxHeight is applied here.
 .data-table--sticky-header .ember-table-overflow {
-  max-block-size: var(--wu-data-table--StickyMaxHeight, calc(100dvh - 240px));
+  max-block-size: var(--wu-table--MaxHeight, calc(100dvh - 240px));
 }
 
 // One line per cell, clipped at the end edge.
@@ -242,28 +228,10 @@
   overflow: hidden;
 }
 
-// Parked: a pinned last column paints over its neighbour, so the mask lands at
-// the cell edge rather than at the visible cutoff.
-// .data-table__cell {
-//   mask-image: linear-gradient(
-//     to right,
-//     #000 calc(100% - #{wu-space(2)}),
-//     transparent
-//   );
-// }
-//
-// [dir="rtl"] .data-table__cell {
-//   mask-image: linear-gradient(
-//     to left,
-//     #000 calc(100% - #{wu-space(2)}),
-//     transparent
-//   );
-// }
-
 // Inline cell editor (double-click). The dropdown menu is hosted on .wu-layer,
 // so the cell overflow never clips it.
 // An empty cell still needs a line-high target for the double-click.
-.data-table__cell.is-editable {
+.data-table__cell[data-wu-editable] {
   min-block-size: 1lh;
   cursor: text;
 }
@@ -282,7 +250,7 @@
 
 // Form controls do not inherit text-align, so a numeric column's number
 // editor is aligned explicitly to match the cell it replaces.
-.data-table td.m-numeric .data-table__editor input {
+.data-table td.wu-table-num .data-table__editor input {
   text-align: end;
   font-variant-numeric: tabular-nums;
 }
@@ -298,7 +266,7 @@
 }
 
 // Chips are a flex row, so text-align cannot move them; follow the numeric column's end edge.
-.data-table td.m-numeric .data-table__chips {
+.data-table td.wu-table-num .data-table__chips {
   justify-content: flex-end;
 }
 
@@ -309,23 +277,19 @@
   margin-block-end: wu-space(2);
 }
 
-// Header titles truncate instead of spilling into the next column. Flex is not
-// an option here: it drops the cell out of the table formatting context and the
-// columns collapse onto one edge.
+// Truncated in the cell itself: flex would drop it out of the table formatting context.
 .data-table thead th {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-// Sort direction arrow.
-.data-table__sort {
-  display: inline-flex;
-  margin-inline-start: wu-space(1);
-  color: var(--wu-text-subtle);
-  vertical-align: middle;
+.data-table .wu-table-sort {
+  max-inline-size: 100%;
 
-  &.is-active {
-    color: var(--wu-brand);
+  > span {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }

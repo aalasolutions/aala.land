@@ -8,20 +8,25 @@
     <p class="woven-doc__intro">
       The component derives the page list from page, per-page and total: up
       to seven pages in full, otherwise first, last, the current page and
-      one neighbour on each side with ellipses between. It reports only
+      one neighbor on each side with ellipses between. It reports only
       valid whole page numbers, so a controller can trust what it receives.
       The application's paginated controllers pass
       <code class="wu-code">@limit</code>
-      with a default of 50.
+      with a default of 50. It renders the CSS kit
+      <code class="wu-code">wu-pagination</code>: page buttons are kit
+      <code class="wu-code">wu-btn</code> in a
+      <code class="wu-code">wu-pagination-list</code>, and the page size is
+      a native
+      <code class="wu-code">wu-select</code>.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Compact page list with ellipses for long ranges.</li>
-      <li class="wu-list__item">Status text ("1-50 of 430") derived from the inputs.</li>
-      <li class="wu-list__item">Per-page select rendered only when a per-page callback is given; 50, 100 and 250 by default.</li>
-      <li class="wu-list__item">Four sizes (xs, sm, md default, lg) and a compact style; previous and next overrides for step-only controllers.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Compact page list with ellipses for long ranges.</span></li>
+      <li class="wu-list-item"><span>Status text ("1-50 of 430") derived from the inputs.</span></li>
+      <li class="wu-list-item"><span>Per-page select rendered only when a per-page callback is given; 50, 100 and 250 by default.</span></li>
+      <li class="wu-list-item"><span>Kit sm, default and lg sizes; previous and next overrides for step-only controllers.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -74,7 +79,7 @@
 
     <WovenDocs::Example
       @title="Sizes"
-      @note="xs, sm, md (default) and lg. Page buttons are 28, 32, 36 and 48px, matching buttons of the same size."
+      @note="Kit sm, default and lg: buttons, ellipsis, total text and the page size select scale together. xs renders sm, since the kit has no smaller step."
       @layout="stack"
       @code={{this.code.sizes}}
     >
@@ -85,17 +90,16 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Compact, long range"
-      @note="compact tightens the spacing; a long range collapses to first, neighbours, current and last with ellipses."
+      @title="Long range"
+      @note="Past seven pages the list collapses to first, the current page with one neighbor on each side, and last, with ellipses between."
       @layout="block"
-      @code={{this.code.compact}}
+      @code={{this.code.longRange}}
     >
       <Woven::Pagination
-        @page={{this.compactPage}}
+        @page={{this.longPage}}
         @perPage={{10}}
         @total={{240}}
-        @onPageChange={{this.setCompactPage}}
-        @compact={{true}}
+        @onPageChange={{this.setLongPage}}
       />
     </WovenDocs::Example>
 
@@ -134,16 +138,16 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Previous and next are labelled buttons and carry the disabled attribute at the range ends.</li>
-      <li class="wu-list__item">The current page button has aria-current="page".</li>
-      <li class="wu-list__item">The per-page select has a visible label linked by a per-instance id.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Renders a nav labeled "Pagination". Previous and next are icon buttons labeled "Previous page" and "Next page" and carry the disabled attribute at the range ends.</span></li>
+      <li class="wu-list-item"><span>The current page button has aria-current="page".</span></li>
+      <li class="wu-list-item"><span>The per-page select sits inside the kit wu-pagination-size label, so its visible "per page" text names it.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The previous and next glyphs are single guillemets, which the browser mirrors as bidi characters, so no flip rule is needed; the list reads right to left.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The kit draws the previous and next arrows to follow the reading direction, so they mirror under dir="rtl" with no flip rule; the list reads right to left.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -8,17 +8,20 @@
     <p class="woven-doc__intro">
       A segmented control sets a value. Unlike Tabs, which navigate between
       panels, it behaves as a radio group in single mode and as a set of
-      checkboxes in multiple mode, and announces itself that way. Use it for
-      two to five short choices that change a view or a filter at once.
+      checkboxes in multiple mode, and announces itself that way. It renders
+      the CSS kit
+      <code class="wu-code">wu-segmented</code>
+      with a native radio or checkbox in every segment. Use it for two to five
+      short choices that change a view or a filter at once.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Icon plus label, icon only, or label only per option.</li>
-      <li class="wu-list__item">Single or multiple selection; controlled or uncontrolled.</li>
-      <li class="wu-list__item">Two extra sizes and a fill layout.</li>
-      <li class="wu-list__item">Arrow, Home and End keys; disabled options are skipped.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Icon plus label, icon only, or label only per option.</span></li>
+      <li class="wu-list-item"><span>Single or multiple selection; controlled or uncontrolled.</span></li>
+      <li class="wu-list-item"><span>Kit sm and lg sizes and a full-width layout.</span></li>
+      <li class="wu-list-item"><span>Arrow, Home and End keys; disabled options are skipped.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -48,7 +51,7 @@
         @onChange={{this.updateSegmentedView}}
       >
         <:icon as |option|>
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" data-icon={{option.icon}}>
             <rect x="1" y="1" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
           </svg>
         </:icon>
@@ -57,7 +60,7 @@
 
     <WovenDocs::Example
       @title="Icon only"
-      @note="Labels hide but remain as titles and accessible names; for toolbars where the icons are universally understood."
+      @note="Labels move to a visually hidden span, so they stay the accessible names, and each segment gets a title; for toolbars where the icons are universally understood."
       @layout="block"
       @code={{this.code.iconOnly}}
     >
@@ -118,14 +121,14 @@
         @onChange={{this.updateSegmentedAmenities}}
         @multiple={{true}}
       />
-      <span class="wu-text m-sm m-muted" data-test-woven-segmented-values>Selected: {{this.segmentedAmenities}}</span>
+      <span class="wu-text sm muted" data-test-woven-segmented-values>Selected: {{this.segmentedAmenities}}</span>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Sizes and layout" @id="sizes">
     <WovenDocs::Example
       @title="Small"
-      @note="Matches sm buttons in toolbars and card headers."
+      @note="Kit sm. Matches sm buttons in toolbars and card headers; size xs renders the same."
       @layout="block"
       @code={{this.code.sm}}
     >
@@ -139,7 +142,7 @@
 
     <WovenDocs::Example
       @title="Large"
-      @note="For a prominent mode switch at the top of a screen."
+      @note="Kit lg. For a prominent mode switch at the top of a screen; size xl renders the same."
       @layout="block"
       @code={{this.code.lg}}
     >
@@ -153,7 +156,7 @@
 
     <WovenDocs::Example
       @title="Fill"
-      @note="Segments split the container width equally, for phones and narrow cards."
+      @note="The kit has no fill modifier; fill adds the core w-full utility and the segments share the width, for phones and narrow cards."
       @layout="block"
       @code={{this.code.fill}}
     >
@@ -170,22 +173,26 @@
     <WovenDocs::Table @kind="args" @rows={{this.argRows}} />
   </WovenDocs::Section>
 
+  <WovenDocs::Section @title="Blocks" @id="blocks">
+    <WovenDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </WovenDocs::Section>
+
   <WovenDocs::Section @title="Callbacks" @id="callbacks">
     <WovenDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Single mode renders role="radiogroup" with role="radio" buttons; multiple mode renders role="group" with role="checkbox" buttons. Both set aria-checked.</li>
-      <li class="wu-list__item">Single mode uses a roving tabindex and moves the value with focus; multiple mode keeps every segment tabbable and only moves focus, so Space toggles.</li>
-      <li class="wu-list__item">Icon-only segments keep their label in the title attribute; icons are aria-hidden.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Single mode renders role="radiogroup" with native radios sharing one name; multiple mode renders role="group" with native checkboxes. The checked state is native.</span></li>
+      <li class="wu-list-item"><span>Arrow keys, Home and End move between enabled segments. Single mode moves the value with focus; multiple mode only moves focus, so Space toggles.</span></li>
+      <li class="wu-list-item"><span>Icon-only segments keep their label in a visually hidden span and a title attribute; icons are aria-hidden.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Arrow keys follow the reading direction, as in Tabs.</li>
-      <li class="wu-list__item">Segment borders and radii are logical, so the rounded ends stay on the outer segments in both directions.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Arrow keys follow the reading direction, as in Tabs.</span></li>
+      <li class="wu-list-item"><span>The kit draws the joined segments with logical properties, so the rounded ends stay on the outer segments in both directions.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

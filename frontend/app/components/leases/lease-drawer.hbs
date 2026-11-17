@@ -100,11 +100,10 @@
           @required={{true}}
           @error={{this.fieldErrors.startDate}}
         >
-          <input
+          <Woven::Input
             id="lease-start"
             type="date"
-            class="wu-input"
-            value={{this.form.startDate}}
+            @value={{this.form.startDate}}
             required
             data-test-lease-start
             {{on "input" (fn this.setFieldFromEvent "startDate")}}
@@ -116,11 +115,10 @@
           @required={{true}}
           @error={{this.fieldErrors.endDate}}
         >
-          <input
+          <Woven::Input
             id="lease-end"
             type="date"
-            class="wu-input"
-            value={{this.form.endDate}}
+            @value={{this.form.endDate}}
             required
             data-test-lease-end
             {{on "input" (fn this.setFieldFromEvent "endDate")}}
@@ -193,12 +191,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.close}}
       data-test-cancel-lease
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="lease-form"
       @loading={{this.isSaving}}

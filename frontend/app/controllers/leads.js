@@ -262,10 +262,10 @@ export default class LeadsController extends Controller {
   }
 
   // Workload buckets for the column bar: a business rule, so not in the template.
-  loadClassFor(count) {
-    if (count > HIGH_LOAD) return 'load-high';
-    if (count > MEDIUM_LOAD) return 'load-medium';
-    return 'load-low';
+  loadFor(count) {
+    if (count > HIGH_LOAD) return { variant: 'danger', value: 100 };
+    if (count > MEDIUM_LOAD) return { variant: 'warning', value: 60 };
+    return { variant: 'success', value: 25 };
   }
 
   get agentColumns() {
@@ -278,7 +278,7 @@ export default class LeadsController extends Controller {
         collapsed: this.isColumnCollapsed('agent', key),
         agentName,
         leads: ownLeads,
-        loadClass: this.loadClassFor(ownLeads.length),
+        load: this.loadFor(ownLeads.length),
       };
     };
 

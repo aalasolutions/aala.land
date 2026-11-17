@@ -157,11 +157,11 @@ module('Unit | Utility | dialog-focus', function (hooks) {
     release();
   });
 
-  test('the close and tooltip buttons are never the first focus', function (assert) {
+  test('the close and help buttons are never the first focus', function (assert) {
     const dialog = buildDialog(
       `<div data-dialog-fixture tabindex="-1">
-         <button class="wu-drawer__close">Close</button>
-         <button class="wu-field__info">?</button>
+         <button class="wu-drawer-close">Close</button>
+         <button class="wu-field-help" aria-label="Help"></button>
          <input id="real" />
        </div>`,
     ).firstElementChild;
@@ -172,6 +172,25 @@ module('Unit | Utility | dialog-focus', function (hooks) {
       document.activeElement.id,
       'real',
       'the real control is focused',
+    );
+    release();
+  });
+
+  test('a read-only control is never the first focus', function (assert) {
+    const dialog = buildDialog(
+      `<div data-dialog-fixture tabindex="-1">
+         <input id="added" readonly />
+         <div id="aria" role="textbox" tabindex="0" aria-readonly="true"></div>
+         <input id="real" />
+       </div>`,
+    ).firstElementChild;
+    const release = openDialog(dialog);
+
+    focusFirstControl(dialog);
+    assert.strictEqual(
+      document.activeElement.id,
+      'real',
+      'the first editable control is focused',
     );
     release();
   });

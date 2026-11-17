@@ -1,28 +1,40 @@
-<aside class={{this.classes}} data-test-wu-sidebar ...attributes>
+{{! @dismissible makes it an off-canvas drawer below md with a backdrop. }}
+<nav
+  class={{this.classes}}
+  aria-label={{if @label @label "Main"}}
+  data-wu-offcanvas={{if @dismissible "true"}}
+  data-wu-open={{if @open "true"}}
+  data-test-wu-sidebar
+  ...attributes
+>
   {{#if (has-block "brand")}}
-    <div class="wu-sidebar__brand">{{yield to="brand"}}</div>
+    <div class="wu-sidebar-header">{{yield to="brand"}}</div>
   {{else if @brandTitle}}
-    <div class="wu-sidebar__brand">
-      <div class="wu-sidebar__brand-title">{{@brandTitle}}</div>
-      {{#if @brandSubtitle}}
-        <div class="wu-sidebar__brand-subtitle">{{@brandSubtitle}}</div>
-      {{/if}}
+    <div class="wu-sidebar-header">
+      <span class="flex col">
+        <span class="wu-title sm">{{@brandTitle}}</span>
+        {{#if @brandSubtitle}}
+          <span class="text-sm text-muted">{{@brandSubtitle}}</span>
+        {{/if}}
+      </span>
     </div>
   {{/if}}
 
-  <nav class="wu-sidebar__nav">
-    {{yield}}
-  </nav>
+  {{yield}}
 
   {{#if (has-block "footer")}}
-    <div class="wu-sidebar__footer">{{yield to="footer"}}</div>
+    <div class="wu-sidebar-footer">{{yield to="footer"}}</div>
   {{/if}}
-</aside>
+</nav>
 
 {{#if @dismissible}}
-  <div
-    class={{this.backdropClasses}}
+  <button
+    type="button"
+    class="wu-sidebar-backdrop"
+    tabindex="-1"
+    aria-label="Close navigation"
+    hidden={{unless @open true}}
     data-test-wu-sidebar-backdrop
     {{on "click" this.dismiss}}
-  ></div>
+  ></button>
 {{/if}}

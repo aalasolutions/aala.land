@@ -7,7 +7,7 @@
         <div class="flex gap-3">
           {{#if this.canTrim}}
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @icon="trend-down"
               data-test-trim-users
               {{on "click" this.openTrim}}
@@ -16,7 +16,7 @@
             </Woven::Button>
           {{/if}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @icon="envelope-simple"
             data-test-invite-member
             {{on "click" this.openInvite}}
@@ -24,7 +24,7 @@
             Invite
           </Woven::Button>
           <Woven::Button
-            @variant="primary"
+            @variant="brand"
             @icon="plus"
             data-test-add-member
             {{on "click" this.openCreate}}
@@ -58,7 +58,7 @@
           {{#if cell.value.length}}
             <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
               {{#each cell.value as |code|}}
-                <Woven::Tag @text={{code}} @size="sm" />
+                <Woven::Tag @text={{code}} />
               {{/each}}
             </div>
           {{else}}
@@ -71,81 +71,61 @@
           <span class="text-muted">{{or cell.value "—"}}</span>
         {{else if (eq cell.key "isActive")}}
           {{#if cell.value}}
-            <Woven::Tag class="tag-enabled-active" @text="Active" />
+            <Woven::Tag @variant="success" @text="Active" />
           {{else}}
-            <Woven::Tag class="tag-enabled-inactive" @text="Inactive" />
+            <Woven::Tag @variant="secondary" @text="Inactive" />
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <div class="flex">
-            <Woven::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              @icon="pencil-simple"
-              aria-label="Edit {{cell.row.name}}"
-              data-tooltip="Edit"
-              data-test-edit-user
-              {{on "click" (fn this.openEdit cell.row)}}
-            />
-            {{! Removal needs a company context; backend rejects users with no companyId. }}
-            {{#if cell.row.companyId}}
-              {{#if cell.row.isActive}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="danger"
-                  @size="xs"
-                  @icon="user-minus"
-                  aria-label="Remove {{cell.row.name}}"
-                  data-tooltip="Remove"
-                  data-test-remove-user
-                  {{on "click" (fn this.openRemove cell.row)}}
-                />
-              {{else}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="user-plus"
-                  @loading={{eq this.reactivatingUserId cell.row.id}}
-                  @disabled={{this.isReactivating}}
-                  aria-label="Reactivate {{cell.row.name}}"
-                  data-tooltip="Reactivate"
-                  data-test-reactivate-user
-                  {{on "click" (fn this.openReactivate cell.row)}}
-                />
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="danger"
-                  @size="xs"
-                  @icon="trash"
-                  aria-label="Delete {{cell.row.name}}"
-                  data-tooltip="Delete"
-                  data-test-delete-user
-                  {{on "click" (fn this.openRemove cell.row)}}
-                />
-              {{/if}}
-            {{/if}}
-            {{#if this.isSuperAdmin}}
-              {{#unless (eq cell.row.role "super_admin")}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="user-switch"
-                  @loading={{eq this.impersonatingUserId cell.row.id}}
-                  @disabled={{or
-                    (eq cell.row.isActive false)
-                    this.isImpersonating
-                    (eq this.impersonatingUserId cell.row.id)
-                  }}
-                  aria-label="Impersonate {{cell.row.name}}"
-                  data-tooltip="Impersonate"
-                  data-test-impersonate-user
-                  {{on "click" (fn this.impersonateUser cell.row)}}
-                />
-              {{/unless}}
-            {{/if}}
-          </div>
+          {{! Removal needs a company context; backend rejects users with no companyId. }}
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="edit-user"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+              )
+              (hash
+                key="remove-user"
+                label="Remove"
+                icon="user-minus"
+                variant="danger"
+                onSelect=(fn this.openRemove cell.row)
+                hidden=(not (and cell.row.companyId cell.row.isActive))
+              )
+              (hash
+                key="reactivate-user"
+                label="Reactivate"
+                icon="user-plus"
+                loading=(eq this.reactivatingUserId cell.row.id)
+                disabled=this.isReactivating
+                onSelect=(fn this.openReactivate cell.row)
+                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+              )
+              (hash
+                key="delete-user"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openRemove cell.row)
+                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+              )
+              (hash
+                key="impersonate-user"
+                label="Impersonate"
+                icon="user-switch"
+                loading=(eq this.impersonatingUserId cell.row.id)
+                disabled=(or
+                  (eq cell.row.isActive false)
+                  this.isImpersonating
+                  (eq this.impersonatingUserId cell.row.id)
+                )
+                onSelect=(fn this.impersonateUser cell.row)
+                hidden=(or (not this.isSuperAdmin) (eq cell.row.role "super_admin"))
+              )
+            }}
+          />
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
@@ -164,7 +144,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="team-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -211,34 +190,26 @@
 
       <div class="flex col gap-2">
         <span class="text-sm text-muted">Action</span>
-        <label class="flex gap-2 x-center">
-          <input
-            type="radio"
-            name="remove-mode"
-            value="deactivate"
-            checked={{eq this.removeMode "deactivate"}}
-            disabled={{not this.userToRemove.isActive}}
-            data-test-remove-mode-deactivate
-            {{on "change" (fn this.setRemoveMode "deactivate")}}
-          />
-          <span><strong>Deactivate</strong>
-            (recommended): the member loses access{{#unless this.hasPaidSeats}}
-              and frees the seat{{/unless}}. Their email address stays reserved
-            for them. Reversible.</span>
-        </label>
-        <label class="flex gap-2 x-center">
-          <input
-            type="radio"
-            name="remove-mode"
-            value="delete"
-            checked={{eq this.removeMode "delete"}}
-            data-test-remove-mode-delete
-            {{on "change" (fn this.setRemoveMode "delete")}}
-          />
-          <span><strong>Delete</strong>: the member is removed for good and
-            their email address is freed, so they can be invited elsewhere.
-            Their history stays in the audit log. Irreversible.</span>
-        </label>
+        <Woven::Radio
+          @name="remove-mode"
+          @value="deactivate"
+          @checked={{eq this.removeMode "deactivate"}}
+          @disabled={{not this.userToRemove.isActive}}
+          @onChange={{this.setRemoveMode}}
+          data-test-remove-mode-deactivate
+        ><strong>Deactivate</strong>
+          (recommended): the member loses access{{#unless this.hasPaidSeats}}
+            and frees the seat{{/unless}}. Their email address stays reserved
+          for them. Reversible.</Woven::Radio>
+        <Woven::Radio
+          @name="remove-mode"
+          @value="delete"
+          @checked={{eq this.removeMode "delete"}}
+          @onChange={{this.setRemoveMode}}
+          data-test-remove-mode-delete
+        ><strong>Delete</strong>: the member is removed for good and their email
+          address is freed, so they can be invited elsewhere. Their history
+          stays in the audit log. Irreversible.</Woven::Radio>
         {{#if this.hasPaidSeats}}
           <p class="text-muted text-sm" data-test-seat-removal-note>
             This frees one seat. The unused part of this billing period is
@@ -291,11 +262,12 @@
 
       <Woven::FormActions @align="end">
         <Woven::Button
-          @variant="secondary"
+          data-test-remove-cancel
+          @variant="subtle"
           @onClick={{this.closeRemoveModal}}
         >Cancel</Woven::Button>
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           @onClick={{this.continueRemove}}
           data-test-remove-continue
         >Continue</Woven::Button>
@@ -331,7 +303,7 @@
 
       <Woven::FormActions @align="end">
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @onClick={{this.backToRemoveOptions}}
           data-test-remove-back
         >Back</Woven::Button>
@@ -410,11 +382,12 @@
 
       <Woven::FormActions @align="end">
         <Woven::Button
-          @variant="secondary"
+          data-test-trim-cancel
+          @variant="subtle"
           @onClick={{this.closeTrimModal}}
         >Cancel</Woven::Button>
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           @onClick={{this.continueTrim}}
           data-test-trim-continue
         >Continue</Woven::Button>
@@ -444,7 +417,7 @@
 
       <Woven::FormActions @align="end">
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @onClick={{this.backToTrimOptions}}
           data-test-trim-back
         >Back</Woven::Button>
@@ -466,7 +439,7 @@
   @title="Reactivate User"
   @message="Restore access for this team member?"
   @confirmText="Reactivate"
-  @confirmVariant="primary"
+  @confirmVariant="brand"
   @isConfirming={{this.isReactivating}}
   @confirmingText="Reactivating..."
   @onClose={{this.closeReactivateModal}}

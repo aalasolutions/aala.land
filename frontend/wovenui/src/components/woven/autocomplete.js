@@ -3,7 +3,7 @@ import { action } from '@ember/object';
 
 // @onSearch(term) and @onCreate(term) return domain objects; the host owns transport.
 // Passing @options (domain objects) switches to a preloaded list filtered locally by @filter.
-export default class NuAutocompleteComponent extends Component {
+export default class WovenAutocompleteComponent extends Component {
   get isLocal() {
     return Array.isArray(this.args.options);
   }

@@ -5,6 +5,7 @@ import { runTask, cancelTask } from 'ember-lifeline';
 // Enter and leave transitions driven by an `open` flag, all as run-loop tasks so
 // `settled()` awaits every step. The reveal forces a style flush first, which
 // commits the closed position as the transition's start point without a frame.
+// `durationFrom()` returns the element whose transition the leave waits for.
 export default class DialogTransitionModifier extends Modifier {
   openTask = null;
   revealTask = null;
@@ -18,7 +19,7 @@ export default class DialogTransitionModifier extends Modifier {
 
   modify(element, [open], named) {
     this.clearPending();
-    const { onOpen, onVisible, onHide, onHidden } = named;
+    const { onOpen, onVisible, onHide, onHidden, durationFrom } = named;
 
     if (open) {
       this.openTask = runTask(
@@ -47,8 +48,10 @@ export default class DialogTransitionModifier extends Modifier {
       () => {
         this.hideTask = null;
         onHide?.();
+        const from = durationFrom?.();
+        const target = from?.isConnected ? from : element;
         const duration =
-          parseFloat(getComputedStyle(element).transitionDuration) || 0;
+          parseFloat(getComputedStyle(target).transitionDuration) || 0;
         this.hideTimer = runTask(
           this,
           () => {

@@ -1,0 +1,17 @@
+{{! @onToggle must preventDefault the summary click: @open owns the details state. }}
+<li>
+  <details class="wu-sidebar-group" open={{@open}}>
+    <summary
+      class="wu-sidebar-toggle"
+      data-test-nav-group-toggle={{@group}}
+      {{on "click" @onToggle}}
+    >
+      <Ui::Ph @icon={{@icon}} />
+      <span class="wu-sidebar-label">{{@label}}</span>
+    </summary>
+    <ul class="wu-sidebar-list">
+      <li class="app-shell__flyout-title" aria-hidden="true">{{@label}}</li>
+      {{yield}}
+    </ul>
+  </details>
+</li>

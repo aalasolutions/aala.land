@@ -68,10 +68,10 @@ module('Integration | Component | vendors/vendor-drawer', function (hooks) {
     assert.dom('[data-test-save-vendor]').hasText('Create Vendor');
 
     await fillIn('#v-name', 'Spark Co');
-    await click('[data-test-specialty-chip="ELECTRICAL"]');
+    await click('[data-test-specialty-option="ELECTRICAL"] input');
     assert
-      .dom('[data-test-specialty-chip="ELECTRICAL"]')
-      .hasAttribute('aria-pressed', 'true');
+      .dom('[data-test-specialty-option="ELECTRICAL"] input')
+      .isChecked();
     await fillIn('#v-rate', '99.5');
     await fillIn('#v-rating', '3');
     await click('[data-test-save-vendor]');
@@ -99,8 +99,8 @@ module('Integration | Component | vendors/vendor-drawer', function (hooks) {
     assert.dom('#v-rate').hasValue('120');
     assert.dom('#v-rating').hasValue('4');
     assert
-      .dom('[data-test-specialty-chip="HVAC"]')
-      .hasAttribute('aria-pressed', 'true');
+      .dom('[data-test-specialty-option="HVAC"] input')
+      .isChecked();
     assert.dom('[data-test-save-vendor]').hasText('Update');
 
     await fillIn('#v-notes', 'Very fast');

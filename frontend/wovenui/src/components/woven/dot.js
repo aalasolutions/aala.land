@@ -1,23 +1,15 @@
 import Component from '@glimmer/component';
+import { VARIANTS } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['xs', 'sm', 'md', 'lg'];
-
-export default class NuDotComponent extends Component {
+export default class WovenDotComponent extends Component {
   get classes() {
     const parts = ['wu-dot'];
 
     if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
-    }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+      parts.push(this.args.variant);
     }
     if (this.args.pulse) {
-      parts.push('m-pulse');
-    }
-    if (this.args.ring) {
-      parts.push('m-ring');
+      parts.push('animated');
     }
 
     return parts.join(' ');

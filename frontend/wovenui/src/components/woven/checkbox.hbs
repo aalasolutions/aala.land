@@ -1,11 +1,12 @@
-<label class={{this.labelClasses}} data-test-wu-checkbox ...attributes>
+<label class={{this.classes}} data-test-wu-checkbox ...attributes>
   <input
     type="checkbox"
-    class={{this.classes}}
+    class="wu-checkbox-input"
     checked={{@checked}}
     value={{@value}}
     disabled={{@disabled}}
     aria-invalid={{if this.isInvalid "true"}}
+    data-wu-status={{this.status}}
     aria-describedby={{@describedBy}}
     aria-required={{if @required "true"}}
     data-test-wu-checkbox-input
@@ -14,6 +15,6 @@
     {{did-update this.syncIndeterminate @indeterminate}}
   />
   {{#if @label}}
-    <span data-test-wu-checkbox-label>{{@label}}</span>
+    <span class="wu-checkbox-label" data-test-wu-checkbox-label>{{@label}}</span>
   {{/if}}
 </label>

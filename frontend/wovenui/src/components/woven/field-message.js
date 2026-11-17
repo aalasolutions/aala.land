@@ -1,36 +1,27 @@
 import Component from '@glimmer/component';
 
+// The CSS kit has no warning message, so a warning hint takes `info`.
 const HINT_TONES = Object.freeze({
-  warning: { modifier: 'm-warning', icon: 'warning' },
-  success: { modifier: 'm-success', icon: 'check-circle' },
+  warning: 'info',
+  success: 'success',
 });
 
 /**
- * The hint and error slot shared by `Woven::Field` and `Woven::FieldGroup`.
+ * The hint and error message shared by `Woven::Field` and `Woven::FieldGroup`.
  *
- * - `@error` (string): shown with an icon, replaces the hint while present.
- * - `@hint` (string): helper text; colored and given an icon when `@status`
- *   is `warning` or `success`.
+ * - `@error` (string): `wu-field-message error`, replaces the hint while present.
+ * - `@hint` (string): helper text; `success` or `info` when `@status` is
+ *   `success` or `warning`.
  * - `@status` (`error | warning | success`): tone of the hint.
  * - `@hintId`, `@errorId`: ids the parent lists in `aria-describedby`.
  *
- * The slot always renders and reserves one text line. It is a polite live
- * region, so a message that appears after the user moves on is announced.
+ * Renders the message as a direct child of the wrapper, so the kit `live`
+ * field reserves its line and the active message id joins `aria-describedby`.
  */
-export default class NuFieldMessageComponent extends Component {
-  get tone() {
-    return HINT_TONES[this.args.status] ?? null;
-  }
-
+export default class WovenFieldMessageComponent extends Component {
   get hintClasses() {
-    const parts = ['wu-field__hint'];
-    if (this.tone) {
-      parts.push(this.tone.modifier);
-    }
-    return parts.join(' ');
-  }
-
-  get hintIcon() {
-    return this.tone?.icon ?? null;
+    return ['wu-field-message', HINT_TONES[this.args.status]]
+      .filter(Boolean)
+      .join(' ');
   }
 }

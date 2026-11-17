@@ -79,9 +79,13 @@ export default class WovenSegmentedController extends Controller {
     { name: '@options', type: 'array', default: '[]', description: 'Objects with id (or value), label, optional icon (Phosphor name) and disabled.' },
     { name: '@value', type: 'string | array', default: '', description: 'Controlled value: one id, or an array of ids when @multiple. Omit for uncontrolled mode.' },
     { name: '@multiple', type: 'boolean', default: 'false', description: 'Several segments can be raised at once; the value is an array.' },
-    { name: '@size', type: '"sm" | "lg"', default: '', description: 'Height step.' },
-    { name: '@iconOnly', type: 'boolean', default: 'false', description: 'Hides labels visually; each segment keeps its label as a title.' },
-    { name: '@fill', type: 'boolean', default: 'false', description: 'Segments split the container width equally.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg.' },
+    { name: '@iconOnly', type: 'boolean', default: 'false', description: 'Labels get the sr-only class; each segment keeps its label as a title.' },
+    { name: '@fill', type: 'boolean', default: 'false', description: 'Adds the core w-full utility; segments split the container width.' },
+  ];
+
+  blockRows = [
+    { name: 'icon', description: 'Yields the option; replaces the Phosphor icon drawn from option.icon.' },
   ];
 
   callbackRows = [

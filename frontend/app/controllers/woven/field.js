@@ -67,7 +67,7 @@ export default class WovenFieldController extends Controller {
   <Woven::Input @placeholder="Marina Tower" />
 </Woven::Field>`,
     required: `<Woven::Field @label="Property name" @required={{true}}>
-  <Woven::Input @placeholder="Marina Tower" required />
+  <Woven::Input @placeholder="Marina Tower" />
 </Woven::Field>`,
     hint: `<Woven::Field @label="Property name" @hint="Shown to tenants on the portal">
   <Woven::Input @placeholder="Marina Tower" />
@@ -108,17 +108,11 @@ export default class WovenFieldController extends Controller {
     horizontal: `<Woven::Field @label="Region" @horizontal={{true}}>
   <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
 </Woven::Field>`,
-    flush: `<Woven::Field @label="Region" @horizontal={{true}} @flush={{true}}>
-  <Woven::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
-</Woven::Field>`,
     tooltip: `<Woven::Field
   @label="Tenancy Registration Ref"
   @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
 >
   <Woven::Input @placeholder="TR-2026-00001" />
-</Woven::Field>`,
-    tooltipPosition: `<Woven::Field @label="Deposit" @tooltip="Held until the lease ends." @tooltipPosition="end">
-  <Woven::Input @placeholder="5%" />
 </Woven::Field>`,
     combobox: `<Woven::Field @label="Status">
   <Woven::Dropdown @align="start" @options={{this.filterStatusOptions}} @placeholder="All" />
@@ -134,37 +128,35 @@ export default class WovenFieldController extends Controller {
     <Woven::Input @value={{this.filterSearch}} @onInput={{this.setFilterSearch}} @placeholder="Name or ID" />
   </Woven::Field>
   <div class="wu-field">
-    <span class="wu-field__label-spacer" aria-hidden="true"></span>
-    <Woven::Button @variant="secondary" @text="Clear" @onClick={{this.clearFilters}} />
+    <label class="wu-field-label visually-hidden">Actions</label>
+    <Woven::Button @text="Clear" @onClick={{this.clearFilters}} />
   </div>
 </div>`,
     actionsStart: `<Woven::FormActions>
-  <Woven::Button @variant="primary" @text="Save" />
-  <Woven::Button @variant="secondary" @text="Cancel" />
+  <Woven::Button @variant="brand" @text="Save" />
+  <Woven::Button @text="Cancel" />
 </Woven::FormActions>`,
     actionsEnd: `<Woven::FormActions @align="end">
-  <Woven::Button @variant="secondary" @text="Cancel" />
-  <Woven::Button @variant="primary" @text="Save" />
+  <Woven::Button @text="Cancel" />
+  <Woven::Button @variant="brand" @text="Save" />
 </Woven::FormActions>`,
     actionsBetween: `<Woven::FormActions @align="between">
   <Woven::Button @variant="ghost" @text="Delete" />
-  <Woven::Button @variant="primary" @text="Save changes" />
+  <Woven::Button @variant="brand" @text="Save changes" />
 </Woven::FormActions>`,
   };
 
   fieldArgRows = [
-    { name: '@label', type: 'string', default: '', description: 'Label text. Linked to the first native control in the block by for/id.' },
-    { name: '@required', type: 'boolean', default: 'false', description: 'Appends an aria-hidden asterisk to the label. Set required on the control itself as well.' },
+    { name: '@label', type: 'string', default: '', description: 'Kit wu-field-label. Linked to the first native control in the block by for/id.' },
+    { name: '@required', type: 'boolean', default: 'false', description: 'Sets aria-required="true" on the control; the kit draws the label asterisk from it.' },
     { name: '@placeholder', type: 'string', default: '', description: 'Without @label: floating label text inside the control. The native placeholder becomes a single space.' },
-    { name: '@hint', type: 'string', default: '', description: 'Helper text under the control. Hidden while @error is set. Colored by a warning or success status.' },
-    { name: '@error', type: 'string', default: '', description: 'Error text with an icon; replaces the hint and implies status error.' },
+    { name: '@hint', type: 'string', default: '', description: 'Helper text under the control. Hidden while @error is set. Colored by a warning or success status. The field is kit live, so the message line is always reserved.' },
+    { name: '@error', type: 'string', default: '', description: 'Kit wu-field-message error with its marker; replaces the hint and implies status error.' },
     { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'Validation status written onto the control. A status argument on the control itself wins.' },
     { name: '@invalid', type: 'boolean', default: 'false', description: 'Alias for @status="error".' },
     { name: '@valid', type: 'boolean', default: 'false', description: 'Alias for @status="success".' },
-    { name: '@horizontal', type: 'boolean', default: 'false', description: 'Label and control side by side (m-horizontal).' },
-    { name: '@flush', type: 'boolean', default: 'false', description: 'Removes the outer block margin (m-flush).' },
-    { name: '@tooltip', type: 'string', default: '', description: 'Adds a question-mark button beside the label carrying this text as a tooltip.' },
-    { name: '@tooltipPosition', type: '"top" | "bottom" | "start" | "end"', default: '"top"', description: 'Placement of the label tooltip.' },
+    { name: '@horizontal', type: 'boolean', default: 'false', description: 'Kit horizontal modifier: label and control side by side. Ignored in floating mode.' },
+    { name: '@tooltip', type: 'string', default: '', description: 'Adds the kit help button (wu-field-help) beside the label; it opens this text in a native wu-popover anchored below the button. Needs @label.' },
   ];
 
   fieldBlockRows = [
@@ -173,19 +165,19 @@ export default class WovenFieldController extends Controller {
 
   groupArgRows = [
     { name: '@label', type: 'string', default: '', description: 'Legend text.' },
-    { name: '@required', type: 'boolean', default: 'false', description: 'Asterisk on the legend.' },
+    { name: '@required', type: 'boolean', default: 'false', description: 'Sets required on each radio and aria-required on other controls directly in the group; the kit draws the legend asterisk from it. A group with no form control gets no asterisk.' },
     { name: '@hint', type: 'string', default: '', description: 'Helper text for the set.' },
     { name: '@error', type: 'string', default: '', description: 'Error for the set; implies status error.' },
     { name: '@status', type: '"error" | "warning" | "success"', default: '', description: 'Written onto every control inside. @invalid and @valid alias it.' },
-    { name: '@flush', type: 'boolean', default: 'false', description: 'Removes the outer block margin.' },
   ];
 
   actionsArgRows = [
-    { name: '@align', type: '"end" | "between"', default: '', description: 'Aligns the buttons to the end of the row, or spreads them to both edges. Omit for start alignment.' },
+    { name: '@align', type: '"end" | "between"', default: '', description: 'end adds the kit trailing modifier; between adds the core flex between utilities. Omit for the kit start alignment.' },
   ];
 
   classRows = [
+    { name: 'wu-field-row', description: 'Kit row of fields that wrap and share a size (sm, lg); items align at their bottom edge.' },
     { name: 'wu-filter-row', description: 'Auto-fitting grid of fields; the column count follows the viewport width.' },
-    { name: 'wu-field__label-spacer', description: 'Empty label placeholder so an unlabelled control (a button) shares the baseline of its neighbours.' },
+    { name: 'wu-field-label visually-hidden', description: 'Kit label with hidden text that keeps its line, so a control without a visible label (a button) shares the baseline of its neighbors. It needs real text.' },
   ];
 }

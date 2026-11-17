@@ -24,51 +24,65 @@ export default class WovenListController extends Controller {
     strings: `<Woven::List @items={{this.unitList}} />
 
 // unitList: ['Marina Tower - Unit 1204', ...]`,
-    icons: `<Woven::List @items={{this.iconList}} @plain={{true}} />
+    icons: `<Woven::List @items={{this.iconList}} />
 
 // iconList: [{ label: 'Parking bay', icon: '🅿' }, ...]`,
     ordered: `<Woven::List @items={{this.unitList}} @ordered={{true}} />`,
-    plain: `<Woven::List @items={{this.unitList}} @plain={{true}} />`,
-    inline: `<Woven::List @items={{this.unitList}} @inline={{true}} />`,
-    bordered: `<Woven::List @items={{this.unitList}} @plain={{true}} @bordered={{true}} />`,
+    divided: `<Woven::List @items={{this.unitList}} class="divided" />`,
     compact: `<Woven::List @items={{this.unitList}} @compact={{true}} />`,
-    block: `<Woven::List @plain={{true}}>
-  <li class="wu-list__item"><Woven::Badge @variant="success" @text="Paid" /> March rent</li>
-  <li class="wu-list__item"><Woven::Badge @variant="warning" @text="Due" /> April rent</li>
+    block: `<Woven::List class="divided">
+  <li class="wu-list-item">
+    <div class="wu-list-body">
+      <p class="wu-list-title">March rent</p>
+      <p class="wu-list-text">Unit 1204, AED 8,500</p>
+    </div>
+    <Woven::Tag @variant="success" @text="Paid" />
+  </li>
+  <li class="wu-list-item">
+    <div class="wu-list-body">
+      <p class="wu-list-title">April rent</p>
+      <p class="wu-list-text">Unit 1204, AED 8,500</p>
+    </div>
+    <Woven::Tag @variant="warning" @text="Due" />
+  </li>
 </Woven::List>`,
     desc: `<Woven::DescList @items={{this.leaseDescItems}} />
 
 // leaseDescItems: [{ term: 'Tenant', description: 'Ahmed Al Farsi' }, ...]`,
     descHorizontal: `<Woven::DescList @items={{this.leaseDescItems}} @horizontal={{true}} />`,
-    descCompact: `<Woven::DescList @items={{this.leaseDescItems}} @compact={{true}} />`,
-    descBlock: `<Woven::DescList @horizontal={{true}}>
-  <div class="wu-desc-list__group">
-    <dt class="wu-desc-list__term">Status</dt>
-    <dd class="wu-desc-list__description"><Woven::Badge @variant="success" @text="Active" /></dd>
+    descBordered: `<Woven::DescList @items={{this.leaseDescItems}} class="bordered" />`,
+    descColumns: `<Woven::DescList @items={{this.leaseDescItems}} class="columns" />`,
+    descBlock: `<Woven::DescList @horizontal={{true}} class="divided">
+  <div>
+    <dt>Status</dt>
+    <dd><Woven::Tag @variant="success" @text="Active" /></dd>
   </div>
 </Woven::DescList>`,
   };
 
   listArgRows = [
-    { name: '@items', type: 'array', default: '[]', description: 'Strings, or objects with label and optional icon. Ignored when a block is given.' },
-    { name: '@ordered', type: 'boolean', default: 'false', description: 'Renders an ol instead of a ul.' },
-    { name: '@plain', type: 'boolean', default: 'false', description: 'No list markers.' },
-    { name: '@inline', type: 'boolean', default: 'false', description: 'Items flow on one line.' },
-    { name: '@bordered', type: 'boolean', default: 'false', description: 'Divider between items.' },
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter item spacing.' },
+    { name: '@items', type: 'array', default: '[]', description: 'Strings, or objects with label and optional icon; each renders a wu-list-item with a wu-list-title. Ignored when a block is given.' },
+    { name: '@ordered', type: 'boolean', default: 'false', description: 'Renders an ol instead of a ul. Both carry role="list" and no markers.' },
+    { name: '@compact', type: 'boolean', default: 'false', description: 'Kit sm modifier: tighter row padding.' },
   ];
 
   listBlockRows = [
-    { name: 'default', description: 'Custom li elements carrying the wu-list__item class; replaces @items rendering.' },
+    { name: 'default', description: 'Custom li elements with the kit wu-list-item, wu-list-body, wu-list-title and wu-list-text parts; replaces @items rendering.' },
   ];
 
   descArgRows = [
-    { name: '@items', type: 'array', default: '[]', description: 'Objects with term and description. Ignored when a block is given.' },
-    { name: '@horizontal', type: 'boolean', default: 'false', description: 'Term and description side by side.' },
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Tighter group spacing.' },
+    { name: '@items', type: 'array', default: '[]', description: 'Objects with term and description, each in its own div. Ignored when a block is given.' },
+    { name: '@horizontal', type: 'boolean', default: 'false', description: 'Kit horizontal modifier: terms in a column beside their descriptions.' },
+  ];
+
+  classRows = [
+    { name: 'wu-list divided', description: 'Line between list rows.' },
+    { name: 'wu-desc-list divided', description: 'Lines between the term and description pairs.' },
+    { name: 'wu-desc-list bordered', description: 'Table look: lines around every cell, terms on the alternate background.' },
+    { name: 'wu-desc-list columns', description: 'Several pairs per row.' },
   ];
 
   descBlockRows = [
-    { name: 'default', description: 'Custom wu-desc-list__group elements with dt and dd children; replaces @items rendering.' },
+    { name: 'default', description: 'Custom div elements with dt and dd children; replaces @items rendering.' },
   ];
 }

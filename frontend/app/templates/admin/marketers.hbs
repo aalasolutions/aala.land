@@ -33,10 +33,10 @@
           {{! Child rows carry only the company link in the first column. }}
         {{else if (eq cell.key "mrr")}}
           {{#if cell.value}}
-            <span class="console-chip-row">
+            <span class="flex wrap gap-2 console-chip-row">
               {{#each cell.value as |band|}}
-                <span class="console-chip">
-                  <strong class="console-chip__code">{{band.currency}}</strong>
+                <span class="wu-tag">
+                  <strong class="uppercase">{{band.currency}}</strong>
                   {{format-money band.mrrMinor currency=band.currency minor=true}}
                 </span>
               {{/each}}

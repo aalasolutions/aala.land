@@ -14,7 +14,7 @@ import {
   reloadElement,
 } from 'land/utils/media-playback';
 
-const DIALOG_SELECTOR = '[role="dialog"]';
+const DIALOG_SELECTOR = 'dialog';
 const CONTROL_TAGS = new Set(['BUTTON', 'INPUT', 'A', 'TEXTAREA', 'SELECT']);
 
 function fullscreenElement() {

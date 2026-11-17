@@ -36,6 +36,8 @@ export default class TooltipService extends Service {
   @tracked placement = DEFAULT_PLACEMENT;
   @tracked light = false;
   @tracked anchor = null;
+  // The trigger element, so TooltipHost can render into the layer nearest it.
+  @tracked target = null;
 
   #trigger = null;
   #openTask = null;
@@ -67,6 +69,7 @@ export default class TooltipService extends Service {
         this.placement = normalizePlacement(raw);
         this.light = trigger.hasAttribute('data-tooltip-light');
         this.anchor = trigger.getBoundingClientRect();
+        this.target = trigger;
         this.content = content;
 
         if (!trigger.hasAttribute('aria-describedby')) {
@@ -101,6 +104,7 @@ export default class TooltipService extends Service {
     this.#releaseTrigger();
     this.content = null;
     this.anchor = null;
+    this.target = null;
   }
 
   isCurrentTrigger(element) {

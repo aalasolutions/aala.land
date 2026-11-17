@@ -7,7 +7,10 @@
   />
 
   {{#if this.company}}
-    <div class="plan-banner tag-plan-{{lowercase (or this.company.subscriptionTier "FREE")}}">
+    <div
+      class="plan-banner"
+      data-variant={{tag-variant "plan" (or this.company.subscriptionTier "FREE")}}
+    >
       <div>
         <div class="plan-banner__name">{{or
             this.company.subscriptionTier
@@ -33,7 +36,7 @@
 
   {{#if (eq this.currentTab "ai")}}
     {{#if this.creditUsageLabel}}
-      <Woven::Card class="max-w-lg text-muted text-sm">
+      <Woven::Card class="text-muted text-sm">
         <div data-test-ai-credit-usage>{{this.creditUsageLabel}}</div>
         <div class="text-xs mt-1">1 credit covers 24 hours of unlimited replies
           with one lead.</div>
@@ -41,7 +44,7 @@
     {{/if}}
 
     {{#if this.hasCreditAgents}}
-      <Woven::Card class="max-w-lg">
+      <Woven::Card >
         <div class="text-sm font-bold mb-2">AI credits by agent</div>
         <Woven::DataTable
           @columns={{this.creditAgentColumns}}
@@ -65,7 +68,7 @@
       </Woven::Card>
     {{/if}}
 
-    <Woven::Card class="max-w-lg">
+    <Woven::Card >
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
         <Woven::Field
           @label="Business information for the AI"
@@ -94,7 +97,7 @@
 
         <Woven::FormActions>
           <Woven::Button
-            @variant="primary"
+            @variant="brand"
             @type="submit"
             @loading={{this.isSavingAI}}
             data-test-save-prompt
@@ -102,7 +105,7 @@
             {{if this.isSavingAI "Saving…" "Save"}}
           </Woven::Button>
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @disabled={{this.isSavingAI}}
             data-test-restore-prompt
             {{on "click" this.restoreDefaultPrompt}}
@@ -113,7 +116,7 @@
       </form>
     </Woven::Card>
   {{else if (eq this.currentTab "billing")}}
-    <Woven::Card class="max-w-lg" data-test-billing-panel>
+    <Woven::Card data-test-billing-panel>
       <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
@@ -147,7 +150,7 @@
             </p>
           </Woven::Alert>
         {{/if}}
-        <div class="billing-plan-card mb-4" data-test-plan-card>
+        <Woven::Panel class="mb-4" data-test-plan-card>
           <div class="flex between x-center">
             <div
               class="text-xl font-bold"
@@ -155,7 +158,7 @@
             >{{this.billing.tier}}</div>
             {{#if this.billing.billingStatus}}
               <Woven::Tag
-                class="tag-sub-{{this.billingStatusBadgeValue}}"
+                @variant={{tag-variant "sub" this.billingStatusBadgeValue}}
                 @text={{this.billingStatusLabel}}
                 data-test-billing-status
               />
@@ -185,7 +188,7 @@
               {{this.purchasedCurrency}}, locked to your account.
             </p>
           {{/if}}
-        </div>
+        </Woven::Panel>
 
         {{#if this.isFreeTier}}
           <div class="mb-3" data-test-refund-terms-field>
@@ -197,7 +200,7 @@
             />
           </div>
           <Woven::Button
-            @variant="primary"
+            @variant="brand"
             @loading={{this.isBillingBusy}}
             @disabled={{not this.refundTermsAccepted}}
             data-test-upgrade-pro
@@ -219,7 +222,7 @@
         {{else if this.billing.hasSubscription}}
           {{#if (or this.isDowngradePending this.isScheduledToCancel)}}
             <Woven::Button
-              @variant="primary"
+              @variant="brand"
               @loading={{this.isBillingBusy}}
               data-test-reactivate-pro
               {{on "click" this.reactivatePro}}
@@ -305,7 +308,7 @@
             {{else if (eq cell.key "type")}}
               {{#let (billing-history-status cell.row) as |status|}}
                 <Woven::Tag
-                  class={{status.tagClass}}
+                  @variant={{status.tagVariant}}
                   @text={{status.label}}
                   data-test-history-status
                 />
@@ -330,7 +333,6 @@
             {{/if}}
           </Woven::DataTable>
           <Woven::Pagination
-            @selectId="billing-history-limit"
             @page={{this.billingHistoryPage}}
             @limit={{this.billingHistoryLimit}}
             @total={{this.billingHistoryTotal}}
@@ -417,7 +419,7 @@
                 <span class="country-meta">
                   {{#let (this.selectedCountInGroup group.regions) as |count|}}
                     {{#if count}}
-                      <span class="region-selected-badge">{{count}}
+                      <span class="wu-badge brand">{{count}}
                         selected</span>
                     {{/if}}
                   {{/let}}
@@ -466,7 +468,7 @@
 
           <Woven::FormActions>
             <Woven::Button
-              @variant="primary"
+              @variant="brand"
               @loading={{this.isSaving}}
               @disabled={{not this.canManageRegions}}
               @onClick={{this.saveCompany}}
@@ -547,7 +549,7 @@
               </p>
               <Woven::Progress
                 @value={{this.storageUsage.percentUsed}}
-                @variant={{if this.isStorageWarning "danger" "primary"}}
+                @variant={{if this.isStorageWarning "danger" "brand"}}
                 data-test-storage-bar
               />
               <p class="text-xs text-muted mt-1">
@@ -562,7 +564,8 @@
 
           <Woven::FormActions>
             <Woven::Button
-              @variant="primary"
+              data-test-company-save
+              @variant="brand"
               @type="submit"
               @loading={{this.isSaving}}
               @disabled={{not this.isAdmin}}
@@ -595,7 +598,7 @@
   >
     <:icon><Ui::Ph @icon="buildings" /></:icon>
     <:actions>
-      <Woven::Button @variant="primary" @icon="users" @route="team">
+      <Woven::Button @variant="brand" @icon="users" @route="team" data-test-company-manage-team>
         Go to Team
       </Woven::Button>
     </:actions>

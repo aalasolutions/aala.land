@@ -7,12 +7,12 @@
     @subtitle="DataTable showcase on live contacts. A: all options on. B: defaults. C: RTL with fake rows and every editor type."
   >
     <:meta>
-      <p class="text-muted">{{format-number @model.total unit="contact"}}{{#if this.selection.length}}
-          · {{this.selection.length}} selected{{/if}}</p>
+      <span>{{format-number @model.total unit="contact"}}{{#if this.selection.length}}
+          · {{this.selection.length}} selected{{/if}}</span>
     </:meta>
     <:actions>
       <Woven::Button
-        @variant="primary"
+        @variant="brand"
         @icon="plus"
         data-test-new-contact
         {{on "click" this.openCreate}}
@@ -60,7 +60,7 @@
             <Woven::Input
               type="text"
               autocomplete="off"
-              placeholder="e.g. Emaar Properties"
+              placeholder="e.g. Northgate Properties"
               value={{this.company}}
               {{on "input" (fn this.updateFilter "company")}}
               data-test-company-filter
@@ -77,21 +77,19 @@
             />
           </Woven::Field>
           <Woven::Field @label="Added from">
-            <input
+            <Woven::Input
               type="date"
-              class="wu-input"
               aria-label="Added from"
-              value={{this.dateFrom}}
+              @value={{this.dateFrom}}
               {{on "change" this.setDateFrom}}
               data-test-date-from-filter
             />
           </Woven::Field>
           <Woven::Field @label="Added to">
-            <input
+            <Woven::Input
               type="date"
-              class="wu-input"
               aria-label="Added to"
-              value={{this.dateTo}}
+              @value={{this.dateTo}}
               {{on "change" this.setDateTo}}
               data-test-date-to-filter
             />
@@ -107,7 +105,7 @@
             Has WhatsApp
           </Woven::Toggle>
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="sm"
             @icon="x"
             @disabled={{not this.hasActiveFilters}}
@@ -121,7 +119,7 @@
     </FiltersButton>
   </div>
 
-  <Woven::Card @compact={{true}}>
+  <Woven::Card>
     {{#if @model.contacts.length}}
       <Woven::DataTable
         @columns={{this.columns}}
@@ -147,7 +145,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag @variant={{tag-variant "contact" tag}} @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -171,7 +169,7 @@
           {{/if}}
         {{else if (eq cell.key "id")}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="xs"
             @icon="pencil-simple"
             data-test-edit-contact
@@ -197,7 +195,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="contacts-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -210,8 +207,8 @@
   </Woven::Card>
 
   {{! TEMP DataTable variation demo, remove after review. }}
-  <Woven::Card @compact={{true}}>
-    <h3 class="wu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
+  <Woven::Card>
+    <h3 class="wu-text sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
     <Woven::DataTable
       @columns={{this.columns}}
       @rows={{@model.contacts}}
@@ -231,7 +228,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag @variant={{tag-variant "contact" tag}} @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -255,7 +252,7 @@
           {{/if}}
         {{else if (eq cell.key "id")}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="xs"
             @icon="pencil-simple"
             data-test-edit-contact
@@ -270,8 +267,8 @@
     <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
   </Woven::Card>
 
-  <Woven::Card @compact={{true}}>
-    <h3 class="wu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
+  <Woven::Card>
+    <h3 class="wu-text sm font-bold">C: RTL, fake Arabic data, row click on</h3>
     <Woven::DataTable
       @columns={{this.demoColumns}}
       @rows={{this.demoRtlRows}}
@@ -298,7 +295,7 @@
         {{else if (eq cell.key "tags")}}
           <div class="data-table__chips">
             {{#each cell.value as |tag|}}
-              <Woven::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+              <Woven::Tag @variant={{tag-variant "contact" tag}} @text={{contact-tag-label tag}} />
             {{else}}
               <span class="text-muted text-sm">Contact</span>
             {{/each}}
@@ -322,7 +319,7 @@
           {{/if}}
         {{else if (eq cell.key "id")}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="xs"
             @icon="pencil-simple"
             data-test-edit-contact
@@ -357,7 +354,7 @@
           <Woven::Input
             id="c-fname"
             type="text"
-            placeholder="Ahmed"
+            placeholder="Jane"
             @value={{this.formFirstName}}
             @onInput={{fn this.setFieldValue "formFirstName"}}
             data-test-input-first-name
@@ -367,7 +364,7 @@
           <Woven::Input
             id="c-lname"
             type="text"
-            placeholder="Al-Rashid"
+            placeholder="Smith"
             @value={{this.formLastName}}
             @onInput={{fn this.setFieldValue "formLastName"}}
             data-test-input-last-name
@@ -433,7 +430,7 @@
           <Woven::Input
             id="c-company"
             type="text"
-            placeholder="Emaar Properties"
+            placeholder="Northgate Properties"
             @value={{this.formContactCompany}}
             @onInput={{fn this.setFieldValue "formContactCompany"}}
             data-test-input-company
@@ -480,12 +477,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.closeModal}}
       data-test-cancel-contact-form
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="contact-form"
       @loading={{this.isSaving}}

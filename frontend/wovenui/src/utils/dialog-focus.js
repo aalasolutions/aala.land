@@ -14,9 +14,9 @@ const FOCUSABLE = [
 
 // Both come before the first control in the markup, and neither is worth focusing.
 const NOT_FIRST_FOCUS = [
-  'wu-modal__close',
-  'wu-drawer__close',
-  'wu-field__info',
+  'wu-modal-close',
+  'wu-drawer-close',
+  'wu-field-help',
 ];
 
 // Open dialogs, oldest first: holds the scroll lock and decides who owns Escape.
@@ -81,10 +81,17 @@ function visibleFocusable(element) {
   });
 }
 
+// A read-only control can be focused but not edited, so it is not worth focusing first.
+function isReadOnly(el) {
+  return el.readOnly === true || el.getAttribute('aria-readonly') === 'true';
+}
+
 function firstMeaningful(element) {
   const items = visibleFocusable(element);
   const preferred = items.find(
-    (el) => !NOT_FIRST_FOCUS.some((skip) => el.classList.contains(skip)),
+    (el) =>
+      !NOT_FIRST_FOCUS.some((skip) => el.classList.contains(skip)) &&
+      !isReadOnly(el),
   );
   return preferred || items[0] || element;
 }

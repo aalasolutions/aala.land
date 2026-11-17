@@ -14,7 +14,7 @@
     <:actions>
       {{#if this.canWriteCheques}}
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           data-test-new-cheque
           @icon="plus"
           {{on "click" this.openCreate}}
@@ -64,126 +64,117 @@
             {{format-date cell.value}}
           {{else if (eq cell.key "type")}}
             <Woven::Tag
-              class="tag-cheque-{{lowercase cell.value}}"
+              @variant={{tag-variant "cheque" cell.value}}
               @text={{cell.value}}
             />
           {{else if (eq cell.key "status")}}
             <Woven::Tag
-              class="tag-chequestate-{{lowercase cell.value}}"
+              @variant={{tag-variant "chequestate" cell.value}}
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
-            <div class="flex">
-              {{#if this.canWriteCheques}}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="pencil-simple"
-                  data-test-edit-cheque
-                  aria-label="Edit"
-                  data-tooltip="Edit"
-                  {{on "click" (fn this.openEdit cell.row)}}
-                />
-                {{#if
-                  (or
-                    (eq cell.row.status "PENDING")
-                    (eq cell.row.status "DEPOSITED")
+            <RowActions
+              @label="cheque {{cell.row.chequeNumber}}"
+              @actions={{array
+                (hash
+                  key="edit-cheque"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                  hidden=(not this.canWriteCheques)
+                )
+                (hash
+                  key="deposit-cheque"
+                  label="Deposit"
+                  icon="bank"
+                  onSelect=(fn this.updateStatus cell.row "DEPOSITED")
+                  hidden=(not
+                    (and this.canWriteCheques (eq cell.row.status "PENDING"))
                   )
-                }}
-                  {{#if (eq cell.row.status "PENDING")}}
-                    <Woven::Button
-                      @subtle={{true}}
-                      @variant="success"
-                      @size="xs"
-                      @icon="bank"
-                      data-test-deposit-cheque
-                      aria-label="Deposit"
-                      data-tooltip="Deposit"
-                      {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
-                    />
-                  {{/if}}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="success"
-                    @size="xs"
-                    @icon="check-circle"
-                    data-test-clear-cheque
-                    aria-label="Clear"
-                    data-tooltip="Clear"
-                    {{on "click" (fn this.openClear cell.row)}}
-                  />
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="danger"
-                    @size="xs"
-                    data-test-bounce
-                    aria-label="Bounce"
-                    data-tooltip="Bounce"
-                    @icon="x-circle"
-                    {{on "click" (fn this.openBounceModal cell.row)}}
-                  />
-                {{/if}}
-                {{#if (eq cell.row.status "BOUNCED")}}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="secondary"
-                    @size="xs"
-                    @icon="arrows-clockwise"
-                    data-test-replace-cheque
-                    aria-label="Replace"
-                    data-tooltip="Replace"
-                    {{on "click" (fn this.updateStatus cell.row "REPLACED")}}
-                  />
-                {{/if}}
-                {{#if
-                  (and (eq cell.row.status "CLEARED") this.canDeleteCheque)
-                }}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="secondary"
-                    @size="xs"
-                    @icon="arrow-counter-clockwise"
-                    data-test-unclear-cheque
-                    aria-label="Un-clear"
-                    data-tooltip="Un-clear"
-                    {{on "click" (fn this.openUnclear cell.row)}}
-                  />
-                {{/if}}
-                {{#if
-                  (or
-                    (eq cell.row.status "PENDING")
-                    (eq cell.row.status "DEPOSITED")
-                    (eq cell.row.status "BOUNCED")
+                )
+                (hash
+                  key="clear-cheque"
+                  label="Clear"
+                  icon="check-circle"
+                  onSelect=(fn this.openClear cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                      )
+                    )
                   )
-                }}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="secondary"
-                    @size="xs"
-                    @icon="prohibit"
-                    data-test-cancel-cheque
-                    aria-label="Cancel cheque"
-                    data-tooltip="Cancel cheque"
-                    {{on "click" (fn this.openCancel cell.row)}}
-                  />
-                {{/if}}
-              {{/if}}
-              {{#if
-                (and this.canDeleteCheque (not (eq cell.row.status "CLEARED")))
+                )
+                (hash
+                  key="bounce"
+                  label="Bounce"
+                  icon="x-circle"
+                  variant="danger"
+                  onSelect=(fn this.openBounceModal cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                      )
+                    )
+                  )
+                )
+                (hash
+                  key="replace-cheque"
+                  label="Replace"
+                  icon="arrows-clockwise"
+                  onSelect=(fn this.updateStatus cell.row "REPLACED")
+                  hidden=(not
+                    (and this.canWriteCheques (eq cell.row.status "BOUNCED"))
+                  )
+                )
+                (hash
+                  key="unclear-cheque"
+                  label="Un-clear"
+                  icon="arrow-counter-clockwise"
+                  onSelect=(fn this.openUnclear cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      this.canDeleteCheque
+                      (eq cell.row.status "CLEARED")
+                    )
+                  )
+                )
+                (hash
+                  key="cancel-cheque"
+                  label="Cancel cheque"
+                  icon="prohibit"
+                  onSelect=(fn this.openCancel cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                        (eq cell.row.status "BOUNCED")
+                      )
+                    )
+                  )
+                )
+                (hash
+                  key="delete-cheque"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                  hidden=(not
+                    (and
+                      this.canDeleteCheque (not (eq cell.row.status "CLEARED"))
+                    )
+                  )
+                )
               }}
-                <Woven::Button
-                  @subtle={{true}}
-                  @variant="danger"
-                  @size="xs"
-                  @icon="trash"
-                  data-test-delete-cheque
-                  aria-label="Delete"
-                  data-tooltip="Delete"
-                  {{on "click" (fn this.openDelete cell.row)}}
-                />
-              {{/if}}
-            </div>
+            />
           {{else}}
             {{cell.value}}
           {{/if}}
@@ -202,7 +193,6 @@
 
       {{#if @model.total}}
         <Woven::Pagination
-          @selectId="cheques-limit"
           @page={{this.page}}
           @limit={{this.limit}}
           @total={{@model.total}}
@@ -248,7 +238,7 @@
   </Woven::Field>
   <Woven::FormActions @align="end">
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       data-test-cancel-bounce
       @onClick={{this.closeBounceModal}}
     >Cancel</Woven::Button>
@@ -320,7 +310,7 @@
   {{/if}}
   <Woven::FormActions @align="end">
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       data-test-cancel-clear
       @onClick={{this.closeClearModal}}
     >Cancel</Woven::Button>

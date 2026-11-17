@@ -6,12 +6,12 @@ const DEFAULT_GAP = 4;
 
 // Positions a body-level element against its trigger, viewport-fixed, flipping
 // to the opposite side when there is no room. Tracks the trigger on scroll and
-// resize, dismissing only once the trigger itself leaves the viewport.
+// resize, dismissing once the trigger leaves the viewport or a clipping ancestor.
 //
 // {{anchor trigger placement="bottom" align="start" gap=4 matchWidth=false onDismiss=fn}}
 // placement: top | bottom | start | end (logical, resolved against the trigger's direction)
 // align: start | center | end, along the other axis (top/bottom only).
-// Writes data-placement="top|bottom|left|right" and --wu-anchor--ArrowX/Y (trigger centre).
+// Writes data-placement="top|bottom|left|right" and --wu-anchor--ArrowX/Y (trigger center).
 export default class AnchorModifier extends Modifier {
   element = null;
   trigger = null;
@@ -20,6 +20,7 @@ export default class AnchorModifier extends Modifier {
   armed = false;
   frame = null;
   trackFrame = null;
+  resizeFrame = null;
 
   constructor(owner, args) {
     super(owner, args);
@@ -35,8 +36,8 @@ export default class AnchorModifier extends Modifier {
     this.reposition();
 
     if (!this.observer) {
-      // Async content (remote search results) changes the height after open.
-      this.observer = new ResizeObserver(() => this.reposition());
+      // Async content resizes it after open; deferred a frame so repositioning cannot loop the observer.
+      this.observer = new ResizeObserver(() => this.scheduleReposition());
       this.observer.observe(element);
     }
     if (!this.armed) {
@@ -70,14 +71,24 @@ export default class AnchorModifier extends Modifier {
     });
   };
 
+  scheduleReposition() {
+    if (this.resizeFrame) return;
+    this.resizeFrame = requestAnimationFrame(() => {
+      this.resizeFrame = null;
+      this.reposition();
+    });
+  }
+
+  // Off once the trigger is fully outside the viewport or a clipping ancestor, such as a scrolled table.
   triggerOffViewport() {
     if (!this.trigger?.isConnected) return true;
     const { top, bottom, left, right } = this.trigger.getBoundingClientRect();
+    const clip = visibleArea(this.trigger);
     return (
-      bottom <= 0 ||
-      right <= 0 ||
-      top >= window.innerHeight ||
-      left >= window.innerWidth
+      bottom <= clip.top ||
+      right <= clip.left ||
+      top >= clip.bottom ||
+      left >= clip.right
     );
   }
 
@@ -147,6 +158,10 @@ export default class AnchorModifier extends Modifier {
       cancelAnimationFrame(this.trackFrame);
       this.trackFrame = null;
     }
+    if (this.resizeFrame) {
+      cancelAnimationFrame(this.resizeFrame);
+      this.resizeFrame = null;
+    }
     if (this.armed) {
       window.removeEventListener('scroll', this.onViewportChange, true);
       window.removeEventListener('resize', this.onViewportChange);
@@ -157,6 +172,29 @@ export default class AnchorModifier extends Modifier {
     this.element = null;
     this.trigger = null;
   }
+}
+
+// The viewport narrowed by every ancestor that clips its overflow.
+function visibleArea(element) {
+  const area = {
+    top: 0,
+    left: 0,
+    bottom: window.innerHeight,
+    right: window.innerWidth,
+  };
+  for (
+    let el = element.parentElement;
+    el && el !== document.body;
+    el = el.parentElement
+  ) {
+    if (getComputedStyle(el).overflow === 'visible') continue;
+    const box = el.getBoundingClientRect();
+    area.top = Math.max(area.top, box.top);
+    area.left = Math.max(area.left, box.left);
+    area.bottom = Math.min(area.bottom, box.bottom);
+    area.right = Math.min(area.right, box.right);
+  }
+  return area;
 }
 
 function resolveSide(placement, rtl) {

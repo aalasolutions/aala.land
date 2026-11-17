@@ -1,15 +1,7 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
-export default class NuTopbarComponent extends Component {
-  get classes() {
-    const parts = ['wu-topbar'];
-    if (this.args.sticky) {
-      parts.push('m-sticky');
-    }
-    return parts.join(' ');
-  }
-
+export default class WovenTopbarComponent extends Component {
   @action
   toggle() {
     this.args.onToggle?.();

@@ -1,20 +1,20 @@
 {{! Shared across tag modes so button, anchor and LinkTo cannot drift apart. }}
 {{#if (and (or @hasIconBlock @btn.hasIcon) (not @btn.iconAtEnd))}}
-  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-wu-button-icon>
-    {{#if (and @hasIconBlock (not @btn.isLoading))}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Woven::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
-  </span>
+  {{#if @btn.isLoading}}
+    <span class="wu-spinner sm" aria-hidden="true" data-test-wu-button-icon></span>
+  {{else}}
+    <span aria-hidden="true" data-test-wu-button-icon>
+      {{#if @hasIconBlock}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Woven::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+    </span>
+  {{/if}}
 {{/if}}
 
 {{#unless @btn.isIconOnly}}
-  {{#if (or @hasBlock @text)}}
-    <span
-      class="wu-btn__label"
-    >{{#if @hasBlock}}{{yield}}{{else}}{{@text}}{{/if}}</span>
-  {{/if}}
+  {{#if @hasBlock}}{{yield}}{{else}}{{@text}}{{/if}}
 {{/unless}}
 
 {{#if (and (or @hasIconBlock @btn.hasIcon) @btn.iconAtEnd)}}
-  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-wu-button-icon>
-    {{#if (and @hasIconBlock (not @btn.isLoading))}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Woven::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+  <span aria-hidden="true" data-test-wu-button-icon>
+    {{#if @hasIconBlock}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Woven::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
   </span>
 {{/if}}

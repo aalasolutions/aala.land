@@ -1,17 +1,9 @@
 import Component from '@glimmer/component';
 
-export default class NuDescListComponent extends Component {
+// compact has no CSS kit equivalent.
+export default class WovenDescListComponent extends Component {
   get classes() {
-    const parts = ['wu-desc-list'];
-
-    if (this.args.horizontal) {
-      parts.push('m-horizontal');
-    }
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-
-    return parts.join(' ');
+    return this.args.horizontal ? 'wu-desc-list horizontal' : 'wu-desc-list';
   }
 
   get normalizedItems() {

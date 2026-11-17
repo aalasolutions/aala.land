@@ -80,12 +80,11 @@ export default class ApplicationController extends Controller {
     return !this.session.whatsappConfigured;
   }
 
-  // data-tooltip carries both the collapsed-rail label and disabled explanation; disabled wins.
+  // The collapsed rail shows labels itself; data-tooltip only explains the disabled link.
   get whatsappTooltip() {
-    if (this.whatsappDisabled) {
-      return 'WhatsApp is not configured. Check system variables or contact your admin.';
-    }
-    return this.desktopCollapsed ? 'WhatsApp' : null;
+    return this.whatsappDisabled
+      ? 'WhatsApp is not configured. Check system variables or contact your admin.'
+      : null;
   }
 
   get whatsappUnreadCount() {
@@ -110,12 +109,10 @@ export default class ApplicationController extends Controller {
   }
 
   @tracked unreadCount = 0;
-  @tracked showNotifications = false;
   @tracked notifications = [];
   @tracked expandedGroup = null;
   @tracked sidebarMobileOpen = false;
   @tracked isNarrow = false;
-  @tracked showRegionDropdown = false;
   @tracked regionUnitCounts = null;
   regionUnitCountsKey = null;
   notificationHandler = null;
@@ -220,6 +217,12 @@ export default class ApplicationController extends Controller {
     return this.routeGroupMap[route] ?? this.routeGroupMap[base] ?? null;
   }
 
+  // Template helpers: the kit marks the current link with aria-current, which LinkTo does not set.
+  isNavCurrent = (route) => this.router.isActive(route);
+
+  isGroupOpen = (group) =>
+    this.expandedGroup === group || this.activeGroup === group;
+
   get searchResultsList() {
     if (!this.searchResults) {
       return [];
@@ -309,8 +312,10 @@ export default class ApplicationController extends Controller {
     }
   }
 
+  // The summary click arrives here; the native details toggle is cancelled because isGroupOpen owns the state.
   @action
-  toggleGroup(group, firstRoute) {
+  toggleGroup(group, firstRoute, event) {
+    event?.preventDefault();
     const isExpanding = this.expandedGroup !== group;
     this.expandedGroup = isExpanding ? group : null;
     if (isExpanding && firstRoute) {
@@ -347,9 +352,7 @@ export default class ApplicationController extends Controller {
     this.notificationHandler = (notification) => {
       this.unreadCount++;
       this.loadPendingAccessCount();
-      if (this.showNotifications) {
-        this.notifications = [notification, ...this.notifications].slice(0, 10);
-      }
+      this.notifications = [notification, ...this.notifications].slice(0, 10);
     };
 
     this.socket.setup();
@@ -379,7 +382,6 @@ export default class ApplicationController extends Controller {
     this.socket.disconnect();
     this.whatsapp.disconnectSocket();
 
-    this.showNotifications = false;
     this.notifications = [];
     this.unreadCount = 0;
     this.regionUnitCounts = null;
@@ -411,24 +413,16 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  async toggleNotifications() {
-    this.showNotifications = !this.showNotifications;
-    if (this.showNotifications) {
-      try {
-        const result = await this.auth.fetchJson(
-          '/notifications?page=1&limit=10',
-        );
-        this.notifications = result.data?.data ?? [];
-      } catch (e) {
-        console.error('[APP-CTRL] Failed to load notifications:', e.message);
-        this.notifications = [];
-      }
+  async loadNotifications() {
+    try {
+      const result = await this.auth.fetchJson(
+        '/notifications?page=1&limit=10',
+      );
+      this.notifications = result.data?.data ?? [];
+    } catch (e) {
+      console.error('[APP-CTRL] Failed to load notifications:', e.message);
+      this.notifications = [];
     }
-  }
-
-  @action
-  closeNotifications() {
-    this.showNotifications = false;
   }
 
   @action
@@ -475,7 +469,6 @@ export default class ApplicationController extends Controller {
   }
 
   openNotificationTarget(target, region) {
-    this.showNotifications = false;
     if (!target) return;
     if (region) this.region.switchRegion(region);
     if (region && this.router.currentRouteName === target.route) {
@@ -520,12 +513,8 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  toggleRegionDropdown() {
-    this.showRegionDropdown = !this.showRegionDropdown;
-    if (
-      this.showRegionDropdown &&
-      this.regionUnitCountsKey !== this.regionContextKey
-    ) {
+  loadRegionMenu() {
+    if (this.regionUnitCountsKey !== this.regionContextKey) {
       // Cleared first so a company switch shows no badge instead of the old company's counts.
       this.regionUnitCounts = null;
       this.loadRegionUnitCounts();
@@ -533,14 +522,8 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  closeRegionDropdown() {
-    this.showRegionDropdown = false;
-  }
-
-  @action
   selectRegion(selectedRegion) {
     this.region.switchRegion(selectedRegion);
-    this.showRegionDropdown = false;
 
     const currentRoute = this.router.currentRouteName;
     const params = this.router.currentRoute?.params || {};

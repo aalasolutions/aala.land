@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
-export default class NuSidebarComponent extends Component {
+export default class WovenSidebarComponent extends Component {
   @action
   dismiss() {
     this.args.onDismiss?.();
@@ -10,17 +10,14 @@ export default class NuSidebarComponent extends Component {
   get classes() {
     const parts = ['wu-sidebar'];
     if (this.args.collapsed) {
-      parts.push('is-collapsed');
+      parts.push('collapsed');
     }
-    if (this.args.open) {
-      parts.push('is-open');
+    if (this.args.pinned) {
+      parts.push('pinned');
+    }
+    if (this.args.animated) {
+      parts.push('animated');
     }
     return parts.join(' ');
-  }
-
-  get backdropClasses() {
-    return this.args.open
-      ? 'wu-sidebar-backdrop'
-      : 'wu-sidebar-backdrop is-hidden';
   }
 }

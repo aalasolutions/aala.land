@@ -1,67 +1,62 @@
 {{#if @open}}
-  <div class={{this.backdropClasses}} data-test-wu-modal-backdrop>
-    {{#if this.closeOnBackdrop}}
-      {{! A button, not a click handler: only interactive elements take clicks. }}
-      <button
-        type="button"
-        class="wu-dialog-dismiss"
-        tabindex="-1"
-        aria-hidden="true"
-        data-test-wu-modal-backdrop-dismiss
-        {{on "click" this.onClose}}
-      ></button>
-    {{/if}}
-    <div
-      class={{this.modalClasses}}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={{if (or (has-block "header") @title) this.titleId}}
-      tabindex="-1"
-      data-test-wu-modal
-      {{dialog onEscape=this.onClose closeOnEsc=@closeOnEsc}}
-      ...attributes
-    >
-      {{#if (has-block "header")}}
-        <div class="wu-modal__header">
-          {{yield this.titleId to="header"}}
-        </div>
-      {{else if @title}}
-        <div class="wu-modal__header">
-          <div>
-            <h2 id={{this.titleId}} class="wu-modal__title" data-test-wu-modal-title>
-              {{@title}}
-            </h2>
-            {{#if @subtitle}}
-              <p class="wu-modal__subtitle" data-test-wu-modal-subtitle>{{@subtitle}}</p>
-            {{/if}}
-          </div>
-          {{#if this.showClose}}
-            <button
-              type="button"
-              class="wu-modal__close"
-              aria-label="Close"
-              data-test-wu-modal-close
-              {{on "click" this.onClose}}
-            >
-              ✕
-            </button>
+  <dialog
+    class={{this.modalClasses}}
+    aria-labelledby={{if (or (has-block "header") @title) this.titleId}}
+    data-test-wu-modal
+    {{dialog
+      true
+      onClose=this.onClose
+      closeOnEsc=@closeOnEsc
+      closeOnBackdrop=this.closeOnBackdrop
+    }}
+    ...attributes
+  >
+    {{#if (has-block "header")}}
+      <header class="wu-modal-header">
+        {{yield this.titleId to="header"}}
+      </header>
+    {{else if @title}}
+      <header class="wu-modal-header">
+        <div class="flex col gap-1 min-w-0">
+          <h2 id={{this.titleId}} class="wu-modal-title" data-test-wu-modal-title>
+            {{@title}}
+          </h2>
+          {{#if @subtitle}}
+            <Woven::Text
+              @text={{@subtitle}}
+              @size="sm"
+              @muted={{true}}
+              data-test-wu-modal-subtitle
+            />
           {{/if}}
         </div>
-      {{/if}}
-
-      <div class="wu-modal__body" data-test-wu-modal-body>
-        {{#if (has-block "body")}}
-          {{yield to="body"}}
-        {{else}}
-          {{yield}}
+        {{#if this.showClose}}
+          <button
+            type="button"
+            class="wu-modal-close"
+            aria-label="Close"
+            data-test-wu-modal-close
+            {{on "click" this.onClose}}
+          ></button>
         {{/if}}
-      </div>
+      </header>
+    {{/if}}
 
-      {{#if (has-block "footer")}}
-        <div class="wu-modal__footer" data-test-wu-modal-footer>
-          {{yield to="footer"}}
-        </div>
+    <div class="wu-modal-body" data-test-wu-modal-body>
+      {{#if (has-block "body")}}
+        {{yield to="body"}}
+      {{else}}
+        {{yield}}
       {{/if}}
     </div>
-  </div>
+
+    {{#if (has-block "footer")}}
+      <footer class="wu-modal-footer" data-test-wu-modal-footer>
+        {{yield to="footer"}}
+      </footer>
+    {{/if}}
+
+    {{! Menus and tooltips opened inside the dialog render here; outside it they would be inert. }}
+    <div class="wu-layer"></div>
+  </dialog>
 {{/if}}

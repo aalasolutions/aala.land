@@ -8,7 +8,12 @@
     <p class="woven-doc__intro">
       Each control is a label element wrapping a native input, so clicking
       the text toggles the control and screen readers read the label
-      without extra wiring. Use a checkbox for a choice that is saved with
+      without extra wiring. They render the CSS kit
+      <code class="wu-code">wu-checkbox</code>,
+      <code class="wu-code">wu-radio</code>
+      and
+      <code class="wu-code">wu-toggle</code>
+      (a checkbox with role switch). Use a checkbox for a choice that is saved with
       the form, a toggle for a setting that applies at once, and radios for
       one pick out of a few. Radios are individual components; the caller
       owns the group value and derives each
@@ -18,13 +23,13 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Native inputs inside labels; disabled sets the real attribute.</li>
-      <li class="wu-list__item">Checkbox indeterminate state synced to the DOM property.</li>
-      <li class="wu-list__item">Radio reports its own value only when it becomes checked.</li>
-      <li class="wu-list__item">Four sizes on all three controls (xs, sm, md default, lg), matched to the control-height scale.</li>
-      <li class="wu-list__item">Toggle in six colours, with in-track text or a trailing label.</li>
-      <li class="wu-list__item">wu-check-group lays out a run of controls.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Native inputs inside labels; disabled sets the real attribute.</span></li>
+      <li class="wu-list-item"><span>Checkbox indeterminate state synced to the DOM property.</span></li>
+      <li class="wu-list-item"><span>Radio reports its own value only when it becomes checked.</span></li>
+      <li class="wu-list-item"><span>Three kit sizes on all three controls (sm, default, lg); xs renders sm.</span></li>
+      <li class="wu-list-item"><span>Toggle with a brand track and a trailing label; the kit has no track colors or in-track text.</span></li>
+      <li class="wu-list-item"><span>wu-check-group lays out a run of controls.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -35,7 +40,7 @@
       @code={{this.code.checkbox}}
     >
       <Woven::Checkbox @checked={{this.checkboxValue}} @label="Include archived units" @onChange={{this.updateCheckbox}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-checkbox-echo>Checked: {{this.checkboxValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-checkbox-echo>Checked: {{this.checkboxValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -65,17 +70,16 @@
     <WovenDocs::Example
       @title="Without a visible label"
       @note="In a table cell the row is the label; pass aria-label through the attributes so the control still has a name."
-      @code={{this.code.unlabelled}}
+      @code={{this.code.unlabeled}}
     >
       <Woven::Checkbox @checked={{true}} aria-label="Select row" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Sizes"
-      @note="xs, sm, md (default) and lg. The box is 14, 16, 18 and 20px; pick the step that matches the inputs and buttons in the same row."
+      @note="Kit sm, default and lg scale the font and so the box; xs renders sm. Pick the step that matches the inputs and buttons in the same row."
       @code={{this.code.checkboxSizes}}
     >
-      <Woven::Checkbox @size="xs" @checked={{true}} @label="Extra small" data-test-woven-checkbox-size="xs" />
       <Woven::Checkbox @size="sm" @checked={{true}} @label="Small" data-test-woven-checkbox-size="sm" />
       <Woven::Checkbox @checked={{true}} @label="Default" data-test-woven-checkbox-size="md" />
       <Woven::Checkbox @size="lg" @checked={{true}} @label="Large" data-test-woven-checkbox-size="lg" />
@@ -130,7 +134,7 @@
           @onChange={{this.updateRadio}}
         />
       </div>
-      <span class="wu-text m-sm m-muted" data-test-woven-radio-value>Selected: {{this.radioValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-radio-value>Selected: {{this.radioValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -143,10 +147,9 @@
 
     <WovenDocs::Example
       @title="Sizes"
-      @note="The same four steps as Checkbox, so a radio set lines up with checkboxes of the same size."
+      @note="The same three steps as Checkbox, so a radio set lines up with checkboxes of the same size."
       @code={{this.code.radioSizes}}
     >
-      <Woven::Radio @name="radio-size-xs" @size="xs" @checked={{true}} @label="Extra small" data-test-woven-radio-size="xs" />
       <Woven::Radio @name="radio-size-sm" @size="sm" @checked={{true}} @label="Small" data-test-woven-radio-size="sm" />
       <Woven::Radio @name="radio-size-md" @checked={{true}} @label="Default" data-test-woven-radio-size="md" />
       <Woven::Radio @name="radio-size-lg" @size="lg" @checked={{true}} @label="Large" data-test-woven-radio-size="lg" />
@@ -158,7 +161,7 @@
       @code={{this.code.radioBlock}}
     >
       <Woven::Radio @name="plan" @value="growth" @checked={{true}}>
-        <strong>Growth</strong> <span class="wu-text m-xs m-muted">multi-region</span>
+        <strong>Growth</strong> <span class="wu-text sm muted">multi-region</span>
       </Woven::Radio>
     </WovenDocs::Example>
 
@@ -175,15 +178,14 @@
       @code={{this.code.toggle}}
     >
       <Woven::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} aria-label="Demo toggle" />
-      <span class="wu-text m-sm m-muted" data-test-woven-toggle-echo>On: {{this.toggleValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-toggle-echo>On: {{this.toggleValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Sizes"
-      @note="xs for dense table cells, sm for settings lists, md by default, lg for a single prominent setting. The track is 16, 20, 24 and 28px tall."
+      @note="Kit sm for settings lists and table cells, the default, and lg for a single prominent setting; xs renders sm."
       @code={{this.code.toggleSizes}}
     >
-      <Woven::Toggle @checked={{this.toggleValue}} @size="xs" @onChange={{this.updateToggle}} data-test-woven-toggle-size="xs">Extra small</Woven::Toggle>
       <Woven::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} data-test-woven-toggle-size="sm">Small</Woven::Toggle>
       <Woven::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} data-test-woven-toggle-size="md">Default</Woven::Toggle>
       <Woven::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} data-test-woven-toggle-size="lg">Large</Woven::Toggle>
@@ -197,19 +199,6 @@
       <Woven::Toggle @disabled={{true}} @checked={{true}} aria-label="Disabled toggle" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="In-track text"
-      @note="Two short words inside the track make the state explicit without a label; keep them to three letters."
-      @code={{this.code.toggleText}}
-    >
-      <Woven::Toggle
-        @checked={{this.toggleWithTextValue}}
-        @activeText="ON"
-        @inactiveText="OFF"
-        @onChange={{this.updateToggleWithText}}
-        aria-label="Text toggle"
-      />
-    </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Trailing label"
@@ -222,18 +211,7 @@
     </WovenDocs::Example>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Toggle variants" @id="toggle-variants">
-    {{#each this.toggleVariantExamples as |example|}}
-      <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
-        <Woven::Toggle
-          @variant={{example.variant}}
-          @checked={{get this.variantToggles example.variant}}
-          @onChange={{fn this.updateVariantToggle example.variant}}
-          aria-label="{{example.title}} toggle"
-        />
-      </WovenDocs::Example>
-    {{/each}}
-
+  <WovenDocs::Section @title="Toggle reference" @id="toggle-variants">
     <h3 class="woven-subtitle">Toggle arguments</h3>
     <WovenDocs::Table @kind="args" @rows={{this.toggleArgRows}} />
     <h3 class="woven-subtitle">Toggle callbacks</h3>
@@ -247,17 +225,17 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The input sits inside its label, so the label text is the accessible name and the click target.</li>
-      <li class="wu-list__item">A toggle without in-track text or a block has no name; pass aria-label through ...attributes or wrap it in Woven::Field.</li>
-      <li class="wu-list__item">Radios in one set share @name so arrow keys move between them natively.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The input sits inside its label, so the label text is the accessible name and the click target.</span></li>
+      <li class="wu-list-item"><span>A toggle without a block has no name; pass aria-label through ...attributes or wrap it in Woven::Field.</span></li>
+      <li class="wu-list-item"><span>Radios in one set share @name so arrow keys move between them natively.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Label spacing uses inline gaps, so the control sits on the leading side in both directions.</li>
-      <li class="wu-list__item">The toggle knob travels with a direction-aware translate, so "on" moves toward the trailing edge under dir="rtl".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Label spacing uses inline gaps, so the control sits on the leading side in both directions.</span></li>
+      <li class="wu-list-item"><span>The kit moves the toggle thumb toward the inline end when on, so it travels to the left under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

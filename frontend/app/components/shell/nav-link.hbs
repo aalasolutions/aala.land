@@ -1,0 +1,13 @@
+{{! LinkTo does not set aria-current, which the kit uses to mark the current link. }}
+<li>
+  <LinkTo
+    @route={{@route}}
+    class="wu-sidebar-link"
+    aria-current={{if @current "page"}}
+    ...attributes
+  >
+    <Ui::Ph @icon={{@icon}} />
+    <span class="wu-sidebar-label">{{@label}}</span>
+    {{yield}}
+  </LinkTo>
+</li>

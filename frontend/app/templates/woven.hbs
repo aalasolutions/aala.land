@@ -4,6 +4,8 @@
 <div class="woven-shell">
   <Woven::Sidebar
     @collapsed={{this.sidebarCollapsed}}
+    @pinned={{true}}
+    @animated={{true}}
     @open={{this.sidebarOpen}}
     @dismissible={{true}}
     @onDismiss={{this.closeSidebar}}
@@ -13,25 +15,30 @@
     {{! Named blocks are all-or-nothing: <:footer> forces an explicit <:default>. }}
     <:default>
       {{#each this.navSections as |group|}}
-        <div class="wu-sidebar__section-label">{{group.label}}</div>
-        {{#each group.items as |entry|}}
-          <LinkTo
-            @route={{entry.route}}
-            class="wu-sidebar__link"
-            data-tooltip={{if this.sidebarCollapsed entry.label}}
-            data-tooltip-position="end"
-            data-test-woven-nav={{entry.route}}
-            {{on "click" this.closeSidebar}}
-          >
-            <span class="wu-sidebar__link-icon" aria-hidden="true">{{entry.icon}}</span>
-            <span class="wu-sidebar__link-label">{{entry.label}}</span>
-          </LinkTo>
-        {{/each}}
+        <div class="wu-sidebar-section">
+          <h2 class="wu-sidebar-heading">{{group.label}}</h2>
+          <ul class="wu-sidebar-list">
+            {{#each group.items as |entry|}}
+              <li>
+                <LinkTo
+                  @route={{entry.route}}
+                  class="wu-sidebar-link"
+                  aria-current={{if (this.isCurrent entry.route) "page"}}
+                  data-test-woven-nav={{entry.route}}
+                  {{on "click" this.closeSidebar}}
+                >
+                  <span aria-hidden="true">{{entry.icon}}</span>
+                  <span class="wu-sidebar-label">{{entry.label}}</span>
+                </LinkTo>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
       {{/each}}
     </:default>
 
     <:footer>
-      <span class="wu-text m-xs m-subtle">{{this.pageCount}} pages</span>
+      <span class="wu-text sm text-subtle">{{this.pageCount}} pages</span>
     </:footer>
   </Woven::Sidebar>
 
@@ -53,14 +60,14 @@
           data-tooltip="Collapse sidebar"
           data-test-woven-collapse
         />
-        <span class="wu-title m-md">UI Kit</span>
+        <span class="wu-title sm">UI Kit</span>
       </:brand>
 
       <:actions>
-        <span class="wu-text m-sm m-muted">Theme</span>
+        <span class="wu-text sm muted">Theme</span>
         {{#each this.themes as |theme|}}
           <Woven::Button
-            @variant={{if (eq this.activeTheme theme) "primary" "secondary"}}
+            @variant={{if (eq this.activeTheme theme) "brand" "subtle"}}
             @size="xs"
             @text={{theme}}
             @onClick={{fn this.setTheme theme}}
@@ -68,10 +75,10 @@
           />
         {{/each}}
 
-        <span class="wu-text m-sm m-muted ms-4">Dir</span>
+        <span class="wu-text sm muted ms-4">Dir</span>
         {{#each this.dirs as |dir|}}
           <Woven::Button
-            @variant={{if (eq this.dir dir) "primary" "secondary"}}
+            @variant={{if (eq this.dir dir) "brand" "subtle"}}
             @size="xs"
             @text={{dir}}
             @onClick={{fn this.setDir dir}}

@@ -2,7 +2,15 @@
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
 
-// Colour comes from `tag-plan-*`; this only sets the box model.
+// Keys follow the plan's tag variant in utils/tag-variant.js.
+$plan-banner-roles: (
+  "brand": "brand",
+  "success": "success",
+  "warning": "warning",
+  "danger": "danger",
+  "info": "info",
+  "secondary": "gray",
+);
 
 .plan-banner {
   display: flex;
@@ -10,14 +18,23 @@
   align-items: center;
   border-radius: wu-radius(md);
   padding: wu-space(3) wu-space(4);
-  background-color: var(--wu-tag--BackgroundColor);
-  border: 1px solid var(--wu-tag--BorderColor);
+  background-color: var(--plan-banner-background, var(--wu-bg-alternate));
+  border: 1px solid var(--plan-banner-border, var(--wu-border-regular));
+  color: var(--wu-text-regular);
+
+  @each $variant, $role in $plan-banner-roles {
+    &[data-variant="#{$variant}"] {
+      --plan-banner-color: var(--wu-text-#{$role});
+      --plan-banner-background: var(--wu-#{$role}-subtle);
+      --plan-banner-border: var(--wu-#{$role}-border);
+    }
+  }
 
   &__name {
     font-size: wu-font-size(md);
     font-weight: wu-font-weight(bold);
-    margin-bottom: 2px;
-    color: var(--wu-tag--Color);
+    margin-block-end: 2px;
+    color: var(--plan-banner-color, var(--wu-text-muted));
   }
 
   &__limits {
@@ -30,13 +47,6 @@
     font-size: wu-font-size(xs);
     color: var(--wu-text-muted);
   }
-}
-
-.billing-plan-card {
-  padding: wu-space(5);
-  border: 1px solid var(--wu-border-regular);
-  border-radius: wu-radius(md);
-  background: var(--wu-bg-alternate);
 }
 
 .region-country-group {
@@ -84,19 +94,10 @@
   color: var(--wu-text-muted);
 }
 
-.region-selected-badge {
-  font-size: wu-font-size(xs);
-  font-weight: wu-font-weight(semibold);
-  padding: 2px wu-space(2);
-  border-radius: wu-radius(full);
-  background: var(--wu-brand-100);
-  color: var(--wu-brand);
-}
-
 .region-settings-readonly {
   .region-country-header {
     background: color-mix(in srgb, var(--wu-bg-surface) 82%, var(--wu-bg-alternate));
-    color: color-mix(in srgb, var(--wu-text-regular) 78%, white);
+    color: color-mix(in srgb, var(--wu-text-regular) 78%, var(--wu-white));
 
     &:hover {
       background: color-mix(in srgb, var(--wu-bg-surface) 82%, var(--wu-bg-alternate));
@@ -104,14 +105,12 @@
   }
 
   .region-total,
-  .region-check-label,
   .text-muted {
-    color: color-mix(in srgb, var(--wu-text-muted) 78%, white);
+    color: color-mix(in srgb, var(--wu-text-muted) 78%, var(--wu-white));
   }
 
-  .region-selected-badge {
-    background: color-mix(in srgb, var(--wu-brand-100) 55%, white);
-    color: color-mix(in srgb, var(--wu-brand) 70%, white);
+  .wu-badge {
+    opacity: 0.7;
   }
 }
 

@@ -33,7 +33,7 @@
         <Woven::Input
           id="v-name"
           type="text"
-          placeholder="Ahmed Al-Rashid"
+          placeholder="John Carter"
           @value={{this.form.formName}}
           @onInput={{fn this.setField "formName"}}
           required={{true}}
@@ -46,25 +46,15 @@
         @required={{true}}
         @error={{this.fieldErrors.formSpecialties}}
       >
-        <div class="flex gap-2 wrap" data-test-vendor-specialty>
+        <div class="wu-check-group" data-test-vendor-specialty>
           {{#each this.specialtyOptions as |opt|}}
-            <button
-              type="button"
-              class="wu-tag m-pill m-selectable vendor-specialty-chip tag-trade-{{lowercase
-                  opt.value
-                }}
-                {{if
-                  (includes this.form.formSpecialties opt.value)
-                  'is-selected'
-                }}"
-              data-test-specialty-chip={{opt.value}}
-              aria-pressed={{if
-                (includes this.form.formSpecialties opt.value)
-                "true"
-                "false"
-              }}
-              {{on "click" (fn this.toggleSpecialty opt.value)}}
-            >{{opt.label}}</button>
+            <Woven::Checkbox
+              @label={{opt.label}}
+              @value={{opt.value}}
+              @checked={{includes this.form.formSpecialties opt.value}}
+              @onChange={{fn this.toggleSpecialty opt.value}}
+              data-test-specialty-option={{opt.value}}
+            />
           {{/each}}
         </div>
       </Woven::FieldGroup>
@@ -97,7 +87,7 @@
           <Woven::Input
             id="v-company"
             type="text"
-            placeholder="Al-Rashid Maintenance LLC"
+            placeholder="Carter Maintenance LLC"
             @value={{this.form.formCompanyName}}
             @onInput={{fn this.setField "formCompanyName"}}
             data-test-vendor-company
@@ -161,12 +151,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.close}}
       data-test-cancel-vendor-form
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="vendor-form"
       @loading={{this.isSaving}}

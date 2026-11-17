@@ -88,6 +88,7 @@
       "./components/woven/form-actions.js": "./dist/_app_/components/woven/form-actions.js",
       "./components/woven/icon.js": "./dist/_app_/components/woven/icon.js",
       "./components/woven/info-row.js": "./dist/_app_/components/woven/info-row.js",
+      "./components/woven/input-control.js": "./dist/_app_/components/woven/input-control.js",
       "./components/woven/input-group.js": "./dist/_app_/components/woven/input-group.js",
       "./components/woven/input.js": "./dist/_app_/components/woven/input.js",
       "./components/woven/layer-host.js": "./dist/_app_/components/woven/layer-host.js",
@@ -128,8 +129,8 @@
       "./services/dialogs.js": "./dist/_app_/services/dialogs.js",
       "./services/layer.js": "./dist/_app_/services/layer.js",
       "./services/notifications.js": "./dist/_app_/services/notifications.js",
-      "./services/woven-storage.js": "./dist/_app_/services/woven-storage.js",
-      "./services/tooltip.js": "./dist/_app_/services/tooltip.js"
+      "./services/tooltip.js": "./dist/_app_/services/tooltip.js",
+      "./services/woven-storage.js": "./dist/_app_/services/woven-storage.js"
     }
   },
   "peerDependenciesMeta": {

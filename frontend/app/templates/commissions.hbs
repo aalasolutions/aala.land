@@ -13,7 +13,7 @@
           @placeholder="All"
         />
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           data-test-add-commission
           @icon="plus"
           {{on "click" this.openCreate}}
@@ -59,7 +59,7 @@
           </span>
         {{else if (eq cell.key "type")}}
           <Woven::Tag
-            class="tag-commtype-{{lowercase cell.value}}"
+            @variant={{tag-variant "commtype" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "commissionAmount")}}
@@ -76,57 +76,11 @@
           {{cell.value}}%
         {{else if (eq cell.key "status")}}
           <Woven::Tag
-            class="tag-commission-{{lowercase cell.value}}"
+            @variant={{tag-variant "commission" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "id")}}
-          {{#if (eq cell.row.status "PENDING")}}
-            <div class="flex">
-              <Woven::Button
-                @subtle={{true}}
-                @variant="primary"
-                @size="xs"
-                data-test-approve-btn
-                @icon="check"
-                aria-label="Approve commission"
-                data-tooltip="Approve"
-                {{on "click" (fn this.approveCommission cell.row)}}
-              />
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="prohibit"
-                aria-label="Cancel commission"
-                data-tooltip="Cancel commission"
-                data-test-cancel-commission
-                {{on "click" (fn this.openCancel cell.row)}}
-              />
-            </div>
-          {{else if (eq cell.row.status "APPROVED")}}
-            <div class="flex">
-              <Woven::Button
-                @subtle={{true}}
-                @variant="primary"
-                @size="xs"
-                data-test-pay-btn
-                @icon="currency-dollar"
-                aria-label="Mark commission paid"
-                data-tooltip="Mark Paid"
-                {{on "click" (fn this.payCommission cell.row)}}
-              />
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="prohibit"
-                aria-label="Cancel commission"
-                data-tooltip="Cancel commission"
-                data-test-cancel-commission
-                {{on "click" (fn this.openCancel cell.row)}}
-              />
-            </div>
-          {{else if (eq cell.row.status "PAID")}}
+          {{#if (eq cell.row.status "PAID")}}
             <span class="text-xs text-muted">
               {{#if cell.row.paidAt}}
                 Paid
@@ -135,6 +89,37 @@
                 Paid
               {{/if}}
             </span>
+          {{else}}
+            <RowActions
+              @actions={{array
+                (hash
+                  key="approve-btn"
+                  label="Approve commission"
+                  icon="check"
+                  variant="brand"
+                  onSelect=(fn this.approveCommission cell.row)
+                  hidden=(not (eq cell.row.status "PENDING"))
+                )
+                (hash
+                  key="pay-btn"
+                  label="Mark commission paid"
+                  icon="currency-dollar"
+                  variant="brand"
+                  onSelect=(fn this.payCommission cell.row)
+                  hidden=(not (eq cell.row.status "APPROVED"))
+                )
+                (hash
+                  key="cancel-commission"
+                  label="Cancel commission"
+                  icon="prohibit"
+                  onSelect=(fn this.openCancel cell.row)
+                  hidden=(not (or
+                    (eq cell.row.status "PENDING")
+                    (eq cell.row.status "APPROVED")
+                  ))
+                )
+              }}
+            />
           {{/if}}
         {{else}}
           {{cell.value}}
@@ -152,7 +137,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="commissions-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}

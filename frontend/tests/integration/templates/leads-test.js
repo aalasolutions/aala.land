@@ -5,6 +5,7 @@ import Service from '@ember/service';
 import template from 'land/templates/leads';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import { clickRowAction } from 'land/tests/helpers/row-actions';
 
 const FULL_LEAD = {
   id: 'lead-full',
@@ -127,7 +128,7 @@ module('Integration | Template | leads', function (hooks) {
 
   test('the row edit button opens the lead drawer for that lead', async function (assert) {
     await renderLeads(this, 'list');
-    await click('[data-test-data-table-row="lead-full"] [data-test-edit-lead]');
+    await clickRowAction('[data-test-data-table-row="lead-full"]', 'edit-lead');
 
     assert.dom('[data-test-wu-drawer-title]').hasText('Edit Lead');
     assert.dom('#lead-form').containsText('Sara Khan');

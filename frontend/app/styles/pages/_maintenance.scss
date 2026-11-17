@@ -103,18 +103,6 @@
     display: flex;
   }
 
-  .wu-timeline__item.is-done {
-    --wu-timeline__item--ConnectorColor: var(--wu-brand);
-  }
-
-  .wu-timeline__item.is-todo {
-    --wu-timeline__item--MarkerColor: var(--wu-border-regular);
-
-    .wu-timeline__title {
-      font-weight: wu-font-weight(medium);
-      color: var(--wu-text-muted);
-    }
-  }
 }
 
 .wo-story__issue {

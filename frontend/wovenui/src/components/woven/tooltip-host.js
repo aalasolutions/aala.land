@@ -21,8 +21,9 @@ const PHYSICAL = {
 // Width a side-placed tooltip needs before it flips to the other side.
 const SIDE_ROOM = 260;
 
-export default class NuTooltipHostComponent extends Component {
+export default class WovenTooltipHostComponent extends Component {
   @service tooltip;
+  @service layer;
 
   tooltipId = TOOLTIP_ID;
 
@@ -59,8 +60,10 @@ export default class NuTooltipHostComponent extends Component {
       }
     };
 
+    // Cancelled only while a tooltip shows, so the same Escape does not also close a dialog.
     this.onKeydown = (event) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && this.tooltip.isVisible) {
+        event.preventDefault();
         this.tooltip.hide();
       }
     };
@@ -105,6 +108,11 @@ export default class NuTooltipHostComponent extends Component {
     document.removeEventListener('keydown', this.onKeydown);
     window.removeEventListener('scroll', this.onViewportChange, true);
     window.removeEventListener('resize', this.onViewportChange);
+  }
+
+  // Inside an open dialog the tooltip must render in that dialog's layer, or it is inert.
+  get layerElement() {
+    return this.layer.elementFor(this.tooltip.target);
   }
 
   get isRtl() {

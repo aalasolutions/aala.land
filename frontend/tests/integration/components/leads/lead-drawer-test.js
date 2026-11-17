@@ -80,7 +80,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
     await click(`#${id} [data-test-wu-dropdown-trigger]`);
     const item = [
       ...document.querySelectorAll(
-        '.wu-menu.is-open [data-test-wu-dropdown-item]',
+        '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
       ),
     ].find((el) => el.textContent.trim() === text);
     await click(item);
@@ -93,7 +93,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
     );
     const item = [
       ...document.querySelectorAll(
-        '.wu-menu.is-open [data-test-wu-dropdown-item]:not(.m-create)',
+        '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]:not([data-test-wu-dropdown-create])',
       ),
     ].find((el) => el.textContent.trim() === name);
     await click(item);

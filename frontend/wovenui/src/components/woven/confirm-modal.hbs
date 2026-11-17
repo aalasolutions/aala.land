@@ -1,44 +1,64 @@
-{{!-- Use @confirmText/@cancelText/@type, not <:footer>; @showCancel={{false}} is an alert. --}}
-<Woven::Modal
-  @open={{@open}}
-  @title={{@title}}
-  @subtitle={{@subtitle}}
-  @size={{if @size @size "sm"}}
-  @showClose={{this.showClose}}
-  @closeOnEsc={{this.allowDismiss}}
-  @closeOnBackdrop={{this.allowDismiss}}
-  @onClose={{this.close}}
-  data-test-wu-confirm-modal
-  ...attributes
->
-  <:body>
+{{!-- Use @confirmText/@cancelText, or <:actions> for custom buttons; @showCancel={{false}} is an alert. --}}
+{{#if @open}}
+  <dialog
+    class={{this.classes}}
+    role="alertdialog"
+    aria-labelledby={{if @title this.titleId}}
+    aria-describedby={{if @message this.messageId}}
+    data-test-wu-modal
+    data-test-wu-confirm-modal
+    {{dialog
+      true
+      onClose=this.close
+      closeOnEsc=this.allowEsc
+      closeOnBackdrop=this.allowBackdrop
+    }}
+    ...attributes
+  >
+    {{#if @title}}
+      <h2 id={{this.titleId}} class="wu-confirm-modal-title" data-test-wu-modal-title>
+        {{@title}}
+      </h2>
+    {{/if}}
+    {{#if @subtitle}}
+      <p class="wu-confirm-modal-subject" data-test-wu-confirm-modal-subject>
+        {{@subtitle}}
+      </p>
+    {{/if}}
     {{#if @message}}
-      <Woven::Text
-        @text={{@message}}
-        @muted={{true}}
+      <p
+        id={{this.messageId}}
+        class="wu-confirm-modal-message"
         data-test-wu-confirm-modal-message
-      />
+      >{{@message}}</p>
     {{/if}}
     {{yield}}
-  </:body>
 
-  <:footer>
-    {{#if this.showCancel}}
-      <Woven::Button
-        @variant="secondary"
-        @text={{this.cancelText}}
-        @disabled={{this.isConfirming}}
-        data-test-wu-confirm-modal-cancel
-        {{on "click" this.close}}
-      />
-    {{/if}}
-    {{! @loading already implies disabled, see button.js isDisabled. }}
-    <Woven::Button
-      @variant={{this.confirmVariant}}
-      @text={{if this.isConfirming this.confirmingText this.confirmText}}
-      @loading={{this.isConfirming}}
-      data-test-wu-confirm-modal-confirm
-      {{on "click" this.confirm}}
-    />
-  </:footer>
-</Woven::Modal>
+    <div class="wu-confirm-modal-actions">
+      {{#if (has-block "actions")}}
+        {{yield to="actions"}}
+      {{else}}
+        {{#if this.showCancel}}
+          <Woven::Button
+            @variant="subtle"
+            @text={{this.cancelText}}
+            @disabled={{this.isConfirming}}
+            data-test-wu-confirm-modal-cancel
+            {{on "click" this.close}}
+          />
+        {{/if}}
+        {{! @loading already implies disabled, see button.js isDisabled. }}
+        <Woven::Button
+          @variant={{this.confirmVariant}}
+          @text={{if this.isConfirming this.confirmingText this.confirmText}}
+          @loading={{this.isConfirming}}
+          data-test-wu-confirm-modal-confirm
+          {{on "click" this.confirm}}
+        />
+      {{/if}}
+    </div>
+
+    {{! Menus and tooltips opened inside the dialog render here; outside it they would be inert. }}
+    <div class="wu-layer"></div>
+  </dialog>
+{{/if}}

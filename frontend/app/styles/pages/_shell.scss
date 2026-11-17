@@ -1,17 +1,14 @@
-// App shell holds only app-specific glue; sidebar/topbar are kit components with `m-plain`.
+// App shell holds only app-specific glue; sidebar and topbar are the CSS kit parts, recolored for the dark shell.
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
 
-$shell-sidebar-width: 15rem;
-$shell-sidebar-collapsed: 3.75rem;
-$shell-background-color: #0d1b2a;
+$shell-background-color: #4a6d92;
 $shell-background-image: radial-gradient(
   circle at center,
-  #344244 0%,
-  #0b212d 90%,
+  #7ca2ca 0%,
+  #1d3c4e 90%,
   #2b1818 100%
 );
-
 .app-shell {
   display: flex;
   min-block-size: 100vh;
@@ -19,25 +16,14 @@ $shell-background-image: radial-gradient(
   background-image: $shell-background-image;
   background-repeat: no-repeat;
   background-attachment: fixed;
-  min-height: 100vh;
 }
 
-// `.wu-sidebar` is position:fixed, so main column carries its own offset, not a flex sibling.
 .app-shell__main {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-inline-size: 0;
-  margin-inline-start: $shell-sidebar-width;
-  transition: margin-inline-start wu-duration(normal) $wu-ease;
-
-  @include reduced-motion {
-    transition: none;
-  }
-}
-
-.app-shell.is-collapsed .app-shell__main {
-  margin-inline-start: $shell-sidebar-collapsed;
+  block-size: 100dvh;
 }
 
 .app-shell__user-full {
@@ -132,59 +118,72 @@ $shell-background-image: radial-gradient(
   color: var(--wu-brand);
 }
 
-.app-shell__user .wu-avatar {
-  border: none;
-}
-
-// The shell paints the rail dark; kit sidebar tokens assume a light surface.
-.app-shell > .wu-sidebar {
+// The shell paints the rail and topbar dark; the kit sidebar and topbar assume a light surface.
+// Unlayered on purpose: these override kit component colors.
+.app-shell {
   --app-rail-text: color-mix(in srgb, var(--wu-text-inverted) 72%, transparent);
   --app-rail-disabled: color-mix(in srgb, var(--wu-text-inverted) 40%, transparent);
   --app-rail-hover: color-mix(in srgb, var(--wu-text-inverted) 10%, transparent);
-  --wu-sidebar__link--Color: var(--app-rail-text);
-  --wu-sidebar__link--hover--Color: var(--wu-text-inverted);
-  --wu-sidebar__link--hover--BackgroundColor: var(--app-rail-hover);
-  --wu-sidebar__group-toggle--Color: var(--app-rail-text);
+}
 
-  .wu-sidebar__link.is-disabled,
-  .wu-sidebar__link.is-disabled:hover {
-    --wu-sidebar__link--Color: var(--app-rail-disabled);
-  }
+// Sticky makes the rail a stacking context; lifted so its flyouts paint above the content area.
+.app-shell > .wu-sidebar {
+  z-index: calc(var(--wu-z-sticky) + 1);
+  block-size: 100dvh;
+  border-inline-end: 0;
+  background: transparent;
 
-  .wu-sidebar__group-toggle:hover {
-    --wu-sidebar__group-toggle--Color: var(--wu-text-inverted);
-    --wu-sidebar__group-toggle--BackgroundColor: var(--app-rail-hover);
-  }
-
-  .wu-sidebar__group.is-active-group > .wu-sidebar__group-toggle.is-active {
-    --wu-sidebar__group-toggle--Color: var(--wu-text-inverted);
-  }
-
-  .app-shell__collapse {
+  :is(.wu-sidebar-link, .wu-sidebar-toggle):not([aria-current="page"]) {
     color: var(--app-rail-text);
 
     &:hover {
-      background-color: var(--app-rail-hover);
+      background: var(--app-rail-hover);
+      color: var(--wu-text-inverted);
+    }
+  }
+
+  .wu-sidebar-group:has([aria-current="page"]) > .wu-sidebar-toggle {
+    color: var(--wu-text-inverted);
+  }
+
+  // No kit disabled state for a sidebar link. No pointer-events:none: the tooltip must still fire.
+  .wu-sidebar-link[aria-disabled="true"],
+  .wu-sidebar-link[aria-disabled="true"]:hover {
+    background: transparent;
+    color: var(--app-rail-disabled);
+    cursor: not-allowed;
+  }
+
+  .wu-sidebar-footer {
+    padding-inline: 0;
+
+    > .wu-sidebar-link {
+      justify-content: center;
+    }
+  }
+}
+
+.app-shell .wu-topbar {
+  border-block-end: 0;
+  background: transparent;
+
+  .wu-btn.quiet {
+    color: var(--app-rail-text);
+
+    &:hover {
+      background: var(--app-rail-hover);
       color: var(--wu-text-inverted);
     }
   }
 }
 
-// Sublinks on the rail; the collapsed flyout keeps the kit's light surface.
-.app-shell > .wu-sidebar:not(.is-collapsed) .wu-sidebar__sublink,
-.app-shell > .wu-sidebar.is-collapsed .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
-  &:not(.active, .is-active) {
-    color: var(--app-rail-text);
-  }
-
-  &:not(.active, .is-active):hover {
-    color: var(--wu-text-inverted);
-    background-color: var(--app-rail-hover);
-  }
+// Only shown as the heading of a collapsed-rail flyout.
+.app-shell__flyout-title {
+  display: none;
 }
 
-.wu-sidebar.is-collapsed {
-  .app-shell__user {
+.wu-sidebar.collapsed {
+  .wu-sidebar-header {
     padding-inline: 0;
     justify-content: center;
     overflow: visible;
@@ -205,158 +204,95 @@ $shell-background-image: radial-gradient(
   }
 
   // On the rail, count badges sit on the icon's corner so they are not clipped.
-  .wu-sidebar__link,
-  .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
-    position: relative;
-  }
-
-  .wu-sidebar__link .wu-badge-count,
-  .wu-sidebar__group.is-active-group .wu-sidebar__sublink .wu-badge-count {
+  .wu-sidebar-link .wu-badge {
     position: absolute;
     inset-block-start: 0.25rem;
     inset-inline-start: 0.875rem;
     min-inline-size: 0.875rem;
+    min-block-size: 0;
     block-size: 0.875rem;
     padding-inline: 0.1875rem;
     font-size: 0.5625rem;
     line-height: 0.875rem;
   }
 
-  // Collapsed, the active group shows its items inline; the capsule ties them to their parent icon.
-  .wu-sidebar__group.is-active-group {
-    outline: 1px solid #ffffff40;
-    border-radius: 50px;
-    overflow: hidden;
+  // No kit counterpart: a closed group opens its links as a flyout beside the rail on hover or focus.
+  .wu-sidebar-group {
+    position: relative;
   }
 
-  // Only the active group's inline icons are pills; flyout rows keep the kit radius.
-  .wu-sidebar__group.is-active-group .wu-sidebar__sublink {
-    border-radius: 9999px;
+  // The flyout names the group, so the kit label tooltip stays clipped on its toggle.
+  .wu-sidebar-group:not([open]) > .wu-sidebar-toggle > .wu-sidebar-label {
+    clip-path: inset(50%);
   }
 
-  .wu-sidebar__link {
-    padding: 0.65rem;
-    border-radius: 9999px;
+  // A closed details skips rendering its content; the flyout shows it without opening the group.
+  .wu-sidebar-group:not([open]):is(:hover, :focus-within)::details-content {
+    content-visibility: visible;
   }
 
-  .wu-sidebar__group-toggle {
-    padding: 0.65rem;
-    border-radius: 9999px;
+  .wu-sidebar-group:not([open]):is(:hover, :focus-within) > .wu-sidebar-list {
+    display: flex;
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 100%;
+    z-index: wu-z(dropdown);
+    min-inline-size: 11rem;
+    padding: wu-space(2);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(md);
+    background: var(--wu-bg-raised);
+    box-shadow: wu-shadow(lg);
+
+    .app-shell__flyout-title {
+      display: block;
+      padding-inline: wu-space(3);
+      padding-block-end: wu-space(1);
+      color: var(--wu-text-muted);
+      font-size: wu-font-size(xs);
+      font-weight: wu-font-weight(semibold);
+    }
+
+    .wu-sidebar-link {
+      color: var(--wu-text-muted);
+
+      &:hover {
+        background: var(--wu-bg-hover);
+        color: var(--wu-text-regular);
+      }
+    }
+
+    // The rail hides labels as tooltips; in the flyout they are plain row text.
+    .wu-sidebar-label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      overflow: visible;
+      background: none;
+      box-shadow: none;
+      color: inherit;
+      font-weight: inherit;
+      clip-path: none;
+      translate: none;
+    }
   }
 }
 
-// Nav above already grows to fill; this only separates it from the collapse button.
-.app-shell__spacer {
-  flex: 0 0 auto;
-}
-
-.app-shell__collapse {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-block-start: wu-space(2);
-  padding: wu-space(2);
-  border-radius: wu-radius(md);
-  background: none;
-  color: var(--wu-text-muted);
-  cursor: pointer;
-  transition:
-    background-color wu-duration(fast) $wu-ease,
-    color wu-duration(fast) $wu-ease;
-
-  @include reduced-motion {
-    transition: none;
-  }
-
-  &:hover {
-    background-color: var(--wu-bg-alternate);
-    color: var(--wu-text-regular);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: wu-focus-ring();
-  }
-}
-
-// The only raised surface, since sidebar/topbar carry `m-plain`; shadow has no kit token.
+// The only raised surface, since the sidebar and topbar sit on the shell; the shadow size has no kit token.
 .content-area {
-  height: calc(100vh - 56px);
+  flex: 1;
+  min-block-size: 0;
   position: relative;
   overflow: auto;
   min-inline-size: 0;
   padding-block: wu-space(6);
   padding-inline: wu-space(8);
 
-  background: #f9fcfe;
+  background: var(--wu-bg-base);
   border-start-start-radius: wu-radius(lg);
-  box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.35)
-}
-
-// `.wu-topbar-menu` is absolute; trigger must be the containing block or it anchors to viewport.
-.region-switcher,
-.notification-wrapper,
-.wu-topbar__search {
-  position: relative;
-}
-
-.app-shell__region-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: wu-space(2);
-  block-size: 2.25rem;
-  padding-inline: wu-space(3);
-  border: 1px solid var(--wu-border-regular);
-  border-radius: wu-radius(full);
-  background-color: var(--wu-bg-surface);
-  color: var(--wu-text-regular);
-  font-size: wu-font-size(sm);
-  font-weight: wu-font-weight(medium);
-  cursor: pointer;
-  transition:
-    background-color wu-duration(fast) $wu-ease,
-    border-color wu-duration(fast) $wu-ease;
-
-  @include reduced-motion {
-    transition: none;
-  }
-
-  &:hover {
-    background-color: var(--wu-bg-alternate);
-    border-color: var(--wu-brand-300);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: wu-focus-ring();
-  }
-}
-
-// Invisible click-catcher that closes an open dropdown.
-.region-overlay,
-.notification-overlay,
-.search-overlay {
-  position: fixed;
-  inset: 0;
-  border: 0;
-  background: transparent;
-  cursor: default;
-  z-index: wu-z(sticky);
-}
-
-.app-shell__menu-list {
-  max-block-size: 24rem;
-  overflow-y: auto;
-}
-
-.app-shell__menu-label {
-  padding-block: wu-space(2);
-  padding-inline: wu-space(4);
-  font-size: wu-font-size(xs);
-  font-weight: wu-font-weight(semibold);
-  color: var(--wu-text-subtle);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  box-shadow: 0 0 50px 10px wu-scrim(35%);
 }
 
 // Holds the count badge and currency tag, and carries the auto margin.
@@ -365,22 +301,6 @@ $shell-background-image: radial-gradient(
   gap: wu-space(2);
   align-items: center;
   margin-inline-start: auto;
-}
-
-.region-unit-count {
-  padding-block: wu-space(1);
-  padding-inline: wu-space(2);
-  font-size: wu-font-size(xs);
-  font-weight: wu-font-weight(semibold);
-  line-height: 1;
-  color: var(--wu-brand);
-  background-color: wu-tint(brand, 12%);
-  border-radius: wu-radius(full);
-
-  &.is-zero {
-    color: var(--wu-text-muted);
-    background-color: var(--wu-bg-alternate);
-  }
 }
 
 .region-currency-tag {
@@ -392,13 +312,22 @@ $shell-background-image: radial-gradient(
   white-space: nowrap;
 }
 
+// Notification bodies are prose, not menu labels: a wider menu with wrapping rows.
 // Every row reserves the edge so reading one does not shift its content.
-.notification-wrapper .wu-topbar-menu__item {
-  border-inline-start: 3px solid transparent;
-  border-radius: 0;
+.app-shell__notifications {
+  inline-size: 22rem;
+  max-inline-size: 100%;
 
-  &.unread {
-    border-inline-start-color: var(--wu-brand);
+  .wu-dropdown-item {
+    align-items: flex-start;
+    padding-block: wu-space(2);
+    border-inline-start: 3px solid transparent;
+    border-radius: 0;
+    white-space: normal;
+
+    &.unread {
+      border-inline-start-color: var(--wu-brand);
+    }
   }
 }
 
@@ -472,51 +401,20 @@ $shell-background-image: radial-gradient(
   font-size: wu-font-size(xs);
 }
 
-// The menu is wider than the kit default: notification bodies are prose, not menu labels.
-.notification-wrapper .wu-topbar-menu {
-  inline-size: 22rem;
-}
-
+// Full-width banner on the kit alert; the start padding stays the kit's, which clears the marker.
+.tenant-lock-banner,
 .impersonation-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: wu-space(2);
-  padding-inline: wu-space(8);
-  background: var(--wu-warning-50);
-  border-block-end: 2px solid var(--wu-warning-200);
-  color: var(--wu-warning-800);
-  font-size: wu-font-size(sm);
-  font-weight: wu-font-weight(medium);
-}
-
-.tenant-lock-banner {
   border-radius: 0;
   padding-block: wu-space(2);
-  padding-inline: wu-space(8);
+  padding-inline-end: wu-space(8);
   font-size: wu-font-size(sm);
   font-weight: wu-font-weight(medium);
 }
 
+// As a drawer it slides over light content, so it carries the shell surface above the scrim.
 @include media-down(md) {
-  .app-shell__main {
-    margin-inline-start: 0;
-  }
-
-  .app-shell.is-collapsed .app-shell__main {
-    margin-inline-start: 0;
-  }
-
-  // As a drawer it slides over light content, so it carries the shell surface above the scrim and topbar.
-  .wu-sidebar {
-    inset-inline-start: -#{$shell-sidebar-width};
-    transition: inset-inline-start wu-duration(normal) $wu-ease;
-    z-index: wu-z(sticky) + 1;
+  .app-shell > .wu-sidebar {
     background-color: $shell-background-color;
     background-image: $shell-background-image;
-  }
-
-  .wu-sidebar.is-open {
-    inset-inline-start: 0;
   }
 }

@@ -77,14 +77,14 @@
   <:footer>
     <Woven::Button
       data-test-asset-cancel
-      @variant="secondary"
+      @variant="subtle"
       {{on "click" this.close}}
     >Cancel</Woven::Button>
     <Woven::Button
       data-test-asset-save
       @type="submit"
       form="asset-form"
-      @variant="primary"
+      @variant="brand"
       @disabled={{this.isSaving}}
       @loading={{this.isSaving}}
     >

@@ -82,7 +82,7 @@ module(
       await focus(filters[index]);
       const item = [
         ...document.querySelectorAll(
-          '.wu-menu.is-open [data-test-wu-dropdown-item]',
+          '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
         ),
       ].find((el) => el.textContent.includes(label));
       await click(item);

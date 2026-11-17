@@ -76,22 +76,25 @@ module('Integration | Component | woven/data-table', function (hooks) {
     }
   });
 
-  test('rows are hoverable by default and opt out with @hoverable={{false}}', async function (assert) {
+  test('renders the kit wu-table grammar on ember-table', async function (assert) {
     await render(
       hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
     );
 
-    for (const className of rowClasses(this.element)) {
-      assert.ok(className.includes('is-hoverable'));
-    }
+    assert.dom('.data-table table').hasClass('wu-table');
+    assert.dom('.data-table .ember-table-overflow').hasClass('wu-table-scroll');
+  });
+
+  test('rows are hoverable by default and opt out with @hoverable={{false}}', async function (assert) {
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+    );
+    assert.dom('.data-table table').hasClass('hover');
 
     await render(
       hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @hoverable={{false}} />`,
     );
-
-    for (const className of rowClasses(this.element)) {
-      assert.notOk(className.includes('is-hoverable'));
-    }
+    assert.dom('.data-table table').doesNotHaveClass('hover');
   });
 
   test('@stickyHeader adds the sticky header modifier', async function (assert) {
@@ -99,11 +102,73 @@ module('Integration | Component | woven/data-table', function (hooks) {
       hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
     );
     assert.dom('.data-table').doesNotHaveClass('data-table--sticky-header');
+    assert.dom('.data-table table').doesNotHaveClass('sticky-header');
 
     await render(
       hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @stickyHeader={{true}} />`,
     );
     assert.dom('.data-table').hasClass('data-table--sticky-header');
+    assert.dom('.data-table table').hasClass('sticky-header');
+  });
+
+  test('numeric columns use wu-table-num on header and cells', async function (assert) {
+    this.columns = [
+      { name: 'Name', valuePath: 'name' },
+      { name: 'Units', valuePath: 'units', numeric: true },
+    ];
+    this.rows = [{ id: '1', name: 'A', units: 3 }];
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+    );
+
+    const headers = this.element.querySelectorAll('thead th');
+    const cells = this.element.querySelectorAll('tbody tr td');
+    assert.notOk(headers[0].classList.contains('wu-table-num'));
+    assert.ok(headers[1].classList.contains('wu-table-num'));
+    assert.notOk(cells[0].classList.contains('wu-table-num'));
+    assert.ok(cells[1].classList.contains('wu-table-num'));
+  });
+
+  test('a sortable header is a wu-table-sort button and reports aria-sort', async function (assert) {
+    this.rows = [
+      { id: '1', name: 'Beta' },
+      { id: '2', name: 'Alpha' },
+    ];
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @sortable={{true}} />`,
+    );
+
+    assert.dom('thead th').doesNotHaveAttribute('aria-sort');
+    assert.dom('[data-test-data-table-sort="name"]').hasClass('wu-table-sort');
+
+    await click('[data-test-data-table-sort="name"]');
+    assert.dom('thead th').hasAttribute('aria-sort', 'ascending');
+
+    await click('[data-test-data-table-sort="name"]');
+    assert.dom('thead th').hasAttribute('aria-sort', 'descending');
+    assert
+      .dom('[data-test-data-table-sort="name"]')
+      .isFocused('focus stays on the sort button after the header rebuilds');
+  });
+
+  test('the checkbox column is the kit wu-table-select cell', async function (assert) {
+    this.selection = [this.rows[0]];
+    this.onSelect = () => {};
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @selection={{this.selection}} @onSelect={{this.onSelect}} />`,
+    );
+
+    assert.dom('thead th.wu-table-select').exists({ count: 1 });
+    assert.dom('tbody td.wu-table-select').exists({ count: 2 });
+    assert
+      .dom('[data-test-data-table-row="1"] td.wu-table-select input')
+      .isChecked();
+    assert
+      .dom('[data-test-data-table-row="2"] td.wu-table-select input')
+      .isNotChecked();
   });
 
   test('a saved layout keeps pinned columns at their edges and places new columns in line', async function (assert) {

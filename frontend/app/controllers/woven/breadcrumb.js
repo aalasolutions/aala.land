@@ -42,13 +42,15 @@ export default class WovenBreadcrumbController extends Controller {
 
 // routeItems: [{ label: 'Properties', route: 'properties' }, { label: 'Marina', route: 'properties.detail', model: areaId }]`,
     compact: `<Woven::Breadcrumb @items={{this.breadcrumbItems}} @compact={{true}} />`,
+    slash: `<Woven::Breadcrumb @items={{this.breadcrumbItems}} @separator="slash" />`,
     single: `<Woven::Breadcrumb @items={{this.singleItem}} />`,
   };
 
   argRows = [
     { name: '@items', type: 'array', default: '[]', description: 'Objects with label and one of route, href or onClick. The last item is the current page and renders as text unless @parentsOnly is set.' },
     { name: '@parentsOnly', type: 'boolean', default: 'false', description: 'Every item is a parent link; none is marked current. Use in a page header, where the title names the current page.' },
-    { name: '@compact', type: 'boolean', default: 'false', description: 'Smaller type and tighter separators.' },
+    { name: '@compact', type: 'boolean', default: 'false', description: 'Kit sm size: smaller type.' },
+    { name: '@separator', type: '"slash"', default: '', description: 'Kit slash modifier: a slash separator instead of the chevron. Other values keep the chevron.' },
   ];
 
   itemRows = [

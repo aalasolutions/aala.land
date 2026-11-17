@@ -1,20 +1,11 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
+import { SIZE_MAP } from './-constants';
 
-const SIZES = ['xs', 'sm', 'lg'];
-
-export default class NuSelectComponent extends Component {
+export default class WovenSelectComponent extends Component {
   get classes() {
-    const parts = ['wu-input', 'wu-select'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    const status = statusClass(this.status);
-    if (status) {
-      parts.push(status);
-    }
-    return parts.join(' ');
+    return ['wu-select', SIZE_MAP[this.args.size]].filter(Boolean).join(' ');
   }
 
   get status() {

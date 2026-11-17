@@ -1,7 +1,13 @@
-<div class={{this.classes}} role="separator" data-test-wu-divider ...attributes>
-  {{#if (has-block)}}
-    <span class="wu-divider__label" data-test-wu-divider-label>{{yield}}</span>
-  {{else if @label}}
-    <span class="wu-divider__label" data-test-wu-divider-label>{{@label}}</span>
-  {{/if}}
-</div>
+{{! No whitespace inside: the kit keys on :empty. }}
+{{#if (has-block)}}
+  <div class={{this.classes}} data-test-wu-divider ...attributes><span data-test-wu-divider-label>{{yield}}</span></div>
+{{else if @label}}
+  <div class={{this.classes}} data-test-wu-divider ...attributes><span data-test-wu-divider-label>{{@label}}</span></div>
+{{else}}
+  <hr
+    class={{this.classes}}
+    aria-orientation={{if @vertical "vertical"}}
+    data-test-wu-divider
+    ...attributes
+  />
+{{/if}}

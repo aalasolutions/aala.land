@@ -4,6 +4,10 @@ import { click, fillIn } from '@ember/test-helpers';
 import template from 'land/templates/access-requests';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
+import {
+  clickRowAction,
+  rowActionKeys,
+} from 'land/tests/helpers/row-actions';
 
 const PENDING = {
   id: 'r-1',
@@ -63,17 +67,17 @@ module('Integration | Template | access-requests', function (hooks) {
     assert.dom(pendingRow).containsText('SHJ');
     assert.dom(pendingRow).containsText('Lead');
     assert.dom(pendingRow).containsText('Client called twice');
-    assert.dom(`${pendingRow} [data-test-approve-access]`).exists();
-    assert.dom(`${pendingRow} [data-test-reject-access]`).exists();
-    assert.dom(`${pendingRow} [data-test-revoke-access]`).doesNotExist();
+    assert.deepEqual(await rowActionKeys(pendingRow), [
+      'approve-access',
+      'reject-access',
+    ]);
 
     assert.dom(approvedRow).containsText('Region Manager');
-    assert.dom(`${approvedRow} [data-test-revoke-access]`).exists();
-    assert.dom(`${approvedRow} [data-test-approve-access]`).doesNotExist();
+    assert.deepEqual(await rowActionKeys(approvedRow), ['revoke-access']);
   });
 
   test('approving with Forever sends forever', async function (assert) {
-    await click(`${pendingRow} [data-test-approve-access]`);
+    await clickRowAction(pendingRow, 'approve-access');
     assert.dom('[data-test-approve-modal]').exists();
 
     await click('[data-test-expiry-choice="forever"] input');
@@ -93,14 +97,14 @@ module('Integration | Template | access-requests', function (hooks) {
   });
 
   test('approving with the default sends an empty body for 90 days', async function (assert) {
-    await click(`${pendingRow} [data-test-approve-access]`);
+    await clickRowAction(pendingRow, 'approve-access');
     await click('[data-test-approve-confirm]');
 
     assert.deepEqual(this.calls[0].body, {});
   });
 
   test('a custom date is required and sent as the end of that day', async function (assert) {
-    await click(`${pendingRow} [data-test-approve-access]`);
+    await clickRowAction(pendingRow, 'approve-access');
     await click('[data-test-expiry-choice="date"] input');
     await click('[data-test-approve-confirm]');
 
@@ -122,14 +126,14 @@ module('Integration | Template | access-requests', function (hooks) {
   });
 
   test('rejecting needs a reason and sends it', async function (assert) {
-    await click(`${pendingRow} [data-test-reject-access]`);
-    await click('[data-test-confirm-modal-confirm]');
+    await clickRowAction(pendingRow, 'reject-access');
+    await click('[data-test-wu-confirm-modal-confirm]');
 
     assert.strictEqual(this.calls.length, 0, 'no reason, no request');
     assert.dom('[data-test-wu-field-error]').hasText('Enter a reason');
 
     await fillIn('[data-test-decision-reason]', '  Not their client ');
-    await click('[data-test-confirm-modal-confirm]');
+    await click('[data-test-wu-confirm-modal-confirm]');
 
     assert.deepEqual(this.calls, [
       {
@@ -143,9 +147,9 @@ module('Integration | Template | access-requests', function (hooks) {
   });
 
   test('revoking an approved grant sends the reason to revoke', async function (assert) {
-    await click(`${approvedRow} [data-test-revoke-access]`);
+    await clickRowAction(approvedRow, 'revoke-access');
     await fillIn('[data-test-decision-reason]', 'Lead closed');
-    await click('[data-test-confirm-modal-confirm]');
+    await click('[data-test-wu-confirm-modal-confirm]');
 
     assert.deepEqual(this.calls, [
       {

@@ -6,18 +6,20 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      Panel has the same slot shape as Card with a plainer surface, for
-      filters, settings groups and page sections. Toolbar is a flex row;
-      its groups, items, search wrapper and spacer are bare elements with
-      kit classes. Put a toolbar above a list and a panel around a form.
+      Panel renders the CSS kit
+      <code class="wu-code">wu-panel</code>: the same slot shape as Card with
+      a flat bordered surface, for filters, settings groups and page
+      sections. Toolbar renders
+      <code class="wu-code">wu-toolbar</code>, a wrapping row; its groups,
+      separators and end group are bare elements with kit classes. Put a toolbar above a list and a panel around a form.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Panel header from a title or a block; body and footer slots.</li>
-      <li class="wu-list__item">Compact, raised and interactive styles.</li>
-      <li class="wu-list__item">Toolbar with sticky and bordered options and a spacer to push items to the end.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Panel header from a title or a block; body and footer slots.</span></li>
+      <li class="wu-list-item"><span>One flat panel look; the kit has no compact, raised or interactive styles.</span></li>
+      <li class="wu-list-item"><span>Toolbar with a boxed style, a smaller gap, separators and an end group.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -28,7 +30,7 @@
       @code={{this.code.title}}
     >
       <Woven::Panel @title="Property Filters">
-        <p class="wu-text m-sm m-muted">Default padded panel with a title.</p>
+        <p class="wu-text sm muted">Default padded panel with a title.</p>
       </Woven::Panel>
     </WovenDocs::Example>
 
@@ -38,7 +40,7 @@
       @code={{this.code.plain}}
     >
       <Woven::Panel>
-        <p class="wu-text m-sm m-muted">No title, no header: just the surface.</p>
+        <p class="wu-text sm muted">No title, no header: just the surface.</p>
       </Woven::Panel>
     </WovenDocs::Example>
 
@@ -49,8 +51,8 @@
     >
       <Woven::Panel>
         <:header>
-          <Woven::Title @tag="h3" @size="sm" @text="Custom header" />
-          <Woven::Badge @variant="info" @text="3" />
+          <h3 class="wu-panel-title">Custom header</h3>
+          <Woven::Badge @variant="info" @value={{3}} />
         </:header>
         <:body>Body content.</:body>
       </Woven::Panel>
@@ -64,47 +66,17 @@
     >
       <Woven::Panel @title="Unit Maintenance">
         <:body>
-          <p class="wu-text m-sm m-muted">Named-block body/footer, same shape as card.</p>
+          <p class="wu-text sm muted">Named-block body/footer, same shape as card.</p>
         </:body>
         <:footer>
-          <Woven::Button @variant="secondary" @size="sm" @text="Cancel" />
-          <Woven::Button @variant="primary" @size="sm" @text="Save" />
+          <Woven::Button @size="sm" @text="Cancel" />
+          <Woven::Button @variant="brand" @size="sm" @text="Save" />
         </:footer>
       </Woven::Panel>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
-  <WovenDocs::Section @title="Panel: styles" @id="panel-styles">
-    <WovenDocs::Example
-      @title="Compact"
-      @note="Tighter padding for panels inside a drawer or a narrow column."
-      @code={{this.code.compact}}
-    >
-      <Woven::Panel @title="Compact" @compact={{true}}>
-        <p class="wu-text m-sm m-muted">Tighter padding.</p>
-      </Woven::Panel>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Raised"
-      @note="Elevated shadow for a panel that should stand off the page background."
-      @code={{this.code.raised}}
-    >
-      <Woven::Panel @title="Raised" @raised={{true}}>
-        <p class="wu-text m-sm m-muted">Elevated shadow.</p>
-      </Woven::Panel>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Interactive"
-      @note="Hover and focus affordance for a panel that acts as one big link or button."
-      @code={{this.code.interactive}}
-    >
-      <Woven::Panel @title="Interactive" @interactive={{true}}>
-        <p class="wu-text m-sm m-muted">Hover and focus affordance.</p>
-      </Woven::Panel>
-    </WovenDocs::Example>
-
+  <WovenDocs::Section @title="Panel: reference" @id="panel-styles">
     <h3 class="woven-subtitle">Panel arguments</h3>
     <WovenDocs::Table @kind="args" @rows={{this.panelArgRows}} />
     <h3 class="woven-subtitle">Panel blocks</h3>
@@ -114,69 +86,58 @@
   <WovenDocs::Section @title="Toolbar" @id="toolbar">
     <WovenDocs::Example
       @title="Default"
-      @note="A flex row of controls. Group related buttons, then a spacer pushes the primary action to the end."
+      @note="A wrapping row of controls of one height. Group related buttons; wu-toolbar-end pushes itself and what follows to the end."
       @layout="block"
       @code={{this.code.toolbar}}
     >
       <Woven::Toolbar>
-        <div class="wu-toolbar__group">
-          <Woven::Button @variant="secondary" @size="sm" @text="All Units" />
+        <div class="wu-toolbar-group">
+          <Woven::Button @size="sm" @text="All Units" />
           <Woven::Button @variant="ghost" @size="sm" @text="Occupied" />
         </div>
-        <span class="wu-toolbar__spacer"></span>
-        <Woven::Button @variant="primary" @size="sm" @text="Add Unit" />
+        <div class="wu-toolbar-end">
+          <Woven::Button @variant="brand" @size="sm" @text="Add Unit" />
+        </div>
       </Woven::Toolbar>
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Bordered"
-      @note="A bottom border separates the bar from the list beneath it; use it directly above a table."
+      @title="Boxed"
+      @note="Border, padding and the alternate background. A separator splits groups; status displays such as badges go outside the row."
       @layout="block"
       @code={{this.code.toolbarBordered}}
     >
       <Woven::Toolbar @bordered={{true}}>
-        <div class="wu-toolbar__group">
-          <Woven::Button @variant="secondary" @size="sm" @text="All Units" />
+        <div class="wu-toolbar-group">
+          <Woven::Button @size="sm" @text="All Units" />
           <Woven::Button @variant="ghost" @size="sm" @text="Occupied" />
           <Woven::Button @variant="ghost" @size="sm" @text="Vacant" />
         </div>
-        <span class="wu-toolbar__spacer"></span>
-        <div class="wu-toolbar__item">
-          <Woven::Badge @variant="info" @text="184 units" />
+        <span class="wu-toolbar-separator" aria-hidden="true"></span>
+        <Woven::Button @variant="ghost" @size="sm" @text="Export" />
+        <div class="wu-toolbar-end">
+          <Woven::Button @variant="brand" @size="sm" @text="Add Unit" />
         </div>
-        <Woven::Button @variant="primary" @size="sm" @text="Add Unit" />
       </Woven::Toolbar>
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Search slot"
-      @note="wu-toolbar__search gives a search input its width inside the bar."
+      @title="Search input"
+      @note="size sm gives the kit smaller gap. A bare input with an aria-label sizes to its content, up to 16rem. Never wrap it in a field: the label line pushes it below its neighbors."
       @layout="block"
       @code={{this.code.toolbarSearch}}
     >
-      <Woven::Toolbar @bordered={{true}}>
-        <div class="wu-toolbar__search">
-          <Woven::Input @size="sm" @prefixIcon="⌕" @placeholder="Search units" />
+      <Woven::Toolbar @bordered={{true}} @size="sm">
+        <Woven::Input
+          @size="sm"
+          @prefixIcon="⌕"
+          @placeholder="Search units"
+          aria-label="Search units"
+        />
+        <div class="wu-toolbar-end">
+          <Woven::Button @size="sm" @icon="funnel" @text="Filters" />
         </div>
-        <span class="wu-toolbar__spacer"></span>
-        <Woven::Button @variant="secondary" @size="sm" @icon="funnel" @text="Filters" />
       </Woven::Toolbar>
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Sticky"
-      @note="Scroll the box: the toolbar stays pinned to the top of its scroll container so the actions stay reachable on a long list."
-      @layout="block"
-      @code={{this.code.toolbarSticky}}
-    >
-      <div class="woven-scroll-box" data-test-woven-sticky-toolbar>
-        <Woven::Toolbar @sticky={{true}} @bordered={{true}}>
-          <Woven::Button @variant="secondary" @size="sm" @text="Sticky toolbar" />
-        </Woven::Toolbar>
-        {{#each this.filler as |line|}}
-          <Woven::Text @size="sm" @muted={{true}} @text={{line}} class="ps-4" />
-        {{/each}}
-      </div>
     </WovenDocs::Example>
 
     <h3 class="woven-subtitle">Toolbar arguments</h3>
@@ -186,15 +147,15 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The panel title is an h3; keep a heading above a run of panels.</li>
-      <li class="wu-list__item">Toolbar is a plain div. Add role="toolbar" and an aria-label through ...attributes when it holds a set of related controls.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The panel title is an h3; keep a heading above a run of panels.</span></li>
+      <li class="wu-list-item"><span>Toolbar is a plain div. Add role="toolbar" only with a script that provides arrow-key focus.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The toolbar spacer pushes items to the inline end, so trailing actions sit on the left under dir="rtl".</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The toolbar end group sits at the inline end, so trailing actions sit on the left under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

@@ -274,7 +274,7 @@ module('Integration | Template | company billing', function (hooks) {
     });
     await click('[data-test-downgrade-free]');
     assert
-      .dom('[data-test-confirm-modal-message]')
+      .dom('[data-test-wu-confirm-modal-message]')
       .hasText(
         'Your plan ends 48 hours after you confirm. Until then you keep Pro, you can undo this, and you can export your data. After that, the unused part of your billing period is refunded to your payment method. Uploads beyond the Free 2 GB quota will be blocked.',
       );
@@ -299,7 +299,7 @@ module('Integration | Template | company billing', function (hooks) {
     });
     controller.router.refresh = () => {};
     await click('[data-test-downgrade-free]');
-    await click('[data-test-confirm-modal-confirm]');
+    await click('[data-test-wu-confirm-modal-confirm]');
     assert.strictEqual(calls[0].path, '/billing/cancel');
     assert.strictEqual(toasts.length, 1);
     assert.strictEqual(
@@ -435,8 +435,8 @@ module('Integration | Template | company billing', function (hooks) {
     });
     controller.router.refresh = () => {};
     await click('[data-test-downgrade-free]');
-    assert.dom('[data-test-confirm-modal-message]').hasText(PERIOD_END_DIALOG);
-    await click('[data-test-confirm-modal-confirm]');
+    assert.dom('[data-test-wu-confirm-modal-message]').hasText(PERIOD_END_DIALOG);
+    await click('[data-test-wu-confirm-modal-confirm]');
     assert.deepEqual(toasts, [
       {
         type: 'success',
@@ -456,7 +456,7 @@ module('Integration | Template | company billing', function (hooks) {
       },
     });
     await click('[data-test-downgrade-free]');
-    assert.dom('[data-test-confirm-modal-message]').hasText(PERIOD_END_DIALOG);
+    assert.dom('[data-test-wu-confirm-modal-message]').hasText(PERIOD_END_DIALOG);
   });
 
   test('period_end mode ignores downgrade fields and shows the period-end notice', async function (assert) {

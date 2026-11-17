@@ -1,7 +1,7 @@
 import { token } from '../utils/chart-style';
 import ChartBase from './chart-base';
 
-const VARIANT_ROLES = { primary: 'brand', secondary: 'info' };
+const VARIANT_ROLES = { brand: 'brand', secondary: 'info' };
 
 // Bare line for a stat card foot (no scales/grid/legend); `@variant` is a kit variant name.
 export default class StatSparklineComponent extends ChartBase {
@@ -33,7 +33,7 @@ export default class StatSparklineComponent extends ChartBase {
   }
 
   get config() {
-    const variant = this.args.variant ?? 'primary';
+    const variant = this.args.variant ?? 'brand';
     const line = token(`--wu-${VARIANT_ROLES[variant] ?? variant}`);
 
     return {

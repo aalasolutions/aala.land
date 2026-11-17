@@ -1,28 +1,33 @@
 <WovenDocs::Page
   @id="drawer"
   @title="Drawer"
-  @subtitle="Edge panel that slides in over a backdrop, with an animated leave."
+  @subtitle="Native dialog docked to an edge, sliding in over a backdrop and out again."
   @components="Woven::Drawer"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      The drawer shares the modal's dialog mechanics (focus trap, scroll
-      lock, Escape ownership) and adds an enter and leave transition driven
-      as run-loop tasks, so tests can await it. It stays mounted while
-      sliding out and reports
+      The drawer is a native dialog with the modal's mechanics (showModal,
+      focus trap, scroll lock, Escape as the cancel event). The kit slides
+      it in and out; the component stays mounted through the slide out and
+      reports
       <code class="wu-code">@onClosed</code>
-      afterwards. A dropdown inside the drawer opens on the layer host, so
-      the drawer's transform cannot clip it. Use it for edit forms beside a
-      list, where the user wants to keep the list in sight.
+      afterwards, timed as run-loop tasks so tests can await it. It renders
+      the CSS kit
+      <code class="wu-code">wu-drawer</code>
+      and ends with its own empty
+      <code class="wu-code">wu-layer</code>; menus, popovers and tooltips
+      inside it resolve that layer through the layer service (nearest open
+      dialog), so they stay interactive while the page behind is inert. Use it for edit
+      forms beside a list, where the user wants to keep the list in sight.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Four logical edges and three sizes.</li>
-      <li class="wu-list__item">Enter and leave transitions with a closed callback after the animation.</li>
-      <li class="wu-list__item">Backdrop click and Escape, each switchable; Escape inside a menu or popover stays there.</li>
-      <li class="wu-list__item">Header, body and footer slots, or a custom header block.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Docks to the inline end, the inline start or the bottom; three widths, wide by default.</span></li>
+      <li class="wu-list-item"><span>Enter and leave transitions with a closed callback after the animation.</span></li>
+      <li class="wu-list-item"><span>Backdrop click and Escape, each switchable; Escape inside a menu or popover stays there.</span></li>
+      <li class="wu-list-item"><span>Header, body and footer slots, or a custom header block.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -43,22 +48,8 @@
     >
       <Woven::Button
         @text="Open start drawer"
-        @variant="secondary"
         @onClick={{fn this.openDrawer "start" "md"}}
         data-test-open-drawer-start
-      />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="placement top"
-      @note="Drops from the top, for notifications and quick filters."
-      @code={{this.code.placementTop}}
-    >
-      <Woven::Button
-        @text="Open top drawer"
-        @variant="secondary"
-        @onClick={{fn this.openDrawer "top" "md"}}
-        data-test-open-drawer-top
       />
     </WovenDocs::Example>
 
@@ -69,7 +60,6 @@
     >
       <Woven::Button
         @text="Open bottom drawer"
-        @variant="secondary"
         @onClick={{fn this.openDrawer "bottom" "md"}}
         data-test-open-drawer-bottom
       />
@@ -81,14 +71,13 @@
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
         <Woven::Button
           @text="Open {{example.size}} drawer"
-          @variant="secondary"
-          @onClick={{fn this.openDrawer "end" example.size}}
+            @onClick={{fn this.openDrawer "end" example.size}}
           data-test-woven-drawer-size={{example.size}}
         />
       </WovenDocs::Example>
     {{/each}}
 
-    <span class="wu-text m-sm m-muted" data-test-woven-drawer-closed>Closed {{this.closedCount}} times (counted after the leave transition).</span>
+    <span class="wu-text sm muted" data-test-woven-drawer-closed>Closed {{this.closedCount}} times (counted after the leave transition).</span>
 
     <Woven::Drawer
       @open={{this.drawerOpen}}
@@ -100,7 +89,7 @@
     >
       <:body>
         <Woven::Text @text="Filter units by region, status, and rent range." />
-        <Woven::Field @label="Area">
+        <Woven::Field @label="Area" @tooltip="Opens in a native popover inside the drawer, above it in the top layer.">
           <Woven::Dropdown
             @options={{this.areaOptions}}
             @value={{this.drawerArea}}
@@ -109,9 +98,22 @@
             @placeholder="Any area"
           />
         </Woven::Field>
+        <Woven::Popover @title="Rent range">
+          <:trigger as |toggle isOpen|>
+            <Woven::Button
+              @text="Rent help"
+                    @onClick={{toggle}}
+              aria-expanded={{if isOpen "true" "false"}}
+              data-test-woven-drawer-popover
+            />
+          </:trigger>
+          <:body>
+            <Woven::Text @size="sm" @text="Escape closes this popover and leaves the drawer open." />
+          </:body>
+        </Woven::Popover>
       </:body>
       <:footer>
-        <Woven::Button @text="Close" @variant="secondary" @onClick={{this.closeDrawer}} />
+        <Woven::Button @text="Close" @onClick={{this.closeDrawer}} />
       </:footer>
     </Woven::Drawer>
   </WovenDocs::Section>
@@ -132,22 +134,21 @@
 
     <WovenDocs::Example
       @title="Header block"
-      @note="Replaces the title header; put the yielded id on your heading so the dialog keeps its accessible name."
+      @note="Replaces the whole header, close button included; put the yielded id on your heading so the dialog keeps its accessible name."
       @code={{this.code.header}}
     >
       <Woven::Button
         @text="Open custom header"
-        @variant="secondary"
         @onClick={{fn this.setOpen "headerOpen" true}}
         data-test-woven-open-drawer-header
       />
       <Woven::Drawer @open={{this.headerOpen}} @placement="end" @size="sm" @onClose={{fn this.setOpen "headerOpen" false}}>
         <:header as |titleId|>
-          <h2 id={{titleId}} class="wu-drawer__title">Custom header</h2>
-          <Woven::Badge @variant="info" @text="3 filters" />
+          <h2 id={{titleId}} class="wu-drawer-title">Custom header</h2>
+          <Woven::Tag @variant="info" @text="3 filters" />
         </:header>
         <:body><Woven::Text @text="The heading above carries the yielded id." /></:body>
-        <:footer><Woven::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "headerOpen" false}} /></:footer>
+        <:footer><Woven::Button @text="Close" @onClick={{fn this.setOpen "headerOpen" false}} /></:footer>
       </Woven::Drawer>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -160,13 +161,12 @@
     >
       <Woven::Button
         @text="Open, backdrop locked"
-        @variant="secondary"
         @onClick={{fn this.setOpen "lockedOpen" true}}
         data-test-woven-open-drawer-locked
       />
       <Woven::Drawer @open={{this.lockedOpen}} @title="Backdrop click ignored" @placement="end" @size="sm" @closeOnBackdrop={{false}} @onClose={{fn this.setOpen "lockedOpen" false}}>
         <:body><Woven::Text @text="Click outside: nothing happens. Escape or the X still close it." /></:body>
-        <:footer><Woven::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "lockedOpen" false}} /></:footer>
+        <:footer><Woven::Button @text="Close" @onClick={{fn this.setOpen "lockedOpen" false}} /></:footer>
       </Woven::Drawer>
     </WovenDocs::Example>
 
@@ -177,13 +177,12 @@
     >
       <Woven::Button
         @text="Open, Escape locked"
-        @variant="secondary"
         @onClick={{fn this.setOpen "noEscOpen" true}}
         data-test-woven-open-drawer-no-esc
       />
       <Woven::Drawer @open={{this.noEscOpen}} @title="Escape ignored" @placement="end" @size="sm" @closeOnEsc={{false}} @onClose={{fn this.setOpen "noEscOpen" false}}>
         <:body><Woven::Text @text="Press Escape: nothing happens. The X and the backdrop still close it." /></:body>
-        <:footer><Woven::Button @text="Close" @variant="secondary" @onClick={{fn this.setOpen "noEscOpen" false}} /></:footer>
+        <:footer><Woven::Button @text="Close" @onClick={{fn this.setOpen "noEscOpen" false}} /></:footer>
       </Woven::Drawer>
     </WovenDocs::Example>
   </WovenDocs::Section>
@@ -201,16 +200,16 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">role="dialog" with aria-modal="true", labelled by the title; the same focus trap, first-control focus and focus restore as the modal.</li>
-      <li class="wu-list__item">Escape closes the drawer only when it is the topmost dialog, so a confirm modal opened from inside it takes precedence.</li>
-      <li class="wu-list__item">The transition runs as run-loop tasks and is skipped under prefers-reduced-motion.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>A native dialog opened with showModal(), labeled by the title; the same focus trap, first-control focus and focus restore as the modal.</span></li>
+      <li class="wu-list-item"><span>The browser sends Escape to the topmost dialog only, so a confirm modal opened from inside it takes precedence; Escape inside a menu or popover is canceled there.</span></li>
+      <li class="wu-list-item"><span>The slide is skipped under prefers-reduced-motion, and the leave wait follows the dialog's own transition time.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">start and end are logical edges; the slide transform uses a direction sign token that flips under dir="rtl", so the panel always enters from its own edge.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>start and end are logical edges; the kit mirrors the slide under dir="rtl", so the panel always enters from its own edge.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

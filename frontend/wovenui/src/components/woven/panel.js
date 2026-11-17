@@ -1,20 +1,7 @@
 import Component from '@glimmer/component';
 
-export default class NuPanelComponent extends Component {
-  get classes() {
-    const parts = ['wu-panel'];
-    if (this.args.compact) {
-      parts.push('m-compact');
-    }
-    if (this.args.raised) {
-      parts.push('m-raised');
-    }
-    if (this.args.interactive) {
-      parts.push('m-interactive');
-    }
-    return parts.join(' ');
-  }
-
+// compact, raised and interactive have no CSS kit equivalent and render nothing.
+export default class WovenPanelComponent extends Component {
   get showHeader() {
     return Boolean(this.args.title);
   }

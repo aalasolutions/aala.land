@@ -3,64 +3,66 @@
 <div data-test-admin-overview-page class="flex col gap-6">
   <Woven::PageHeader @title="Overview" @subtitle="The business at a glance." />
 
-  <Woven::Card class="console-hero" data-test-overview-hero>
-    {{#if this.hasRevenue}}
-      <div class="console-hero__figures">
-        <div class="console-hero__figure">
-          <p class="kpi-label">MRR</p>
-          <h2 class="console-hero__value" data-test-overview-mrr>
-            {{format-money
-              this.dominant.mrrMinor
-              currency=this.dominant.currency
-              minor=true
-            }}
-            <span class="console-hero__unit">/mo</span>
-          </h2>
+  <Woven::Card data-test-overview-hero>
+    <div class="flex wrap x-center between gap-6">
+      {{#if this.hasRevenue}}
+        <div class="flex gap-8">
+          <div class="console-hero__figure">
+            <p class="console-hero__label">MRR</p>
+            <h2 class="console-hero__value" data-test-overview-mrr>
+              {{format-money
+                this.dominant.mrrMinor
+                currency=this.dominant.currency
+                minor=true
+              }}
+              <span class="console-hero__unit">/mo</span>
+            </h2>
+          </div>
+          <div class="console-hero__figure">
+            <p class="console-hero__label">ARR</p>
+            <h2 class="console-hero__value" data-test-overview-arr>
+              {{format-money
+                this.dominantArrMinor
+                currency=this.dominant.currency
+                minor=true
+              }}
+              <span class="console-hero__unit">/yr</span>
+            </h2>
+          </div>
         </div>
-        <div class="console-hero__figure">
-          <p class="kpi-label">ARR</p>
-          <h2 class="console-hero__value" data-test-overview-arr>
-            {{format-money
-              this.dominantArrMinor
-              currency=this.dominant.currency
-              minor=true
-            }}
-            <span class="console-hero__unit">/yr</span>
-          </h2>
-        </div>
-      </div>
-      {{#if this.showCurrencyChips}}
-        <div class="console-hero__chips">
-          {{#each this.mrrCurrencies as |band|}}
-            <span
-              class="console-chip"
-              data-test-overview-currency-chip={{band.currency}}
-            >
-              <strong class="console-chip__code">{{band.currency}}</strong>
-              {{format-money band.mrrMinor currency=band.currency minor=true}}
-            </span>
-          {{/each}}
+        {{#if this.showCurrencyChips}}
+          <div class="flex wrap gap-2">
+            {{#each this.mrrCurrencies as |band|}}
+              <span
+                class="wu-tag"
+                data-test-overview-currency-chip={{band.currency}}
+              >
+                <strong class="uppercase">{{band.currency}}</strong>
+                {{format-money band.mrrMinor currency=band.currency minor=true}}
+              </span>
+            {{/each}}
+          </div>
+        {{/if}}
+      {{else}}
+        <div class="console-hero__empty">
+          <p class="console-hero__label">MRR</p>
+          <h2 class="console-hero__value">No revenue yet</h2>
+          <p class="text-sm text-muted mt-1">Close the first deal to light this
+            up.</p>
         </div>
       {{/if}}
-    {{else}}
-      <div class="console-hero__empty">
-        <p class="console-hero__label">MRR</p>
-        <h2 class="console-hero__value">No revenue yet</h2>
-        <p class="text-sm text-muted mt-1">Close the first deal to light this
-          up.</p>
-      </div>
-    {{/if}}
+    </div>
   </Woven::Card>
 
   <div class="console-tiles">
     {{#each this.tiles as |tile|}}
-      <Woven::Stat
+      <StatCard
         @label={{tile.label}}
         @value={{tile.value}}
         data-test-overview-tile={{tile.key}}
       >
         <:icon><Ui::Ph @icon={{tile.icon}} @size="22px" /></:icon>
-      </Woven::Stat>
+      </StatCard>
     {{/each}}
   </div>
 
@@ -70,14 +72,14 @@
       {{#if this.regions.length}}
         <div class="flex col gap-3">
           {{#each this.regions as |region|}}
-            <div class="console-region-row">
+            <div class="flex x-center gap-3">
               <span class="console-region-row__name">{{region.label}}</span>
-              <span class="console-region-bar">
-                <span
-                  class="console-region-bar__fill"
-                  style={{region.barStyle}}
-                ></span>
-              </span>
+              <progress
+                class="wu-progress grow"
+                value={{region.customers}}
+                max={{region.max}}
+                aria-label="{{region.label}} customers"
+              ></progress>
               <span
                 class="console-region-row__count"
               >{{region.customers}}</span>
@@ -112,16 +114,24 @@
               }}</span>
           {{else if (eq cell.key "coversEnd")}}
             {{#if cell.row.overdue}}
-              <Woven::Tag class="tag-txn-failed" @text="Overdue" />
+              <Woven::Tag @variant="danger" @text="Overdue" />
             {{else}}
               {{format-date cell.value}}
             {{/if}}
           {{else if (eq cell.key "companyId")}}
-            <LinkTo
-              @route="admin.companies.company"
-              @model={{cell.value}}
-              class="link"
-            >Open</LinkTo>
+            <RowActions
+              @label={{cell.row.companyName}}
+              @actions={{array
+                (hash
+                  key="overview-open-company"
+                  testValue=cell.value
+                  label="Open"
+                  icon="caret-right"
+                  route="admin.companies.company"
+                  models=(array cell.value)
+                )
+              }}
+            />
           {{else}}
             {{cell.value}}
           {{/if}}

@@ -6,8 +6,8 @@
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
       The kit is one vocabulary in three packages: core tokens and
-      utilities, an SCSS component layer, and the Ember components that
-      drive it. Every component whitelists its variants, falls back to the
+      utilities, the WovenUI CSS kit, and the Ember components that render
+      its markup and own its state. Every component whitelists its variants, falls back to the
       default on a typo, spreads
       <code class="wu-code">...attributes</code>
       last on its root, and carries
@@ -17,11 +17,11 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Fifty-odd Glimmer components over one SCSS vocabulary, each documented with every variant live.</li>
-      <li class="wu-list__item">One theme variable reskins the whole kit; per-component tokens retheme one instance.</li>
-      <li class="wu-list__item">Right-to-left at both layers, verified with the Dir switch on every page.</li>
-      <li class="wu-list__item">Four hosts and their services handle everything that floats.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Fifty-odd Glimmer components over one CSS kit vocabulary, each documented with every variant live.</span></li>
+      <li class="wu-list-item"><span>One theme variable reskins the whole kit; per-component tokens retheme one instance.</span></li>
+      <li class="wu-list-item"><span>Right-to-left at both layers, verified with the Dir switch on every page.</span></li>
+      <li class="wu-list-item"><span>Four hosts and their services handle everything that floats.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -32,7 +32,7 @@
   <WovenDocs::Section @title="Install" @id="install">
     <WovenDocs::Example
       @title="Styles"
-      @note="Core first, then the kit. The kit entry forwards the token engine and loads every component sheet, utilities last."
+      @note="Core first, then the kit. The kit entry forwards the token engine, loads the CSS kit bundle once with unused components switched off, then the Ember-only parts, utilities last."
       @layout="block"
       @code={{this.code.styles}}
     >
@@ -45,21 +45,21 @@
 
     <WovenDocs::Example
       @title="Mount the hosts"
-      @note="Four hosts render once in the application template, after the routed content and in this order. Tooltips, the anchored layer and dialogs share one z-index level and rely on paint order."
+      @note="Four hosts render once in the application template, after the routed content and in this order. Menus, popovers and tooltips render into the body layer, or into the layer of the open dialog that contains their trigger."
       @layout="block"
       @code={{this.code.hosts}}
     >
-      <ul class="wu-list">
-        <li class="wu-list__item">Modals and drawers render inline where they are used, so the layer paints above them.</li>
-        <li class="wu-list__item">LayerHost before TooltipHost, so a tooltip on a menu item paints above the menu.</li>
-        <li class="wu-list__item">Toasts sit one z-index level higher, above everything.</li>
+      <ul class="wu-list sm" role="list">
+        <li class="wu-list-item"><span>Modals and drawers are native dialogs in the browser top layer; each carries its own wu-layer, because a modal dialog makes the body layer inert.</span></li>
+        <li class="wu-list-item"><span>LayerHost before TooltipHost, so a tooltip on a menu item paints above the menu.</span></li>
+        <li class="wu-list-item"><span>Toasts sit one z-index level higher, above everything.</span></li>
       </ul>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Theming" @id="theming">
     <WovenDocs::Example
-      @note="Modifiers reassign CSS variables; the base rule is the only consumer. Change --wu-brand and every m-primary surface follows. Retheme one instance by overriding its own --wu-{block}--{Property} token from outside."
+      @note="Modifiers reassign CSS variables; the base rule is the only consumer. Change --wu-brand and every brand surface follows. Retheme one instance by overriding its own --wu-{block}--{Property} token from outside."
       @layout="block"
       @code={{this.code.theme}}
     >
@@ -80,7 +80,7 @@
       <Woven::Text
         @size="sm"
         @muted={{true}}
-        @text="The Dir switch in the topbar flips the whole site. Each component page lists its direction-specific behaviour under RTL."
+        @text="The Dir switch in the topbar flips the whole site. Each component page lists its direction-specific behavior under RTL."
       />
     </WovenDocs::Example>
   </WovenDocs::Section>

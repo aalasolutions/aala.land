@@ -34,7 +34,6 @@ $cashflow-chart-height: 260px;
   color: var(--wu-text-muted);
 }
 
-// Height only: the card-edge bleed is the kit's `wu-stat__content.m-bleed`.
 .stat-sparkline .chart-canvas__frame {
   block-size: $stat-sparkline-height;
 }

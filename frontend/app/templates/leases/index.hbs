@@ -7,7 +7,8 @@
     </:meta>
     <:actions>
       <Woven::Button
-        @variant="primary"
+        data-test-lease-new
+        @variant="brand"
         @icon="plus"
         {{on "click" this.openCreate}}
       >
@@ -58,21 +59,19 @@
             />
           </Woven::Field>
           <Woven::Field @label="Start date from">
-            <input
+            <Woven::Input
               type="date"
-              class="wu-input"
               aria-label="Start date from"
-              value={{this.dateFrom}}
+              @value={{this.dateFrom}}
               {{on "change" this.setDateFrom}}
               data-test-date-from-filter
             />
           </Woven::Field>
           <Woven::Field @label="Start date to">
-            <input
+            <Woven::Input
               type="date"
-              class="wu-input"
               aria-label="Start date to"
-              value={{this.dateTo}}
+              @value={{this.dateTo}}
               {{on "change" this.setDateTo}}
               data-test-date-to-filter
             />
@@ -118,7 +117,7 @@
         {{else if (eq cell.key "unit.unitNumber")}}
           {{#if cell.row.unit}}
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @size="xs"
               @route="properties.unit"
               @models={{array cell.row.unit.areaId cell.row.unit.id}}
@@ -136,7 +135,7 @@
         {{else if (eq cell.key "status")}}
           <div class="flex gap-1 wrap">
             <Woven::Tag
-              class="tag-lease-{{lowercase cell.value}}"
+              @variant={{tag-variant "lease" cell.value}}
               @text={{cell.value}}
             />
             {{#if cell.row.deletedAt}}
@@ -150,117 +149,76 @@
         {{else if (eq cell.key "tenancyRegistrationRef")}}
           <span class="text-muted">{{or cell.value "-"}}</span>
         {{else if (eq cell.key "id")}}
-          <div class="flex">
-            {{#if this.canViewHistory}}
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="clock-counter-clockwise"
-                aria-label="History for lease of {{or
-                  (contact-name cell.row.contact)
-                  'Unknown tenant'
-                }}"
-                data-tooltip="History"
-                data-test-lease-history
-                {{on "click" (fn this.openHistory cell.row)}}
-              />
-            {{/if}}
-            {{#if cell.row.deletedAt}}
-              {{#if this.canArchiveLease}}
-                <Woven::Button
-                  data-test-unarchive-lease
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="arrow-counter-clockwise"
-                  aria-label="Unarchive lease for {{contact-name
-                    cell.row.contact
-                  }}"
-                  data-tooltip="Unarchive"
-                  {{on "click" (fn this.openArchive cell.row "unarchive")}}
-                />
-              {{/if}}
-            {{else}}
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="pencil-simple"
-                aria-label="Edit lease for {{contact-name cell.row.contact}}"
-                data-tooltip="Edit"
-                data-test-edit-lease
-                {{on "click" (fn this.openEdit cell.row)}}
-              />
-              {{#if (eq cell.row.status "ACTIVE")}}
-                <Woven::Button
-                  data-test-renew-lease
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="arrows-clockwise"
-                  aria-label="Renew lease for {{contact-name cell.row.contact}}"
-                  data-tooltip="Renew"
-                  {{on "click" (fn this.renewLease cell.row)}}
-                />
-                <Woven::Button
-                  data-test-terminate-lease
-                  @subtle={{true}}
-                  @variant="danger"
-                  @size="xs"
-                  @icon="x-circle"
-                  aria-label="Terminate lease for {{contact-name
-                    cell.row.contact
-                  }}"
-                  data-tooltip="Terminate"
-                  {{on "click" (fn this.openTerminate cell.row)}}
-                />
-              {{/if}}
-              {{#if (eq cell.row.status "EXPIRED")}}
-                <Woven::Button
-                  data-test-renew-lease
-                  @subtle={{true}}
-                  @variant="secondary"
-                  @size="xs"
-                  @icon="arrows-clockwise"
-                  aria-label="Renew lease for {{contact-name cell.row.contact}}"
-                  data-tooltip="Renew"
-                  {{on "click" (fn this.renewLease cell.row)}}
-                />
-              {{/if}}
-              {{#if (eq cell.row.status "DRAFT")}}
-                {{#if this.canDeleteLease}}
-                  <Woven::Button
-                    @subtle={{true}}
-                    @variant="danger"
-                    @size="xs"
-                    @icon="trash"
-                    aria-label="Delete lease for {{contact-name
-                      cell.row.contact
-                    }}"
-                    data-tooltip="Delete"
-                    data-test-delete-lease
-                    {{on "click" (fn this.openDelete cell.row)}}
-                  />
-                {{/if}}
-              {{else if this.canArchiveLease}}
-                {{#unless (eq cell.row.status "ACTIVE")}}
-                  <Woven::Button
-                    data-test-archive-lease
-                    @subtle={{true}}
-                    @variant="secondary"
-                    @size="xs"
-                    @icon="archive"
-                    aria-label="Archive lease for {{contact-name
-                      cell.row.contact
-                    }}"
-                    data-tooltip="Archive"
-                    {{on "click" (fn this.openArchive cell.row "archive")}}
-                  />
-                {{/unless}}
-              {{/if}}
-            {{/if}}
-          </div>
+          <RowActions
+            @label="lease of {{or (contact-name cell.row.contact) 'Unknown tenant'}}"
+            @actions={{array
+              (hash
+                key="lease-history"
+                label="History"
+                icon="clock-counter-clockwise"
+                onSelect=(fn this.openHistory cell.row)
+                hidden=(not this.canViewHistory)
+              )
+              (hash
+                key="unarchive-lease"
+                label="Unarchive"
+                icon="arrow-counter-clockwise"
+                onSelect=(fn this.openArchive cell.row "unarchive")
+                hidden=(not (and cell.row.deletedAt this.canArchiveLease))
+              )
+              (hash
+                key="edit-lease"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+                hidden=cell.row.deletedAt
+              )
+              (hash
+                key="renew-lease"
+                label="Renew"
+                icon="arrows-clockwise"
+                onSelect=(fn this.renewLease cell.row)
+                hidden=(or
+                  cell.row.deletedAt
+                  (not
+                    (or (eq cell.row.status "ACTIVE") (eq cell.row.status "EXPIRED"))
+                  )
+                )
+              )
+              (hash
+                key="terminate-lease"
+                label="Terminate"
+                icon="x-circle"
+                variant="danger"
+                onSelect=(fn this.openTerminate cell.row)
+                hidden=(or cell.row.deletedAt (not (eq cell.row.status "ACTIVE")))
+              )
+              (hash
+                key="delete-lease"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openDelete cell.row)
+                hidden=(or
+                  cell.row.deletedAt
+                  (not (eq cell.row.status "DRAFT"))
+                  (not this.canDeleteLease)
+                )
+              )
+              (hash
+                key="archive-lease"
+                label="Archive"
+                icon="archive"
+                onSelect=(fn this.openArchive cell.row "archive")
+                hidden=(or
+                  cell.row.deletedAt
+                  (eq cell.row.status "DRAFT")
+                  (eq cell.row.status "ACTIVE")
+                  (not this.canArchiveLease)
+                )
+              )
+            }}
+          />
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
@@ -279,7 +237,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="leases-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -356,7 +313,7 @@
   }}
   @confirmText={{if (eq this.archiveMode "archive") "Archive" "Unarchive"}}
   @cancelText="I changed my mind"
-  @confirmVariant="primary"
+  @confirmVariant="brand"
   @isConfirming={{this.isArchiving}}
   @confirmingText={{if (eq this.archiveMode "archive") "Archiving..." "Unarchiving..."}}
   @onClose={{this.closeArchiveModal}}

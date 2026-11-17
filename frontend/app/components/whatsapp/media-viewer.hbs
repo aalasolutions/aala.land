@@ -27,7 +27,7 @@
     <div class="flex x-center gap-1">
       {{#if this.url}}
         <a
-          class="wu-btn m-ghost m-circle"
+          class="wu-btn quiet icon round"
           href={{this.url}}
           download
           target="_blank"
@@ -60,7 +60,7 @@
           <Woven::Icon @icon="warning-circle" aria-hidden="true" />
           <Woven::Text @tag="span" @size="sm">Could not load</Woven::Text>
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="sm"
             @text="Retry"
             @onClick={{this.retry}}

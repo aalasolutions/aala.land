@@ -3,14 +3,12 @@ import { setupRenderingTest } from 'ember-qunit';
 import { render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
-const SLOT = '[data-test-wu-field-message]';
-
 function errorId(root) {
-  return root.querySelector('.wu-field__error')?.id;
+  return root.querySelector('.wu-field-message.error')?.id;
 }
 
 function hintId(root) {
-  return root.querySelector('.wu-field__hint')?.id;
+  return root.querySelector('[data-test-wu-field-hint]')?.id;
 }
 
 module('Integration | Component | woven/field status', function (hooks) {
@@ -24,9 +22,10 @@ module('Integration | Component | woven/field status', function (hooks) {
     assert.dom('input').doesNotHaveAttribute('aria-invalid');
     assert.dom('input').doesNotHaveAttribute('data-wu-field-status');
     assert.dom('input').doesNotHaveAttribute('aria-describedby');
-    assert.dom(SLOT).exists('the message slot always renders');
-    assert.dom(SLOT).hasAttribute('aria-live', 'polite');
-    assert.dom(SLOT).hasNoText();
+    assert
+      .dom('[data-test-wu-field]')
+      .hasClass('live', 'the kit live field reserves the message line');
+    assert.dom('.wu-field-message').doesNotExist();
   });
 
   test('@error marks the control invalid and describes it', async function (assert) {
@@ -44,8 +43,9 @@ module('Integration | Component | woven/field status', function (hooks) {
       .dom('[data-test-wu-field-error]')
       .hasText('Enter a rent greater than 0');
     assert
-      .dom('[data-test-wu-field-error] .wu-field__message-icon')
-      .exists('an icon precedes the error text');
+      .dom('[data-test-wu-field-error]')
+      .hasClass('wu-field-message', 'the CSS kit message draws the error marker');
+    assert.dom('[data-test-wu-field-error]').hasClass('error');
     assert
       .dom('[data-test-wu-field-hint]')
       .doesNotExist('the error replaces the hint');
@@ -69,7 +69,11 @@ module('Integration | Component | woven/field status', function (hooks) {
     `);
 
     assert.dom('input').hasAttribute('aria-required', 'true');
-    assert.dom('[data-test-wu-field-required]').exists();
+    const label = this.element.querySelector('.wu-field-label');
+    assert.true(
+      getComputedStyle(label, '::after').content.includes('*'),
+      'the CSS kit draws the required marker from aria-required',
+    );
   });
 
   test('the wiring follows @error, @hint and @required as they change', async function (assert) {
@@ -105,7 +109,7 @@ module('Integration | Component | woven/field status', function (hooks) {
     assert.dom('input').doesNotHaveAttribute('aria-required');
   });
 
-  test('@status warning and success style the control without aria-invalid', async function (assert) {
+  test('@status warning and success mark the control without aria-invalid', async function (assert) {
     this.status = 'warning';
     await render(hbs`
       <Woven::Field @label="Rent" @hint="Above the area average" @status={{this.status}}>
@@ -115,12 +119,12 @@ module('Integration | Component | woven/field status', function (hooks) {
 
     assert.dom('input').hasAttribute('data-wu-field-status', 'warning');
     assert.dom('input').doesNotHaveAttribute('aria-invalid');
-    assert.dom('[data-test-wu-field-hint]').hasClass('m-warning');
+    assert.dom('[data-test-wu-field-hint]').hasClass('info');
 
     this.set('status', 'success');
     await settled();
     assert.dom('input').hasAttribute('data-wu-field-status', 'success');
-    assert.dom('[data-test-wu-field-hint]').hasClass('m-success');
+    assert.dom('[data-test-wu-field-hint]').hasClass('success');
   });
 
   test('@invalid aliases error and @valid aliases success', async function (assert) {
@@ -141,7 +145,7 @@ module('Integration | Component | woven/field status', function (hooks) {
       </Woven::Field>
     `);
 
-    assert.dom('input').hasClass('is-valid');
+    assert.dom('input').hasAttribute('data-wu-status', 'success');
     assert.dom('input').doesNotHaveAttribute('aria-invalid');
     assert.dom('input').doesNotHaveAttribute('data-wu-field-status');
   });
@@ -169,7 +173,7 @@ module('Integration | Component | woven/field status', function (hooks) {
       .hasAttribute('aria-invalid', 'true');
   });
 
-  test('the message slot reserves the same height with and without a message', async function (assert) {
+  test('the live field keeps the same height with and without a message', async function (assert) {
     await render(hbs`
       <Woven::Field @label="Empty" data-test-empty><Woven::Input /></Woven::Field>
       <Woven::Field @label="Filled" @error="Enter a value" data-test-filled>
@@ -177,17 +181,16 @@ module('Integration | Component | woven/field status', function (hooks) {
       </Woven::Field>
     `);
 
-    const empty = this.element.querySelector(`[data-test-empty] ${SLOT}`);
-    const filled = this.element.querySelector(`[data-test-filled] ${SLOT}`);
-    const emptyMin = parseFloat(getComputedStyle(empty).minHeight);
-    const filledMin = parseFloat(getComputedStyle(filled).minHeight);
-
-    assert.ok(emptyMin > 0, 'the empty slot has a non-zero min-height');
-    assert.strictEqual(emptyMin, filledMin, 'both slots reserve the same line');
+    const empty = this.element.querySelector('[data-test-empty]');
+    const filled = this.element.querySelector('[data-test-filled]');
+    assert.ok(
+      parseFloat(getComputedStyle(empty, '::after').blockSize) > 0,
+      'the empty field reserves a message line',
+    );
     assert.strictEqual(
       empty.getBoundingClientRect().height,
       filled.getBoundingClientRect().height,
-      'a one-line message does not change the slot height',
+      'a one-line message does not change the field height',
     );
   });
 

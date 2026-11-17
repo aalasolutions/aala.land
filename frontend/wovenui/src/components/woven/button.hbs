@@ -4,7 +4,11 @@
     @route={{@route}}
     @models={{this.linkModels}}
     @query={{this.linkQuery}}
+    @disabled={{this.isDisabled}}
     class={{this.classes}}
+    aria-busy={{this.ariaBusy}}
+    aria-disabled={{this.ariaDisabled}}
+    tabindex={{if this.isDisabled "-1"}}
     data-test-wu-button
     ...attributes
   >
@@ -19,7 +23,18 @@
     </Woven::ButtonInner>
   </LinkTo>
 {{else if @href}}
-  <a href={{@href}} class={{this.classes}} ...attributes>
+  {{! An anchor with href is a link, which supports aria-disabled; the rule cannot see a dynamic href. }}
+  {{! template-lint-disable no-unsupported-role-attributes }}
+  <a
+    href={{@href}}
+    class={{this.classes}}
+    aria-busy={{this.ariaBusy}}
+    aria-disabled={{this.ariaDisabled}}
+    tabindex={{if this.isDisabled "-1"}}
+    data-test-wu-button
+    {{on "click" this.onLinkClick}}
+    ...attributes
+  >
     <Woven::ButtonInner
       @btn={{this}}
       @hasBlock={{has-block}}
@@ -35,6 +50,8 @@
     type={{this.type}}
     class={{this.classes}}
     disabled={{this.isDisabled}}
+    aria-pressed={{this.ariaPressed}}
+    aria-busy={{this.ariaBusy}}
     data-test-wu-button
     {{on "click" this.onClick}}
     ...attributes

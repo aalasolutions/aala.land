@@ -1,10 +1,13 @@
 import Component from '@glimmer/component';
 
-export default class NuBreadcrumbComponent extends Component {
+export default class WovenBreadcrumbComponent extends Component {
   get classes() {
     const parts = ['wu-breadcrumb'];
+    if (this.args.separator === 'slash') {
+      parts.push('slash');
+    }
     if (this.args.compact) {
-      parts.push('m-compact');
+      parts.push('sm');
     }
     return parts.join(' ');
   }

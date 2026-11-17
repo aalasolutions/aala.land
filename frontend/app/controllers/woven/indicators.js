@@ -1,40 +1,24 @@
 import Controller from '@ember/controller';
 
-const VARIANT_TYPE =
-  '"primary" | "secondary" | "success" | "warning" | "danger" | "info"';
-
 const DOT_NOTES = {
-  default: 'Neutral marker for a bullet-like separator or an unknown state.',
-  primary: 'The item that is current or selected.',
-  secondary: 'A second neutral tone for grouping.',
-  success: 'Online, active, healthy.',
-  warning: 'Degraded, pending, expiring.',
-  danger: 'Offline, failed, overdue.',
+  default: 'Neutral marker for a bullet-like separator or an unknown state. secondary renders the same.',
+  brand: 'The item that is current or selected.',
+  success: 'Online, active, healthy. The kit draws a check shape too, so color is not the only signal.',
+  warning: 'Degraded, pending, expiring. Drawn as a triangle.',
+  danger: 'Offline, failed, overdue. Drawn as an octagon.',
   info: 'Informational marker such as a channel or source.',
 };
 
-const SPINNER_NOTES = {
-  default: 'Inherits the text colour; right inside buttons and on neutral surfaces.',
-  primary: 'Brand-coloured, for page and panel loading states.',
-  secondary: 'Muted, for background refreshes that should not draw the eye.',
-  success: 'A save or sync that is completing.',
-  warning: 'A retry or a slow operation the user should notice.',
-  danger: 'A destructive operation in flight.',
-  info: 'A fetch of informational data.',
-};
-
 const SIZE_NOTES = {
-  xs: 'Inline with small text and inside xs buttons.',
-  sm: 'Table cells, list rows and sm buttons.',
-  md: 'The default, for cards and panels.',
-  lg: 'Page-level and empty-state loading.',
+  sm: 'Kit sm (1rem). Table cells, list rows and inside buttons. @size="xs" also renders sm.',
+  md: 'The default (1.25rem), for cards and panels.',
+  lg: 'Kit lg (2rem, thicker band). Page-level and empty-state loading. @size="xl" also renders lg.',
 };
 
 const SHAPE_NOTES = {
-  text: 'One line of body text.',
-  title: 'A heading-height bar.',
-  circle: 'An avatar or icon placeholder.',
-  rect: 'A block such as an image or a chart.',
+  text: 'Kit text: one line of body text, 1em high. @shape="title" renders the same.',
+  circle: 'Kit circle: an avatar or icon placeholder.',
+  block: 'No @shape: the kit default block, 6rem high, for an image or a chart. @shape="rect" renders the same.',
 };
 
 const WIDTH_NOTES = {
@@ -56,32 +40,18 @@ export default class WovenIndicatorsController extends Controller {
     code: variant === 'default' ? '<Woven::Dot />' : `<Woven::Dot @variant="${variant}" />`,
   }));
 
-  dotSizeExamples = Object.keys(SIZE_NOTES).map((size) => ({
-    size,
-    title: size.toUpperCase(),
-    note: SIZE_NOTES[size],
-    code: `<Woven::Dot @variant="primary" @size="${size}" />`,
-  }));
-
-  spinnerVariantExamples = Object.keys(SPINNER_NOTES).map((variant) => ({
-    variant: variant === 'default' ? undefined : variant,
-    title: capitalize(variant),
-    note: SPINNER_NOTES[variant],
-    code: variant === 'default' ? '<Woven::Spinner />' : `<Woven::Spinner @variant="${variant}" />`,
-  }));
-
   spinnerSizeExamples = Object.keys(SIZE_NOTES).map((size) => ({
-    size,
+    size: size === 'md' ? undefined : size,
     title: size.toUpperCase(),
     note: SIZE_NOTES[size],
-    code: `<Woven::Spinner @size="${size}" />`,
+    code: size === 'md' ? '<Woven::Spinner />' : `<Woven::Spinner @size="${size}" />`,
   }));
 
   shapeExamples = Object.keys(SHAPE_NOTES).map((shape) => ({
-    shape,
+    shape: shape === 'block' ? undefined : shape,
     title: capitalize(shape),
     note: SHAPE_NOTES[shape],
-    code: `<Woven::Skeleton @shape="${shape}" />`,
+    code: shape === 'block' ? '<Woven::Skeleton />' : `<Woven::Skeleton @shape="${shape}" />`,
   }));
 
   widthExamples = Object.keys(WIDTH_NOTES).map((width) => ({
@@ -92,31 +62,31 @@ export default class WovenIndicatorsController extends Controller {
   }));
 
   code = {
-    ring: `<Woven::Dot @variant="success" @ring={{true}} />`,
     pulse: `<Woven::Dot @variant="danger" @pulse={{true}} />`,
-    lines: `<Woven::Skeleton @shape="text" @lines={{3}} />`,
-    composed: `<div class="woven-row">
-  <Woven::Skeleton @shape="circle" />
-  <Woven::Skeleton @shape="title" @width="50" />
-</div>
-<Woven::Skeleton @shape="text" @lines={{2}} />`,
+    color: `<span class="text-brand"><Woven::Spinner /></span>`,
+    lines: `<Woven::Skeleton @lines={{3}} />`,
+    composed: `<div aria-busy="true">
+  <span class="sr-only">Loading</span>
+  <div class="woven-row">
+    <Woven::Skeleton @shape="circle" />
+    <Woven::Skeleton @shape="text" @width="50" />
+  </div>
+  <Woven::Skeleton @lines={{2}} />
+</div>`,
   };
 
   dotArgRows = [
-    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Fill colour. Omit for the neutral dot.' },
-    { name: '@size', type: '"xs" | "sm" | "md" | "lg"', default: '', description: 'Diameter step.' },
-    { name: '@pulse', type: 'boolean', default: 'false', description: 'Animated pulse ring for live activity.' },
-    { name: '@ring', type: 'boolean', default: 'false', description: 'Static outer ring.' },
+    { name: '@variant', type: '"brand" | "success" | "warning" | "danger" | "info"', default: '', description: 'Kit role modifier of the same name. secondary and unknown values render the neutral dot.' },
+    { name: '@pulse', type: 'boolean', default: 'false', description: 'Kit animated modifier: a fading ring for live status, only when the user allows motion.' },
   ];
 
   spinnerArgRows = [
-    { name: '@variant', type: VARIANT_TYPE, default: '', description: 'Stroke colour. Omit for the neutral spinner.' },
-    { name: '@size', type: '"xs" | "sm" | "md" | "lg"', default: '', description: 'Diameter step.' },
+    { name: '@size', type: '"xs" | "sm" | "lg" | "xl"', default: '', description: 'Kit sm or lg; xs renders sm and xl renders lg. Omit for the default size.' },
   ];
 
   skeletonArgRows = [
-    { name: '@shape', type: '"text" | "title" | "circle" | "rect"', default: '', description: 'Placeholder shape.' },
-    { name: '@width', type: '"25" | "50" | "75" | "full"', default: '', description: 'Inline size as a fraction of the container.' },
-    { name: '@lines', type: 'number', default: '', description: 'Greater than 1 renders a wu-skeleton-group of text lines instead of one block.' },
+    { name: '@shape', type: '"text" | "title" | "circle" | "rect"', default: '', description: 'Kit text or circle; title renders text, rect and no value render the kit default block.' },
+    { name: '@width', type: '"25" | "50" | "75" | "full"', default: '', description: 'Sets --wu-skeleton--Width as a percentage. Ignored when @lines is above 1.' },
+    { name: '@lines', type: 'number', default: '', description: 'Above 1 renders that many kit text lines in an aria-hidden group; the kit shortens the last line.' },
   ];
 }

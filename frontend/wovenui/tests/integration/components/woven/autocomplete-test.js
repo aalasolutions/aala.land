@@ -6,7 +6,7 @@ import { hbs } from 'ember-cli-htmlbars';
 const FILTER = '[data-test-wu-dropdown-filter]';
 
 function menu() {
-  return document.querySelector('.wu-menu.is-open');
+  return document.querySelector('[data-test-wu-dropdown-menu]');
 }
 
 function labels() {

@@ -64,7 +64,7 @@
         <Woven::Input
           id="chq-holder"
           type="text"
-          placeholder="e.g. Ahmed Al Mansouri"
+          placeholder="e.g. Jane Smith"
           @value={{this.form.accountHolder}}
           @onInput={{fn this.setField "accountHolder"}}
           data-test-input-holder
@@ -105,11 +105,10 @@
           @error={{this.fieldErrors.dueDate}}
           class="grow"
         >
-          <input
+          <Woven::Input
             id="chq-due"
             type="date"
-            class="wu-input"
-            value={{this.form.dueDate}}
+            @value={{this.form.dueDate}}
             data-test-input-due-date
             {{on "input" (fn this.setFieldFromEvent "dueDate")}}
           />
@@ -122,12 +121,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       data-test-cancel-edit
       @onClick={{this.close}}
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="cheque-form"
       @loading={{this.isSaving}}

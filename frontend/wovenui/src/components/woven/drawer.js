@@ -3,16 +3,20 @@ import { tracked } from '@glimmer/tracking';
 import { guidFor } from '@ember/object/internals';
 import { isDestroyed, registerDestructor } from '@ember/destroyable';
 import { next } from '@ember/runloop';
-import NuDialogBaseComponent from './-dialog-base';
+import WovenDialogBaseComponent from './-dialog-base';
 
-const PLACEMENTS = ['start', 'end', 'top', 'bottom'];
-const SIZES = ['sm', 'md', 'lg'];
+// Kit docks: inline end (default), inline start, bottom; top maps to bottom.
+const PLACEMENT_CLASS = { start: 'inline-start', bottom: 'bottom', top: 'bottom' };
+// No @size means the wide kit drawer; md is the kit default width.
+const SIZE_CLASS = { sm: 'sm', md: null, lg: 'lg' };
 
-export default class NuDrawerComponent extends NuDialogBaseComponent {
+export default class WovenDrawerComponent extends WovenDialogBaseComponent {
   titleId = `wu-drawer-title-${guidFor(this)}`;
 
   @tracked isMounted = false;
   @tracked isVisible = false;
+
+  dialogElement = null;
 
   constructor() {
     super(...arguments);
@@ -29,25 +33,35 @@ export default class NuDrawerComponent extends NuDialogBaseComponent {
     });
   }
 
-  get backdropClasses() {
-    return this.isVisible ? 'wu-drawer-backdrop is-open' : 'wu-drawer-backdrop';
-  }
-
   get drawerClasses() {
     const parts = ['wu-drawer'];
-    if (PLACEMENTS.includes(this.args.placement)) {
-      parts.push(`m-${this.args.placement}`);
+    const placement = PLACEMENT_CLASS[this.args.placement];
+    if (placement) {
+      parts.push(placement);
     }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
+    const size = Object.hasOwn(SIZE_CLASS, this.args.size)
+      ? SIZE_CLASS[this.args.size]
+      : 'lg';
+    if (size) {
+      parts.push(size);
     }
-    if (this.isVisible) {
-      parts.push('is-open');
+    if (this.animated) {
+      parts.push('animated');
     }
     return parts.join(' ');
   }
 
-  // Mounted while open or still animating out; visible drives the open classes.
+  @action
+  registerDialog(element) {
+    this.dialogElement = element;
+  }
+
+  @action
+  getDialogElement() {
+    return this.dialogElement;
+  }
+
+  // Mounted while open or still animating out; visible drives showModal() and close().
   @action
   onOpen() {
     if (isDestroyed(this)) return;

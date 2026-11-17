@@ -2,7 +2,7 @@
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
 
-// Temperature accents match the `temp` domain in _tags.scss so column colour matches the badge.
+// Temperature accents match the `temp` domain in utils/tag-variant.js so column color matches the tag.
 $lead-temps: (
   "hot": var(--wu-danger),
   "warm": var(--wu-warning),
@@ -18,9 +18,9 @@ $lead-temps: (
 }
 
 .lead-card {
-  .wu-panel__body {
-    gap: wu-space(2);
-  }
+  --wu-card--Padding: #{wu-space(3)};
+
+  cursor: pointer;
 
   p {
     margin: 0;
@@ -65,26 +65,21 @@ $lead-temps: (
 .lead-detail__info {
   flex: 0 0 20rem;
   border-inline-end: 1px solid var(--wu-border-regular);
-  padding-inline-end: 1.5rem;
+  padding-inline-end: wu-space(6);
   overflow-y: auto;
 }
 
 .lead-detail__scroll {
   overflow-y: auto;
   min-block-size: 0;
-  padding-inline-end: 0.5rem;
+  padding-inline-end: wu-space(2);
 
-  .wu-timeline__description {
+  .wu-timeline-text {
     margin-block: 0;
   }
 }
 
-// long emails must wrap on any character, not overflow the 20rem rail
-.lead-detail__info .wu-info-row__value {
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 768px) {
+@include media-down(md) {
   .lead-detail {
     flex-direction: column;
     max-block-size: none;
@@ -95,39 +90,7 @@ $lead-temps: (
     border-inline-end: none;
     border-block-end: 1px solid var(--wu-border-regular);
     padding-inline-end: 0;
-    padding-block-end: 1rem;
+    padding-block-end: wu-space(4);
     overflow-y: visible;
-  }
-}
-
-.agent-load-bar {
-  block-size: 0.25rem;
-  background: var(--wu-bg-alternate);
-  border-radius: wu-radius(full);
-  overflow: hidden;
-}
-
-.agent-load-fill {
-  block-size: 100%;
-  border-radius: wu-radius(full);
-  transition: inline-size wu-duration(normal) $wu-ease;
-
-  @include reduced-motion {
-    transition: none;
-  }
-
-  &.load-low {
-    inline-size: 25%;
-    background: var(--wu-success);
-  }
-
-  &.load-medium {
-    inline-size: 60%;
-    background: var(--wu-warning);
-  }
-
-  &.load-high {
-    inline-size: 100%;
-    background: var(--wu-danger);
   }
 }

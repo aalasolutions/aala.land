@@ -78,7 +78,7 @@
       {{/unless}}
 
       <div class="wu-field">
-        <span id="team-regions-label" class="wu-field__label">Regions</span>
+        <span id="team-regions-label" class="wu-field-label">Regions</span>
         <div
           class="flex gap-2 wrap"
           role="group"
@@ -88,14 +88,7 @@
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
-              class="wu-tag m-pill m-selectable
-                {{if
-                  (or
-                    this.hasAllRegions
-                    (includes this.form.selectedRegionCodes r.code)
-                  )
-                  'is-selected'
-                }}"
+              class="wu-tag"
               data-test-region-choice={{r.code}}
               aria-pressed={{if
                 (or
@@ -114,13 +107,13 @@
           {{/each}}
         </div>
         {{#if this.hasAllRegions}}
-          <span
-            class="wu-field__hint"
+          <p
+            class="wu-field-message"
             data-test-all-regions-note
-          >{{this.allRegionsNote}}</span>
+          >{{this.allRegionsNote}}</p>
         {{else}}
-          <span class="wu-field__hint">Which regions this member can work in.
-            Selecting more than one lets them switch.</span>
+          <p class="wu-field-message">Which regions this member can work in.
+            Selecting more than one lets them switch.</p>
         {{/if}}
       </div>
 
@@ -140,12 +133,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @onClick={{this.close}}
       data-test-cancel-member-form
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="team-member-form"
       @loading={{this.isSaving}}

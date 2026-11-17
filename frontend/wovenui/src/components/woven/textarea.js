@@ -1,24 +1,12 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { htmlSafe } from '@ember/template';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
 
 const RESIZE = ['none', 'both', 'horizontal', 'vertical'];
-const SIZES = ['xs', 'sm', 'lg'];
 
-export default class NuTextareaComponent extends Component {
-  get classes() {
-    const parts = ['wu-input', 'wu-textarea'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    const status = statusClass(this.status);
-    if (status) {
-      parts.push(status);
-    }
-    return parts.join(' ');
-  }
-
+// The CSS kit textarea has no sizes, so `@size` is accepted and ignored.
+export default class WovenTextareaComponent extends Component {
   get status() {
     return resolveStatus(this.args);
   }

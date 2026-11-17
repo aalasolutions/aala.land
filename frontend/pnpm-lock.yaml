@@ -81,9 +81,12 @@ importers:
       '@rollup/plugin-babel':
         specifier: ^7.1.0
         version: 7.1.0(@babel/core@7.29.7(supports-color@8.1.1))(rollup@4.63.4)(supports-color@8.1.1)
+      '@wovenui/components':
+        specifier: ^1.2.0
+        version: 1.2.0(@wovenui/core@2.4.0(sass@1.97.2))(sass@1.97.2)
       '@wovenui/core':
-        specifier: ^2.2.1
-        version: 2.2.1(sass@1.97.2)
+        specifier: ^2.4.0
+        version: 2.4.0(sass@1.97.2)
       babel-plugin-ember-template-compilation:
         specifier: ^3.1.0
         version: 3.1.0
@@ -1854,8 +1857,15 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
-  '@wovenui/core@2.2.1':
-    resolution: {integrity: sha512-pmEAqTUzbErx1vj5omfLHEiI3WBr8LuKBVPWh39zCn5vk7BgtcXfW0LyfqcUma1qIO4va7igQWnFMYygxUaabA==}
+  '@wovenui/components@1.2.0':
+    resolution: {integrity: sha512-RG8QyWkRhbsTycwwqmgzBNgle79zrqe4G8Du0QEwKS/hxZunr8GVoTJ8vxYr9EceW2XO8eAK+Kg4lGzKW0Kz6A==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      '@wovenui/core': ^2.4.0
+      sass: '>=1.79.0 <2'
+
+  '@wovenui/core@2.4.0':
+    resolution: {integrity: sha512-eLrPGxoriL4+dnxyL910k0VPajWqlcI1bTmxr5tsKHIuuLChh651JvXXv3DvEXbAu8ynjL9ebzRvsl9tg9RIvg==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       sass: '>=1.79.0 <2'
@@ -8458,7 +8468,12 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
-  '@wovenui/core@2.2.1(sass@1.97.2)':
+  '@wovenui/components@1.2.0(@wovenui/core@2.4.0(sass@1.97.2))(sass@1.97.2)':
+    dependencies:
+      '@wovenui/core': 2.4.0(sass@1.97.2)
+      sass: 1.97.2
+
+  '@wovenui/core@2.4.0(sass@1.97.2)':
     dependencies:
       sass: 1.97.2
 

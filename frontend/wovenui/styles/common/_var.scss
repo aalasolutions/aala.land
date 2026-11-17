@@ -83,10 +83,10 @@ $wu-placeholder-color: color-mix(
   var(--wu-text-muted)
 );
 
-$wu-variants: (primary, secondary, success, warning, danger, info);
+$wu-variants: (brand, success, warning, danger, info);
 
 $wu-variant-roles: (
-  primary: brand,
+  brand: brand,
   secondary: info,
   success: success,
   warning: warning,

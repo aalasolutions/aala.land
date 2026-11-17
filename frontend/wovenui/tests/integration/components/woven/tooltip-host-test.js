@@ -4,13 +4,13 @@ import {
   render,
   settled,
   triggerEvent,
-  triggerKeyEvent,
 } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 const LONG_HINT =
   'Three letter code such as AED or USD. It must match the currency the money actually arrived in.';
 
+// Tooltips render into the body-level layer, outside the test container, so DOM assertions scope to body.
 function placeTrigger(css, hint = LONG_HINT, placement) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -61,7 +61,7 @@ module('Integration | Component | woven/tooltip-host', function (hooks) {
     assert.ok(box.left >= 0, 'and it did not overshoot the other way');
 
     const arrow = tooltip
-      .querySelector('.wu-tooltip__arrow')
+      .querySelector('.wu-tooltip-arrow')
       .getBoundingClientRect();
     const triggerBox = trigger.getBoundingClientRect();
     assert.ok(
@@ -107,14 +107,29 @@ module('Integration | Component | woven/tooltip-host', function (hooks) {
       'the trigger describes itself with the tooltip',
     );
 
-    await triggerKeyEvent(document, 'keydown', 'Escape');
+    const escape = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(escape);
+    await settled();
 
-    assert.dom('.wu-tooltip').doesNotExist('Escape dismissed it');
+    assert.dom('.wu-tooltip', document.body).doesNotExist('Escape dismissed it');
+    assert.true(escape.defaultPrevented, 'and consumed the key, so a dialog stays open');
     assert.strictEqual(
       trigger.getAttribute('aria-describedby'),
       null,
       'and the link was cleaned up',
     );
+
+    const idle = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(idle);
+    assert.false(idle.defaultPrevented, 'with no tooltip showing, Escape is left alone');
   });
 
   test('a tooltip the flip cannot rescue is lifted by the fit modifier', async function (assert) {
@@ -139,7 +154,7 @@ module('Integration | Component | woven/tooltip-host', function (hooks) {
     const trigger = placeTrigger('top:200px;left:200px;', 'Short hint');
     await triggerEvent(trigger, 'focusin');
 
-    assert.dom('.wu-tooltip').hasText('Short hint');
+    assert.dom('.wu-tooltip', document.body).hasText('Short hint');
   });
 
   test('a tap outside any trigger dismisses it on touch', async function (assert) {
@@ -147,10 +162,10 @@ module('Integration | Component | woven/tooltip-host', function (hooks) {
 
     const trigger = placeTrigger('top:200px;left:200px;', 'Short hint');
     await showTooltipFor(trigger);
-    assert.dom('.wu-tooltip').exists('shown');
+    assert.dom('.wu-tooltip', document.body).exists('shown');
 
     await triggerEvent(document.body, 'touchstart');
-    assert.dom('.wu-tooltip').doesNotExist('a tap elsewhere hid it');
+    assert.dom('.wu-tooltip', document.body).doesNotExist('a tap elsewhere hid it');
   });
 
   test('a shift from one tooltip does not carry over to the next', async function (assert) {

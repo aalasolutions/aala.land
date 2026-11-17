@@ -58,39 +58,35 @@
             <span class="text-muted">{{or cell.row.expiryLabel "-"}}</span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          {{#if (eq cell.row.status "PENDING")}}
-            <div class="flex">
-              <Woven::Button
-                @subtle={{true}}
-                @variant="primary"
-                @size="xs"
-                @icon="check"
-                aria-label="Approve request from {{cell.row.requester.name}}"
-                data-tooltip="Approve"
-                data-test-approve-access
-                {{on "click" (fn this.openApprove cell.row)}}
-              />
-              <Woven::Button
-                @subtle={{true}}
-                @variant="secondary"
-                @size="xs"
-                @icon="x"
-                aria-label="Reject request from {{cell.row.requester.name}}"
-                data-tooltip="Reject"
-                data-test-reject-access
-                {{on "click" (fn this.openDecision "reject" cell.row)}}
-              />
-            </div>
-          {{else if (eq cell.row.status "APPROVED")}}
-            <Woven::Button
-              @subtle={{true}}
-              @variant="secondary"
-              @size="xs"
-              @icon="prohibit"
-              aria-label="Revoke access for {{cell.row.requester.name}}"
-              data-tooltip="Revoke"
-              data-test-revoke-access
-              {{on "click" (fn this.openDecision "revoke" cell.row)}}
+          {{#if
+            (or (eq cell.row.status "PENDING") (eq cell.row.status "APPROVED"))
+          }}
+            <RowActions
+              @label={{cell.row.requester.name}}
+              @actions={{array
+                (hash
+                  key="approve-access"
+                  label="Approve"
+                  icon="check"
+                  variant="brand"
+                  onSelect=(fn this.openApprove cell.row)
+                  hidden=(not (eq cell.row.status "PENDING"))
+                )
+                (hash
+                  key="reject-access"
+                  label="Reject"
+                  icon="x"
+                  onSelect=(fn this.openDecision "reject" cell.row)
+                  hidden=(not (eq cell.row.status "PENDING"))
+                )
+                (hash
+                  key="revoke-access"
+                  label="Revoke"
+                  icon="prohibit"
+                  onSelect=(fn this.openDecision "revoke" cell.row)
+                  hidden=(not (eq cell.row.status "APPROVED"))
+                )
+              }}
             />
           {{else}}
             <Woven::Badge
@@ -112,7 +108,6 @@
 
     {{#if @model.total}}
       <Woven::Pagination
-        @selectId="access-requests-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -177,13 +172,13 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       @text="Cancel"
       @onClick={{this.closeApprove}}
       data-test-approve-cancel
     />
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="approve-access-form"
       @text="Approve"

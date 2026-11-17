@@ -1,24 +1,22 @@
 import Component from '@glimmer/component';
-import { htmlSafe } from '@ember/template';
+import { guidFor } from '@ember/object/internals';
+import { SIZE_MAP } from './-constants';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'];
-const SIZES = ['sm', 'lg'];
+// Fill roles the kit supports; brand is the default fill. striped has no kit equivalent.
+const ROLES = ['success', 'danger', 'warning', 'info'];
 
-export default class NuProgressComponent extends Component {
+export default class WovenProgressComponent extends Component {
+  id = `${guidFor(this)}-progress`;
+
   get classes() {
     const parts = ['wu-progress'];
+    const size = SIZE_MAP[this.args.size];
 
-    if (VARIANTS.includes(this.args.variant)) {
-      parts.push(`m-${this.args.variant}`);
+    if (ROLES.includes(this.args.variant)) {
+      parts.push(this.args.variant);
     }
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    if (this.args.indeterminate) {
-      parts.push('m-indeterminate');
-    }
-    if (this.args.striped) {
-      parts.push('m-striped');
+    if (size) {
+      parts.push(size);
     }
 
     return parts.join(' ');
@@ -30,10 +28,6 @@ export default class NuProgressComponent extends Component {
       return 0;
     }
     return Math.min(100, Math.max(0, raw));
-  }
-
-  get barStyle() {
-    return htmlSafe(`inline-size: ${this.value}%`);
   }
 
   get showText() {

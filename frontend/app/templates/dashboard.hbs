@@ -3,7 +3,7 @@
 <div data-test-dashboard class="dashboard-page">
   <Woven::PageHeader class="dashboard-header" @title="Command Center" @subtitle="Live overview of your property operation.">
     <:actions>
-      <Woven::Tag class="dashboard-region-badge">
+      <Woven::Tag @variant="brand">
         <Ui::Ph @icon="globe" @size="14px" />
         {{this.regionLabel}}
       </Woven::Tag>
@@ -14,19 +14,17 @@
     {{! Three tiers: what needs acting on, what it earned, what is merely true. }}
     <div class="kpi-layout">
       <div class="kpi-action">
-        <Woven::Stat
+        <StatCard
           data-test-kpi="pending-cheques"
           @route="cheques"
-          @variant="warning"
           @size="lg"
           @label="Pending Cheques"
           @value={{format-number @model.kpis.pendingCheques}}
           @delta="Needs action"
         />
-        <Woven::Stat
+        <StatCard
           data-test-kpi="open-leads"
           @route="leads"
-          @variant="secondary"
           @size="lg"
           @label="Active Leads"
           @value={{format-number @model.kpis.openLeads}}
@@ -34,27 +32,26 @@
         />
       </div>
 
-      <Woven::Stat
-        class="kpi-outcome"
+      <StatCard
+        @cardClass="kpi-outcome"
         data-test-kpi="monthly-revenue"
-        @contentBleed={{true}}
         @label="Monthly Revenue"
         @value={{format-money @model.kpis.monthlyRevenue}}
       >
         <:content>
           <StatSparkline
             @points={{this.revenuePoints}}
-            @variant="primary"
+            @variant="brand"
             @caption="Completed revenue by month"
           />
         </:content>
-      </Woven::Stat>
+      </StatCard>
 
       <div class="kpi-status">
-        <Woven::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
-        <Woven::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
-        <Woven::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{this.occupancyRate}}%" />
-        <Woven::Stat data-test-kpi="total-contacts" @row={{true}} @label="CRM Contacts" @value={{format-number @model.kpis.totalContacts}} />
+        <StatCard data-test-kpi="active-leases" @size="sm" @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
+        <StatCard data-test-kpi="total-units" @size="sm" @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
+        <StatCard data-test-kpi="occupancy" @size="sm" @label="Occupancy Rate" @value="{{this.occupancyRate}}%" />
+        <StatCard data-test-kpi="total-contacts" @size="sm" @label="CRM Contacts" @value={{format-number @model.kpis.totalContacts}} />
       </div>
     </div>
   {{else if this.loadFailed}}
@@ -75,12 +72,13 @@
     <Woven::Panel class="dashboard-panel">
       <:header>
         <div class="ownership-header">
-          <h3 class="wu-panel__title">
+          <h3 class="wu-panel-title">
             Lead Pipeline</h3>
           <p class="ownership-caption">All open leads by stage.</p>
         </div>
       </:header>
       <:body>
+        <div class="flex col gap-4">
         <div class="pipeline-bars">
           {{#each this.pipelineStages as |stage|}}
             <div class="pipeline-stage">
@@ -132,19 +130,21 @@
           </span>
           <span class="dashboard-strip-action">Assign</span>
         </LinkTo>
+        </div>
       </:body>
     </Woven::Panel>
 
     <Woven::Panel class="dashboard-panel">
       <:header>
         <div class="ownership-header">
-          <h3 class="wu-panel__title">
+          <h3 class="wu-panel-title">
             Lead Ownership</h3>
           <p class="ownership-caption">Open leads by agent. Won and lost from
             the last 30 days.</p>
         </div>
       </:header>
       <:body>
+        <div class="flex col gap-4">
         {{#if this.ownershipAgents.length}}
           <div class="ownership-rows" data-test-ownership-rows>
             {{#each this.agentRows as |agent|}}
@@ -228,6 +228,7 @@
         {{else}}
           <Woven::EmptyState @description="No agents yet" />
         {{/if}}
+        </div>
       </:body>
     </Woven::Panel>
   </div>

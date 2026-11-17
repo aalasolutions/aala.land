@@ -10,23 +10,27 @@
       popovers) and dialogs (modal, drawer, confirm). Each is one host, one
       service and one or two modifiers. Toasts are a fourth host driven by
       the notifications service. Nothing else floats; do not add a fifth.
+      The one exception is the Field help popover, a native
+      <code class="wu-code">popover</code> in the browser top layer. The
+      integration rules every wrapper follows are listed under Integration
+      rules below.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">One mount contract: four hosts, once, in a fixed order.</li>
-      <li class="wu-list__item">A layer service and anchor modifier that position any body-level panel.</li>
-      <li class="wu-list__item">A tooltip service, host and fit modifier driven by data attributes.</li>
-      <li class="wu-list__item">A dialog focus util plus dialog and dialog-transition modifiers shared by modal and drawer.</li>
-      <li class="wu-list__item">A notifications service with typed toasts and a positioned region.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>One mount contract: four hosts, once, in a fixed order.</span></li>
+      <li class="wu-list-item"><span>A layer service and anchor modifier that position any body-level panel.</span></li>
+      <li class="wu-list-item"><span>A tooltip service, host and fit modifier driven by data attributes.</span></li>
+      <li class="wu-list-item"><span>A dialog focus util plus dialog and dialog-transition modifiers shared by modal, confirm modal and drawer.</span></li>
+      <li class="wu-list-item"><span>A notifications service with typed toasts and a positioned region.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Mount contract" @id="mount">
     <WovenDocs::Example
       @title="The four hosts"
-      @note="Once, at the end of the application template. Order matters because tooltip, layer and modal share one z-index level and rely on paint order: layer before tooltip so a tooltip on a menu item paints above the menu."
+      @note="Once, at the end of the application template. The tooltip renders into the layer, appended after any open menu, so a tooltip on a menu item paints above the menu."
       @layout="block"
       @code={{this.code.mount}}
     >
@@ -53,13 +57,13 @@
     <WovenDocs::Table @kind="classes" @rows={{this.anchorWritesRows}} />
 
     <h3 class="woven-subtitle">Rules for a hosted panel</h3>
-    <ul class="wu-list">
-      <li class="wu-list__item">Click-outside checks both the component root and the panel.</li>
-      <li class="wu-list__item">Bind keydown on the panel too; events do not bubble to the root.</li>
-      <li class="wu-list__item">Escape stops propagation so a drawer underneath stays open.</li>
-      <li class="wu-list__item">close() returns focus to the trigger when focus was inside the panel.</li>
-      <li class="wu-list__item">Query panel children through the panel element, never the root. Tests select the panel from document.</li>
-      <li class="wu-list__item">aria-controls keeps working across the portal; do not add aria-owns.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Click-outside checks both the component root and the panel.</span></li>
+      <li class="wu-list-item"><span>Bind keydown on the panel too; events do not bubble to the root.</span></li>
+      <li class="wu-list-item"><span>Escape stops propagation so a drawer underneath stays open.</span></li>
+      <li class="wu-list-item"><span>close() returns focus to the trigger when focus was inside the panel.</span></li>
+      <li class="wu-list-item"><span>Query panel children through the panel element, never the root. Tests select the panel from document.</span></li>
+      <li class="wu-list-item"><span>aria-controls keeps working across the portal; do not add aria-owns.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -74,19 +78,19 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Dialogs" @id="dialogs">
-    <p class="woven-note">Modal and Drawer extend a shared base (<code>@closeOnBackdrop</code>, <code>@onClose</code>) and put the <code>dialog</code> modifier on their panel. The drawer adds <code>dialog-transition</code> on its backdrop to stay mounted through the leave animation. The <code>dialogs</code> service and <code>Woven::DialogHost</code> are documented with live examples on the Confirm dialog page.</p>
+    <p class="woven-note">Modal, ConfirmModal and Drawer render a native <code>dialog</code> with the <code>dialog</code> modifier on it and an empty <code>.wu-layer</code> as its last child. A modal dialog makes everything outside it inert, so <code>layer.elementFor(trigger)</code> sends menus, popovers and tooltips whose trigger sits in an open dialog to that dialog's layer, else to the body layer. The drawer adds <code>dialog-transition</code> on an always-rendered marker to stay mounted through the leave animation. The <code>dialogs</code> service and <code>Woven::DialogHost</code> are documented with live examples on the Confirm dialog page.</p>
 
     <h3 class="woven-subtitle">dialog-focus util</h3>
     <WovenDocs::Table @kind="api" @rows={{this.dialogFocusRows}} />
-    <ul class="wu-list">
-      <li class="wu-list__item">The Tab trap only intercepts Tab, so a panel hosted on the layer can take focus by click; on Tab inside such a panel the panel closes itself and refocuses its trigger.</li>
-      <li class="wu-list__item">Positive tabindex inside a dialog is not supported: tab order is document order.</li>
-      <li class="wu-list__item">Detached dialogs are swept from the stack so a dialog removed without releasing never holds the scroll lock.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The Tab trap only intercepts Tab, so a panel hosted on the layer can take focus by click; on Tab inside such a panel the panel closes itself and refocuses its trigger.</span></li>
+      <li class="wu-list-item"><span>Positive tabindex inside a dialog is not supported: tab order is document order.</span></li>
+      <li class="wu-list-item"><span>Detached dialogs are swept from the stack so a dialog removed without releasing never holds the scroll lock.</span></li>
     </ul>
 
     <WovenDocs::Example
       @title="dialog modifier"
-      @note="On the dialog panel: locks scroll, traps Tab, focuses the first control, and calls onEscape when this dialog is topmost. Named arguments are read at event time."
+      @note="On the native dialog: showModal() while open, close() when the positional flag turns false. Locks scroll, traps Tab, focuses the first control, registers the dialog's layer, cancels the cancel event (Escape) and reports it through onClose, and closes on a click outside the dialog box. Named arguments are read at event time."
       @layout="block"
       @code={{this.code.dialog}}
     >
@@ -95,7 +99,7 @@
 
     <WovenDocs::Example
       @title="dialog-transition modifier"
-      @note="On the drawer backdrop: enter and leave as run-loop tasks so tests can await them, with a style flush before the reveal and the computed transition-duration timing onHidden."
+      @note="On an always-rendered marker beside the drawer: enter and leave as run-loop tasks so tests can await them, with a style flush before the reveal and the dialog's computed transition-duration (durationFrom) timing onHidden."
       @layout="block"
       @code={{this.code.transition}}
     >
@@ -108,7 +112,7 @@
     {{#each this.toastExamples as |example|}}
       <WovenDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
         <Woven::Button
-          @variant="secondary"
+          @variant="subtle"
           @size="sm"
           @text="Fire {{example.type}}"
           @onClick={{fn this.toast example.type}}
@@ -122,8 +126,8 @@
       @note="add with duration 0 keeps a toast until remove is called with its id, for progress that ends on its own."
       @code={{this.code.sticky}}
     >
-      <Woven::Button @variant="secondary" @size="sm" @text="Start sync toast" @onClick={{this.addSticky}} data-test-woven-toast-sticky />
-      <Woven::Button @variant="secondary" @size="sm" @text="Finish sync" @onClick={{this.removeSticky}} data-test-woven-toast-remove />
+      <Woven::Button @size="sm" @text="Start sync toast" @onClick={{this.addSticky}} data-test-woven-toast-sticky />
+      <Woven::Button @size="sm" @text="Finish sync" @onClick={{this.removeSticky}} data-test-woven-toast-remove />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -165,8 +169,8 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Size and colour"
-      @note="size sets the font size and color the glyph colour; both default to inheriting from the text."
+      @title="Size and color"
+      @note="size sets the font size and color the glyph color; both default to inheriting from the text."
       @code={{this.code.iconSize}}
     >
       <Woven::Icon @icon="house" @size="24px" @color="var(--wu-brand)" />
@@ -174,26 +178,31 @@
     <WovenDocs::Table @kind="args" @rows={{this.iconRows}} />
   </WovenDocs::Section>
 
+  <WovenDocs::Section @title="Integration rules" @id="integration">
+    <p class="woven-note">How the Ember kit wraps the CSS kit. The same rules apply to a port to another framework.</p>
+    <WovenDocs::Table @kind="api" @rows={{this.integrationRows}} />
+  </WovenDocs::Section>
+
   <WovenDocs::Section @title="Dependencies and test hooks" @id="dependencies">
     <WovenDocs::Table @kind="api" @rows={{this.dependencyRows}} />
-    <ul class="wu-list">
-      <li class="wu-list__item">Every component root and interactive child carries a data-test-wu-* attribute; ember-test-selectors strips them from production builds. Tests must not rely on any other attribute.</li>
-      <li class="wu-list__item">The VARIANTS constant in -constants.js mirrors $wu-variants in the kit's _var.scss; keep both lists in sync.</li>
-      <li class="wu-list__item">core-bridge.scss points core's --tooltip-* variables at kit tokens so the pure-CSS core tooltip and the kit tooltip look identical; it is optional for a consuming app.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Every component root and interactive child carries a data-test-wu-* attribute; ember-test-selectors strips them from production builds. Tests must not rely on any other attribute.</span></li>
+      <li class="wu-list-item"><span>The VARIANTS constant in -constants.js mirrors $wu-variants in the kit's _var.scss; keep both lists in sync.</span></li>
+      <li class="wu-list-item"><span>core-bridge.scss aligns core's heading and bold weights with the kit scale and holds the raw-control resets in @layer base; a consuming app that themes core itself skips it.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The toast region is role="log" with aria-live="polite", so new toasts are announced without interrupting.</li>
-      <li class="wu-list__item">The tooltip host owns role="tooltip" and aria-describedby; the dialog util owns the focus trap and restore. Components never duplicate either.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The toast region is role="log" with aria-live="polite", so new toasts are announced without interrupting.</span></li>
+      <li class="wu-list-item"><span>The tooltip host owns role="tooltip" and aria-describedby; the dialog util owns the focus trap and restore. Components never duplicate either.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">The anchor modifier resolves start and end against the trigger's computed direction and copies dir onto the panel; the tooltip host resolves once per show from the html dir.</li>
-      <li class="wu-list__item">The icon component mirrors left and right names automatically; the flip rule and the name regex are the only two places to touch when the icon set changes.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The anchor modifier resolves start and end against the trigger's computed direction and copies dir onto the panel; the tooltip host resolves once per show from the html dir.</span></li>
+      <li class="wu-list-item"><span>The icon component mirrors left and right names automatically; the flip rule and the name regex are the only two places to touch when the icon set changes.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

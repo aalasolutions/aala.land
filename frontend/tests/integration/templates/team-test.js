@@ -8,6 +8,7 @@ import {
   stubNotifications,
   httpError,
 } from 'land/tests/helpers/stub-auth';
+import { clickRowAction } from 'land/tests/helpers/row-actions';
 
 const MEMBER = { id: 'user-2', name: 'Test Member', isActive: true };
 
@@ -130,7 +131,7 @@ module('Integration | Template | team', function (hooks) {
         seatInfo: null,
       },
     });
-    await click('[data-test-edit-user]');
+    await clickRowAction('', 'edit-user');
     assert.dom('#t-name').hasValue('Test Member');
     assert.dom('#t-email').hasValue('member@example.com');
     assert.dom('[data-test-input-password]').doesNotExist();

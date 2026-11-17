@@ -6,23 +6,34 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      The menu renders on the anchored layer, outside the trigger's subtree,
-      so no ancestor with overflow, a mask or a transform can clip it. It is
+      The default trigger is a
+      <code class="wu-code">button.wu-select</code>
+      with the kit select look; its menu is the kit
+      <code class="wu-code">wu-autocomplete-list</code>. A custom trigger
+      gets the kit
+      <code class="wu-code">wu-dropdown</code>
+      action menu instead. The menu renders into a
+      <code class="wu-code">wu-layer</code>
+      resolved by the layer service when it opens: the layer of the nearest
+      open dialog that contains the trigger, else the body layer, so no
+      ancestor can clip it and it stays usable inside a modal or drawer. It is
       mounted only while open, positioned by the anchor modifier against the
-      trigger, flips when the preferred side does not fit, and dismisses on
-      outside scroll, resize or click. Use it wherever a native select is
-      too limited: groups, icons, search, remote data.
+      trigger, flips when the preferred side does not fit, follows scroll and
+      resize, and dismisses on an outside click or once the trigger leaves
+      the viewport. The kit script is not loaded; the
+      component owns open state and aria-expanded itself.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Grouped options kept contiguous so keyboard order matches visual order.</li>
-      <li class="wu-list__item">Type-to-filter search that appears automatically past eight options.</li>
-      <li class="wu-list__item">Arrow, Enter, Escape and Tab handling; Escape stops at the menu so a drawer underneath stays open.</li>
-      <li class="wu-list__item">Filterable combobox mode, remote search with debounce and stale-result protection, create-on-the-fly.</li>
-      <li class="wu-list__item">Icons, danger items, disabled items and separators; custom trigger block.</li>
-      <li class="wu-list__item">Focus returns to the trigger on close.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Grouped options kept contiguous so keyboard order matches visual order.</span></li>
+      <li class="wu-list-item"><span>Type-to-filter search that appears automatically past eight options.</span></li>
+      <li class="wu-list-item"><span>Arrow, Enter, Escape and Tab handling; Escape stops at the menu so a drawer underneath stays open.</span></li>
+      <li class="wu-list-item"><span>Filterable combobox mode, remote search with debounce and stale-result protection, create-on-the-fly.</span></li>
+      <li class="wu-list-item"><span>Icons, danger items, disabled items and separators; custom trigger block and a menu block for your own items.</span></li>
+      <li class="wu-list-item"><span>onOpen callback to load what the menu shows.</span></li>
+      <li class="wu-list-item"><span>Focus returns to the trigger on close.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -38,7 +49,7 @@
         @placeholder="Select an area"
         @onSelect={{this.updateDropdown}}
       />
-      <span class="wu-text m-sm m-muted" data-test-woven-dropdown-value>Value: {{this.dropdownValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-dropdown-value>Value: {{this.dropdownValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -47,7 +58,7 @@
       @code={{this.code.uncontrolled}}
     >
       <Woven::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Pick a type" @onSelect={{this.notePick}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-dropdown-pick>Picked: {{this.uncontrolledPick}}</span>
+      <span class="wu-text sm muted" data-test-woven-dropdown-pick>Picked: {{this.uncontrolledPick}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -134,7 +145,7 @@
     >
       <Woven::Dropdown
         @options={{this.propertyTypeOptions}}
-        @placeholder="Centred options"
+        @placeholder="Centered options"
         @align="end"
         @optionsAlign="center"
       />
@@ -152,18 +163,10 @@
 
     <WovenDocs::Example
       @title="Size"
-      @note="size forwards to the trigger button or the filter input, so the dropdown matches neighbouring sm controls."
+      @note="size forwards to the trigger button or the filter input, so the dropdown matches neighboring sm controls."
       @code={{this.code.size}}
     >
       <Woven::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Small" @size="sm" />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
-      @title="Trigger variant"
-      @note="triggerVariant restyles the default button; primary for a dropdown that is the page's main action, such as a split Create menu."
-      @code={{this.code.triggerVariant}}
-    >
-      <Woven::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Primary trigger" @triggerVariant="primary" />
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -179,7 +182,6 @@
       >
         <:trigger as |toggle isOpen|>
           <Woven::Button
-            @variant="secondary"
             @icon="dots-three"
             @shape="square"
             @onClick={{toggle}}
@@ -189,7 +191,51 @@
           />
         </:trigger>
       </Woven::Dropdown>
-      <span class="wu-text m-sm m-muted" data-test-woven-action-result>Last action: {{this.actionResult}}</span>
+      <span class="wu-text sm muted" data-test-woven-action-result>Last action: {{this.actionResult}}</span>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Menu block and onOpen"
+      @note="With a trigger block, the menu block replaces the options with your own items inside the kit wu-dropdown menu and yields close. Give each item wu-dropdown-item and role menuitem or menuitemradio; arrow keys move between them, and a click on one closes the menu after the item's own handlers, so a LinkTo still navigates. onOpen fires each time the menu opens, the place to load what it shows."
+      @code={{this.code.menuBlock}}
+    >
+      <Woven::Dropdown @onOpen={{this.noteOpen}} data-test-woven-menu-block>
+        <:trigger as |toggle isOpen|>
+          <Woven::Button
+            @text="Sort"
+            @onClick={{toggle}}
+            class="caret"
+            aria-haspopup="menu"
+            aria-expanded={{if isOpen "true" "false"}}
+            data-test-woven-menu-block-trigger
+          />
+        </:trigger>
+        <:menu as |close|>
+          <div role="group" aria-label="Sort">
+            {{#each this.sortChoices as |choice|}}
+              <button
+                type="button"
+                class="wu-dropdown-item"
+                role="menuitemradio"
+                aria-checked={{if (eq this.sortOrder choice.value) "true" "false"}}
+                tabindex="-1"
+                data-test-woven-menu-block-item={{choice.value}}
+                {{on "click" (fn this.pickSort choice.value)}}
+              >{{choice.label}}</button>
+            {{/each}}
+            <hr class="wu-dropdown-separator" />
+            <LinkTo @route="woven.index" class="wu-dropdown-item" role="menuitem" tabindex="-1">Overview page</LinkTo>
+            <button
+              type="button"
+              class="wu-dropdown-item"
+              role="menuitem"
+              tabindex="-1"
+              {{on "click" close}}
+            >Close</button>
+          </div>
+        </:menu>
+      </Woven::Dropdown>
+      <span class="wu-text sm muted" data-test-woven-menu-block-result>Sort: {{this.sortOrder}}, opened {{this.openCount}} times</span>
     </WovenDocs::Example>
   </WovenDocs::Section>
 
@@ -263,16 +309,51 @@
 
   <WovenDocs::Section @title="Autocomplete" @id="autocomplete">
     <p class="woven-note">
-      <code>Woven::Autocomplete</code> is a remote, filterable dropdown bound
-      to an HTTP search endpoint through the application's
-      <code>auth</code> service. It maps each result to
-      <code>{ value: item.id, label: item[labelKey] }</code> and reports the
-      full record on select. It needs a backend, so there is no live demo here;
-      the Table page's search editor is one in place.
+      <code>Woven::Autocomplete</code> is a filterable Woven::Dropdown over
+      records. It maps each record to
+      <code>{ value: record.id, label: record[labelKey] }</code> and reports
+      the full record on select. Pass <code>@options</code> to filter a
+      preloaded list locally, or <code>@onSearch</code> to fetch matches;
+      the host owns transport. In this app,
+      <code>RemoteAutocomplete</code> wraps it with URL fetching.
     </p>
-    <div class="wu-code-block">
-      <pre class="wu-code-block__content">{{this.code.autocomplete}}</pre>
-    </div>
+
+    <WovenDocs::Example
+      @title="Local records"
+      @note="Preloaded records filtered as you type; the selected name stays in the input."
+      @layout="stack"
+      @code={{this.code.autocompleteLocal}}
+    >
+      <Woven::Autocomplete
+        @options={{this.buildings}}
+        @value={{this.buildingId}}
+        @selectedName={{this.buildingName}}
+        @placeholder="Search buildings"
+        @onSelect={{this.pickBuilding}}
+        @onClear={{this.clearBuilding}}
+        data-test-woven-autocomplete-local
+      />
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Remote search with create"
+      @note="onSearch resolves records after two characters; onCreate adds an Add row for a name that matches nothing and selects the new record."
+      @layout="stack"
+      @code={{this.code.autocompleteRemote}}
+    >
+      <Woven::Autocomplete
+        @value={{this.tenantId}}
+        @selectedName={{this.tenantName}}
+        @placeholder="Search tenants"
+        @onSearch={{this.searchTenants}}
+        @onCreate={{this.createTenant}}
+        @onSelect={{this.pickTenant}}
+        @onClear={{this.clearTenant}}
+        data-test-woven-autocomplete-remote
+      />
+      <span class="wu-text sm muted">Selected: {{if this.tenantName this.tenantName "none"}}</span>
+    </WovenDocs::Example>
+
     <h3 class="woven-subtitle">Autocomplete arguments</h3>
     <WovenDocs::Table @kind="args" @rows={{this.autocompleteArgRows}} />
     <h3 class="woven-subtitle">Autocomplete callbacks</h3>
@@ -280,18 +361,18 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">The default trigger is a button with aria-haspopup="listbox" and aria-expanded; the menu is role="listbox" with role="option" items and aria-selected.</li>
-      <li class="wu-list__item">Filterable mode renders role="combobox" with aria-expanded, aria-controls and aria-autocomplete="list".</li>
-      <li class="wu-list__item">Arrow keys move the highlight, Enter selects, Escape and Tab close; closing returns focus to the trigger.</li>
-      <li class="wu-list__item">Highlight is visual only; aria-activedescendant is not set on the combobox.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>The default trigger is a button with aria-haspopup="listbox" and aria-expanded; the menu is a kit wu-autocomplete-list with role="option" items; aria-selected marks the highlighted option and aria-checked plus a check mark the current value. A custom trigger renders a kit wu-dropdown action menu with role="menuitem" items.</span></li>
+      <li class="wu-list-item"><span>Filterable mode renders role="combobox" with aria-expanded, aria-controls and aria-autocomplete="list".</span></li>
+      <li class="wu-list-item"><span>Arrow keys move the highlight, Enter selects, Escape and Tab close; closing returns focus to the trigger. Escape is prevented and stopped at the menu, so a dialog underneath stays open.</span></li>
+      <li class="wu-list-item"><span>The highlighted option's id is set as aria-activedescendant on the trigger, the filter input or the in-menu search.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Placement is logical: start and end are resolved against the trigger's computed direction, and the menu copies the trigger's dir attribute.</li>
-      <li class="wu-list__item">Verify with the Dir switch: the menu's edge alignment and the caret swap sides.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Placement is logical: start and end are resolved against the trigger's computed direction.</span></li>
+      <li class="wu-list-item"><span>Verify with the Dir switch: the menu's edge alignment and the select arrow swap sides.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

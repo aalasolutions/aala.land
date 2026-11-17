@@ -1,22 +1,8 @@
 import Component from '@glimmer/component';
 
-export default class NuDividerComponent extends Component {
+// labelPosition has no CSS kit equivalent; the label always sits centered.
+export default class WovenDividerComponent extends Component {
   get classes() {
-    const parts = ['wu-divider'];
-
-    if (this.args.vertical) {
-      parts.push('m-vertical');
-    }
-    if (this.args.dashed) {
-      parts.push('m-dashed');
-    }
-    if (this.args.labelPosition === 'start') {
-      parts.push('m-start');
-    }
-    if (this.args.labelPosition === 'end') {
-      parts.push('m-end');
-    }
-
-    return parts.join(' ');
+    return this.args.dashed ? 'wu-divider dashed' : 'wu-divider';
   }
 }

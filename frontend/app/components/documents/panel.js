@@ -51,7 +51,7 @@ const COLUMNS = [
   {
     name: 'Actions',
     valuePath: 'id',
-    width: 130,
+    width: 100,
     isSortable: false,
     isResizable: false,
   },

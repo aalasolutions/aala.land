@@ -1,18 +1,11 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
-import { resolveStatus, statusClass } from './-field-status.js';
+import { resolveStatus } from './-field-status.js';
+import { SIZE_MAP } from './-constants';
 
-const SIZES = ['xs', 'sm', 'lg'];
-
-export default class NuCheckboxComponent extends Component {
-  get sizeClass() {
-    return SIZES.includes(this.args.size) ? `m-${this.args.size}` : null;
-  }
-
+export default class WovenCheckboxComponent extends Component {
   get classes() {
-    return ['wu-check', this.sizeClass, statusClass(this.status)]
-      .filter(Boolean)
-      .join(' ');
+    return ['wu-checkbox', SIZE_MAP[this.args.size]].filter(Boolean).join(' ');
   }
 
   get status() {
@@ -21,17 +14,6 @@ export default class NuCheckboxComponent extends Component {
 
   get isInvalid() {
     return this.status === 'error';
-  }
-
-  get labelClasses() {
-    const parts = ['wu-check-label'];
-    if (this.sizeClass) {
-      parts.push(this.sizeClass);
-    }
-    if (this.args.disabled) {
-      parts.push('is-disabled');
-    }
-    return parts.join(' ');
   }
 
   // `indeterminate` is a DOM property, not an attribute, so it must be set directly on the element.

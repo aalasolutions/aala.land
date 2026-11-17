@@ -18,7 +18,7 @@ export default class WovenPopoverController extends Controller {
     note: PLACEMENT_NOTES[placement],
     code: `<Woven::Popover @title="Placement" @placement="${placement}">
   <:trigger as |toggle|>
-    <Woven::Button @text="${placement}" @variant="secondary" @onClick={{toggle}} />
+    <Woven::Button @text="${placement}" @onClick={{toggle}} />
   </:trigger>
   <:body>
     <Woven::Text @size="sm" @text="Positioned by the anchor modifier; flips when there is no room." />
@@ -40,7 +40,7 @@ export default class WovenPopoverController extends Controller {
   code = {
     uncontrolled: `<Woven::Popover @title="Details">
   <:trigger as |toggle isOpen|>
-    <Woven::Button @text="Open" @variant="secondary" @onClick={{toggle}} aria-expanded={{if isOpen "true" "false"}} />
+    <Woven::Button @text="Open" @onClick={{toggle}} aria-expanded={{if isOpen "true" "false"}} />
   </:trigger>
   <:body>
     <Woven::Text @size="sm" @text="The popover keeps its own open state." />
@@ -53,7 +53,7 @@ export default class WovenPopoverController extends Controller {
   @onClose={{this.closePopover}}
 >
   <:trigger as |toggle|>
-    <Woven::Button @text="Unit actions" @variant="secondary" @onClick={{toggle}} />
+    <Woven::Button @text="Unit actions" @onClick={{toggle}} />
   </:trigger>
   <:body>
     <Woven::Text @text="Edit, duplicate, or archive this unit." />
@@ -64,7 +64,7 @@ export default class WovenPopoverController extends Controller {
 </Woven::Popover>`,
     alignEnd: `<Woven::Popover @placement="bottom" @align="end">
   <:trigger as |toggle|>
-    <Woven::Button @icon="dots-three" @shape="square" @variant="secondary" @onClick={{toggle}} aria-label="More" />
+    <Woven::Button @icon="dots-three" @shape="square" @onClick={{toggle}} aria-label="More" />
   </:trigger>
   <:body>
     <Woven::Text @size="sm" @text="Hangs from the trigger's end edge." />
@@ -72,15 +72,15 @@ export default class WovenPopoverController extends Controller {
 </Woven::Popover>`,
     noTitle: `<Woven::Popover>
   <:trigger as |toggle|>
-    <Woven::Button @text="No title" @variant="secondary" @onClick={{toggle}} />
+    <Woven::Button @text="No title" @onClick={{toggle}} />
   </:trigger>
   <:body>
-    <Woven::Text @size="sm" @text="No header or close button. Escape and outside click still close it." />
+    <Woven::Text @size="sm" @text="No title. Escape and outside click close it." />
   </:body>
 </Woven::Popover>`,
     footer: `<Woven::Popover @title="Confirm">
   <:trigger as |toggle|>
-    <Woven::Button @text="With footer" @variant="secondary" @onClick={{toggle}} />
+    <Woven::Button @text="With footer" @onClick={{toggle}} />
   </:trigger>
   <:body>
     <Woven::Text @size="sm" @text="Archive this unit?" />
@@ -92,20 +92,20 @@ export default class WovenPopoverController extends Controller {
   };
 
   argRows = [
-    { name: '@title', type: 'string', default: '', description: 'Header title. Also renders the close button and labels the dialog.' },
+    { name: '@title', type: 'string', default: '', description: 'Kit wu-popover-title (h3); also labels the dialog.' },
     { name: '@placement', type: '"top" | "bottom" | "start" | "end"', default: '"bottom"', description: 'Preferred side, logical. Flips to the opposite side when it does not fit.' },
-    { name: '@align', type: '"end"', default: '', description: 'Aligns the panel to the trigger\'s end edge instead of centring it (top and bottom only).' },
+    { name: '@align', type: '"end"', default: '', description: 'Aligns the panel to the trigger\'s end edge instead of centering it (top and bottom only).' },
     { name: '@open', type: 'boolean', default: '', description: 'Controlled open state. Omit for uncontrolled mode.' },
   ];
 
   callbackRows = [
     { name: '@onToggle', signature: '(true)', description: 'Controlled mode only: the trigger asked to open. Set @open in response.' },
-    { name: '@onClose', signature: '()', description: 'Closed by the close button, Escape, outside click, outside scroll or resize.' },
+    { name: '@onClose', signature: '()', description: 'Closed by the trigger, Escape, a click outside, or the trigger scrolling out of the viewport. Scroll and resize otherwise reposition the panel.' },
   ];
 
   blockRows = [
     { name: 'trigger', description: 'The control that opens the popover. Yields (toggle, isOpen).' },
     { name: 'body', description: 'Panel content.' },
-    { name: 'footer', description: 'Optional footer row.' },
+    { name: 'footer', description: 'Optional action row in the kit wu-popover-actions.' },
   ];
 }

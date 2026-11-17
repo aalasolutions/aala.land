@@ -163,7 +163,7 @@ module('Integration | Component | contact/picker', function (hooks) {
       'opening lists the first page, typing searches',
     );
     const item = document.querySelector(
-      '.wu-menu.is-open [data-test-wu-dropdown-item]:not(.m-create)',
+      '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]:not([data-test-wu-dropdown-create])',
     );
     assert.dom(item).hasText('Omar H.');
 
@@ -181,10 +181,10 @@ module('Integration | Component | contact/picker', function (hooks) {
     await focus('[data-test-wu-dropdown-filter]');
 
     const items = document.querySelectorAll(
-      '.wu-menu.is-open [data-test-wu-dropdown-item]',
+      '[data-test-wu-dropdown-menu] [data-test-wu-dropdown-item]',
     );
     assert.dom(items[0]).hasText('Ahmed Al-Rashid');
-    assert.dom(items[0]).hasAttribute('aria-selected', 'true');
+    assert.dom(items[0]).hasAttribute('aria-checked', 'true');
     assert.dom(items[1]).hasText('Omar H.');
   });
 

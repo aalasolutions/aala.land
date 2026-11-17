@@ -1,14 +1,16 @@
+{{! A button row for an action; route links are LinkTo with class wu-sidebar-link and aria-current. }}
 <button
   type="button"
-  class={{this.classes}}
+  class="wu-sidebar-link"
+  aria-current={{if @active "page"}}
   data-test-wu-sidebar-link
   {{on "click" this.onClick}}
   ...attributes
 >
   {{#if @icon}}
-    <span class="wu-sidebar__link-icon" aria-hidden="true">{{@icon}}</span>
+    <span aria-hidden="true">{{@icon}}</span>
   {{/if}}
-  <span class="wu-sidebar__link-label">
+  <span class="wu-sidebar-label">
     {{#if (has-block)}}{{yield}}{{else}}{{@label}}{{/if}}
   </span>
 </button>

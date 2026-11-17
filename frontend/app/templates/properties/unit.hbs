@@ -26,7 +26,7 @@
         <:actions>
           {{#if this.canArchiveUnit}}
             <Woven::Button
-              @variant="secondary"
+              @variant="subtle"
               @size="sm"
               @icon="arrow-counter-clockwise"
               data-test-unarchive-unit
@@ -80,7 +80,8 @@
         {{#unless this.isArchived}}
           <div class="unit-media__tools">
             <label
-              class="wu-btn m-primary m-circle {{if this.isUploading 'is-disabled'}}"
+              class="wu-btn brand icon round"
+              aria-disabled={{if this.isUploading "true"}}
               data-tooltip="Add photo"
               data-tooltip-position="start"
               data-test-upload-photo-btn
@@ -130,7 +131,7 @@
                 <div class="unit-thumb-actions">
                   {{#unless (or media.isPrimary this.isArchived)}}
                     <Woven::Button
-                      @variant="secondary"
+                      @variant="subtle"
                       @shape="circle"
                       @size="xs"
                       @icon="star"
@@ -175,11 +176,11 @@
         <div class="unit-summary">
           <div class="flex between x-center gap-2 wrap">
             <div class="flex gap-1 wrap" data-test-unit-badges>
-              <Woven::Tag class="tag-unit-{{lowercase @model.unit.status}}">
+              <Woven::Tag @variant={{tag-variant "unit" @model.unit.status}}>
                 {{capitalize @model.unit.status}}
               </Woven::Tag>
               <Woven::Tag
-                class="tag-proptype-{{lowercase @model.unit.propertyType}}"
+                @variant={{tag-variant "proptype" @model.unit.propertyType}}
               >
                 {{property-type-label @model.unit.propertyType}}
               </Woven::Tag>
@@ -187,7 +188,7 @@
             <div class="flex gap-2 wrap">
               {{#unless this.isArchived}}
                 <Woven::Button
-                  @variant="secondary"
+                  @variant="subtle"
                   @size="sm"
                   @icon="pencil-simple"
                   data-test-edit-btn
@@ -197,7 +198,7 @@
                 </Woven::Button>
                 {{#if this.canArchiveUnit}}
                   <Woven::Button
-                    @variant="secondary"
+                    @variant="subtle"
                     @size="sm"
                     @icon="archive"
                     data-test-archive-unit
@@ -210,7 +211,6 @@
               {{#if this.canDeleteUnit}}
                 <Woven::Button
                   @variant="danger"
-                  @outline={{true}}
                   @size="sm"
                   @icon="trash"
                   data-test-delete-unit
@@ -281,9 +281,9 @@
 
           {{#if @model.unit.owner}}
             <div class="wu-info-row" data-test-unit-owner>
-              <span class="wu-info-row__label"><Ui::Ph @icon="user" />
+              <span class="wu-info-row-label"><Ui::Ph @icon="user" />
                 Owner</span>
-              <span class="wu-info-row__value">
+              <span class="wu-info-row-value">
                 <LinkTo
                   data-test-owner-link
                   @route="contacts.detail"
@@ -334,7 +334,7 @@
               Documents</h2>
             {{#if panel.canUpload}}
               <Woven::Button
-                @variant="primary"
+                @variant="brand"
                 @size="sm"
                 @icon="upload-simple"
                 data-test-upload-document-btn
@@ -375,7 +375,7 @@
             <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
           {{else if (eq cell.key "status")}}
             <div class="flex gap-1 wrap">
-              <Woven::Tag class="tag-lease-{{lowercase cell.value}}">
+              <Woven::Tag @variant={{tag-variant "lease" cell.value}}>
                 {{cell.value}}
               </Woven::Tag>
               {{#if cell.row.deletedAt}}
@@ -416,7 +416,7 @@
       <:icon><Ui::Ph @icon="warning" /></:icon>
       <:actions>
         <Woven::Button
-          @variant="primary"
+          @variant="brand"
           @route="properties"
           data-test-not-found-back
         >Back to Properties</Woven::Button>

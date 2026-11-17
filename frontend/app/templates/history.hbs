@@ -6,11 +6,11 @@
     @subtitle="Deletes, archives, cancellations and other lifecycle actions"
   >
     <:meta>
-      <p class="text-muted">{{format-number
+      <span>{{format-number
           this.model.total
           unit="entry"
           plural="entries"
-        }}</p>
+        }}</span>
     </:meta>
   </Woven::PageHeader>
 
@@ -111,7 +111,6 @@
       </Woven::DataTable>
 
       <Woven::Pagination
-        @selectId="history-limit"
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{this.model.total}}

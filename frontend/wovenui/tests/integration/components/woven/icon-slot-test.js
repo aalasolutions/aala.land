@@ -14,9 +14,9 @@ module('Integration | Component | woven/icon slots', function (hooks) {
       </Woven::Button>
     `);
 
-    assert.dom('.wu-btn__icon [data-test-custom-icon]').exists();
-    assert.dom('.wu-btn__icon i.ph').doesNotExist('no Phosphor icon alongside');
-    assert.dom('.wu-btn__label').hasText('Save');
+    assert.dom('[data-test-wu-button-icon] [data-test-custom-icon]').exists();
+    assert.dom('[data-test-wu-button-icon] i.ph').doesNotExist('no Phosphor icon alongside');
+    assert.dom('[data-test-wu-button]').hasText('Save');
   });
 
   test('Button :icon wins over @icon', async function (assert) {
@@ -27,8 +27,8 @@ module('Integration | Component | woven/icon slots', function (hooks) {
       </Woven::Button>
     `);
 
-    assert.dom('.wu-btn__icon [data-test-custom-icon]').exists();
-    assert.dom('.wu-btn__icon i.ph-trash').doesNotExist();
+    assert.dom('[data-test-wu-button-icon] [data-test-custom-icon]').exists();
+    assert.dom('[data-test-wu-button-icon] i.ph-trash').doesNotExist();
   });
 
   test('Button loading still shows the spinner over a supplied :icon', async function (assert) {
@@ -39,16 +39,16 @@ module('Integration | Component | woven/icon slots', function (hooks) {
       </Woven::Button>
     `);
 
-    assert.dom('.wu-btn__icon i.ph-spinner-gap').exists('spinner wins');
-    assert.dom('.wu-btn__icon [data-test-custom-icon]').doesNotExist();
-    assert.dom('.wu-btn__icon').hasClass('is-spinning');
+    assert.dom('[data-test-wu-button-icon].wu-spinner').exists('spinner wins');
+    assert.dom('[data-test-custom-icon]').doesNotExist();
+    assert.dom('[data-test-wu-button]').hasAttribute('aria-busy', 'true');
   });
 
   test('Button without a :icon block is unchanged', async function (assert) {
     await render(hbs`<Woven::Button @icon="trash" @text="Delete" />`);
 
-    assert.dom('.wu-btn__icon i.ph.ph-trash').exists();
-    assert.dom('.wu-btn__label').hasText('Delete');
+    assert.dom('[data-test-wu-button-icon] i.ph.ph-trash').exists();
+    assert.dom('[data-test-wu-button]').hasText('Delete');
   });
 
   test('Button @iconPosition="end" honours the slot', async function (assert) {
@@ -59,10 +59,10 @@ module('Integration | Component | woven/icon slots', function (hooks) {
       </Woven::Button>
     `);
 
-    assert.dom('.wu-btn__icon [data-test-custom-icon]').exists();
+    assert.dom('[data-test-wu-button-icon] [data-test-custom-icon]').exists();
     assert
       .dom('.wu-btn > :last-child')
-      .hasClass('wu-btn__icon', 'icon sits after the label');
+      .hasAttribute('data-test-wu-button-icon', '', 'icon sits after the label');
   });
 
   test('Tabs :icon yields the tab', async function (assert) {
@@ -79,7 +79,7 @@ module('Integration | Component | woven/icon slots', function (hooks) {
 
     assert.dom('[data-test-tab-icon="a"]').exists('slot receives the tab');
     assert.dom('[data-test-tab-icon="b"]').exists('yields for every tab');
-    assert.dom('.wu-tabs__trigger i.ph').doesNotExist('built-in icon suppressed');
+    assert.dom('.wu-tabs-tab i.ph').doesNotExist('built-in icon suppressed');
   });
 
   test('Segmented :icon yields the option', async function (assert) {
@@ -96,7 +96,7 @@ module('Integration | Component | woven/icon slots', function (hooks) {
 
     assert.dom('[data-test-seg-icon="grid"]').exists();
     assert.dom('[data-test-seg-icon="list"]').exists();
-    assert.dom('.wu-segmented__icon i.ph').doesNotExist();
+    assert.dom('.wu-segmented-icon i.ph').doesNotExist();
   });
 
   test('Segmented without a block still renders option icons', async function (assert) {
@@ -104,6 +104,6 @@ module('Integration | Component | woven/icon slots', function (hooks) {
 
     await render(hbs`<Woven::Segmented @options={{this.options}} />`);
 
-    assert.dom('.wu-segmented__icon i.ph.ph-squares-four').exists();
+    assert.dom('.wu-segmented-icon i.ph.ph-squares-four').exists();
   });
 });

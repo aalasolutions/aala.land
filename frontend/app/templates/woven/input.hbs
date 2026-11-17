@@ -14,19 +14,26 @@
       or
       <code class="wu-code">@onChange</code>
       as a plain value, not a DOM event. Attributes spread onto the native
-      element, so id, name and aria attributes pass straight through. Wrap
-      any of them in Woven::Field for a label, hint and error.
+      element, so id, name and aria attributes pass straight through. They
+      render the CSS kit
+      <code class="wu-code">wu-input</code>,
+      <code class="wu-code">wu-textarea</code>,
+      <code class="wu-code">wu-select</code>
+      and
+      <code class="wu-code">wu-input-group</code>. Wrap any of them in
+      Woven::Field for a label, hint and error.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Features" @id="features">
-    <ul class="wu-list">
-      <li class="wu-list__item">Four sizes (xs, sm, md default, lg) on input, select, textarea and input group; invalid and valid states, disabled and readonly.</li>
-      <li class="wu-list__item">Prefix and suffix glyphs; a clear button that is always reachable by keyboard.</li>
-      <li class="wu-list__item">Numeric, phone, email and URL inputs stay left-to-right inside an RTL page.</li>
-      <li class="wu-list__item">Textarea with row count and resize control.</li>
-      <li class="wu-list__item">Select accepts strings or value/label objects and renders a disabled placeholder option.</li>
-      <li class="wu-list__item">InputGroup adds prepend and append addons around any control.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Three kit sizes (sm, default, lg) on input and select; xs renders sm. Textarea and input group have no sizes.</span></li>
+      <li class="wu-list-item"><span>Status error, warning or success; only error is styled, through aria-invalid. Disabled and readonly.</span></li>
+      <li class="wu-list-item"><span>Prefix and suffix glyphs; a clear button that is always reachable by keyboard.</span></li>
+      <li class="wu-list-item"><span>Numeric, phone, email and URL inputs stay left-to-right inside an RTL page.</span></li>
+      <li class="wu-list-item"><span>Textarea with row count and resize control.</span></li>
+      <li class="wu-list-item"><span>Select accepts strings or value/label objects and renders a disabled placeholder option.</span></li>
+      <li class="wu-list-item"><span>InputGroup adds prepend and append addons around any control.</span></li>
     </ul>
   </WovenDocs::Section>
 
@@ -38,7 +45,7 @@
       @code={{this.code.controlled}}
     >
       <Woven::Input @value={{this.inputValue}} @placeholder="Property name" @onInput={{this.updateInput}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-input-echo>Value: {{this.inputValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-input-echo>Value: {{this.inputValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -48,12 +55,12 @@
       @code={{this.code.change}}
     >
       <Woven::Input @placeholder="Type, then blur or press Enter" @onChange={{this.countChange}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-input-changes>Changes: {{this.changeCount}}</span>
+      <span class="wu-text sm muted" data-test-woven-input-changes>Changes: {{this.changeCount}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
       @title="Clearable"
-      @note="A labelled clear button appears whenever there is a value, never hover-gated, so keyboard and touch users can reach it. It calls onInput with an empty string and onClear."
+      @note="A labeled kit wu-input-clear button appears whenever there is a value, never hover-gated, so keyboard and touch users can reach it. It calls onInput with an empty string and onClear."
       @layout="stack"
       @code={{this.code.clearable}}
     >
@@ -83,17 +90,8 @@
 
   <WovenDocs::Section @title="Input: sizes" @id="input-sizes">
     <WovenDocs::Example
-      @title="Extra small"
-      @note="Toolbar rows beside xs buttons and dropdowns."
-      @layout="stack"
-      @code={{this.code.xs}}
-    >
-      <Woven::Input @size="xs" @placeholder="Extra small" />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
       @title="Small"
-      @note="Toolbars, table filters and the search box inside a dropdown menu."
+      @note="Kit sm. Toolbars, table filters and the search box inside a dropdown menu. size xs renders the same."
       @layout="stack"
       @code={{this.code.sm}}
     >
@@ -102,26 +100,19 @@
 
     <WovenDocs::Example
       @title="Large"
-      @note="Hero forms and sign-in screens where the field is the focus."
+      @note="Kit lg. Hero forms and sign-in screens where the field is the focus. size xl renders the same."
       @layout="stack"
       @code={{this.code.lg}}
     >
       <Woven::Input @size="lg" @placeholder="Large" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Auto width"
-      @note="Stops filling the row and takes the browser default width, about 20 characters. It does not grow as you type."
-      @code={{this.code.auto}}
-    >
-      <Woven::Input @auto={{true}} @placeholder="Auto width" />
-    </WovenDocs::Example>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Input: states" @id="input-states">
     <WovenDocs::Example
       @title="Invalid"
-      @note="Red border plus aria-invalid. Pair it with the error text on Woven::Field so the reason is visible and announced."
+      @note="invalid (or status error) sets aria-invalid, which the kit styles with a danger border. Pair it with the error text on Woven::Field so the reason is visible and announced."
       @layout="stack"
       @code={{this.code.invalid}}
     >
@@ -130,7 +121,7 @@
 
     <WovenDocs::Example
       @title="Valid"
-      @note="Green border for a value the server has confirmed, such as an available slug. Ignored while invalid is set."
+      @note="valid (or status success) sets data-wu-status success for scripts and tests. The kit styles only the error state, so there is no green border. Ignored while invalid is set."
       @layout="stack"
       @code={{this.code.valid}}
     >
@@ -202,7 +193,7 @@
 
     <WovenDocs::Example
       @title="Invalid"
-      @note="Red border plus aria-invalid, as on Input."
+      @note="aria-invalid with the kit danger border, as on Input."
       @layout="stack"
       @code={{this.code.textareaInvalid}}
     >
@@ -236,17 +227,6 @@
       <Woven::Textarea @maxlength={{80}} @rows={{2}} @placeholder="Max 80 characters" />
     </WovenDocs::Example>
 
-    <WovenDocs::Example
-      @title="Sizes"
-      @note="Font and padding follow the input sizes; rows still set the height."
-      @layout="stack"
-      @code={{this.code.textareaSizes}}
-    >
-      <Woven::Textarea @size="xs" @rows={{2}} @placeholder="Extra small" data-test-woven-textarea-size="xs" />
-      <Woven::Textarea @size="sm" @rows={{2}} @placeholder="Small" data-test-woven-textarea-size="sm" />
-      <Woven::Textarea @rows={{2}} @placeholder="Default" data-test-woven-textarea-size="md" />
-      <Woven::Textarea @size="lg" @rows={{2}} @placeholder="Large" data-test-woven-textarea-size="lg" />
-    </WovenDocs::Example>
 
     <h3 class="woven-subtitle">Textarea arguments</h3>
     <WovenDocs::Table @kind="args" @rows={{this.textareaArgRows}} />
@@ -262,7 +242,7 @@
       @code={{this.code.selectBasic}}
     >
       <Woven::Select @value={{this.selectValue}} @options={{this.regionOptions}} @onChange={{this.updateSelect}} />
-      <span class="wu-text m-sm m-muted" data-test-woven-select-echo>Value: {{this.selectValue}}</span>
+      <span class="wu-text sm muted" data-test-woven-select-echo>Value: {{this.selectValue}}</span>
     </WovenDocs::Example>
 
     <WovenDocs::Example
@@ -275,17 +255,8 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Extra small"
-      @note="Matches xs inputs and buttons in dense toolbars."
-      @layout="stack"
-      @code={{this.code.selectXs}}
-    >
-      <Woven::Select @size="xs" @options={{this.propertyTypeOptions}} @placeholder="Extra small" />
-    </WovenDocs::Example>
-
-    <WovenDocs::Example
       @title="Small"
-      @note="Matches sm inputs in toolbars and filter rows."
+      @note="Kit sm. Matches sm inputs in toolbars and filter rows; size xs renders the same."
       @layout="stack"
       @code={{this.code.selectSm}}
     >
@@ -352,20 +323,17 @@
 
     <WovenDocs::Example
       @title="Sizes"
-      @note="The size step scales the addon text and padding. Pass the same size to the input inside so both parts share one height."
+      @note="The kit input group has no sizes: size the control inside and the addons stretch to the row height."
       @layout="stack"
       @code={{this.code.groupSizes}}
     >
-      <Woven::InputGroup @size="xs" @prepend="AED" data-test-woven-group-size="xs">
-        <Woven::Input @size="xs" @placeholder="Extra small" />
-      </Woven::InputGroup>
-      <Woven::InputGroup @size="sm" @prepend="AED" data-test-woven-group-size="sm">
+      <Woven::InputGroup @prepend="AED" data-test-woven-group-size="sm">
         <Woven::Input @size="sm" @placeholder="Small" />
       </Woven::InputGroup>
       <Woven::InputGroup @prepend="AED" data-test-woven-group-size="md">
         <Woven::Input @placeholder="Default" />
       </Woven::InputGroup>
-      <Woven::InputGroup @size="lg" @prepend="AED" data-test-woven-group-size="lg">
+      <Woven::InputGroup @prepend="AED" data-test-woven-group-size="lg">
         <Woven::Input @size="lg" @placeholder="Large" />
       </Woven::InputGroup>
     </WovenDocs::Example>
@@ -377,18 +345,18 @@
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="Accessibility" @id="accessibility">
-    <ul class="wu-list">
-      <li class="wu-list__item">Invalid state sets aria-invalid="true" on the native element in addition to the is-invalid class.</li>
-      <li class="wu-list__item">The clear button is a labelled native button ("Clear input") and is never hover-gated, so keyboard and touch users can reach it.</li>
-      <li class="wu-list__item">Prefix and suffix glyphs are aria-hidden. Wrap the control in Woven::Field for a linked label, hint and error.</li>
-      <li class="wu-list__item">Addon text in an input group is visible text; include units in the label if the addon carries meaning.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Invalid state sets aria-invalid="true" on the native element; the CSS kit styles that attribute.</span></li>
+      <li class="wu-list-item"><span>The clear button is a labeled native button ("Clear input") and is never hover-gated, so keyboard and touch users can reach it.</span></li>
+      <li class="wu-list-item"><span>Prefix and suffix glyphs are aria-hidden. Wrap the control in Woven::Field for a linked label, hint and error.</span></li>
+      <li class="wu-list-item"><span>Addon text in an input group is visible text; include units in the label if the addon carries meaning.</span></li>
     </ul>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="RTL" @id="rtl">
-    <ul class="wu-list">
-      <li class="wu-list__item">Inputs of type tel, number, email and url set dir="ltr" so digits and addresses read correctly inside an RTL page.</li>
-      <li class="wu-list__item">Prefix, suffix, clear button and group addons use inline insets and paddings, so they swap sides with the reading direction.</li>
+    <ul class="wu-list sm" role="list">
+      <li class="wu-list-item"><span>Inputs of type tel, number, email and url set dir="ltr" so digits and addresses read correctly inside an RTL page.</span></li>
+      <li class="wu-list-item"><span>Prefix, suffix, clear button and group addons use inline insets and paddings, so they swap sides with the reading direction.</span></li>
     </ul>
   </WovenDocs::Section>
 </WovenDocs::Page>

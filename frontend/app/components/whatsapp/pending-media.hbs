@@ -43,8 +43,6 @@
         {{/if}}
         {{#unless (eq this.item.kind "sticker")}}
           <Woven::Badge
-            @size="sm"
-            @quiet={{true}}
             @text={{format-bytes this.item.file.size}}
             data-test-wa-pending-size
           />
@@ -85,8 +83,6 @@
                 data-test-wa-pending-name
               ><bdi>{{this.item.file.name}}</bdi></Woven::Text>
               <Woven::Badge
-                @size="sm"
-                @quiet={{true}}
                 @text={{format-bytes this.item.file.size}}
                 data-test-wa-pending-size
               />

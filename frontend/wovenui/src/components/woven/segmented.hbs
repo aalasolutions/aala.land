@@ -8,28 +8,33 @@
   ...attributes
 >
   {{#each this.options key="id" as |option|}}
-    <button
-      type="button"
-      class="wu-segmented__item {{if option.active 'is-active'}} {{if option.disabled 'is-disabled'}}"
-      role={{if this.multiple "checkbox" "radio"}}
-      aria-checked={{if option.active "true" "false"}}
-      disabled={{option.disabled}}
-      tabindex={{if this.multiple "0" (if option.active "0" "-1")}}
+    <label
+      class="wu-segmented-item gap-2"
       title={{if @iconOnly option.label}}
-      data-segment-id={{option.id}}
       data-test-wu-segmented-item={{option.id}}
-      {{on "click" (fn this.select option)}}
     >
+      <input
+        type={{if this.multiple "checkbox" "radio"}}
+        class="wu-segmented-input"
+        name={{this.name}}
+        value={{option.id}}
+        checked={{option.active}}
+        disabled={{option.disabled}}
+        data-segment-id={{option.id}}
+        {{on "change" (fn this.select option)}}
+      />
       {{#if (has-block "icon")}}
-        <span class="wu-segmented__icon" aria-hidden="true">
+        <span class="wu-segmented-icon" aria-hidden="true">
           {{yield option to="icon"}}
         </span>
       {{else if option.icon}}
-        <span class="wu-segmented__icon" aria-hidden="true">
+        <span class="wu-segmented-icon" aria-hidden="true">
           <Woven::Icon @icon={{option.icon}} />
         </span>
       {{/if}}
-      <span class="wu-segmented__label">{{option.label}}</span>
-    </button>
+      <span
+        class="wu-segmented-label{{if @iconOnly ' sr-only'}}"
+      >{{option.label}}</span>
+    </label>
   {{/each}}
 </div>

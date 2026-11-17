@@ -4,6 +4,7 @@ import {
   render,
   click,
   settled,
+  triggerEvent,
   triggerKeyEvent,
   waitUntil,
 } from '@ember/test-helpers';
@@ -69,7 +70,10 @@ module('Integration | Component | whatsapp/media-viewer', function (hooks) {
     await settled();
 
     assert.dom('[data-test-wa-viewer="image"]').exists();
-    assert.dom('[role="dialog"]').hasAttribute('aria-modal', 'true');
+    assert.true(
+      document.querySelector('dialog').matches(':modal'),
+      'it opens as a modal dialog',
+    );
     assert.dom('[data-test-wa-viewer-title] bdi').hasText('front-door.jpg');
     assert.dom('[data-test-wa-viewer-size]').hasText('2 KB');
     assert.dom('[data-test-wa-viewer-image]').hasAttribute('src', this.urls[0]);
@@ -110,7 +114,7 @@ module('Integration | Component | whatsapp/media-viewer', function (hooks) {
     assert.dom('[data-test-wa-fullscreen]').exists();
 
     await waitUntil(() => video.duration > 0);
-    const dialog = '[role="dialog"]';
+    const dialog = 'dialog';
     await triggerKeyEvent(dialog, 'keydown', ' ');
     assert.false(video.paused, 'Space plays');
     await triggerKeyEvent(dialog, 'keydown', ' ');
@@ -137,26 +141,23 @@ module('Integration | Component | whatsapp/media-viewer', function (hooks) {
     assert.dom('[data-test-wa-viewer]').exists();
     assert.true(
       document
-        .querySelector('[role="dialog"]')
+        .querySelector('dialog')
         .contains(document.activeElement),
       'focus moved into the viewer',
     );
 
-    await triggerKeyEvent('[role="dialog"]', 'keydown', 'Escape');
+    // Escape reaches a native dialog as its cancel event.
+    await triggerEvent('dialog', 'cancel');
 
     assert.dom('[data-test-wa-viewer]').doesNotExist();
     assert.strictEqual(this.whatsapp.viewerMessage, null);
     assert.dom('[data-test-trigger]').isFocused();
   });
 
-  test('the close button and the backdrop both close', async function (assert) {
+  test('the close button closes', async function (assert) {
     await renderWithTrigger(this);
     await click('[data-test-trigger]');
     await click('[data-test-wa-viewer-close]');
-    assert.dom('[data-test-wa-viewer]').doesNotExist();
-
-    await click('[data-test-trigger]');
-    await click('[data-test-wu-modal-backdrop-dismiss]');
     assert.dom('[data-test-wa-viewer]').doesNotExist();
   });
 

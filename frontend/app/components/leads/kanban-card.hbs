@@ -1,6 +1,4 @@
-<Woven::Panel
-  @compact={{true}}
-  @interactive={{true}}
+<Woven::Card
   class="lead-card {{@dragClass}}"
   data-test-lead-card
   data-test-lead-id={{@lead.id}}
@@ -10,93 +8,97 @@
   {{on "dragend" @onDragEnd}}
   {{on "click" (fn @onOpen @lead)}}
 >
-  <div class="flex between x-center">
-    <p class="text-sm font-bold flex gap-2 x-center">
-      {{contact-name @lead.contact}}
-      {{#if (is-limited-contact @lead.contact)}}
-        <Woven::Badge @size="sm" @text="Limited" data-test-limited-badge />
-      {{/if}}
-    </p>
-    {{#if this.isTemperatureBoard}}
-      <Woven::Tag
-        class="tag-lead-{{lowercase @lead.status}}"
-        @text={{@lead.status}}
-      />
-    {{else}}
-      <Woven::Tag
-        class="tag-temp-{{lowercase @lead.temperature}}"
-        @text={{@lead.temperature}}
-      />
-    {{/if}}
-  </div>
-  {{#if (contact-phone @lead.contact)}}
-    <div class="flex gap-2 x-center">
-      <p
-        class="text-muted text-xs"
-        dir="ltr"
-        data-test-lead-phone
-      >{{contact-phone @lead.contact}}</p>
-      {{#if (can-whatsapp @lead.contact)}}
-        <a
-          href={{wa-link @lead.contact.phone}}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="wa-link"
-          aria-label="Open WhatsApp chat with {{contact-name @lead.contact}}"
-          data-test-wa-link
-          {{on "click" this.stopPropagation}}
-        >
-          <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-        </a>
+  <div class="flex col gap-2">
+    <div class="flex between x-center">
+      <p class="text-sm font-bold flex gap-2 x-center">
+        {{contact-name @lead.contact}}
+        {{#if (is-limited-contact @lead.contact)}}
+          <Woven::Badge @text="Limited" data-test-limited-badge />
+        {{/if}}
+      </p>
+      {{#if this.isTemperatureBoard}}
+        <Woven::Tag
+          @variant={{tag-variant "lead" @lead.status}}
+          @text={{@lead.status}}
+        />
+      {{else}}
+        <Woven::Tag
+          @variant={{tag-variant "temp" @lead.temperature}}
+          @text={{@lead.temperature}}
+        />
       {{/if}}
     </div>
-  {{/if}}
-  {{#if this.isAgentBoard}}
-    <Woven::Tag
-      class="tag-lead-{{lowercase @lead.status}}"
-      @text={{@lead.status}}
-    />
-  {{else if (contact-email @lead.contact)}}
-    <p class="text-muted text-xs" data-test-lead-email>{{contact-email
-        @lead.contact
-      }}</p>
-  {{/if}}
-  {{#if @lead.locality}}
-    <p class="text-brand text-xs flex gap-1 x-center"><Ui::Ph
-        @icon="buildings"
+    {{#if (contact-phone @lead.contact)}}
+      <div class="flex gap-2 x-center">
+        <p
+          class="text-muted text-xs"
+          dir="ltr"
+          data-test-lead-phone
+        >{{contact-phone @lead.contact}}</p>
+        {{#if (can-whatsapp @lead.contact)}}
+          <a
+            href={{wa-link @lead.contact.phone}}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="wa-link"
+            aria-label="Open WhatsApp chat with {{contact-name @lead.contact}}"
+            data-test-wa-link
+            {{on "click" this.stopPropagation}}
+          >
+            <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+          </a>
+        {{/if}}
+      </div>
+    {{/if}}
+    {{#if this.isAgentBoard}}
+      <Woven::Tag
+        @variant={{tag-variant "lead" @lead.status}}
+        @text={{@lead.status}}
       />
-      {{@lead.locality.name}}</p>
-  {{/if}}
-  {{#if (and this.isPipelineBoard @lead.unit)}}
-    <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph @icon="house" />
-      Property
-      {{@lead.unit.unitNumber}}</p>
-  {{/if}}
-  {{#if (and (not this.isAgentBoard) @lead.assignedAgentName)}}
-    <p class="lead-assign">{{@lead.assignedAgentName}}</p>
-  {{/if}}
-  <div class="flex between x-center">
-    <span class="text-xs text-muted">{{format-date
-        @lead.createdAt
-        zone="region"
-      }}</span>
-    <Woven::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-      <Woven::Button
-        @variant="secondary"
-        @size="xs"
-        {{on "click" (fn @onEdit @lead)}}
-      >
-        Edit
-      </Woven::Button>
-      {{#if @onAssign}}
+    {{else if (contact-email @lead.contact)}}
+      <p class="text-muted text-xs" data-test-lead-email>{{contact-email
+          @lead.contact
+        }}</p>
+    {{/if}}
+    {{#if @lead.locality}}
+      <p class="text-brand text-xs flex gap-1 x-center"><Ui::Ph
+          @icon="buildings"
+        />
+        {{@lead.locality.name}}</p>
+    {{/if}}
+    {{#if (and this.isPipelineBoard @lead.unit)}}
+      <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph @icon="house" />
+        Property
+        {{@lead.unit.unitNumber}}</p>
+    {{/if}}
+    {{#if (and (not this.isAgentBoard) @lead.assignedAgentName)}}
+      <p class="lead-assign">{{@lead.assignedAgentName}}</p>
+    {{/if}}
+    <div class="flex between x-center">
+      <span class="text-xs text-muted">{{format-date
+          @lead.createdAt
+          zone="region"
+        }}</span>
+      <Woven::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
         <Woven::Button
-          @variant="secondary"
+          data-test-lead-card-edit
+          @variant="subtle"
           @size="xs"
-          {{on "click" (fn @onAssign @lead)}}
+          {{on "click" (fn @onEdit @lead)}}
         >
-          Assign
+          Edit
         </Woven::Button>
-      {{/if}}
-    </Woven::BtnGroup>
+        {{#if @onAssign}}
+          <Woven::Button
+            data-test-lead-card-assign
+            @variant="subtle"
+            @size="xs"
+            {{on "click" (fn @onAssign @lead)}}
+          >
+            Assign
+          </Woven::Button>
+        {{/if}}
+      </Woven::BtnGroup>
+    </div>
   </div>
-</Woven::Panel>
+</Woven::Card>

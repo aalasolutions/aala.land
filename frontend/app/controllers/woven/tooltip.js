@@ -7,6 +7,7 @@ const POSITION_NOTES = {
   bottom: 'Below the trigger, for controls in a top bar where there is no room above.',
   start: 'On the inline-start side, for controls at the end of a row. Flips when there is under 260px of room.',
   end: 'On the inline-end side, for a collapsed sidebar rail. Flips likewise.',
+  'bottom-start': 'Below, with the box running toward the inline start from the trigger\'s start edge, for triggers at the inline end of a row. top-start, top-end and bottom-end follow the same rule.',
 };
 
 export default class WovenTooltipController extends Controller {
@@ -16,7 +17,7 @@ export default class WovenTooltipController extends Controller {
     position,
     title: `position ${position}`,
     note: POSITION_NOTES[position],
-    code: `<Woven::Button @text="${position}" @variant="secondary" data-tooltip="${position} placement" data-tooltip-position="${position}" />`,
+    code: `<Woven::Button @text="${position}" data-tooltip="${position} placement" data-tooltip-position="${position}" />`,
   }));
 
   @action
@@ -25,19 +26,18 @@ export default class WovenTooltipController extends Controller {
   }
 
   code = {
-    basic: `<Woven::Button @text="Hover me" @variant="secondary" data-tooltip="Default placement is top" />`,
-    light: `<Woven::Button @text="Light" @variant="secondary" data-tooltip="Light surface tooltip" data-tooltip-light />`,
+    basic: `<Woven::Button @text="Hover me" data-tooltip="Default placement is top" />`,
+    light: `<Woven::Button @text="Light" data-tooltip="Light surface tooltip" data-tooltip-light />`,
     disabled: `<span data-tooltip="Disabled button, wrapped so hover still registers" data-tooltip-position="bottom">
-  <Woven::Button @text="Disabled" @variant="secondary" @disabled={{true}} />
+  <Woven::Button @text="Disabled" @disabled={{true}} />
 </span>`,
-    iconOnly: `<Woven::Button @icon="plugs" @shape="square" @variant="secondary" aria-label="Re-pair" data-tooltip="Re-pair device" />`,
+    iconOnly: `<Woven::Button @icon="plugs" @shape="square" aria-label="Re-pair" data-tooltip="Re-pair device" />`,
     live: `<Woven::Button
   @text="Click while hovering"
-  @variant="secondary"
   @onClick={{this.bump}}
   data-tooltip="Clicked {{this.clicks}} times"
 />`,
-    text: `<span class="wu-text m-sm" tabindex="0" data-tooltip="Tenancy Registration: the government lease registry reference">TR ref</span>`,
+    text: `<span class="wu-text sm" tabindex="0" data-tooltip="Tenancy Registration: the government lease registry reference">TR ref</span>`,
     field: `<Woven::Field @label="Deposit" @tooltip="Held until the lease ends.">
   <Woven::Input @placeholder="5%" />
 </Woven::Field>`,
@@ -45,7 +45,7 @@ export default class WovenTooltipController extends Controller {
 
   attributeRows = [
     { name: 'data-tooltip', type: 'text', default: '', description: 'The whole API: any element with this attribute shows the text on hover and focus. Text only, no markup.' },
-    { name: 'data-tooltip-position', type: '"top" | "bottom" | "start" | "end"', default: '"top"', description: 'Preferred placement, logical. Side placements flip when there is under 260px of room; top and bottom flip within 64px of the viewport edge.' },
+    { name: 'data-tooltip-position', type: '"top" | "bottom" | "start" | "end" | "top-start" | "top-end" | "bottom-start" | "bottom-end"', default: '"top"', description: 'Preferred placement, logical. Side placements flip when there is under 260px of room; top and bottom flip within 64px of the viewport edge; corner placements also swap ends when the box would overflow. Unknown values render top.' },
     { name: 'data-tooltip-light', type: 'present', default: '', description: 'Light surface instead of the dark default.' },
   ];
 
@@ -54,5 +54,6 @@ export default class WovenTooltipController extends Controller {
     { name: 'tooltip.hide', signature: '()', description: 'Hides and releases the trigger.' },
     { name: 'tooltip.isCurrentTrigger', signature: '(element)', description: 'True while the element owns the visible tooltip.' },
     { name: 'tooltip.isVisible', signature: 'boolean', description: 'Tracked; true while content is set.' },
+    { name: 'tooltip.target', signature: 'Element | null', description: 'Tracked trigger element while visible; the host resolves its layer from it.' },
   ];
 }

@@ -1,17 +1,7 @@
 import Component from '@glimmer/component';
 
-const SIZES = ['xs', 'sm', 'lg'];
-
-// @size scales the addons; pass the same @size to the input inside.
-export default class NuInputGroupComponent extends Component {
-  get classes() {
-    const parts = ['wu-input-group'];
-    if (SIZES.includes(this.args.size)) {
-      parts.push(`m-${this.args.size}`);
-    }
-    return parts.join(' ');
-  }
-
+// The CSS kit input group has no sizes: size the inner controls, and the addons stretch to the row.
+export default class WovenInputGroupComponent extends Component {
   get hasPrepend() {
     return Boolean(this.args.prepend);
   }

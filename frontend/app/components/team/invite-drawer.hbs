@@ -86,7 +86,7 @@
         >{{this.errorMsg}}</p>
         {{#if this.existingUser}}
           <Woven::Button
-            @variant="secondary"
+            @variant="subtle"
             @size="xs"
             @disabled={{@isReactivating}}
             data-test-invite-reactivate
@@ -104,12 +104,12 @@
   </:body>
   <:footer>
     <Woven::Button
-      @variant="secondary"
+      @variant="subtle"
       data-test-cancel-invite
       {{on "click" this.close}}
     >Cancel</Woven::Button>
     <Woven::Button
-      @variant="primary"
+      @variant="brand"
       @type="submit"
       form="team-invite-form"
       @disabled={{or this.isInviting @isReactivating}}

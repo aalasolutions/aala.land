@@ -1,5 +1,6 @@
+{{! The CSS kit has no space-between modifier; core's flex utilities cover @align="between". }}
 <div
-  class="wu-form-actions{{if (eq @align "end") ' m-end'}}{{if (eq @align "between") ' m-between'}}"
+  class="wu-form-actions{{if (eq @align 'end') ' trailing'}}{{if (eq @align 'between') ' flex between'}}"
   data-test-wu-form-actions
   ...attributes
 >

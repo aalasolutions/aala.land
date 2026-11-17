@@ -1,24 +1,19 @@
 import Component from '@glimmer/component';
+import { htmlSafe } from '@ember/template';
 
-const SHAPES = ['text', 'title', 'circle', 'rect'];
-const WIDTHS = ['25', '50', '75', 'full'];
+// title folds into text and rect into the default block; the kit has text and circle only.
+const SHAPES = { text: 'text', title: 'text', circle: 'circle' };
+const WIDTHS = { 25: '25%', 50: '50%', 75: '75%', full: '100%' };
 
-export default class NuSkeletonComponent extends Component {
+export default class WovenSkeletonComponent extends Component {
   get classes() {
-    const parts = ['wu-skeleton'];
-
-    if (SHAPES.includes(this.args.shape)) {
-      parts.push(`m-${this.args.shape}`);
-    }
-    if (WIDTHS.includes(String(this.args.width))) {
-      parts.push(`m-w-${this.args.width}`);
-    }
-
-    return parts.join(' ');
+    const shape = SHAPES[this.args.shape];
+    return shape ? `wu-skeleton ${shape} animated` : 'wu-skeleton animated';
   }
 
-  get lineClasses() {
-    return 'wu-skeleton m-text';
+  get style() {
+    const width = WIDTHS[String(this.args.width)];
+    return width ? htmlSafe(`--wu-skeleton--Width: ${width}`) : undefined;
   }
 
   get hasMultipleLines() {

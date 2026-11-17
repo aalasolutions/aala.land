@@ -84,7 +84,7 @@ export default class DashboardController extends Controller {
       WON: 'success',
       LOST: 'danger',
     };
-    return colors[stage] || 'primary';
+    return colors[stage] || 'brand';
   };
 
   get ownershipAgents() {
@@ -111,7 +111,7 @@ export default class DashboardController extends Controller {
 
   get assignmentSegments() {
     const stages = [
-      { stage: 'ASSIGNED', count: this.assignedOpen, variant: 'primary' },
+      { stage: 'ASSIGNED', count: this.assignedOpen, variant: 'brand' },
       { stage: 'UNASSIGNED', count: this.unassignedOpen, variant: 'warning' },
     ].filter((stage) => stage.count > 0);
 
