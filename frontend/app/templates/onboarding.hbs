@@ -1,136 +1,216 @@
 {{page-title "Set Up Your Workspace"}}
 
 <div data-test-onboarding-page class="login-page">
-  <Woven::Card class="signup-card">
-    <div class="flex col gap-8">
-      <div class="text-center">
-        <Woven::Title @tag="h1" @size="2xl" @text="AALA.LAND" />
-        {{#if this.canComplete}}
-          <p class="text-muted text-sm mt-2" data-test-onboarding-step>
-            Step
-            {{this.step}}
-            of 2
-          </p>
-        {{/if}}
-      </div>
+  <div class="onboarding">
+    <Woven::Card class="onboarding-card">
+      <div class="flex col gap-6">
+        <p class="auth-brand-title text-center">AALA.LAND</p>
 
-      {{#if this.canComplete}}
-        {{#if this.isNameStep}}
-          <form
-            class="wu-form w-full"
-            novalidate
-            data-test-onboarding-name-form
-            {{on "submit" this.nextStep}}
+        {{#if this.isReady}}
+          <div
+            class="onboarding-ready flex col gap-6 text-center"
+            data-test-onboarding-ready
+            {{focus-first-field}}
           >
-            <Woven::Field
-              @label="Company Name"
-              @required={{true}}
-              @error={{this.fieldErrors.companyName}}
-            >
-              <Woven::Input
-                id="onboarding-company"
-                @type="text"
-                @placeholder="Acme Real Estate"
-                @value={{this.companyName}}
-                @onInput={{this.updateName}}
-                required={{true}}
-                data-test-onboarding-company-name
-              />
-            </Woven::Field>
+            <div class="onboarding-ready__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M6 12.5l4 4 8-9" />
+              </svg>
+            </div>
+            <div class="flex col gap-2">
+              <Woven::Title
+                @tag="h1"
+                @size="2xl"
+                data-test-onboarding-ready-title
+              >{{this.trimmedCompanyName}} is ready</Woven::Title>
+              {{#if this.userEmail}}
+                <p class="text-muted" data-test-onboarding-ready-email>
+                  We sent a welcome email to
+                  <strong>{{this.userEmail}}</strong>.
+                </p>
+              {{/if}}
+            </div>
             <Woven::Button
               @variant="brand"
-              @type="submit"
-              data-test-onboarding-next
+              @type="button"
+              class="w-full"
+              {{on "click" this.goToDashboard}}
+              data-test-onboarding-go-dashboard
             >
-              Next
+              Go to dashboard
             </Woven::Button>
-          </form>
+          </div>
         {{else}}
-          {{#if @model.loadFailed}}
-            <div class="flex col gap-4 w-full">
-              <Woven::EmptyState
-                data-test-onboarding-regions-error
-                @title="Could not load regions"
-                @description="Reload the page to try again."
-              />
-              <div class="flex gap-2">
-                <Woven::Button
-                  @variant="secondary"
-                  @type="button"
-                  {{on "click" this.previousStep}}
-                  data-test-onboarding-back
+          <div
+            class="onboarding-progress"
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin="1"
+            aria-valuemax="2"
+            aria-valuenow={{this.step}}
+            aria-valuetext="Step {{this.step}} of 2"
+            data-test-onboarding-step
+          >
+            <span class="onboarding-progress__segment is-filled"></span>
+            <span
+              class="onboarding-progress__segment
+                {{if (eq this.step 2) 'is-filled'}}"
+            ></span>
+          </div>
+
+          {{#if this.isNameStep}}
+            <div class="onboarding-step" {{focus-first-field}}>
+              <div class="flex col gap-2">
+                <Woven::Title
+                  @tag="h1"
+                  @size="2xl"
+                  data-test-onboarding-greeting
                 >
-                  Back
-                </Woven::Button>
+                  {{#if this.firstName}}
+                    Welcome,
+                    {{this.firstName}}
+                  {{else}}
+                    Welcome to AALA.LAND
+                  {{/if}}
+                </Woven::Title>
+                <p class="text-muted">Let's set up your workspace. It takes
+                  under a minute.</p>
               </div>
-            </div>
-          {{else}}
-            <form
-              class="wu-form w-full"
-              novalidate
-              data-test-onboarding-region-form
-              {{on "submit" this.finish}}
-            >
-              <Woven::Field
-                @label="Primary Operating Region"
-                @required={{true}}
-                @error={{this.fieldErrors.region}}
+              <form
+                class="wu-form w-full"
+                novalidate
+                data-test-onboarding-name-form
+                {{on "submit" this.nextStep}}
               >
-                <Woven::Dropdown
-                  @searchable={{true}}
-                  @align="start"
-                  @value={{this.regionCode}}
-                  @options={{this.regionOptions}}
-                  @onSelect={{this.selectRegion}}
-                  @placeholder="Select your region..."
-                  data-test-onboarding-region
-                />
-              </Woven::Field>
-
-              {{#if this.errorMessage}}
-                <Woven::Alert
-                  @variant="danger"
-                  @description={{this.errorMessage}}
-                />
-              {{/if}}
-
-              <div class="flex gap-2">
-                <Woven::Button
-                  @variant="secondary"
-                  @type="button"
-                  @disabled={{this.isSaving}}
-                  {{on "click" this.previousStep}}
-                  data-test-onboarding-back
+                <Woven::Field
+                  @label="Company Name"
+                  @required={{true}}
+                  @error={{this.fieldErrors.companyName}}
                 >
-                  Back
-                </Woven::Button>
+                  <Woven::Input
+                    id="onboarding-company"
+                    @type="text"
+                    @placeholder="Acme Real Estate"
+                    @value={{this.companyName}}
+                    @onInput={{this.updateName}}
+                    required={{true}}
+                    data-test-onboarding-company-name
+                  />
+                </Woven::Field>
                 <Woven::Button
                   @variant="brand"
                   @type="submit"
-                  @loading={{this.isSaving}}
-                  data-test-onboarding-finish
+                  class="w-full"
+                  data-test-onboarding-next
                 >
-                  Finish
+                  Next
                 </Woven::Button>
+              </form>
+            </div>
+          {{else}}
+            <div class="onboarding-step" {{focus-first-field}}>
+              <div class="flex col gap-2">
+                <Woven::Title
+                  @tag="h1"
+                  @size="2xl"
+                  data-test-onboarding-region-heading
+                >Where does
+                  {{this.trimmedCompanyName}}
+                  operate?</Woven::Title>
+                <p class="text-muted">This sets your currency and date formats.</p>
               </div>
-            </form>
+              {{#if @model.loadFailed}}
+                <div class="flex col gap-4 w-full">
+                  <Woven::EmptyState
+                    data-test-onboarding-regions-error
+                    @title="Could not load regions"
+                    @description="Reload the page to try again."
+                  />
+                  <div class="flex gap-2">
+                    <Woven::Button
+                      @variant="ghost"
+                      @type="button"
+                      {{on "click" this.previousStep}}
+                      data-test-onboarding-back
+                    >
+                      Back
+                    </Woven::Button>
+                  </div>
+                </div>
+              {{else}}
+                <form
+                  class="wu-form w-full"
+                  novalidate
+                  data-test-onboarding-region-form
+                  {{on "submit" this.finish}}
+                >
+                  <Woven::Field
+                    @label="Primary Operating Region"
+                    @required={{true}}
+                    @error={{this.fieldErrors.region}}
+                  >
+                    <Woven::Dropdown
+                      @searchable={{true}}
+                      @align="start"
+                      @value={{this.regionCode}}
+                      @options={{this.regionOptions}}
+                      @onSelect={{this.selectRegion}}
+                      @placeholder="Select your region..."
+                      data-test-onboarding-region
+                    />
+                  </Woven::Field>
+
+                  {{#if this.errorMessage}}
+                    <Woven::Alert
+                      @variant="danger"
+                      @description={{this.errorMessage}}
+                    />
+                  {{/if}}
+
+                  <div class="onboarding-actions">
+                    <Woven::Button
+                      @variant="ghost"
+                      @type="button"
+                      @disabled={{this.isSaving}}
+                      {{on "click" this.previousStep}}
+                      data-test-onboarding-back
+                    >
+                      Back
+                    </Woven::Button>
+                    <Woven::Button
+                      @variant="brand"
+                      @type="submit"
+                      @loading={{this.isSaving}}
+                      data-test-onboarding-finish
+                    >
+                      Create workspace
+                    </Woven::Button>
+                  </div>
+                </form>
+              {{/if}}
+            </div>
           {{/if}}
         {{/if}}
-      {{else}}
-        <p class="text-center" data-test-onboarding-waiting>
-          Your workspace is being set up by your administrator.
-        </p>
-      {{/if}}
+      </div>
+    </Woven::Card>
 
-      <div class="text-center">
+    {{#unless this.isReady}}
+      <p class="onboarding-account">
+        {{#if this.userEmail}}
+          Signed in as
+          {{this.userEmail}}.
+        {{/if}}
+        Not you?
         <Woven::Button
           @variant="link"
+          @size="sm"
+          class="onboarding-account__logout"
           data-test-onboarding-logout
           {{on "click" this.logout}}
         >
-          Logout
+          Log out
         </Woven::Button>
-      </div>
-    </div>
-  </Woven::Card>
+      </p>
+    {{/unless}}
+  </div>
 </div>

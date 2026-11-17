@@ -16,6 +16,7 @@
         @placeholder="Jane Smith"
         @value={{this.userName}}
         @onInput={{fn this.updateField "userName"}}
+        {{on "blur" (fn this.checkField "userName")}}
         required={{true}}
         data-test-user-name
       />
@@ -33,6 +34,7 @@
         @value={{this.email}}
         @autocomplete="email"
         @onInput={{fn this.updateField "email"}}
+        {{on "blur" (fn this.checkField "email")}}
         required={{true}}
         data-test-email-input
       />
@@ -52,6 +54,7 @@
         @value={{this.password}}
         @autocomplete="new-password"
         @onInput={{fn this.updateField "password"}}
+        {{on "blur" (fn this.checkField "password")}}
         required={{true}}
         data-test-password-input
       />
@@ -68,6 +71,7 @@
         @value={{this.confirmPassword}}
         @autocomplete="new-password"
         @onInput={{fn this.updateField "confirmPassword"}}
+        {{on "blur" (fn this.checkField "confirmPassword")}}
         required={{true}}
         data-test-confirm-password
       />
@@ -82,7 +86,6 @@
     @variant="brand"
     @type="submit"
     @loading={{this.isLoading}}
-    @disabled={{not this.canSubmit}}
     data-test-submit-button
   >
     {{if this.isLoading "Creating Account..." "Create Workspace with Email"}}

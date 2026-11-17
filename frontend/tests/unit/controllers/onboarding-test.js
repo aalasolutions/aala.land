@@ -10,7 +10,13 @@ module('Unit | Controller | onboarding', function (hooks) {
     owner.register(
       'service:auth',
       class extends Service {
-        currentUser = { id: 'u1', companyId: 'c1', role };
+        currentUser = {
+          id: 'u1',
+          companyId: 'c1',
+          role,
+          name: 'Jane Doe',
+          email: 'jane@example.com',
+        };
         async fetchJson(path, options = {}) {
           state.requests.push({ path, ...options });
           if (path === '/auth/profile') {
@@ -41,12 +47,6 @@ module('Unit | Controller | onboarding', function (hooks) {
     return state;
   }
 
-  test('only a company admin can complete onboarding', function (assert) {
-    setup(this.owner, 'agent');
-    const controller = this.owner.lookup('controller:onboarding');
-    assert.false(controller.canComplete);
-  });
-
   test('step 1 requires a non-blank company name', function (assert) {
     setup(this.owner);
     const controller = this.owner.lookup('controller:onboarding');
@@ -76,7 +76,7 @@ module('Unit | Controller | onboarding', function (hooks) {
     assert.strictEqual(state.requests.length, 0);
   });
 
-  test('saves name and region, refreshes the session, then opens the dashboard', async function (assert) {
+  test('saves name and region, then shows the ready screen without leaving', async function (assert) {
     const state = setup(this.owner);
     const controller = this.owner.lookup('controller:onboarding');
     controller.updateName('  Acme  ');
@@ -93,8 +93,35 @@ module('Unit | Controller | onboarding', function (hooks) {
       defaultRegionCode: 'dubai',
     });
     assert.strictEqual(state.requests[1].path, '/auth/profile');
+    assert.true(controller.isReady);
+    assert.strictEqual(state.hydrated, null, 'session waits for the click');
+    assert.deepEqual(state.transitions, []);
+  });
+
+  test('ready screen hydrates the session and opens the dashboard on click', async function (assert) {
+    const state = setup(this.owner);
+    const controller = this.owner.lookup('controller:onboarding');
+    controller.updateName('Acme');
+    controller.nextStep();
+    controller.selectRegion('dubai');
+    await controller.finish();
+
+    controller.goToDashboard();
+    controller.goToDashboard();
+
     assert.strictEqual(state.hydrated.companyName, 'Acme');
     assert.deepEqual(state.transitions, ['dashboard']);
+  });
+
+  test('greets the user by first name and knows their email', function (assert) {
+    setup(this.owner);
+    const controller = this.owner.lookup('controller:onboarding');
+    assert.strictEqual(controller.firstName, 'Jane');
+    assert.strictEqual(controller.userEmail, 'jane@example.com');
+
+    this.owner.lookup('service:auth').currentUser = { role: 'company_admin' };
+    assert.strictEqual(controller.firstName, '');
+    assert.strictEqual(controller.userEmail, '');
   });
 
   test('shows the server error and stays put when saving fails', async function (assert) {
@@ -110,6 +137,7 @@ module('Unit | Controller | onboarding', function (hooks) {
     await controller.finish();
 
     assert.strictEqual(controller.errorMessage, 'Request failed');
+    assert.false(controller.isReady);
     assert.deepEqual(state.transitions, []);
   });
 

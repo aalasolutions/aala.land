@@ -2,7 +2,6 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { ROLES } from '../utils/roles';
 
 export default class OnboardingController extends Controller {
   @service auth;
@@ -15,13 +14,27 @@ export default class OnboardingController extends Controller {
   @tracked isSaving = false;
   @tracked errorMessage = '';
   @tracked fieldErrors = {};
-
-  get canComplete() {
-    return this.auth.currentUser?.role === ROLES.COMPANY_ADMIN;
-  }
+  @tracked readyProfile = null;
+  @tracked isLeaving = false;
 
   get isNameStep() {
     return this.step === 1;
+  }
+
+  get isReady() {
+    return this.readyProfile !== null;
+  }
+
+  get firstName() {
+    return this.auth.currentUser?.name?.trim().split(/\s+/)[0] || '';
+  }
+
+  get userEmail() {
+    return this.auth.currentUser?.email || '';
+  }
+
+  get trimmedCompanyName() {
+    return this.companyName.trim();
   }
 
   get regionOptions() {
@@ -41,6 +54,8 @@ export default class OnboardingController extends Controller {
     this.isSaving = false;
     this.errorMessage = '';
     this.fieldErrors = {};
+    this.readyProfile = null;
+    this.isLeaving = false;
   }
 
   @action
@@ -98,15 +113,23 @@ export default class OnboardingController extends Controller {
           }),
         },
       );
+      // Hydrating clears needsOnboarding and swaps in the app shell, so it waits for the ready screen's button.
       const { data } = await this.auth.fetchJson('/auth/profile');
-      this.session.hydrate(data);
-      this.router.transitionTo('dashboard');
+      this.readyProfile = data;
     } catch (err) {
       this.errorMessage =
         err.message || 'Something went wrong. Please try again.';
     } finally {
       this.isSaving = false;
     }
+  }
+
+  @action
+  goToDashboard() {
+    if (!this.readyProfile || this.isLeaving) return;
+    this.isLeaving = true;
+    this.session.hydrate(this.readyProfile);
+    this.router.transitionTo('dashboard');
   }
 
   @action

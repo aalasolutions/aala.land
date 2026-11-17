@@ -41,13 +41,11 @@ export default class SignupFormComponent extends Component {
     this.fieldErrors = errors;
   }
 
-  get canSubmit() {
-    return Boolean(
-      this.userName.trim() &&
-      this.email.trim() &&
-      this.password.length >= 8 &&
-      this.password === this.confirmPassword,
-    );
+  @action
+  checkField(field) {
+    if (!this[field]) return;
+    const error = this.validate()[field];
+    if (error) this.fieldErrors = { ...this.fieldErrors, [field]: error };
   }
 
   @action

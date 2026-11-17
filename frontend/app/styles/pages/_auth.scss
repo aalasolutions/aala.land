@@ -1,5 +1,6 @@
 // Auth pages; Google sign-in colours are brand-locked, the one hardcoded-colour exception here.
 @use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 
 $shell-background-color: #4a6d92;
@@ -41,6 +42,137 @@ $shell-background-image: radial-gradient(
 .signup-card {
   inline-size: 37.5rem;
   max-inline-size: 95vw;
+}
+
+// Onboarding: narrow centered card, segmented progress, calm step and ready transitions.
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: wu-space(4);
+  inline-size: 30rem;
+  max-inline-size: calc(100vw - #{wu-space(8)});
+  padding-block: wu-space(8);
+}
+
+.onboarding-card {
+  inline-size: 100%;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: wu-space(2);
+}
+
+.onboarding-progress__segment {
+  position: relative;
+  block-size: 0.375rem;
+  border-radius: wu-radius(full);
+  background: wu-tint(brand, 15%);
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--wu-brand);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform wu-duration(slow) $wu-ease;
+  }
+
+  &.is-filled::after {
+    transform: scaleX(1);
+  }
+
+  @include reduced-motion {
+    &::after {
+      transition: none;
+    }
+  }
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: wu-space(6);
+  animation: onboarding-step-in wu-duration(normal) $wu-ease both;
+
+  @include reduced-motion {
+    animation: none;
+  }
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: wu-space(2);
+}
+
+.onboarding-ready__mark {
+  display: grid;
+  place-items: center;
+  inline-size: 4rem;
+  block-size: 4rem;
+  margin-inline: auto;
+  border-radius: wu-radius(full);
+  background: wu-tint(brand, 12%);
+  color: var(--wu-brand);
+  animation: onboarding-ready-in wu-duration(slow) $wu-ease both;
+
+  svg {
+    inline-size: 2rem;
+    block-size: 2rem;
+    fill: none;
+    stroke: currentcolor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  @include reduced-motion {
+    animation: none;
+  }
+}
+
+// Sits on the dark shell gradient, outside the card.
+.onboarding-account {
+  margin: 0;
+  color: wu-tint(text-inverted, 80%);
+  font-size: wu-font-size(sm);
+  text-align: center;
+
+  .onboarding-account__logout {
+    color: var(--wu-text-inverted);
+    text-decoration: underline;
+  }
+}
+
+@keyframes onboarding-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes onboarding-ready-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .signup-invite-note {
