@@ -47,7 +47,16 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match('/').then((cached) => cached || Response.error())),
+        .catch(() =>
+          caches.match('/').then(
+            (cached) =>
+              cached ||
+              new Response(
+                '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Offline</title><p style="font-family:system-ui,sans-serif;text-align:center;margin-top:20vh">You are offline. Check your connection and try again.</p>',
+                { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+              ),
+          ),
+        ),
     );
     return;
   }
