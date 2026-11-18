@@ -264,10 +264,16 @@ export default class ApplicationController extends Controller {
 
   constructor() {
     super(...arguments);
-    this.routeDidChangeHandler = () => {
+    this.routeDidChangeHandler = (transition) => {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
       this.sidebarMobileOpen = false;
+
+      // The shell scroller persists across routes; query-param-only changes keep their scroll.
+      if (transition?.to?.name !== transition?.from?.name) {
+        const scroller = document.querySelector('.content-area');
+        if (scroller) scroller.scrollTop = 0;
+      }
 
       if (this.session.isAuthenticated) {
         this.setupSocket();
