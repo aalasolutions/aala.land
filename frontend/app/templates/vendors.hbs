@@ -24,44 +24,55 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId="vendors"
+        class="table-stacked"
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "name" "id"}}
+        />
         {{#if (eq cell.key "name")}}
           <span data-test-vendor-row>{{cell.value}}</span>
         {{else if (eq cell.key "specialties")}}
-          <div class="flex gap-2 wrap">
-            {{#each cell.value as |sp|}}
-              <Woven::Tag @variant={{tag-variant "trade" sp}} @text={{sp}} />
-            {{/each}}
-          </div>
+          {{#if cell.value.length}}
+            <div class="flex gap-2 wrap">
+              {{#each cell.value as |sp|}}
+                <Woven::Tag @variant={{tag-variant "trade" sp}} @text={{sp}} />
+              {{/each}}
+            </div>
+          {{/if}}
         {{else if (eq cell.key "hourlyRate")}}
-          <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
+          {{#if (has-value cell.value)}}
+            <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
+          {{/if}}
         {{else if (eq cell.key "rating")}}
           {{#if cell.value}}
-            {{cell.value}}
-            / 5
+            <span>{{cell.value}} / 5</span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          <RowActions
-            @label={{cell.row.name}}
-            @actions={{array
-              (hash
-                key="edit-vendor"
-                label="Edit"
-                icon="pencil-simple"
-                onSelect=(fn this.openEdit cell.row)
-              )
-              (hash
-                key="delete-vendor"
-                label="Delete"
-                icon="trash"
-                variant="danger"
-                onSelect=(fn this.openDelete cell.row)
-              )
-            }}
-          />
+          <div class="table-stacked__actions">
+            <RowActions
+              @label={{cell.row.name}}
+              @actions={{array
+                (hash
+                  key="edit-vendor"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                )
+                (hash
+                  key="delete-vendor"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                )
+              }}
+            />
+          </div>
         {{else}}
-          {{cell.value}}
+          {{#if (has-value cell.value)}}<span>{{cell.value}}</span>{{/if}}
         {{/if}}
       </Woven::DataTable>
     {{else}}

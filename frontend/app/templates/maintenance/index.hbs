@@ -10,7 +10,7 @@
   </Woven::PageHeader>
 
   {{#if @model.costSummary}}
-    <div class="grid cols-4 gap-4">
+    <div class="grid cols-1 cols-2@lg cols-4@xl gap-4">
       <StatCard
         @label="Total Estimated"
         @value={{format-money @model.costSummary.totalEstimated}}
@@ -71,9 +71,15 @@
             @sortable={{true}}
             @showOptions={{true}}
             @tableId="maintenance"
+            class="table-stacked"
             data-test-work-orders-table
             as |cell|
           >
+            <DataTable::StackedLabel
+              @columns={{this.columns}}
+              @cellKey={{cell.key}}
+              @skip={{array "title" "id"}}
+            />
             {{#if (eq cell.key "title")}}
               <p class="text-sm" data-test-work-order><LinkTo
                   @route="maintenance.detail"
@@ -94,7 +100,7 @@
                   /
                   {{cell.row.unitNumber}}
                 {{else}}
-                  <span class="text-muted">-</span>
+                  <span class="text-muted" data-empty>-</span>
                 {{/if}}
               </span>
             {{else if (eq cell.key "category")}}
@@ -111,14 +117,17 @@
               {{#if cell.value}}<Money
                   @amount={{cell.value}}
                   @currency={{cell.row.currency}}
-                />{{else}}-{{/if}}
+                />{{else}}<span data-empty>-</span>{{/if}}
             {{else if (eq cell.key "actualCost")}}
               {{#if cell.value}}<Money
                   @amount={{cell.value}}
                   @currency={{cell.row.currency}}
-                />{{else}}-{{/if}}
+                />{{else}}<span data-empty>-</span>{{/if}}
             {{else if (eq cell.key "scheduledDate")}}
-              <span class="text-xs">{{#if cell.value}}{{format-date
+              <span
+                class="text-xs"
+                data-empty={{unless cell.value true}}
+              >{{#if cell.value}}{{format-date
                     cell.value
                   }}{{else}}-{{/if}}</span>
             {{else if (eq cell.key "status")}}
@@ -127,25 +136,27 @@
                 @text={{cell.value}}
               />
             {{else if (eq cell.key "id")}}
-              <RowActions
-                @label={{cell.row.title}}
-                @actions={{array
-                  (hash
-                    key="edit-work-order"
-                    label="Edit"
-                    icon="pencil-simple"
-                    onSelect=(fn this.openEdit cell.row)
-                  )
-                  (hash
-                    key="delete-work-order"
-                    label="Delete"
-                    icon="trash"
-                    variant="danger"
-                    onSelect=(fn this.openDelete cell.row)
-                    hidden=(not (this.canDeleteWorkOrder cell.row))
-                  )
-                }}
-              />
+              <div class="table-stacked__actions">
+                <RowActions
+                  @label={{cell.row.title}}
+                  @actions={{array
+                    (hash
+                      key="edit-work-order"
+                      label="Edit"
+                      icon="pencil-simple"
+                      onSelect=(fn this.openEdit cell.row)
+                    )
+                    (hash
+                      key="delete-work-order"
+                      label="Delete"
+                      icon="trash"
+                      variant="danger"
+                      onSelect=(fn this.openDelete cell.row)
+                      hidden=(not (this.canDeleteWorkOrder cell.row))
+                    )
+                  }}
+                />
+              </div>
             {{else}}
               <span class="text-muted">{{cell.value}}</span>
             {{/if}}

@@ -163,7 +163,7 @@
   </div>
 
   {{#if this.totals}}
-    <div class="grid cols-1 cols-3@md gap-4">
+    <div class="grid cols-1 cols-3@lg gap-4">
       <StatCard
         data-test-summary="total-income"
         @variant="success"
@@ -288,9 +288,15 @@
         @showOptions={{true}}
         @tableId="financials"
         @getRowClass={{this.getRowClass}}
+        class="table-stacked"
         data-test-financials-table
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "description" "id"}}
+        />
         {{#if (eq cell.key "description")}}
           <span data-test-transaction>{{cell.value}}</span>
         {{else if (eq cell.key "amount")}}
@@ -311,24 +317,26 @@
         {{else if (eq cell.key "transactionDate")}}
           <span class="text-xs">{{format-date cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          {{#if cell.row.chequeId}}
-            {{! The cheque owns this row; editing it is refused with a 409. }}
-            <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
-          {{else}}
-            <RowActions
-              @label={{cell.row.description}}
-              @actions={{array
-                (hash
-                  key="edit-transaction"
-                  label="Edit"
-                  icon="pencil-simple"
-                  onSelect=(fn this.openEdit cell.row)
-                )
-              }}
-            />
-          {{/if}}
-        {{else}}
-          {{cell.value}}
+          <div class="table-stacked__actions">
+            {{#if cell.row.chequeId}}
+              {{! The cheque owns this row; editing it is refused with a 409. }}
+              <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
+            {{else}}
+              <RowActions
+                @label={{cell.row.description}}
+                @actions={{array
+                  (hash
+                    key="edit-transaction"
+                    label="Edit"
+                    icon="pencil-simple"
+                    onSelect=(fn this.openEdit cell.row)
+                  )
+                }}
+              />
+            {{/if}}
+          </div>
+        {{else if cell.value}}
+          <span>{{cell.value}}</span>
         {{/if}}
       </Woven::DataTable>
     {{else if @model.total}}

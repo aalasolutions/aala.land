@@ -104,8 +104,14 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId="leases"
+        class="table-stacked"
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "contact.displayName" "id"}}
+        />
         {{#if (eq cell.key "contact.displayName")}}
           <LinkTo
             @route="leases.detail"
@@ -147,78 +153,83 @@
             {{/if}}
           </div>
         {{else if (eq cell.key "tenancyRegistrationRef")}}
-          <span class="text-muted">{{or cell.value "-"}}</span>
+          <span
+            class="text-muted"
+            data-empty={{unless cell.value true}}
+          >{{or cell.value "-"}}</span>
         {{else if (eq cell.key "id")}}
-          <RowActions
-            @label="lease of {{or (contact-name cell.row.contact) 'Unknown tenant'}}"
-            @actions={{array
-              (hash
-                key="lease-history"
-                label="History"
-                icon="clock-counter-clockwise"
-                onSelect=(fn this.openHistory cell.row)
-                hidden=(not this.canViewHistory)
-              )
-              (hash
-                key="unarchive-lease"
-                label="Unarchive"
-                icon="arrow-counter-clockwise"
-                onSelect=(fn this.openArchive cell.row "unarchive")
-                hidden=(not (and cell.row.deletedAt this.canArchiveLease))
-              )
-              (hash
-                key="edit-lease"
-                label="Edit"
-                icon="pencil-simple"
-                onSelect=(fn this.openEdit cell.row)
-                hidden=cell.row.deletedAt
-              )
-              (hash
-                key="renew-lease"
-                label="Renew"
-                icon="arrows-clockwise"
-                onSelect=(fn this.renewLease cell.row)
-                hidden=(or
-                  cell.row.deletedAt
-                  (not
-                    (or (eq cell.row.status "ACTIVE") (eq cell.row.status "EXPIRED"))
+          <div class="table-stacked__actions">
+            <RowActions
+              @label="lease of {{or (contact-name cell.row.contact) 'Unknown tenant'}}"
+              @actions={{array
+                (hash
+                  key="lease-history"
+                  label="History"
+                  icon="clock-counter-clockwise"
+                  onSelect=(fn this.openHistory cell.row)
+                  hidden=(not this.canViewHistory)
+                )
+                (hash
+                  key="unarchive-lease"
+                  label="Unarchive"
+                  icon="arrow-counter-clockwise"
+                  onSelect=(fn this.openArchive cell.row "unarchive")
+                  hidden=(not (and cell.row.deletedAt this.canArchiveLease))
+                )
+                (hash
+                  key="edit-lease"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                  hidden=cell.row.deletedAt
+                )
+                (hash
+                  key="renew-lease"
+                  label="Renew"
+                  icon="arrows-clockwise"
+                  onSelect=(fn this.renewLease cell.row)
+                  hidden=(or
+                    cell.row.deletedAt
+                    (not
+                      (or (eq cell.row.status "ACTIVE") (eq cell.row.status "EXPIRED"))
+                    )
                   )
                 )
-              )
-              (hash
-                key="terminate-lease"
-                label="Terminate"
-                icon="x-circle"
-                variant="danger"
-                onSelect=(fn this.openTerminate cell.row)
-                hidden=(or cell.row.deletedAt (not (eq cell.row.status "ACTIVE")))
-              )
-              (hash
-                key="delete-lease"
-                label="Delete"
-                icon="trash"
-                variant="danger"
-                onSelect=(fn this.openDelete cell.row)
-                hidden=(or
-                  cell.row.deletedAt
-                  (not (eq cell.row.status "DRAFT"))
-                  (not this.canDeleteLease)
+                (hash
+                  key="terminate-lease"
+                  label="Terminate"
+                  icon="x-circle"
+                  variant="danger"
+                  onSelect=(fn this.openTerminate cell.row)
+                  hidden=(or cell.row.deletedAt (not (eq cell.row.status "ACTIVE")))
                 )
-              )
-              (hash
-                key="archive-lease"
-                label="Archive"
-                icon="archive"
-                onSelect=(fn this.openArchive cell.row "archive")
-                hidden=(or
-                  cell.row.deletedAt
-                  (eq cell.row.status "DRAFT")
-                  (eq cell.row.status "ACTIVE")
-                  (not this.canArchiveLease)
+                (hash
+                  key="delete-lease"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                  hidden=(or
+                    cell.row.deletedAt
+                    (not (eq cell.row.status "DRAFT"))
+                    (not this.canDeleteLease)
+                  )
                 )
-              )
-            }}
-          />
+                (hash
+                  key="archive-lease"
+                  label="Archive"
+                  icon="archive"
+                  onSelect=(fn this.openArchive cell.row "archive")
+                  hidden=(or
+                    cell.row.deletedAt
+                    (eq cell.row.status "DRAFT")
+                    (eq cell.row.status "ACTIVE")
+                    (not this.canArchiveLease)
+                  )
+                )
+              }}
+            />
+          </div>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}

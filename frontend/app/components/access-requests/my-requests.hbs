@@ -7,6 +7,7 @@
     <p class="text-danger" data-test-my-requests-error>{{this.error}}</p>
   {{else if this.rows.length}}
     <Woven::DataTable
+      class="table-stacked"
       @columns={{this.columns}}
       @rows={{this.rows}}
       @pinColumns={{true}}
@@ -15,6 +16,11 @@
       data-test-my-requests-table
       as |cell|
     >
+      <DataTable::StackedLabel
+        @columns={{this.columns}}
+        @cellKey={{cell.key}}
+        @skip={{array "contact.displayName"}}
+      />
       {{#if (eq cell.key "contact.displayName")}}
         <LinkTo
           @route="contacts.detail"
@@ -29,15 +35,25 @@
           data-test-my-request-status={{cell.value}}
         />
       {{else if (eq cell.key "createdAt")}}
-        {{format-date cell.value zone="region"}}
+        <span>{{format-date cell.value zone="region"}}</span>
       {{else if (eq cell.key "decidedBy.name")}}
-        <span class="text-muted">{{or cell.value "-"}}</span>
+        <span
+          class="text-muted"
+          data-empty={{unless cell.value true}}
+        >{{or cell.value "-"}}</span>
       {{else if (eq cell.key "decidedAt")}}
-        {{#if cell.value}}{{format-date cell.value zone="region"}}{{else}}<span
+        {{#if cell.value}}<span>{{format-date
+              cell.value
+              zone="region"
+            }}</span>{{else}}<span
             class="text-muted"
+            data-empty
           >-</span>{{/if}}
       {{else if (eq cell.key "expiresAt")}}
-        <span data-test-my-request-expires>
+        <span
+          data-empty={{unless (or cell.value cell.row.expiryLabel) true}}
+          data-test-my-request-expires
+        >
           {{#if cell.value}}{{format-date cell.value zone="region"}}{{else}}{{or
               cell.row.expiryLabel
               "-"

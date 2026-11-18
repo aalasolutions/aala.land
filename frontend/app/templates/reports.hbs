@@ -7,7 +7,7 @@
   />
 
   {{#if @model.kpis}}
-    <div class="reports-kpis grid cols-3 gap-4" data-test-reports-kpis>
+    <div class="reports-kpis grid cols-2@sm cols-3@md gap-4" data-test-reports-kpis>
       <StatCard
         data-test-kpi="monthly-revenue"
         @route="financials"
@@ -186,8 +186,14 @@
             @sortable={{true}}
             @showOptions={{true}}
             @tableId="reports-agents"
+            class="table-stacked"
             as |cell|
           >
+            <DataTable::StackedLabel
+              @columns={{this.columns}}
+              @cellKey={{cell.key}}
+              @skip={{array "agentName"}}
+            />
             {{#if (eq cell.key "agentName")}}
               <div
                 class="flex x-center gap-2"
@@ -202,7 +208,7 @@
                   }}</span>
               </div>
             {{else if (eq cell.key "leadsAssigned")}}
-              {{format-number cell.value}}
+              <span>{{format-number cell.value}}</span>
             {{else if (eq cell.key "leadsWon")}}
               <span class="text-success">{{format-number
                   cell.value
@@ -221,8 +227,8 @@
               </span>
             {{else if (eq cell.key "commissionsEarned")}}
               <span><Money @amount={{cell.value}} /></span>
-            {{else}}
-              {{cell.value}}
+            {{else if cell.value}}
+              <span>{{cell.value}}</span>
             {{/if}}
           </Woven::DataTable>
         </:body>
@@ -249,9 +255,15 @@
             @columns={{this.activityColumns}}
             @rows={{this.activityRows}}
             @tableId="reports-activity"
+            class="table-stacked"
             data-test-reports-activity
             as |cell|
           >
+            <DataTable::StackedLabel
+              @columns={{this.activityColumns}}
+              @cellKey={{cell.key}}
+              @skip={{array "createdAt"}}
+            />
             {{#if (eq cell.key "createdAt")}}
               <span
                 class="text-sm text-muted"

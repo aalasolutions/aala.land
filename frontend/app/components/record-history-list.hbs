@@ -20,6 +20,7 @@
     />
   {{else if this.rows.length}}
     <Woven::DataTable
+      class="table-stacked"
       @columns={{this.columns}}
       @rows={{this.rows}}
       @pinColumns={{true}}
@@ -30,6 +31,11 @@
       data-test-record-history-table
       as |cell|
     >
+      <DataTable::StackedLabel
+        @columns={{this.columns}}
+        @cellKey={{cell.key}}
+        @skip={{array "actionLabel"}}
+      />
       {{#if (eq cell.key "actionLabel")}}
         <Woven::Tag
           @variant={{cell.row.actionVariant}}
@@ -49,7 +55,11 @@
           {{/if}}
         </div>
       {{else if (eq cell.key "reason")}}
-        <span class="text-sm" data-test-record-history-reason>{{if
+        <span
+          class="text-sm"
+          data-empty={{unless cell.value true}}
+          data-test-record-history-reason
+        >{{if
             cell.value
             cell.value
             "-"

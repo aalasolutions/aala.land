@@ -26,7 +26,7 @@
       data-test-lead-filters
     />
   {{/unless}}
-  <div class="flex end" data-test-leads-toolbar>
+  <div class="flex leads-toolbar" data-test-leads-toolbar>
     <Woven::Segmented
       @options={{this.viewTabs}}
       @value={{this.viewMode}}
@@ -214,9 +214,15 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId="leads-list"
+        class="table-stacked"
         data-test-leads-table
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.listColumns}}
+          @cellKey={{cell.key}}
+          @skip={{array "contact.displayName" "id"}}
+        />
         {{#if (eq cell.key "contact.displayName")}}
           <span class="flex gap-2 x-center">
             <span
@@ -228,33 +234,35 @@
             {{/if}}
           </span>
         {{else if (eq cell.key "contact.phone")}}
-          <div class="flex col gap-1">
-            <div class="flex gap-2 x-center">
+          {{#if (or (contact-phone cell.row.contact) (contact-email cell.row.contact))}}
+            <div class="flex col gap-1">
+              <div class="flex gap-2 x-center">
+                <span
+                  class="text-xs"
+                  dir="ltr"
+                  data-test-lead-phone
+                >{{contact-phone cell.row.contact}}</span>
+                {{#if (can-whatsapp cell.row.contact)}}
+                  <a
+                    href={{wa-link cell.row.contact.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    aria-label="Open WhatsApp chat with {{contact-name
+                      cell.row.contact
+                    }}"
+                    data-test-wa-link
+                  >
+                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+                  </a>
+                {{/if}}
+              </div>
               <span
-                class="text-xs"
-                dir="ltr"
-                data-test-lead-phone
-              >{{contact-phone cell.row.contact}}</span>
-              {{#if (can-whatsapp cell.row.contact)}}
-                <a
-                  href={{wa-link cell.row.contact.phone}}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="wa-link"
-                  aria-label="Open WhatsApp chat with {{contact-name
-                    cell.row.contact
-                  }}"
-                  data-test-wa-link
-                >
-                  <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                </a>
-              {{/if}}
+                class="text-xs text-muted"
+                data-test-lead-email
+              >{{contact-email cell.row.contact}}</span>
             </div>
-            <span
-              class="text-xs text-muted"
-              data-test-lead-email
-            >{{contact-email cell.row.contact}}</span>
-          </div>
+          {{/if}}
         {{else if (eq cell.key "status")}}
           <Woven::Tag
             @variant={{tag-variant "lead" cell.value}}
@@ -267,14 +275,16 @@
           />
         {{else if (eq cell.key "locality.name")}}
           {{#if cell.row.locality}}
-            <span>{{cell.value}}</span>
-            {{#if cell.row.unit}}
-              <span class="text-muted text-xs">
-                - Property
-                {{cell.row.unit.unitNumber}}</span>
-            {{/if}}
+            <span>
+              <span>{{cell.value}}</span>
+              {{#if cell.row.unit}}
+                <span class="text-muted text-xs">
+                  - Property
+                  {{cell.row.unit.unitNumber}}</span>
+              {{/if}}
+            </span>
           {{else}}
-            <span class="text-muted">-</span>
+            <span class="text-muted" data-empty>-</span>
           {{/if}}
         {{else if (eq cell.key "assignedAgentName")}}
           {{#if cell.value}}
@@ -288,25 +298,27 @@
               zone="region"
             }}</span>
         {{else if (eq cell.key "id")}}
-          <RowActions
-            @label={{contact-name cell.row.contact}}
-            @actions={{array
-              (hash
-                key="edit-lead"
-                label="Edit"
-                icon="pencil-simple"
-                onSelect=(fn this.openEdit cell.row)
-              )
-              (hash
-                key="assign-lead"
-                label="Assign"
-                icon="user-switch"
-                onSelect=(fn this.openAssignModal cell.row)
-              )
-            }}
-          />
-        {{else}}
-          {{cell.value}}
+          <div class="table-stacked__actions">
+            <RowActions
+              @label={{contact-name cell.row.contact}}
+              @actions={{array
+                (hash
+                  key="edit-lead"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                )
+                (hash
+                  key="assign-lead"
+                  label="Assign"
+                  icon="user-switch"
+                  onSelect=(fn this.openAssignModal cell.row)
+                )
+              }}
+            />
+          </div>
+        {{else if cell.value}}
+          <span>{{cell.value}}</span>
         {{/if}}
       </Woven::DataTable>
     {{else}}

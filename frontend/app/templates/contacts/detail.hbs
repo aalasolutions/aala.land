@@ -219,6 +219,7 @@
           <Woven::Card data-test-contact-leases>
             {{#if this.leaseRows.length}}
               <Woven::DataTable
+                class="table-stacked"
                 @columns={{this.leaseColumns}}
                 @rows={{this.leaseRows}}
                 @pinColumns={{true}}
@@ -228,6 +229,11 @@
                 @tableId="contact-leases"
                 as |cell|
               >
+                <DataTable::StackedLabel
+                  @columns={{this.leaseColumns}}
+                  @cellKey={{cell.key}}
+                  @skip={{array "unit.unitNumber"}}
+                />
                 {{#if (eq cell.key "unit.unitNumber")}}
                   <LinkTo
                     @route="leases.detail"
@@ -250,9 +256,9 @@
                     {{/if}}
                   </div>
                 {{else if (eq cell.key "startDate")}}
-                  {{format-date cell.value}}
+                  <span>{{format-date cell.value}}</span>
                 {{else if (eq cell.key "endDate")}}
-                  {{format-date cell.value}}
+                  <span>{{format-date cell.value}}</span>
                 {{else if (eq cell.key "monthlyRent")}}
                   <Money
                     @amount={{cell.value}}
@@ -282,6 +288,7 @@
           <Woven::Card data-test-contact-properties>
             {{#if this.unitRows.length}}
               <Woven::DataTable
+                class="table-stacked"
                 @columns={{this.unitColumns}}
                 @rows={{this.unitRows}}
                 @pinColumns={{true}}
@@ -291,14 +298,19 @@
                 @tableId="contact-units"
                 as |cell|
               >
+                <DataTable::StackedLabel
+                  @columns={{this.unitColumns}}
+                  @cellKey={{cell.key}}
+                  @skip={{array "unitNumber" "id"}}
+                />
                 {{#if (eq cell.key "unitNumber")}}
                   <span
                     data-test-owned-unit-row
                   >{{cell.value}}</span>
                 {{else if (eq cell.key "areaName")}}
-                  {{cell.value}}
+                  {{#if cell.value}}<span>{{cell.value}}</span>{{/if}}
                 {{else if (eq cell.key "propertyType")}}
-                  {{#if cell.value}}{{property-type-label cell.value}}{{/if}}
+                  {{#if cell.value}}<span>{{property-type-label cell.value}}</span>{{/if}}
                 {{else if (eq cell.key "status")}}
                   <Woven::Tag
                     @variant={{tag-variant "unit" cell.value}}
@@ -310,18 +322,20 @@
                     @currency={{region-currency cell.row.regionCode}}
                   />
                 {{else if (eq cell.key "id")}}
-                  <RowActions
-                    @label={{cell.row.unitNumber}}
-                    @actions={{array
-                      (hash
-                        key="view-owned-unit"
-                        label="View"
-                        icon="eye"
-                        route="properties.unit"
-                        models=(array cell.row.areaId cell.row.id)
-                      )
-                    }}
-                  />
+                  <div class="table-stacked__actions">
+                    <RowActions
+                      @label={{cell.row.unitNumber}}
+                      @actions={{array
+                        (hash
+                          key="view-owned-unit"
+                          label="View"
+                          icon="eye"
+                          route="properties.unit"
+                          models=(array cell.row.areaId cell.row.id)
+                        )
+                      }}
+                    />
+                  </div>
                 {{else}}
                   <span class="text-muted">{{cell.value}}</span>
                 {{/if}}

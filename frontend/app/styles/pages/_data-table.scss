@@ -1,6 +1,130 @@
+@use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
+
 // Shared DataTable row states. The kit renders whatever class @getRowClass
 // returns and styles none of them, so every caller's row state is defined here.
 
 .data-table tbody tr.is-muted td {
   color: var(--wu-text-muted);
+}
+
+// Opt-in stacked mode: below sm each row is a card, each cell a label and value line.
+.table-stacked__label {
+  display: none;
+}
+
+.table-stacked__actions {
+  display: contents;
+}
+
+@include media-down(sm) {
+  .table-stacked .data-table {
+    overflow: visible;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .table-stacked .ember-table-overflow {
+    max-block-size: none;
+    overflow: visible;
+    background: none;
+  }
+
+  .table-stacked table {
+    display: block;
+  }
+
+  .table-stacked thead {
+    display: none;
+  }
+
+  .table-stacked tbody {
+    display: block;
+  }
+
+  .table-stacked tbody > tr + tr {
+    margin-block-start: wu-space(3);
+  }
+
+  .table-stacked tbody > tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: wu-space(2);
+    padding: wu-space(4);
+    background: var(--wu-bg-surface);
+    border: 1px solid var(--wu-border-regular);
+    border-radius: wu-radius(lg);
+  }
+
+  // ember-table writes column widths and pinned offsets inline.
+  .table-stacked tbody > tr > td {
+    display: block;
+    position: static !important;
+    inline-size: auto !important;
+    min-inline-size: 0 !important;
+    max-inline-size: none !important;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .table-stacked tbody > tr > td:not(:first-child):has(.data-table__cell > .text-muted:empty, .data-table__cell > [data-test-money]:empty, .data-table__cell [data-empty], .data-table__cell > .table-stacked__label:only-child) {
+    display: none;
+  }
+
+  .table-stacked .data-table tbody > tr > td:is(.is-fixed-left, .is-fixed-right) {
+    background: none;
+    box-shadow: none;
+  }
+
+  .table-stacked tbody > tr > td:first-child {
+    flex-basis: 0;
+    order: -1;
+    font-size: wu-font-size(md);
+    font-weight: wu-font-weight(semibold);
+  }
+
+  .table-stacked tbody > tr > td:first-child a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--wu-control-height-md);
+  }
+
+  .table-stacked .data-table__cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: wu-space(3);
+    min-inline-size: 0;
+    overflow: visible;
+    text-align: end;
+    overflow-wrap: anywhere;
+  }
+
+  .table-stacked .table-stacked__label {
+    display: block;
+    flex-shrink: 0;
+    color: var(--wu-text-muted);
+    text-align: start;
+  }
+
+  .table-stacked tbody > tr > td:first-child a:empty::after {
+    content: "-";
+    color: var(--wu-text-muted);
+  }
+
+  .table-stacked td:has(.table-stacked__actions) {
+    flex: none;
+    order: -1;
+  }
+
+  .table-stacked td.wu-table-select {
+    order: -2;
+    align-self: flex-start;
+  }
 }

@@ -360,17 +360,23 @@
           @sortable={{true}}
           @showOptions={{true}}
           @tableId="unit-leases"
+          class="table-stacked"
           as |cell|
         >
+          <DataTable::StackedLabel
+            @columns={{this.leaseColumns}}
+            @cellKey={{cell.key}}
+            @skip={{array "contact.displayName"}}
+          />
           {{#if (eq cell.key "contact.displayName")}}
             <span data-test-lease-row>{{or
                 (contact-name cell.row.contact)
                 "Unknown tenant"
               }}</span>
           {{else if (eq cell.key "startDate")}}
-            {{format-date cell.value}}
+            <span>{{format-date cell.value}}</span>
           {{else if (eq cell.key "endDate")}}
-            {{format-date cell.value}}
+            <span>{{format-date cell.value}}</span>
           {{else if (eq cell.key "monthlyRent")}}
             <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
           {{else if (eq cell.key "status")}}

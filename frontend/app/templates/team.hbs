@@ -4,7 +4,7 @@
   <Woven::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
     <:actions>
       {{#unless this.isSuperAdmin}}
-        <div class="flex gap-3">
+        <div class="flex gap-3 wrap">
           {{#if this.canTrim}}
             <Woven::Button
               @variant="subtle"
@@ -39,6 +39,7 @@
   <div class="flex col gap-3">
     {{#if this.model.users.length}}
       <Woven::DataTable
+        class="table-stacked"
         @columns={{this.columns}}
         @rows={{this.model.users}}
         @pinColumns={{true}}
@@ -48,6 +49,11 @@
         @tableId="team"
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "name" "id"}}
+        />
         {{#if (eq cell.key "name")}}
           <span data-test-user-id={{cell.row.id}}>{{cell.value}}</span>
         {{else if (eq cell.key "email")}}
@@ -76,56 +82,58 @@
             <Woven::Tag @variant="secondary" @text="Inactive" />
           {{/if}}
         {{else if (eq cell.key "id")}}
-          {{! Removal needs a company context; backend rejects users with no companyId. }}
-          <RowActions
-            @label={{cell.row.name}}
-            @actions={{array
-              (hash
-                key="edit-user"
-                label="Edit"
-                icon="pencil-simple"
-                onSelect=(fn this.openEdit cell.row)
-              )
-              (hash
-                key="remove-user"
-                label="Remove"
-                icon="user-minus"
-                variant="danger"
-                onSelect=(fn this.openRemove cell.row)
-                hidden=(not (and cell.row.companyId cell.row.isActive))
-              )
-              (hash
-                key="reactivate-user"
-                label="Reactivate"
-                icon="user-plus"
-                loading=(eq this.reactivatingUserId cell.row.id)
-                disabled=this.isReactivating
-                onSelect=(fn this.openReactivate cell.row)
-                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
-              )
-              (hash
-                key="delete-user"
-                label="Delete"
-                icon="trash"
-                variant="danger"
-                onSelect=(fn this.openRemove cell.row)
-                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
-              )
-              (hash
-                key="impersonate-user"
-                label="Impersonate"
-                icon="user-switch"
-                loading=(eq this.impersonatingUserId cell.row.id)
-                disabled=(or
-                  (eq cell.row.isActive false)
-                  this.isImpersonating
-                  (eq this.impersonatingUserId cell.row.id)
+          <div class="table-stacked__actions">
+            {{! Removal needs a company context; backend rejects users with no companyId. }}
+            <RowActions
+              @label={{cell.row.name}}
+              @actions={{array
+                (hash
+                  key="edit-user"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
                 )
-                onSelect=(fn this.impersonateUser cell.row)
-                hidden=(or (not this.isSuperAdmin) (eq cell.row.role "super_admin"))
-              )
-            }}
-          />
+                (hash
+                  key="remove-user"
+                  label="Remove"
+                  icon="user-minus"
+                  variant="danger"
+                  onSelect=(fn this.openRemove cell.row)
+                  hidden=(not (and cell.row.companyId cell.row.isActive))
+                )
+                (hash
+                  key="reactivate-user"
+                  label="Reactivate"
+                  icon="user-plus"
+                  loading=(eq this.reactivatingUserId cell.row.id)
+                  disabled=this.isReactivating
+                  onSelect=(fn this.openReactivate cell.row)
+                  hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+                )
+                (hash
+                  key="delete-user"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openRemove cell.row)
+                  hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+                )
+                (hash
+                  key="impersonate-user"
+                  label="Impersonate"
+                  icon="user-switch"
+                  loading=(eq this.impersonatingUserId cell.row.id)
+                  disabled=(or
+                    (eq cell.row.isActive false)
+                    this.isImpersonating
+                    (eq this.impersonatingUserId cell.row.id)
+                  )
+                  onSelect=(fn this.impersonateUser cell.row)
+                  hidden=(or (not this.isSuperAdmin) (eq cell.row.role "super_admin"))
+                )
+              }}
+            />
+          </div>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}

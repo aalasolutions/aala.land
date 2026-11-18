@@ -58,29 +58,37 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId="properties-localities"
+        class="table-stacked"
         data-test-localities-table
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "name" "id"}}
+        />
         {{#if (eq cell.key "name")}}
           <span>{{cell.value}}</span>
         {{else if (eq cell.key "cityName")}}
           <span class="text-muted">{{cell.value}}</span>
         {{else if (eq cell.key "id")}}
-          <RowActions
-            @label={{cell.row.name}}
-            @actions={{array
-              (hash
-                key="view-locality"
-                label="View"
-                icon="eye"
-                variant="brand"
-                route="properties.detail"
-                models=(array cell.value)
-              )
-            }}
-          />
+          <div class="table-stacked__actions">
+            <RowActions
+              @label={{cell.row.name}}
+              @actions={{array
+                (hash
+                  key="view-locality"
+                  label="View"
+                  icon="eye"
+                  variant="brand"
+                  route="properties.detail"
+                  models=(array cell.value)
+                )
+              }}
+            />
+          </div>
         {{else}}
-          {{cell.value}}
+          {{#if (has-value cell.value)}}<span>{{cell.value}}</span>{{/if}}
         {{/if}}
       </Woven::DataTable>
     {{else}}
