@@ -59,7 +59,6 @@ module('Integration | Component | shell nav', function (hooks) {
       .exists();
     assert.dom('details.wu-sidebar-group > .wu-sidebar-list').exists();
     assert.dom('details.wu-sidebar-group').doesNotHaveAttribute('open');
-    assert.dom('.app-shell__flyout-title').hasText('People');
 
     await click('[data-test-nav-group-toggle="crm"]');
 

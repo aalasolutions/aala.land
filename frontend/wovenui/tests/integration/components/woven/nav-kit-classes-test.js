@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
-import { click, render } from '@ember/test-helpers';
+import { click, render, settled, triggerEvent } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 module(
@@ -99,27 +99,53 @@ module(
       assert.dom('[data-test-wu-sidebar-backdrop]').doesNotExist();
     });
 
-    test('a dismissible sidebar is off-canvas with a backdrop that reports dismiss', async function (assert) {
-      this.open = false;
-      this.dismissed = 0;
-      this.onDismiss = () => (this.dismissed += 1);
-      await render(hbs`
-      <Woven::Sidebar @dismissible={{true}} @open={{this.open}} @onDismiss={{this.onDismiss}} />
-    `);
+    test('a dismissible sidebar stays inline above md', async function (assert) {
+      await render(hbs`<Woven::Sidebar @dismissible={{true}} @open={{true}} />`);
 
-      assert
-        .dom('[data-test-wu-sidebar]')
-        .hasAttribute('data-wu-offcanvas', 'true');
-      assert.dom('[data-test-wu-sidebar]').doesNotHaveAttribute('data-wu-open');
-      assert.dom('[data-test-wu-sidebar-backdrop]').hasAttribute('hidden');
+      assert.dom('[data-test-wu-sidebar-drawer]').doesNotExist();
+      assert.dom('nav[data-test-wu-sidebar]').exists();
+    });
 
-      this.set('open', true);
-      assert.dom('[data-test-wu-sidebar]').hasAttribute('data-wu-open', 'true');
-      assert
-        .dom('[data-test-wu-sidebar-backdrop]')
-        .doesNotHaveAttribute('hidden');
-      await click('[data-test-wu-sidebar-backdrop]');
-      assert.strictEqual(this.dismissed, 1);
+    test('a dismissible sidebar below md is a drawer dialog that reports dismiss on Esc', async function (assert) {
+      const original = window.matchMedia;
+      window.matchMedia = (query) => ({
+        matches: true,
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+      });
+      try {
+        this.open = false;
+        this.dismissed = 0;
+        this.onDismiss = () => (this.dismissed += 1);
+        await render(hbs`
+        <Woven::Sidebar @dismissible={{true}} @open={{this.open}} @onDismiss={{this.onDismiss}} />
+      `);
+
+        assert
+          .dom('dialog[data-test-wu-sidebar-drawer]')
+          .hasClass('wu-drawer')
+          .hasClass('inline-start')
+          .doesNotHaveAttribute('open');
+        assert
+          .dom('[data-test-wu-sidebar-drawer] > nav[data-test-wu-sidebar]')
+          .exists();
+
+        this.set('open', true);
+        await settled();
+        assert.dom('[data-test-wu-sidebar-drawer]').hasAttribute('open');
+
+        await triggerEvent('[data-test-wu-sidebar-drawer]', 'cancel');
+        assert.strictEqual(this.dismissed, 1);
+
+        this.set('open', false);
+        await settled();
+        assert
+          .dom('[data-test-wu-sidebar-drawer]')
+          .doesNotHaveAttribute('open');
+      } finally {
+        window.matchMedia = original;
+      }
     });
 
     test('sidebar link marks the active row with aria-current', async function (assert) {

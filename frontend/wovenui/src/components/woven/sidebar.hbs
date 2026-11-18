@@ -1,40 +1,62 @@
-{{! @dismissible makes it an off-canvas drawer below md with a backdrop. }}
-<nav
-  class={{this.classes}}
-  aria-label={{if @label @label "Main"}}
-  data-wu-offcanvas={{if @dismissible "true"}}
-  data-wu-open={{if @open "true"}}
-  data-test-wu-sidebar
-  ...attributes
->
-  {{#if (has-block "brand")}}
-    <div class="wu-sidebar-header">{{yield to="brand"}}</div>
-  {{else if @brandTitle}}
-    <div class="wu-sidebar-header">
-      <span class="flex col">
-        <span class="wu-title sm">{{@brandTitle}}</span>
-        {{#if @brandSubtitle}}
-          <span class="text-sm text-muted">{{@brandSubtitle}}</span>
-        {{/if}}
-      </span>
-    </div>
-  {{/if}}
+{{! @dismissible renders the sidebar in a wu-drawer dialog below md: focus trap, Esc and backdrop close. }}
+{{#if this.asDrawer}}
+  <dialog
+    class="wu-drawer inline-start sm animated"
+    aria-label={{if @label @label "Main"}}
+    data-test-wu-sidebar-drawer
+    {{dialog (if @open true false) onClose=this.dismiss}}
+  >
+    <nav
+      class={{this.classes}}
+      aria-label={{if @label @label "Main"}}
+      data-test-wu-sidebar
+      ...attributes
+    >
+      {{#if (has-block "brand")}}
+        <div class="wu-sidebar-header">{{yield to="brand"}}</div>
+      {{else if @brandTitle}}
+        <div class="wu-sidebar-header">
+          <span class="flex col">
+            <span class="wu-title sm">{{@brandTitle}}</span>
+            {{#if @brandSubtitle}}
+              <span class="text-sm text-muted">{{@brandSubtitle}}</span>
+            {{/if}}
+          </span>
+        </div>
+      {{/if}}
 
-  {{yield}}
+      {{yield}}
 
-  {{#if (has-block "footer")}}
-    <div class="wu-sidebar-footer">{{yield to="footer"}}</div>
-  {{/if}}
-</nav>
+      {{#if (has-block "footer")}}
+        <div class="wu-sidebar-footer">{{yield to="footer"}}</div>
+      {{/if}}
+    </nav>
+    <div class="wu-layer"></div>
+  </dialog>
+{{else}}
+  <nav
+    class={{this.classes}}
+    aria-label={{if @label @label "Main"}}
+    data-test-wu-sidebar
+    ...attributes
+  >
+    {{#if (has-block "brand")}}
+      <div class="wu-sidebar-header">{{yield to="brand"}}</div>
+    {{else if @brandTitle}}
+      <div class="wu-sidebar-header">
+        <span class="flex col">
+          <span class="wu-title sm">{{@brandTitle}}</span>
+          {{#if @brandSubtitle}}
+            <span class="text-sm text-muted">{{@brandSubtitle}}</span>
+          {{/if}}
+        </span>
+      </div>
+    {{/if}}
 
-{{#if @dismissible}}
-  <button
-    type="button"
-    class="wu-sidebar-backdrop"
-    tabindex="-1"
-    aria-label="Close navigation"
-    hidden={{unless @open true}}
-    data-test-wu-sidebar-backdrop
-    {{on "click" this.dismiss}}
-  ></button>
+    {{yield}}
+
+    {{#if (has-block "footer")}}
+      <div class="wu-sidebar-footer">{{yield to="footer"}}</div>
+    {{/if}}
+  </nav>
 {{/if}}

@@ -108,15 +108,15 @@ export default class WovenShellController extends Controller {
     { name: '@collapsed', type: 'boolean', default: 'false', description: 'Kit collapsed modifier: an icon rail; labels show as tooltips.' },
     { name: '@pinned', type: 'boolean', default: 'false', description: 'Kit pinned modifier: sticks beside scrolling content and scrolls on its own.' },
     { name: '@animated', type: 'boolean', default: 'false', description: 'Kit animated modifier: animates the width and the chevron when motion is allowed.' },
-    { name: '@open', type: 'boolean', default: 'false', description: 'With dismissible, below md: slides the sidebar in and shows the backdrop.' },
-    { name: '@dismissible', type: 'boolean', default: 'false', description: 'Off-canvas below md, with a backdrop that calls @onDismiss when clicked.' },
+    { name: '@open', type: 'boolean', default: 'false', description: 'With dismissible, below md: opens the drawer dialog.' },
+    { name: '@dismissible', type: 'boolean', default: 'false', description: 'Below md the sidebar renders in a wu-drawer dialog; Esc and a backdrop click call @onDismiss.' },
     { name: '@label', type: 'string', default: '"Main"', description: 'aria-label of the nav.' },
     { name: '@brandTitle', type: 'string', default: '', description: 'Header title when no brand block is given.' },
     { name: '@brandSubtitle', type: 'string', default: '', description: 'Second header line.' },
   ];
 
   sidebarCallbackRows = [
-    { name: '@onDismiss', signature: '()', description: 'Backdrop clicked while open.' },
+    { name: '@onDismiss', signature: '()', description: 'Esc pressed or backdrop clicked while the drawer is open.' },
   ];
 
   sidebarBlockRows = [

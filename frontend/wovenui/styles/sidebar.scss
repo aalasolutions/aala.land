@@ -1,44 +1,5 @@
-// Woven::Sidebar parts the kit lacks; [hidden] is restated because the kit list display beats the browser rule.
-@use "@wovenui/core/mixins" as woven;
-
+// [hidden] is restated because the kit list display beats the browser rule.
 .wu-sidebar-list[hidden] {
   display: none;
 }
 
-@include woven.media-down(md) {
-  // Closed: slid out and hidden, so its links leave the tab order; visibility flips after the slide.
-  .wu-sidebar[data-wu-offcanvas] {
-    position: fixed;
-    inset-block: 0;
-    inset-inline-start: 0;
-    z-index: calc(#{woven.token(z-sticky)} + 1);
-    max-block-size: none;
-    translate: -100% 0;
-    visibility: hidden;
-    transition:
-      translate woven.token(duration-200) woven.token(ease-out),
-      visibility 0s linear woven.token(duration-200);
-
-    &:dir(rtl) {
-      translate: 100% 0;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      transition: none;
-    }
-  }
-
-  .wu-sidebar[data-wu-offcanvas][data-wu-open] {
-    translate: none;
-    visibility: visible;
-    transition-delay: 0s;
-  }
-}
-
-.wu-sidebar-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: woven.token(z-sticky);
-  border: 0;
-  background: color-mix(in srgb, #{woven.token(black)} 45%, transparent);
-}

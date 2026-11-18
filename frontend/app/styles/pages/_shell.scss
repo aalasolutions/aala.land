@@ -124,10 +124,12 @@ $shell-background-image: radial-gradient(
   --app-rail-text: color-mix(in srgb, var(--wu-text-inverted) 72%, transparent);
   --app-rail-disabled: color-mix(in srgb, var(--wu-text-inverted) 40%, transparent);
   --app-rail-hover: color-mix(in srgb, var(--wu-text-inverted) 10%, transparent);
+  --app-rail-group: color-mix(in srgb, var(--wu-text-inverted) 6%, transparent);
 }
 
-// Sticky makes the rail a stacking context; lifted so its flyouts paint above the content area.
-.app-shell > .wu-sidebar {
+// Sticky makes the rail a stacking context; lifted so its tooltips paint above the content area.
+// Descendant, not child: below md the sidebar sits inside the drawer dialog.
+.app-shell .wu-sidebar {
   z-index: calc(var(--wu-z-sticky) + 1);
   block-size: 100dvh;
   border-inline-end: 0;
@@ -144,6 +146,11 @@ $shell-background-image: radial-gradient(
 
   .wu-sidebar-group:has([aria-current="page"]) > .wu-sidebar-toggle {
     color: var(--wu-text-inverted);
+  }
+
+  // The fill marks the current item; the kit side bar is dropped.
+  .wu-sidebar-link[aria-current="page"]::before {
+    content: none;
   }
 
   // No kit disabled state for a sidebar link. No pointer-events:none: the tooltip must still fire.
@@ -175,11 +182,6 @@ $shell-background-image: radial-gradient(
       color: var(--wu-text-inverted);
     }
   }
-}
-
-// Only shown as the heading of a collapsed-rail flyout.
-.app-shell__flyout-title {
-  display: none;
 }
 
 .wu-sidebar.collapsed {
@@ -216,66 +218,64 @@ $shell-background-image: radial-gradient(
     line-height: 0.875rem;
   }
 
-  // No kit counterpart: a closed group opens its links as a flyout beside the rail on hover or focus.
-  .wu-sidebar-group {
-    position: relative;
+  // Square items so the open group's round items are true circles.
+  :is(.wu-sidebar-link, .wu-sidebar-toggle) {
+    inline-size: var(--wu-control-height-sm);
+    block-size: var(--wu-control-height-sm);
+    margin-inline: auto;
+    padding-inline: 0;
+    justify-content: center;
   }
 
-  // The flyout names the group, so the kit label tooltip stays clipped on its toggle.
-  .wu-sidebar-group:not([open]) > .wu-sidebar-toggle > .wu-sidebar-label {
-    clip-path: inset(50%);
-  }
-
-  // A closed details skips rendering its content; the flyout shows it without opening the group.
-  .wu-sidebar-group:not([open]):is(:hover, :focus-within)::details-content {
-    content-visibility: visible;
-  }
-
-  .wu-sidebar-group:not([open]):is(:hover, :focus-within) > .wu-sidebar-list {
-    display: flex;
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 100%;
-    z-index: wu-z(dropdown);
-    min-inline-size: 11rem;
-    padding: wu-space(2);
-    border: 1px solid var(--wu-border-regular);
-    border-radius: wu-radius(md);
-    background: var(--wu-bg-raised);
-    box-shadow: wu-shadow(lg);
-
-    .app-shell__flyout-title {
-      display: block;
-      padding-inline: wu-space(3);
-      padding-block-end: wu-space(1);
-      color: var(--wu-text-muted);
-      font-size: wu-font-size(xs);
-      font-weight: wu-font-weight(semibold);
+  // One fill anchored to the current link glides between items; unsupported browsers keep the static fill.
+  @supports (anchor-name: --a) {
+    .wu-sidebar-link[aria-current="page"] {
+      anchor-name: --app-rail-current;
+      background: transparent;
     }
 
-    .wu-sidebar-link {
-      color: var(--wu-text-muted);
+    &:has(.wu-sidebar-link[aria-current="page"])::before {
+      content: "";
+      position: absolute;
+      position-anchor: --app-rail-current;
+      inset-block-start: anchor(start);
+      inset-inline-start: anchor(start);
+      inline-size: anchor-size(inline);
+      block-size: anchor-size(block);
+      border-radius: wu-radius(sm);
+      background: var(--wu-bg-selected);
 
-      &:hover {
-        background: var(--wu-bg-hover);
-        color: var(--wu-text-regular);
+      @media (prefers-reduced-motion: no-preference) {
+        transition-property: inset-block-start, inset-inline-start, border-radius;
+        transition-duration: var(--wu-duration-500);
+        transition-timing-function: var(--wu-kit-ease-spring);
       }
     }
 
-    // The rail hides labels as tooltips; in the flyout they are plain row text.
-    .wu-sidebar-label {
-      position: static;
-      width: auto;
-      height: auto;
-      margin: 0;
-      padding: 0;
-      overflow: visible;
-      background: none;
-      box-shadow: none;
-      color: inherit;
-      font-weight: inherit;
-      clip-path: none;
-      translate: none;
+    // A percentage, not the full-radius token, so the corner change interpolates.
+    &:has(.wu-sidebar-group[open] .wu-sidebar-link[aria-current="page"])::before {
+      border-radius: 50%;
+    }
+  }
+
+  // The kit animated group clips its content, which would clip the rail label tooltips of its links.
+  .wu-sidebar-group[open]::details-content {
+    overflow: visible;
+  }
+
+  // An open group reads as one capsule: parent icon on top, its links below.
+  .wu-sidebar-group[open] {
+    padding-block: calc((100% - var(--wu-control-height-sm)) / 2);
+    border-radius: wu-radius(full);
+    background: var(--app-rail-group);
+
+    :is(.wu-sidebar-toggle, .wu-sidebar-link) {
+      border-radius: wu-radius(full);
+    }
+
+    // The toggle is not a destination; a constant hover tint marks the group as already selected.
+    > .wu-sidebar-toggle {
+      background: var(--app-rail-hover);
     }
   }
 }
@@ -411,10 +411,13 @@ $shell-background-image: radial-gradient(
   font-weight: wu-font-weight(medium);
 }
 
-// As a drawer it slides over light content, so it carries the shell surface above the scrim.
-@include media-down(md) {
-  .app-shell > .wu-sidebar {
-    background-color: $shell-background-color;
-    background-image: $shell-background-image;
+// The drawer slides over light content, so it carries the shell surface above the scrim.
+.app-shell > .wu-drawer {
+  border-inline-end: 0;
+  background-color: $shell-background-color;
+  background-image: $shell-background-image;
+
+  .wu-sidebar {
+    inline-size: 100%;
   }
 }

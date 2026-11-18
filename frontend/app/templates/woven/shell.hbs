@@ -7,7 +7,7 @@
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
       The frame around this documentation is the live example: a pinned
-      sidebar that collapses to an icon rail and slides in on small screens,
+      sidebar that collapses to an icon rail and opens as a drawer on small screens,
       and a pinned topbar with a hamburger toggle, brand, actions and user
       block. Both render the CSS kit markup (wu-sidebar, wu-topbar); the
       buttons below drive the real sidebar on the left.
@@ -17,7 +17,7 @@
   <WovenDocs::Section @title="Features" @id="features">
     <ul class="wu-list sm" role="list">
       <li class="wu-list-item"><span>Collapsed icon rail: each wu-sidebar-label shows as a tooltip on hover or focus.</span></li>
-      <li class="wu-list-item"><span>Mobile open state with a dismiss backdrop.</span></li>
+      <li class="wu-list-item"><span>Mobile drawer dialog: focus trap, Esc and backdrop close.</span></li>
       <li class="wu-list-item"><span>Sections with headings, link lists and nested group lists; router links and button links share wu-sidebar-link.</span></li>
       <li class="wu-list-item"><span>Topbar with toggle, brand, search, end group and user slots.</span></li>
     </ul>
@@ -44,8 +44,8 @@
     </WovenDocs::Example>
 
     <WovenDocs::Example
-      @title="Mobile open with backdrop"
-      @note="With dismissible, below the md breakpoint the sidebar is off-canvas; open slides it in, the backdrop calls onDismiss, and the topbar's hamburger toggles it. Narrow the window, then press this."
+      @title="Mobile drawer"
+      @note="With dismissible, below the md breakpoint the sidebar renders in a wu-drawer dialog; open shows it, Esc and the backdrop call onDismiss, and the topbar's hamburger toggles it. Narrow the window, then press this."
       @layout="block"
       @code={{this.code.mobile}}
     >
@@ -204,7 +204,7 @@
 
   <WovenDocs::Section @title="RTL" @id="rtl">
     <ul class="wu-list sm" role="list">
-      <li class="wu-list-item"><span>The sidebar is a flex sibling at the inline start, so the whole shell mirrors under dir="rtl". The mobile slide animates inset-inline-start.</span></li>
+      <li class="wu-list-item"><span>The sidebar is a flex sibling at the inline start, so the whole shell mirrors under dir="rtl". The mobile drawer docks to the inline start.</span></li>
       <li class="wu-list-item"><span>Rail tooltips and the group chevron are inline-logical and mirror under dir="rtl".</span></li>
     </ul>
   </WovenDocs::Section>
