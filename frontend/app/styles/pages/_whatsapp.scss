@@ -5,6 +5,7 @@
 // No WovenUI size token covers these.
 $wa-sidebar-width: clamp(22.5rem, 35%, 26.25rem);
 $wa-message-max-width: 70%;
+$wa-message-max-width-phone: 85%;
 $wa-media-width: 18rem;
 $wa-sticker-size: 8rem;
 $wa-media-play-size: 3rem;
@@ -41,6 +42,10 @@ $wa-tray-max-height: 16rem;
   flex-shrink: 0;
   padding: wu-space(4) wu-space(6);
   border-block-end: 1px solid var(--wu-border-regular);
+
+  @include media-down(md) {
+    padding-inline: wu-space(4);
+  }
 }
 
 // A strip, not a sidebar card: must read on a page with no connection and no chats.
@@ -52,6 +57,10 @@ $wa-tray-max-height: 16rem;
   padding: wu-space(2) wu-space(6);
   background: var(--wu-bg-surface);
   border-block-end: 1px solid var(--wu-border-regular);
+
+  @include media-down(md) {
+    padding-inline: wu-space(4);
+  }
 }
 
 .wa-connection__text {
@@ -93,6 +102,19 @@ $wa-tray-max-height: 16rem;
   flex-shrink: 0;
   background: var(--wu-bg-surface);
   border-inline-end: 1px solid var(--wu-border-regular);
+
+  @include media-down(lg) {
+    inline-size: 100%;
+    border-inline-end: 0;
+  }
+}
+
+// Below lg the content area is too narrow for two panes, so one shows at a time.
+@include media-down(lg) {
+  .wa-page.is-chat-open .wa-sidebar,
+  .wa-page:not(.is-chat-open) .wa-chat-area {
+    display: none;
+  }
 }
 
 .wa-sidebar-header {
@@ -273,6 +295,11 @@ $wa-tray-max-height: 16rem;
   padding: wu-space(2) wu-space(4);
   background: var(--wa-bar-bg);
   border-block-end: 1px solid var(--wu-border-regular);
+
+  @include media-down(lg) {
+    gap: wu-space(2);
+    padding-inline-start: wu-space(2);
+  }
 }
 
 .wa-chat-header-text {
@@ -365,6 +392,10 @@ $wa-tray-max-height: 16rem;
   border-radius: wu-radius(lg);
   background: var(--wa-fill);
   box-shadow: wu-shadow(sm);
+
+  @include media-down(md) {
+    max-inline-size: $wa-message-max-width-phone;
+  }
 
   // Tail: a triangle off the square top corner, drawn only at the start of a run.
   &::before {

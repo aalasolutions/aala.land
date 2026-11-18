@@ -104,6 +104,9 @@ export default class WhatsappController extends Controller {
 
 
   @tracked currentChatId = null;
+  // Below md the page shows one pane: the chat list, or the open chat.
+  @tracked showsChatList = false;
+  _listAnchor = null;
   // chatId to thread state; replaced on write.
   @tracked threads = new Map();
   // Divider position for this visit; not moved live.
@@ -413,6 +416,8 @@ export default class WhatsappController extends Controller {
     this.waAttachments.onSent = null;
     this.retryingUuids = new Set();
     this.currentChatId = null;
+    this.showsChatList = false;
+    this._listAnchor = null;
     this.whatsapp.activeChatId = null;
     this.unreadMarkerId = null;
     this.threads = new Map();
@@ -956,8 +961,36 @@ export default class WhatsappController extends Controller {
   }
 
   @action
+  backToChatList() {
+    const el = this._threadElement();
+    const thread = this.currentThread;
+    this._listAnchor =
+      el && thread
+        ? { atBottom: this._isAtBottom(thread), row: this._readingAnchor(el) }
+        : null;
+    this.showsChatList = true;
+  }
+
+  // A hidden pane loses its scroll offset, so reopening restores it.
+  _restoreListAnchor(chatId) {
+    const anchor = this._listAnchor;
+    this._listAnchor = null;
+    if (anchor?.row && !anchor.atBottom) {
+      this._scrollToRow(chatId, anchor.row.id, anchor.row.offset);
+    } else {
+      this._scrollToBottom(chatId);
+    }
+  }
+
+  @action
   selectChat(chatId) {
-    if (chatId === this.currentChatId && this.threads.has(chatId)) return;
+    const reopening = this.showsChatList && chatId === this.currentChatId;
+    this.showsChatList = false;
+    if (chatId === this.currentChatId && this.threads.has(chatId)) {
+      if (reopening) this._restoreListAnchor(chatId);
+      return;
+    }
+    this._listAnchor = null;
     this.whatsapp.saveLastChat({
       chatId,
       anchorMessageId: null,
