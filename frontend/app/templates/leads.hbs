@@ -317,7 +317,7 @@
               }}
             />
           </div>
-        {{else if cell.value}}
+        {{else if (has-value cell.value)}}
           <span>{{cell.value}}</span>
         {{/if}}
       </Woven::DataTable>

@@ -138,7 +138,7 @@
           <span class="text-sm text-muted" data-test-document-uploader>
             {{#if (eq cell.row.uploadedBy this.currentUserId)}}
               ME
-            {{else if cell.value}}
+            {{else if (has-value cell.value)}}
               {{cell.value}}
             {{else}}
               <span data-empty>-</span>
