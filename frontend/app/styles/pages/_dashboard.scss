@@ -16,6 +16,8 @@ $dashboard-bar-size: 10px;
 .kpi-layout {
   display: grid;
   grid-template-columns: 2fr 1fr;
+  // The revenue card takes any extra height of the status rail, so the action cards keep their own.
+  grid-template-rows: auto 1fr;
   grid-template-areas:
     "action status"
     "outcome status";
@@ -23,6 +25,7 @@ $dashboard-bar-size: 10px;
 
   @include media-down(lg) {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
     grid-template-areas:
       "action"
       "outcome"
