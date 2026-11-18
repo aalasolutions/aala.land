@@ -37,7 +37,7 @@
 .audit-entity-id {
   font-size: wu-font-size(xs);
   color: var(--wu-text-muted);
-  font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-family: var(--wu-font-family-mono);
 }
 
 .audit-user {

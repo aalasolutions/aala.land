@@ -3,7 +3,7 @@
 @use "./mixins/var" as *;
 @use "./common/var" as *;
 
-$wu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+$wu-code-font-stack: var(--wu-font-family-mono);
 
 // Inline code span
 @include b(code) {
