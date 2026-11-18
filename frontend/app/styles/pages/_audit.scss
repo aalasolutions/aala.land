@@ -1,6 +1,7 @@
 // Bespoke expandable log list; Accordion couldn't carry this markup, so it's hand-rolled.
 @use "@wovenui/ember/styles/mixins/var" as *;
 @use "@wovenui/ember/styles/common/var" as *;
+@use "@wovenui/ember/styles/mixins/bem" as *;
 
 .audit-list {
   display: flex;
@@ -22,6 +23,10 @@
   padding: wu-space(4);
   cursor: pointer;
   transition: background wu-duration(fast);
+
+  @include media-down(sm) {
+    flex-wrap: wrap;
+  }
 
   &:hover {
     background: var(--wu-bg-alternate);

@@ -100,9 +100,8 @@
   display: none;
 
   @include media-down(md) {
-    display: flex;
+    display: block;
   }
-
 }
 
 .wo-story__issue {

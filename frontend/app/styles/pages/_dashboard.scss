@@ -71,7 +71,7 @@ $dashboard-bar-size: 10px;
   grid-template-columns: 1fr 1fr;
   gap: wu-space(4);
 
-  @include media-down(md) {
+  @include media-down(lg) {
     grid-template-columns: 1fr;
   }
 }

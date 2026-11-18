@@ -12,8 +12,12 @@
   grid-template-columns: repeat(6, 1fr);
   gap: #{wu-space(3)};
 
-  @include media-down(md) {
+  @include media-between(md, lg) {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  @include media-down(md) {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

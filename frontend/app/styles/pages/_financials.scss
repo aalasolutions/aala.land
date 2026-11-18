@@ -19,6 +19,7 @@ $cashflow-chart-height: 260px;
 .finance-filters__range {
   display: flex;
   flex-wrap: wrap;
+  max-inline-size: 100%;
   gap: wu-space(2);
   align-items: center;
 }
