@@ -293,6 +293,39 @@ $shell-background-image: radial-gradient(
   background: var(--wu-bg-base);
   border-start-start-radius: wu-radius(lg);
   box-shadow: 0 0 50px 10px wu-scrim(35%);
+
+  @include media-down(md) {
+    padding: wu-space(4);
+  }
+}
+
+// The topbar clips overflow, so a long region name would push the end actions out of view.
+.wu-topbar-end .region-name {
+  @include media-down(sm) {
+    max-inline-size: 4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// Phone drawers and their field rows use the whole width instead of the kit side inset.
+@include media-down(sm) {
+  .wu-drawer:not(.bottom) {
+    --wu-drawer--Width: 100%;
+
+    max-inline-size: 100%;
+  }
+
+  .wu-drawer :is(.wu-form, .flex.col) > .flex:not(.col):has(> .wu-field, > .grow) {
+    --wu-field-row--MinWidth: auto;
+
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wu-drawer .wu-filter-row {
+    --wu-filter-row--MinColumnWidth: 100%;
+  }
 }
 
 // Holds the count badge and currency tag, and carries the auto margin.
@@ -318,6 +351,10 @@ $shell-background-image: radial-gradient(
   inline-size: 22rem;
   max-inline-size: 100%;
 
+  @include media-down(sm) {
+    inline-size: auto;
+  }
+
   .wu-dropdown-item {
     align-items: flex-start;
     padding-block: wu-space(2);
@@ -328,6 +365,16 @@ $shell-background-image: radial-gradient(
     &.unread {
       border-inline-start-color: var(--wu-brand);
     }
+  }
+}
+
+// Phones: the notifications menu spans the viewport within the anchor edge inset and shows more rows.
+@include media-down(sm) {
+  .wu-layer > .wu-dropdown:has(> .app-shell__notifications) {
+    --wu-dropdown--MaxHeight: 70dvh;
+
+    inline-size: calc(100vw - #{wu-space(4)});
+    max-inline-size: calc(100vw - #{wu-space(4)});
   }
 }
 

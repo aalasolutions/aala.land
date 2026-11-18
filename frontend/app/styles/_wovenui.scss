@@ -60,3 +60,175 @@
 
   $generate-utility-classes: true
 );
+
+@use "@wovenui/ember/styles/mixins/bem" as *;
+
+// Phones: the small control steps up to the default height so small buttons stay 40px tap targets.
+@include media-down(sm) {
+  :root {
+    --wu-control-height-sm: var(--wu-control-height-md);
+  }
+
+  .wu-tag:is(a[href], button) {
+    min-block-size: var(--wu-control-height-md);
+  }
+
+  // The label row grows to hold a 40px hit area centered on the unchanged help circle.
+  .wu-field-label-row:has(> .wu-field-help) {
+    min-block-size: var(--wu-control-height-md);
+  }
+
+  .wu-field-help::after {
+    inset: 50% auto auto 50%;
+    inline-size: var(--wu-control-height-md);
+    block-size: var(--wu-control-height-md);
+    translate: -50% -50%;
+  }
+}
+
+// Segments never widen the page; extra segments scroll inside the control.
+.wu-segmented {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+// While overflowing, the inset becomes border so text clips inside the pill, and the equal-width thumb yields to per-segment selection.
+@supports (animation-timeline: scroll()) {
+  .wu-segmented {
+    animation: segmented-overflow linear both;
+    animation-timeline: scroll(self inline);
+
+    &::before {
+      animation: segmented-overflow-thumb linear both;
+      animation-timeline: scroll(nearest inline);
+    }
+  }
+
+  .wu-segmented-item:has(:checked) {
+    animation: segmented-overflow-checked linear both;
+    animation-timeline: scroll(nearest inline);
+  }
+}
+
+@keyframes segmented-overflow {
+  from,
+  to {
+    padding: 0;
+    border-width: calc(var(--wu-border-width-1) + var(--wu-space-1));
+    border-color: var(--wu-bg-alternate);
+    outline: var(--wu-border-width-1) solid var(--wu-border-strong);
+    outline-offset: calc(-1 * var(--wu-border-width-1));
+  }
+}
+
+@keyframes segmented-overflow-thumb {
+  from,
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes segmented-overflow-checked {
+  from,
+  to {
+    background: var(--wu-bg-selected);
+    box-shadow: inset 0 0 0 var(--wu-border-width-1) var(--wu-brand);
+  }
+}
+
+// Long money strings wrap inside narrow cards, and values drop one type step below md.
+.wu-stat-value {
+  overflow-wrap: anywhere;
+
+  @include media-down(md) {
+    font-size: var(--wu-font-size-2xl);
+  }
+}
+
+@include media-down(md) {
+  :where(.wu-stat.sm) .wu-stat-value {
+    font-size: var(--wu-font-size-lg);
+  }
+
+  :where(.wu-stat.lg) .wu-stat-value {
+    font-size: var(--wu-font-size-3xl);
+  }
+}
+
+@include media-down(sm) {
+  // Phones: page buttons take their own centered row above the total and page size.
+  nav.wu-pagination {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .wu-pagination-list {
+    order: -1;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+
+  // Phones: nine page buttons (prev, seven pages, next) fit one row in a 358px list.
+  .wu-pagination .wu-pagination-list :is(.wu-btn, .wu-pagination-ellipsis) {
+    min-inline-size: var(--wu-space-8);
+    padding-inline: var(--wu-space-1);
+  }
+}
+
+// Phones and tablets: an overflowing segmented control fades its content at the edge with more segments, inside the pill band.
+@property --app-segmented-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --app-segmented-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@supports (animation-timeline: scroll()) {
+  @include media-down(lg) {
+    .wu-segmented {
+      --app-segmented-fade-direction: to right;
+
+      mask-image:
+        linear-gradient(var(--app-segmented-fade-direction), transparent, #000 var(--app-segmented-fade-start), #000 calc(100% - var(--app-segmented-fade-end)), transparent),
+        linear-gradient(#000, #000),
+        linear-gradient(#000, #000);
+      mask-clip: content-box, content-box, border-box;
+      mask-origin: content-box, content-box, border-box;
+      mask-composite: add, exclude;
+      animation:
+        segmented-overflow linear both,
+        segmented-fade linear both;
+      animation-timeline: scroll(self inline);
+
+      &:dir(rtl) {
+        --app-segmented-fade-direction: to left;
+      }
+    }
+  }
+}
+
+@keyframes segmented-fade {
+  0% {
+    --app-segmented-fade-start: 0px;
+    --app-segmented-fade-end: var(--wu-space-6);
+  }
+
+  8% {
+    --app-segmented-fade-start: var(--wu-space-6);
+  }
+
+  92% {
+    --app-segmented-fade-end: var(--wu-space-6);
+  }
+
+  100% {
+    --app-segmented-fade-start: var(--wu-space-6);
+    --app-segmented-fade-end: 0px;
+  }
+}
