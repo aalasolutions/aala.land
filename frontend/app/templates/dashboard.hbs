@@ -119,17 +119,20 @@
           {{/if}}
         </div>
 
-        <LinkTo
-          @route="leads"
-          class="dashboard-panel-strip"
-          data-test-unassigned-leads
-        >
+        <div class="dashboard-panel-strip">
           <span class="dashboard-strip-label">
             <strong>{{format-number this.unassignedOpen}}</strong>
             unassigned
           </span>
-          <span class="dashboard-strip-action">Assign</span>
-        </LinkTo>
+          <Woven::Button
+            @variant="subtle"
+            @size="xs"
+            @route="leads"
+            @text="Assign"
+            aria-label="Assign {{format-number this.unassignedOpen}} unassigned leads"
+            data-test-unassigned-leads
+          />
+        </div>
         </div>
       </:body>
     </Woven::Panel>
