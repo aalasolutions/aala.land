@@ -18,6 +18,8 @@
     "text-muted": #64748b,
     "text-subtle": #94a3b8,
     "text-inverted": #ffffff,
+    // Local override until WovenUI ships a no-offset focus ring.
+    "border-focus-offset": 0px,
   ),
 
   $font-family: (

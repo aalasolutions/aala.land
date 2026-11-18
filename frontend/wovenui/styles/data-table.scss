@@ -228,6 +228,11 @@
   overflow: hidden;
 }
 
+// Lets the focus ring of a cell button show.
+.data-table__cell:has(.wu-btn.icon, .wu-dropdown-wrap) {
+  overflow: visible;
+}
+
 // Inline cell editor (double-click). The dropdown menu is hosted on .wu-layer,
 // so the cell overflow never clips it.
 // An empty cell still needs a line-high target for the double-click.
