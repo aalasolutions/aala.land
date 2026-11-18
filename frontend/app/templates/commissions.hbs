@@ -34,9 +34,15 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId="commissions"
+        class="table-stacked"
         data-test-commissions-table
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "agentId" "id"}}
+        />
         {{#if (eq cell.key "agentId")}}
           {{#let (this.agentName cell.value) as |name|}}
             {{#if name}}
@@ -73,56 +79,58 @@
               @currency={{cell.row.currency}}
             /></span>
         {{else if (eq cell.key "commissionRate")}}
-          {{cell.value}}%
+          <span>{{cell.value}}%</span>
         {{else if (eq cell.key "status")}}
           <Woven::Tag
             @variant={{tag-variant "commission" cell.value}}
             @text={{cell.value}}
           />
         {{else if (eq cell.key "id")}}
-          {{#if (eq cell.row.status "PAID")}}
-            <span class="text-xs text-muted">
-              {{#if cell.row.paidAt}}
-                Paid
-                {{format-date cell.row.paidAt zone="region"}}
-              {{else}}
-                Paid
-              {{/if}}
-            </span>
-          {{else}}
-            <RowActions
-              @actions={{array
-                (hash
-                  key="approve-btn"
-                  label="Approve commission"
-                  icon="check"
-                  variant="brand"
-                  onSelect=(fn this.approveCommission cell.row)
-                  hidden=(not (eq cell.row.status "PENDING"))
-                )
-                (hash
-                  key="pay-btn"
-                  label="Mark commission paid"
-                  icon="currency-dollar"
-                  variant="brand"
-                  onSelect=(fn this.payCommission cell.row)
-                  hidden=(not (eq cell.row.status "APPROVED"))
-                )
-                (hash
-                  key="cancel-commission"
-                  label="Cancel commission"
-                  icon="prohibit"
-                  onSelect=(fn this.openCancel cell.row)
-                  hidden=(not (or
-                    (eq cell.row.status "PENDING")
-                    (eq cell.row.status "APPROVED")
-                  ))
-                )
-              }}
-            />
-          {{/if}}
-        {{else}}
-          {{cell.value}}
+          <div class="table-stacked__actions">
+            {{#if (eq cell.row.status "PAID")}}
+              <span class="text-xs text-muted">
+                {{#if cell.row.paidAt}}
+                  Paid
+                  {{format-date cell.row.paidAt zone="region"}}
+                {{else}}
+                  Paid
+                {{/if}}
+              </span>
+            {{else}}
+              <RowActions
+                @actions={{array
+                  (hash
+                    key="approve-btn"
+                    label="Approve commission"
+                    icon="check"
+                    variant="brand"
+                    onSelect=(fn this.approveCommission cell.row)
+                    hidden=(not (eq cell.row.status "PENDING"))
+                  )
+                  (hash
+                    key="pay-btn"
+                    label="Mark commission paid"
+                    icon="currency-dollar"
+                    variant="brand"
+                    onSelect=(fn this.payCommission cell.row)
+                    hidden=(not (eq cell.row.status "APPROVED"))
+                  )
+                  (hash
+                    key="cancel-commission"
+                    label="Cancel commission"
+                    icon="prohibit"
+                    onSelect=(fn this.openCancel cell.row)
+                    hidden=(not (or
+                      (eq cell.row.status "PENDING")
+                      (eq cell.row.status "APPROVED")
+                    ))
+                  )
+                }}
+              />
+            {{/if}}
+          </div>
+        {{else if (has-value cell.value)}}
+          <span>{{cell.value}}</span>
         {{/if}}
       </Woven::DataTable>
     {{else}}

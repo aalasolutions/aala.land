@@ -156,9 +156,15 @@
           @optionsSize="xs"
           @optionsTarget={{this.tableOptionsHost}}
           @tableId="contacts"
+          class="table-stacked"
           data-test-contacts-table
           as |cell|
         >
+          <DataTable::StackedLabel
+            @columns={{this.columns}}
+            @cellKey={{cell.key}}
+            @skip={{array "displayName" "id"}}
+          />
           {{#if (eq cell.key "displayName")}}
             <span class="flex gap-2 x-center">
               <LinkTo
@@ -209,27 +215,29 @@
               </span>
             {{/if}}
           {{else if (eq cell.key "id")}}
-            {{#if (is-limited-contact cell.row)}}
-              <Contact::AccessAction
-                @contact={{cell.row}}
-                @size="xs"
-                @pending={{includes this.requestedContactIds cell.row.id}}
-                @onRequested={{this.markRequested}}
-              />
-            {{else}}
-              <RowActions
-                @label={{contact-name cell.row}}
-                @actions={{array
-                  (hash
-                    key="edit-contact"
-                    label="Edit"
-                    icon="pencil-simple"
-                    onSelect=(fn this.openEdit cell.row)
-                    hidden=(not (can-edit-contact cell.row))
-                  )
-                }}
-              />
-            {{/if}}
+            <div class="table-stacked__actions">
+              {{#if (is-limited-contact cell.row)}}
+                <Contact::AccessAction
+                  @contact={{cell.row}}
+                  @size="xs"
+                  @pending={{includes this.requestedContactIds cell.row.id}}
+                  @onRequested={{this.markRequested}}
+                />
+              {{else}}
+                <RowActions
+                  @label={{contact-name cell.row}}
+                  @actions={{array
+                    (hash
+                      key="edit-contact"
+                      label="Edit"
+                      icon="pencil-simple"
+                      onSelect=(fn this.openEdit cell.row)
+                      hidden=(not (can-edit-contact cell.row))
+                    )
+                  }}
+                />
+              {{/if}}
+            </div>
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}

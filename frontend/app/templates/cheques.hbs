@@ -42,9 +42,15 @@
           @sortable={{true}}
           @showOptions={{true}}
           @tableId="cheques"
+          class="table-stacked"
           data-test-cheques-table
           as |cell|
         >
+          <DataTable::StackedLabel
+            @columns={{this.columns}}
+            @cellKey={{cell.key}}
+            @skip={{array "chequeNumber" "id"}}
+          />
           {{#if (eq cell.key "chequeNumber")}}
             <span data-test-cheque-row>{{cell.value}}</span>
           {{else if (eq cell.key "unit.unitNumber")}}
@@ -61,7 +67,7 @@
                 @currency={{cell.row.currency}}
               /></span>
           {{else if (eq cell.key "dueDate")}}
-            {{format-date cell.value}}
+            <span>{{format-date cell.value}}</span>
           {{else if (eq cell.key "type")}}
             <Woven::Tag
               @variant={{tag-variant "cheque" cell.value}}
@@ -73,110 +79,112 @@
               @text={{cell.value}}
             />
           {{else if (eq cell.key "id")}}
-            <RowActions
-              @label="cheque {{cell.row.chequeNumber}}"
-              @actions={{array
-                (hash
-                  key="edit-cheque"
-                  label="Edit"
-                  icon="pencil-simple"
-                  onSelect=(fn this.openEdit cell.row)
-                  hidden=(not this.canWriteCheques)
-                )
-                (hash
-                  key="deposit-cheque"
-                  label="Deposit"
-                  icon="bank"
-                  onSelect=(fn this.updateStatus cell.row "DEPOSITED")
-                  hidden=(not
-                    (and this.canWriteCheques (eq cell.row.status "PENDING"))
+            <div class="table-stacked__actions">
+              <RowActions
+                @label="cheque {{cell.row.chequeNumber}}"
+                @actions={{array
+                  (hash
+                    key="edit-cheque"
+                    label="Edit"
+                    icon="pencil-simple"
+                    onSelect=(fn this.openEdit cell.row)
+                    hidden=(not this.canWriteCheques)
                   )
-                )
-                (hash
-                  key="clear-cheque"
-                  label="Clear"
-                  icon="check-circle"
-                  onSelect=(fn this.openClear cell.row)
-                  hidden=(not
-                    (and
-                      this.canWriteCheques
-                      (or
-                        (eq cell.row.status "PENDING")
-                        (eq cell.row.status "DEPOSITED")
+                  (hash
+                    key="deposit-cheque"
+                    label="Deposit"
+                    icon="bank"
+                    onSelect=(fn this.updateStatus cell.row "DEPOSITED")
+                    hidden=(not
+                      (and this.canWriteCheques (eq cell.row.status "PENDING"))
+                    )
+                  )
+                  (hash
+                    key="clear-cheque"
+                    label="Clear"
+                    icon="check-circle"
+                    onSelect=(fn this.openClear cell.row)
+                    hidden=(not
+                      (and
+                        this.canWriteCheques
+                        (or
+                          (eq cell.row.status "PENDING")
+                          (eq cell.row.status "DEPOSITED")
+                        )
                       )
                     )
                   )
-                )
-                (hash
-                  key="bounce"
-                  label="Bounce"
-                  icon="x-circle"
-                  variant="danger"
-                  onSelect=(fn this.openBounceModal cell.row)
-                  hidden=(not
-                    (and
-                      this.canWriteCheques
-                      (or
-                        (eq cell.row.status "PENDING")
-                        (eq cell.row.status "DEPOSITED")
+                  (hash
+                    key="bounce"
+                    label="Bounce"
+                    icon="x-circle"
+                    variant="danger"
+                    onSelect=(fn this.openBounceModal cell.row)
+                    hidden=(not
+                      (and
+                        this.canWriteCheques
+                        (or
+                          (eq cell.row.status "PENDING")
+                          (eq cell.row.status "DEPOSITED")
+                        )
                       )
                     )
                   )
-                )
-                (hash
-                  key="replace-cheque"
-                  label="Replace"
-                  icon="arrows-clockwise"
-                  onSelect=(fn this.updateStatus cell.row "REPLACED")
-                  hidden=(not
-                    (and this.canWriteCheques (eq cell.row.status "BOUNCED"))
-                  )
-                )
-                (hash
-                  key="unclear-cheque"
-                  label="Un-clear"
-                  icon="arrow-counter-clockwise"
-                  onSelect=(fn this.openUnclear cell.row)
-                  hidden=(not
-                    (and
-                      this.canWriteCheques
-                      this.canDeleteCheque
-                      (eq cell.row.status "CLEARED")
+                  (hash
+                    key="replace-cheque"
+                    label="Replace"
+                    icon="arrows-clockwise"
+                    onSelect=(fn this.updateStatus cell.row "REPLACED")
+                    hidden=(not
+                      (and this.canWriteCheques (eq cell.row.status "BOUNCED"))
                     )
                   )
-                )
-                (hash
-                  key="cancel-cheque"
-                  label="Cancel cheque"
-                  icon="prohibit"
-                  onSelect=(fn this.openCancel cell.row)
-                  hidden=(not
-                    (and
-                      this.canWriteCheques
-                      (or
-                        (eq cell.row.status "PENDING")
-                        (eq cell.row.status "DEPOSITED")
-                        (eq cell.row.status "BOUNCED")
+                  (hash
+                    key="unclear-cheque"
+                    label="Un-clear"
+                    icon="arrow-counter-clockwise"
+                    onSelect=(fn this.openUnclear cell.row)
+                    hidden=(not
+                      (and
+                        this.canWriteCheques
+                        this.canDeleteCheque
+                        (eq cell.row.status "CLEARED")
                       )
                     )
                   )
-                )
-                (hash
-                  key="delete-cheque"
-                  label="Delete"
-                  icon="trash"
-                  variant="danger"
-                  onSelect=(fn this.openDelete cell.row)
-                  hidden=(not
-                    (and
-                      this.canDeleteCheque (not (eq cell.row.status "CLEARED"))
+                  (hash
+                    key="cancel-cheque"
+                    label="Cancel cheque"
+                    icon="prohibit"
+                    onSelect=(fn this.openCancel cell.row)
+                    hidden=(not
+                      (and
+                        this.canWriteCheques
+                        (or
+                          (eq cell.row.status "PENDING")
+                          (eq cell.row.status "DEPOSITED")
+                          (eq cell.row.status "BOUNCED")
+                        )
+                      )
                     )
                   )
-                )
-              }}
-            />
-          {{else}}
-            {{cell.value}}
+                  (hash
+                    key="delete-cheque"
+                    label="Delete"
+                    icon="trash"
+                    variant="danger"
+                    onSelect=(fn this.openDelete cell.row)
+                    hidden=(not
+                      (and
+                        this.canDeleteCheque (not (eq cell.row.status "CLEARED"))
+                      )
+                    )
+                  )
+                }}
+              />
+            </div>
+          {{else if (has-value cell.value)}}
+            <span>{{cell.value}}</span>
           {{/if}}
         </Woven::DataTable>
       {{else}}

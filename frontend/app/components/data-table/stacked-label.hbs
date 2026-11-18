@@ -1,0 +1,7 @@
+{{#unless (includes @skip @cellKey)}}
+  {{#each @columns as |column|}}
+    {{#if (eq column.valuePath @cellKey)}}
+      <span class="table-stacked__label">{{column.name}}</span>
+    {{/if}}
+  {{/each}}
+{{/unless}}

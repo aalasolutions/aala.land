@@ -21,6 +21,7 @@
       >{{@model.error}}</p>
     {{else if this.rows.length}}
       <Woven::DataTable
+        class="table-stacked"
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -31,6 +32,11 @@
         data-test-access-requests-table
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "requester.name" "id"}}
+        />
         {{#if (eq cell.key "requester.name")}}
           <span
             data-test-access-request-row={{cell.row.id}}
@@ -43,58 +49,69 @@
             data-test-access-request-contact
           >{{cell.value}}</LinkTo>
         {{else if (eq cell.key "sourceType")}}
-          <span class="text-muted">{{or cell.row.sourceLabel "-"}}</span>
+          <span
+            class="text-muted"
+            data-empty={{unless cell.row.sourceLabel true}}
+          >{{or cell.row.sourceLabel "-"}}</span>
         {{else if (eq cell.key "createdAt")}}
           <span
             class="text-muted"
             title={{format-date-time cell.value}}
           >{{cell.row.requestedAgo}}</span>
         {{else if (eq cell.key "decidedBy.name")}}
-          <span class="text-muted">{{or cell.value "-"}}</span>
+          <span
+            class="text-muted"
+            data-empty={{unless cell.value true}}
+          >{{or cell.value "-"}}</span>
         {{else if (eq cell.key "expiresAt")}}
           {{#if cell.value}}
-            {{format-date cell.value zone="region"}}
+            <span>{{format-date cell.value zone="region"}}</span>
           {{else}}
-            <span class="text-muted">{{or cell.row.expiryLabel "-"}}</span>
+            <span
+              class="text-muted"
+              data-empty={{unless cell.row.expiryLabel true}}
+            >{{or cell.row.expiryLabel "-"}}</span>
           {{/if}}
         {{else if (eq cell.key "id")}}
-          {{#if
-            (or (eq cell.row.status "PENDING") (eq cell.row.status "APPROVED"))
-          }}
-            <RowActions
-              @label={{cell.row.requester.name}}
-              @actions={{array
-                (hash
-                  key="approve-access"
-                  label="Approve"
-                  icon="check"
-                  variant="brand"
-                  onSelect=(fn this.openApprove cell.row)
-                  hidden=(not (eq cell.row.status "PENDING"))
-                )
-                (hash
-                  key="reject-access"
-                  label="Reject"
-                  icon="x"
-                  onSelect=(fn this.openDecision "reject" cell.row)
-                  hidden=(not (eq cell.row.status "PENDING"))
-                )
-                (hash
-                  key="revoke-access"
-                  label="Revoke"
-                  icon="prohibit"
-                  onSelect=(fn this.openDecision "revoke" cell.row)
-                  hidden=(not (eq cell.row.status "APPROVED"))
-                )
-              }}
-            />
-          {{else}}
-            <Woven::Badge
-              @variant={{cell.row.statusVariant}}
-              @text={{capitalize cell.row.status}}
-              data-test-access-request-status={{cell.row.status}}
-            />
-          {{/if}}
+          <div class="table-stacked__actions">
+            {{#if
+              (or (eq cell.row.status "PENDING") (eq cell.row.status "APPROVED"))
+            }}
+              <RowActions
+                @label={{cell.row.requester.name}}
+                @actions={{array
+                  (hash
+                    key="approve-access"
+                    label="Approve"
+                    icon="check"
+                    variant="brand"
+                    onSelect=(fn this.openApprove cell.row)
+                    hidden=(not (eq cell.row.status "PENDING"))
+                  )
+                  (hash
+                    key="reject-access"
+                    label="Reject"
+                    icon="x"
+                    onSelect=(fn this.openDecision "reject" cell.row)
+                    hidden=(not (eq cell.row.status "PENDING"))
+                  )
+                  (hash
+                    key="revoke-access"
+                    label="Revoke"
+                    icon="prohibit"
+                    onSelect=(fn this.openDecision "revoke" cell.row)
+                    hidden=(not (eq cell.row.status "APPROVED"))
+                  )
+                }}
+              />
+            {{else}}
+              <Woven::Badge
+                @variant={{cell.row.statusVariant}}
+                @text={{capitalize cell.row.status}}
+                data-test-access-request-status={{cell.row.status}}
+              />
+            {{/if}}
+          </div>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}

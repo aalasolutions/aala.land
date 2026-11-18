@@ -62,7 +62,10 @@
     {{/if}}
   </div>
 
-  <div class="wa-page">
+  <div
+    class="wa-page
+      {{if (and this.currentChatId (not this.showsChatList)) 'is-chat-open'}}"
+  >
 
     <aside class="wa-sidebar">
 
@@ -111,6 +114,15 @@
       {{#if this.currentChatId}}
 
         <div class="wa-chat-header">
+          <Woven::Button
+            @variant="ghost"
+            @shape="square"
+            @icon="arrow-left"
+            class="hidden@lg"
+            aria-label="Back to chats"
+            data-test-wa-back-to-list
+            @onClick={{this.backToChatList}}
+          />
           <Woven::Avatar
             @initials={{initials this.currentChatName}}
             @size="md"

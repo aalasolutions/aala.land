@@ -33,10 +33,10 @@
   </div>
 
   {{#if @model.templates.length}}
-    <div class="grid cols-2 gap-4">
+    <div class="grid cols-1 cols-2@lg gap-4">
       {{#each @model.templates as |template|}}
         <Woven::Card data-test-template-card class="flex col gap-3">
-          <div class="flex between x-center">
+          <div class="flex between x-center wrap gap-2">
             <div class="flex x-center gap-2">
               <Ui::Ph @icon="envelope-simple" />
               <h4 class="font-bold">{{template.name}}</h4>

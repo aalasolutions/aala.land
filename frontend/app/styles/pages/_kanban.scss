@@ -17,6 +17,15 @@
   padding-block-end: wu-var("kanban", "PaddingBlockEnd");
   overflow-x: auto;
 
+  // Touch-sized screens snap a swipe to a column edge.
+  @include media-down(md) {
+    scroll-snap-type: x mandatory;
+  }
+
+  @include media-down(sm) {
+    --wu-kanban--ColumnWidth: 100%;
+  }
+
   @include e(column) {
     @include wu-root-el("kanban", "column", (
       "Width": wu-var("kanban", "ColumnWidth"),
@@ -33,6 +42,7 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    scroll-snap-align: start;
     gap: wu-var-el("kanban", "column", "Gap");
     inline-size: wu-var-el("kanban", "column", "Width");
     padding: wu-var-el("kanban", "column", "Padding");
@@ -64,6 +74,10 @@
     border: 0;
     border-radius: wu-radius(md);
     cursor: pointer;
+
+    @include media-down(sm) {
+      min-block-size: var(--wu-control-height-md);
+    }
 
     &:hover .wu-kanban__column-toggle {
       color: var(--wu-brand);

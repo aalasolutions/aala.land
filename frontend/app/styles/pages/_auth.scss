@@ -20,6 +20,10 @@ $shell-background-image: radial-gradient(
   background-image: $shell-background-image;
   background-repeat: no-repeat;
   background-attachment: fixed;
+
+  @include media-down(md) {
+    padding-inline: wu-space(4);
+  }
 }
 
 // Wordmark for pages with no shell, distinct from the sidebar's brand-title class.
@@ -30,6 +34,14 @@ $shell-background-image: radial-gradient(
   margin: 0;
 }
 
+.auth-logo {
+  display: block;
+  inline-size: wu-space(16);
+  block-size: wu-space(16);
+  margin: 0 auto wu-space(3);
+  border-radius: wu-radius(lg);
+}
+
 // Profile is a settings form, not an auth card; capped so fields don't stretch wide.
 .profile-card {
   max-inline-size: 32rem;
@@ -37,11 +49,12 @@ $shell-background-image: radial-gradient(
 
 .login-card {
   inline-size: 25rem;
+  max-inline-size: 100%;
 }
 
 .signup-card {
   inline-size: 37.5rem;
-  max-inline-size: 95vw;
+  max-inline-size: 100%;
 }
 
 // Onboarding: narrow centered card, segmented progress, calm step and ready transitions.
@@ -474,6 +487,10 @@ $google-neutral-border-hover: #c6cbd1;
   font-weight: wu-font-weight(semibold);
   cursor: pointer;
   overflow: hidden;
+
+  @include media-down(sm) {
+    min-height: var(--wu-control-height-md);
+  }
 
   &::after {
     content: "Connect Google";

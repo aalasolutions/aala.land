@@ -47,6 +47,7 @@
       <Woven::Card >
         <div class="text-sm font-bold mb-2">AI credits by agent</div>
         <Woven::DataTable
+          class="table-stacked"
           @columns={{this.creditAgentColumns}}
           @rows={{this.creditAgentRows}}
           @pinColumns={{true}}
@@ -57,12 +58,17 @@
           data-test-credit-agents
           as |cell|
         >
+          <DataTable::StackedLabel
+            @columns={{this.creditAgentColumns}}
+            @cellKey={{cell.key}}
+            @skip={{array "name"}}
+          />
           {{#if (eq cell.key "name")}}
             <span
               data-test-credit-agent-row={{cell.row.userId}}
             >{{cell.value}}</span>
           {{else}}
-            {{cell.value}}
+            <span>{{cell.value}}</span>
           {{/if}}
         </Woven::DataTable>
       </Woven::Card>
@@ -269,6 +275,7 @@
         <h3 class="text-lg font-bold mb-4">Billing History</h3>
         {{#if this.billingHistory.length}}
           <Woven::DataTable
+            class="table-stacked"
             @columns={{this.billingHistoryColumns}}
             @rows={{this.billingHistoryRows}}
             @pinColumns={{true}}
@@ -278,6 +285,11 @@
             @tableId="company-billing"
             as |cell|
           >
+            <DataTable::StackedLabel
+              @columns={{this.billingHistoryColumns}}
+              @cellKey={{cell.key}}
+              @skip={{array "occurredAt"}}
+            />
             {{#if (eq cell.key "occurredAt")}}
               <span data-test-billing-history-row>{{format-date
                   cell.value
@@ -302,7 +314,7 @@
                     class="text-muted text-sm"
                   >{{status.creditNote}}</span>
                 {{else}}
-                  <span class="text-muted">-</span>
+                  <span class="text-muted" data-empty>-</span>
                 {{/if}}
               {{/let}}
             {{else if (eq cell.key "type")}}
@@ -326,7 +338,7 @@
                   View
                 </a>
               {{else}}
-                <span class="text-muted">&mdash;</span>
+                <span class="text-muted" data-empty>&mdash;</span>
               {{/if}}
             {{else}}
               {{cell.value}}

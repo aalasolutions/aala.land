@@ -50,6 +50,7 @@
       />
     {{else if this.rows.length}}
       <Woven::DataTable
+        class="table-stacked"
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -59,6 +60,11 @@
         @tableId={{this.tableId}}
         as |cell|
       >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "name" "id"}}
+        />
         {{#if (eq cell.key "name")}}
           <div class="flex x-center gap-2" data-test-document-row>
             <Ui::Ph @icon="file-text" />
@@ -95,7 +101,7 @@
             {{else if cell.row.buildingName}}
               {{cell.row.buildingName}}
             {{else}}
-              <span class="text-muted">-</span>
+              <span class="text-muted" data-empty>-</span>
             {{/if}}
           </span>
         {{else if (eq cell.key "link.label")}}
@@ -132,8 +138,10 @@
           <span class="text-sm text-muted" data-test-document-uploader>
             {{#if (eq cell.row.uploadedBy this.currentUserId)}}
               ME
+            {{else if (has-value cell.value)}}
+              {{cell.value}}
             {{else}}
-              {{or cell.value "-"}}
+              <span data-empty>-</span>
             {{/if}}
           </span>
         {{else if (eq cell.key "createdAt")}}
@@ -142,32 +150,34 @@
               zone="region"
             }}</span>
         {{else if (eq cell.key "id")}}
-          <RowActions
-            @label={{cell.row.name}}
-            @actions={{array
-              (hash
-                key="download-btn"
-                label="Download"
-                icon="download-simple"
-                onSelect=(fn this.downloadDocument cell.row)
-              )
-              (hash
-                key="edit-btn"
-                label="Edit"
-                icon="pencil-simple"
-                onSelect=(fn this.openEdit cell.row)
-                hidden=(or cell.row.isDerived (not (this.canEditRow cell.row)))
-              )
-              (hash
-                key="delete-btn"
-                label="Delete"
-                icon="trash"
-                variant="danger"
-                onSelect=(fn this.openDelete cell.row)
-                hidden=(or cell.row.isDerived (not this.canDelete))
-              )
-            }}
-          />
+          <div class="table-stacked__actions">
+            <RowActions
+              @label={{cell.row.name}}
+              @actions={{array
+                (hash
+                  key="download-btn"
+                  label="Download"
+                  icon="download-simple"
+                  onSelect=(fn this.downloadDocument cell.row)
+                )
+                (hash
+                  key="edit-btn"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                  hidden=(or cell.row.isDerived (not (this.canEditRow cell.row)))
+                )
+                (hash
+                  key="delete-btn"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                  hidden=(or cell.row.isDerived (not this.canDelete))
+                )
+              }}
+            />
+          </div>
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
