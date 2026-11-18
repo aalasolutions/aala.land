@@ -45,8 +45,14 @@ module('Integration | Component | woven/accordion', function (hooks) {
       .dom('[data-test-wu-accordion-trigger="c"]')
       .hasAttribute('aria-disabled', 'true');
     assert
+      .dom('[data-test-wu-accordion-trigger="c"]')
+      .hasAttribute('tabindex', '-1');
+    assert
       .dom('[data-test-wu-accordion-trigger="a"]')
       .doesNotHaveAttribute('aria-disabled');
+    assert
+      .dom('[data-test-wu-accordion-trigger="a"]')
+      .doesNotHaveAttribute('tabindex');
   });
 
   test('@animated={{false}} drops the animated modifier', async function (assert) {

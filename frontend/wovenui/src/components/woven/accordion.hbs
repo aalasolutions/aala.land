@@ -10,6 +10,7 @@
       <summary
         class="wu-accordion-trigger"
         aria-disabled={{if entry.disabled "true"}}
+        tabindex={{if entry.disabled "-1"}}
         data-test-wu-accordion-trigger={{entry.id}}
         {{on "click" (fn this.preventDisabledToggle entry)}}
       >
