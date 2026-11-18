@@ -305,6 +305,7 @@ export default class WovenTableController extends Controller {
     { name: '@dir', type: '"ltr" | "rtl"', default: 'html dir', description: 'Per-table direction override. RTL mirrors the column order and pinned sides; cell text reads RTL.' },
     { name: '@hoverable', type: 'boolean', default: 'true', description: 'Rows highlight on hover (kit hover modifier on the table). Pass {{false}} to opt out.' },
     { name: '@stickyHeader', type: 'boolean', default: 'false', description: 'Header sticks inside the table scroller (kit sticky-header on the table, data-table--sticky-header on the root). Max height is --wu-table--MaxHeight, default calc(100dvh - 240px).' },
+    { name: '@label', type: 'string', default: '', description: 'Names the scroll region (kit wu-table-scroll with role region and tabindex 0), so keyboard users can focus and scroll a wide table.' },
   ];
 
   callbackRows = [

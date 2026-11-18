@@ -111,6 +111,21 @@ module('Integration | Component | woven/data-table', function (hooks) {
     assert.dom('.data-table table').hasClass('sticky-header');
   });
 
+  test('@label names the scroll region and makes it focusable', async function (assert) {
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+    );
+    assert.dom('.wu-table-scroll').doesNotHaveAttribute('role');
+    assert.dom('.wu-table-scroll').doesNotHaveAttribute('tabindex');
+
+    await render(
+      hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} @label="Invoices" />`,
+    );
+    assert.dom('.wu-table-scroll').hasAttribute('role', 'region');
+    assert.dom('.wu-table-scroll').hasAria('label', 'Invoices');
+    assert.dom('.wu-table-scroll').hasAttribute('tabindex', '0');
+  });
+
   test('numeric columns use wu-table-num on header and cells', async function (assert) {
     this.columns = [
       { name: 'Name', valuePath: 'name' },

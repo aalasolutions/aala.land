@@ -28,7 +28,7 @@
       {{if this.isTree 'data-table--tree'}}
       {{if this.hasRowClick 'data-table--row-click'}}
       {{if @stickyHeader 'data-table--sticky-header'}}"
-    {{this.kitTable hover=this.isHoverable sticky=@stickyHeader}}
+    {{this.kitTable hover=this.isHoverable sticky=@stickyHeader label=@label}}
     {{this.startAtReadingEdge}}
     as |t|
   >

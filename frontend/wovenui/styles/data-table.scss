@@ -27,6 +27,23 @@
     var(--wu-table--Background, var(--wu-bg-surface));
 }
 
+// Edge shadow on the side where the other columns scroll under the pinned ones. The table stays LTR, so the sides are physical.
+$pinned-edge: color-mix(in srgb, var(--wu-text-regular) 15%, transparent);
+$pinned-edge-left: wu-space(2) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned-edge};
+
+.data-table :is(th, td).is-fixed-left:not(:has(+ .is-fixed-left)) {
+  box-shadow: $pinned-edge-left;
+}
+
+.data-table :is(th, td):not(.is-fixed-right) + .is-fixed-right {
+  box-shadow: calc(-1 * #{wu-space(2)}) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned-edge};
+}
+
+// Keeps the kit's selected-row bar when the first cell is also the pinned edge.
+.data-table tbody tr:has(> .wu-table-select :checked) > .is-fixed-left:first-child:not(:has(+ .is-fixed-left)) {
+  box-shadow: inset var(--wu-border-width-2) 0 0 var(--wu-brand), $pinned-edge-left;
+}
+
 // vertical-collection ends the body with an occluded-content element, so the kit's last-row rule misses.
 .data-table tbody > tr:nth-last-child(1 of tr) > td {
   border-block-end: 0;

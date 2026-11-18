@@ -484,16 +484,26 @@ export default class DataTableComponent extends Component {
   }
 
   // ember-table renders the table and its scroller itself, so the kit classes are set here.
-  kitTable = modifier((element, positional, { hover, sticky }) => {
+  kitTable = modifier((element, positional, { hover, sticky, label }) => {
     const table = element.querySelector('table');
     if (table) {
       table.classList.add('wu-table');
       table.classList.toggle('hover', Boolean(hover));
       table.classList.toggle('sticky-header', Boolean(sticky));
     }
-    element
-      .querySelector('.ember-table-overflow')
-      ?.classList.add('wu-table-scroll');
+    const scroll = element.querySelector('.ember-table-overflow');
+    if (!scroll) return;
+    scroll.classList.add('wu-table-scroll');
+    // A labeled region can take keyboard focus, so a wide table scrolls without a mouse.
+    if (label) {
+      scroll.setAttribute('role', 'region');
+      scroll.setAttribute('aria-label', label);
+      scroll.setAttribute('tabindex', '0');
+    } else {
+      scroll.removeAttribute('role');
+      scroll.removeAttribute('aria-label');
+      scroll.removeAttribute('tabindex');
+    }
   });
 
   // RTL starts scrolled to the reading edge.
