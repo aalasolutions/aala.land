@@ -3,7 +3,7 @@
   <:trigger as |toggle|>
     <Woven::Button
       @variant="ghost"
-      @size={{@size}}
+      @size={{if @size @size "md"}}
       @icon="sliders-horizontal"
       @onClick={{toggle}}
       data-test-data-table-options
