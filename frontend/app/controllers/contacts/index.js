@@ -136,6 +136,7 @@ export default class ContactsIndexController extends PaginatedController {
       width: 170,
       cell: CellText,
     },
+    { name: 'Region', valuePath: 'regionCode', width: 180 },
     {
       name: 'Added by',
       valuePath: 'createdByName',

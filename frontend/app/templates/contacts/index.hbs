@@ -208,6 +208,8 @@
           {{else}}
             <Woven::Cell::Empty />
           {{/if}}
+        {{else if (eq cell.key "regionCode")}}
+          <span data-test-contact-region>{{region-name cell.value}}</span>
         {{else if (eq cell.key "id")}}
           <div class="table-stacked__actions">
             {{#if (is-limited-contact cell.row)}}
