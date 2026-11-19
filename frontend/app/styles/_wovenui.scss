@@ -93,8 +93,8 @@
   scrollbar-width: none;
 }
 
-// While overflowing, the inset becomes border so text clips inside the pill, and the equal-width thumb yields to per-segment selection.
-@supports (animation-timeline: scroll()) {
+// Without anchor positioning only: while overflowing, the inset becomes border and per-segment selection replaces the thumb, which the anchored thumb no longer needs since it tracks the checked segment while scrolled.
+@supports (animation-timeline: scroll()) and (not (anchor-name: --a)) {
   .wu-segmented {
     animation: segmented-overflow linear both;
     animation-timeline: scroll(self inline);
@@ -193,21 +193,51 @@
   @include media-down(lg) {
     .wu-segmented {
       --app-segmented-fade-direction: to right;
+      --app-segmented-fade-inset: var(--wu-space-1);
+      --app-segmented-fade-start-clear: min(
+        var(--app-segmented-fade-start),
+        var(--app-segmented-fade-inset)
+      );
+      --app-segmented-fade-end-clear: min(
+        var(--app-segmented-fade-end),
+        var(--app-segmented-fade-inset)
+      );
 
       mask-image:
-        linear-gradient(var(--app-segmented-fade-direction), transparent, #000 var(--app-segmented-fade-start), #000 calc(100% - var(--app-segmented-fade-end)), transparent),
-        linear-gradient(#000, #000),
-        linear-gradient(#000, #000);
-      mask-clip: content-box, content-box, border-box;
-      mask-origin: content-box, content-box, border-box;
+        linear-gradient(
+          var(--app-segmented-fade-direction),
+          transparent var(--app-segmented-fade-start-clear),
+          #000
+            calc(
+              var(--app-segmented-fade-start) +
+                var(--app-segmented-fade-start-clear)
+            ),
+          #000
+            calc(
+              100% - var(--app-segmented-fade-end) - var(
+                  --app-segmented-fade-end-clear
+                )
+            ),
+          transparent calc(100% - var(--app-segmented-fade-end-clear))
+        ),
+        linear-gradient(#000, #000), linear-gradient(#000, #000);
+      mask-clip: padding-box, padding-box, border-box;
+      mask-origin: padding-box, padding-box, border-box;
       mask-composite: add, exclude;
-      animation:
-        segmented-overflow linear both,
-        segmented-fade linear both;
+      animation: segmented-fade linear both;
       animation-timeline: scroll(self inline);
 
       &:dir(rtl) {
         --app-segmented-fade-direction: to left;
+      }
+
+      @supports not (anchor-name: --a) {
+        --app-segmented-fade-inset: 0px;
+
+        animation:
+          segmented-overflow linear both,
+          segmented-fade linear both;
+        animation-timeline: scroll(self inline);
       }
     }
   }

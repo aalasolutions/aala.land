@@ -1,0 +1,56 @@
+@use "@wovenui/core/mixins" as woven;
+
+// Upstream override (@wovenui/components/segmented): grid-auto-columns 1fr to auto, segments size to content.
+.wu-segmented {
+  grid-auto-columns: auto;
+}
+
+@mixin -selected-look {
+  background: woven.token(bg-selected);
+  box-shadow: inset 0 0 0 woven.token(border-width-1) woven.token(brand);
+}
+
+// Unlayered, so these beat every layered kit thumb rule (width, translate, RTL, the six-segment cap) by origin.
+@media (prefers-reduced-motion: no-preference) {
+  @supports (anchor-name: --a) {
+    // Upstream override (@wovenui/components/segmented): equal-width translate thumb capped at six, spring 500, to a thumb anchored on the checked segment, spring 300, fits content-sized columns at any count.
+    :is(.wu-segmented.animated, .wu-animated .wu-segmented) {
+      > .wu-segmented-item:has(:checked) {
+        anchor-name: --wu-segmented-checked;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      &:has(:checked)::before {
+        @include -selected-look;
+
+        content: "";
+        position: absolute;
+        position-anchor: --wu-segmented-checked;
+        inset-block: anchor(start) auto;
+        inset-inline: anchor(start) auto;
+        inline-size: anchor-size(inline);
+        block-size: anchor-size(block);
+        translate: none;
+        border-radius: woven.token(radius-sm);
+        transition-property:
+          inset-block-start, inset-inline-start, inline-size, block-size;
+        transition-duration: woven.token(duration-300);
+        transition-timing-function: var(--wu-kit-ease-spring);
+      }
+    }
+  }
+
+  @supports not (anchor-name: --a) {
+    // Upstream override (@wovenui/components/segmented): equal-width thumb to no thumb with the checked segment's own look, without anchors the thumb misses content-sized segments.
+    :is(.wu-segmented.animated, .wu-animated .wu-segmented) {
+      &::before {
+        content: none;
+      }
+
+      > .wu-segmented-item:has(:checked) {
+        @include -selected-look;
+      }
+    }
+  }
+}

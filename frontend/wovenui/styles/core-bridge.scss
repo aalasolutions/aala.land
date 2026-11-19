@@ -25,6 +25,7 @@ th {
 
 // Same layer as core's base so kit components (@layer components) override; :is() keeps core's specificity so source order decides.
 @layer base {
+  // Upstream override (@wovenui/core/base): button min-height control-height md to auto, kit components size their own controls.
   :is(
     button,
     input[type="submit"],
@@ -34,6 +35,7 @@ th {
     min-height: auto;
   }
 
+  // Upstream override (@wovenui/core/base): single-line input and select height control-height md to auto, kit components size their own controls.
   :is(input, select) {
     height: auto;
   }

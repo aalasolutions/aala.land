@@ -10,7 +10,7 @@
   z-index: wu-z(modal);
 }
 
-// JS anchoring sets the coordinates; kit menu and popover anchor fallbacks would flip them.
+// Upstream override (@wovenui/components/dropdown, popover): position-try-fallbacks flips to none, JS anchoring sets the coordinates.
 .wu-layer > * {
   position-try-fallbacks: none;
 }

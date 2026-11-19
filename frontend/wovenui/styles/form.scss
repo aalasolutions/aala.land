@@ -35,7 +35,7 @@
   }
 }
 
-// The kit draws the file input edge; its browser button gets the plain button look.
+// Upstream override (@wovenui/components/input): browser file button with inherited font to the plain button look.
 .wu-input[type="file"]::file-selector-button {
   min-block-size: var(--wu-control-height-sm);
   padding-inline: var(--wu-control-padding-inline-sm);
@@ -76,12 +76,12 @@ $wu-row-min-column-width: 10rem;
   }
 }
 
-// Filter and toolbar controls show no messages, so their fields reserve no message line.
+// Upstream override (@wovenui/components/field): live field reserved message line to none in filter rows and toolbars, they show no messages.
 :is(.wu-filter-row, .wu-toolbar) > .wu-field.live::after {
   content: none;
 }
 
-// In a toolbar a hidden label leaves the row, so the control lines up with its neighbors.
+// Upstream override (@wovenui/components/field): hidden label keeps its line to absolute in a toolbar, the control lines up with its neighbors.
 .wu-toolbar > .wu-field > .wu-field-label.visually-hidden {
   position: absolute;
 }
@@ -140,7 +140,7 @@ $wu-row-min-column-width: 10rem;
   }
 }
 
-// A kit field may shrink to zero, so a growing field in a wrapping row starts from the wu-field-row width and wraps instead.
+// Upstream override (@wovenui/core/flex): .grow flex-basis 0% to the wu-field-row min width, a growing field wraps instead of shrinking to zero.
 .flex.wrap > .wu-field.grow {
   flex-basis: var(--wu-field-row--MinWidth, 8rem);
 }

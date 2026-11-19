@@ -15,7 +15,7 @@
   min-inline-size: 0;
 }
 
-// ember-table keeps every header cell sticky, so headers always need a fill; the kit's sticky-header fill is outranked.
+// Upstream override (@wovenui/components/table): header with no fill, or bg-surface when sticky, to bg-alternate, ember-table keeps every header sticky.
 .data-table thead th,
 .data-table .wu-table.sticky-header > thead th {
   background-color: var(--wu-table--Background, var(--wu-bg-alternate));
@@ -131,6 +131,7 @@ $pinned-edge-left: wu-space(2) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned
   background-color: var(--wu-bg-base);
 }
 
+// Upstream override (@wovenui/components/table): cell padding space-3 and space-4 to space-1 and 0 on the select column, sized to its checkbox.
 .data-table .wu-table-select {
   padding-block: wu-space(1);
   padding-inline: 0;
@@ -270,7 +271,7 @@ $pinned-edge-left: wu-space(2) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned
   min-inline-size: 0;
 }
 
-// Editors and row action buttons are taller than a text line; trim the cell so the row stays at the text height.
+// Upstream override (@wovenui/components/table): cell padding-block space-3 to space-1 with editors, buttons or badges, taller than a text line, the row keeps text height.
 .data-table td:has(.data-table__editor),
 .data-table td:has(.wu-btn),
 .data-table td:has(.wu-badge) {

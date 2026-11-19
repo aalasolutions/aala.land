@@ -1,4 +1,4 @@
-// App override on the kit wu-pagination (@wovenui/components/pagination): one centered row, never wrapped.
+// Upstream override (@wovenui/components/pagination): wrapping start-aligned row to one centered row, never wrapped.
 .wu-pagination {
   flex-wrap: nowrap;
   justify-content: center;

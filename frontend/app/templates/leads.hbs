@@ -30,7 +30,6 @@
   <:toolbar>
     {{#if (eq this.viewMode "agent")}}
       <Woven::Segmented
-        class="lead-stage-filters"
         @options={{this.stageFilterTabs}}
         @value={{this.stageFilter}}
         @onChange={{this.setStageFilter}}

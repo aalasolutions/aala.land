@@ -1,4 +1,4 @@
-// [hidden] is restated because the kit list display beats the browser rule.
+// Upstream override (@wovenui/components/sidebar): display flex beats the browser [hidden] rule to display none, a hidden list stays hidden.
 .wu-sidebar-list[hidden] {
   display: none;
 }
