@@ -3,7 +3,9 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
 import { SIZE_MAP } from './-constants';
+import { formatCount } from './-count';
 
+// `count` on an option renders a badge grouped for `@locale`; give it to every option of a set or to none.
 export default class WovenSegmentedComponent extends Component {
   @tracked internalValue = undefined;
 
@@ -41,21 +43,20 @@ export default class WovenSegmentedComponent extends Component {
     const current = this.currentValue;
     return this.normalized.map((option) => ({
       ...option,
+      countLabel: formatCount(option.count, this.args.locale),
       active: this.multiple
         ? current.includes(option.id)
         : option.id === current,
     }));
   }
 
-  // The CSS kit has no fill modifier; core's `w-full` stretches the grid and segments share it.
+  // The CSS kit has no fill modifier; core's `w-full` stretches the grid, `self-start` stops a flex parent stretching it.
   get classes() {
     const parts = ['wu-segmented'];
     if (SIZE_MAP[this.args.size]) {
       parts.push(SIZE_MAP[this.args.size]);
     }
-    if (this.args.fill) {
-      parts.push('w-full');
-    }
+    parts.push(this.args.fill ? 'w-full' : 'self-start');
     return parts.join(' ');
   }
 

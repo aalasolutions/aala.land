@@ -1,0 +1,51 @@
+<div class="flex col gap-6" data-test-wu-detail-page ...attributes>
+  {{#if (has-block "meta")}}
+    {{#if (has-block "actions")}}
+      <Woven::PageHeader @title={{this.title}} @subtitle={{@subtitle}}>
+        <:breadcrumb>
+          <Woven::Breadcrumb
+            @items={{@crumbs}}
+            @compact={{true}}
+            @parentsOnly={{true}}
+          />
+        </:breadcrumb>
+        <:meta>{{yield to="meta"}}</:meta>
+        <:actions>{{yield to="actions"}}</:actions>
+      </Woven::PageHeader>
+    {{else}}
+      <Woven::PageHeader @title={{this.title}} @subtitle={{@subtitle}}>
+        <:breadcrumb>
+          <Woven::Breadcrumb
+            @items={{@crumbs}}
+            @compact={{true}}
+            @parentsOnly={{true}}
+          />
+        </:breadcrumb>
+        <:meta>{{yield to="meta"}}</:meta>
+      </Woven::PageHeader>
+    {{/if}}
+  {{else if (has-block "actions")}}
+    <Woven::PageHeader @title={{this.title}} @subtitle={{@subtitle}}>
+      <:breadcrumb>
+        <Woven::Breadcrumb
+          @items={{@crumbs}}
+          @compact={{true}}
+          @parentsOnly={{true}}
+        />
+      </:breadcrumb>
+      <:actions>{{yield to="actions"}}</:actions>
+    </Woven::PageHeader>
+  {{else}}
+    <Woven::PageHeader @title={{this.title}} @subtitle={{@subtitle}}>
+      <:breadcrumb>
+        <Woven::Breadcrumb
+          @items={{@crumbs}}
+          @compact={{true}}
+          @parentsOnly={{true}}
+        />
+      </:breadcrumb>
+    </Woven::PageHeader>
+  {{/if}}
+
+  {{yield to="body"}}
+</div>

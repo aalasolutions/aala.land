@@ -35,6 +35,12 @@
       <span
         class="wu-segmented-label{{if @iconOnly ' sr-only'}}"
       >{{option.label}}</span>
+      {{#if option.countLabel}}
+        <span
+          class="wu-badge"
+          data-test-wu-segmented-count={{option.id}}
+        >{{option.countLabel}}</span>
+      {{/if}}
     </label>
   {{/each}}
 </div>

@@ -100,4 +100,18 @@ module('Integration | Component | pagination', function (hooks) {
     assert.dom('[data-test-wu-pagination-status]').hasText('1-50 of 120');
     assert.dom('[data-test-wu-pagination-select]').hasValue('50');
   });
+
+  test('it prints the range only with @rangeOnly', async function (assert) {
+    await render(
+      hbs`<Woven::Pagination @page={{1}} @perPage={{50}} @total={{120}} @rangeOnly={{true}} />`,
+    );
+    assert.dom('[data-test-wu-pagination-status]').hasText('1-50');
+  });
+
+  test('it prints the range and total by default', async function (assert) {
+    await render(
+      hbs`<Woven::Pagination @page={{3}} @perPage={{50}} @total={{120}} />`,
+    );
+    assert.dom('[data-test-wu-pagination-status]').hasText('101-120 of 120');
+  });
 });

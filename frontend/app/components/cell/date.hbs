@@ -1,0 +1,11 @@
+{{#if (has-value @value)~}}
+  <span ...attributes>
+    {{~#if (if (eq @withTime undefined) @column.cellArgs.withTime @withTime)~}}
+      {{format-date-time @value}}
+    {{~else~}}
+      {{format-date @value zone="region"}}
+    {{~/if~}}
+  </span>
+{{~else~}}
+  <Woven::Cell::Empty />
+{{~/if}}

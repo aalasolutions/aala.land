@@ -181,4 +181,34 @@ module('Integration | Component | woven/CSS kit classes', function (hooks) {
     assert.dom('.wu-segmented-label').hasClass('sr-only');
     assert.dom('[data-test-wu-segmented-item="grid"]').hasAttribute('title', 'Grid');
   });
+
+  test('segmented sits at its own width unless @fill', async function (assert) {
+    this.options = [{ id: 'a', label: 'A' }];
+    await render(hbs`<Woven::Segmented @options={{this.options}} />`);
+    assert.dom('[data-test-wu-segmented]').hasAttribute('class', 'wu-segmented self-start');
+
+    await render(hbs`<Woven::Segmented @options={{this.options}} @fill={{true}} />`);
+    assert.dom('[data-test-wu-segmented]').hasAttribute('class', 'wu-segmented w-full');
+  });
+
+  test('segmented and tabs render a formatted count badge, 0 included', async function (assert) {
+    this.items = [
+      { id: 'all', label: 'All', count: 1234 },
+      { id: 'none', label: 'None', count: 0 },
+      { id: 'plain', label: 'Plain' },
+    ];
+    const grouped = new Intl.NumberFormat().format(1234);
+
+    await render(hbs`<Woven::Segmented @options={{this.items}} />`);
+    assert.dom('[data-test-wu-segmented-count="all"]').hasClass('wu-badge').hasText(grouped);
+    assert.dom('[data-test-wu-segmented-count="none"]').hasText('0');
+    assert.dom('[data-test-wu-segmented-count="plain"]').doesNotExist();
+    assert.dom('[data-test-wu-segmented-item] .wu-badge').exists({ count: 2 });
+
+    await render(hbs`<Woven::Tabs @tabs={{this.items}} />`);
+    assert.dom('[data-test-wu-tabs-count="all"]').hasClass('wu-badge').hasText(grouped);
+    assert.dom('[data-test-wu-tabs-count="none"]').hasText('0');
+    assert.dom('[data-test-wu-tabs-count="plain"]').doesNotExist();
+    assert.dom('[data-test-wu-tabs-trigger] .wu-badge').exists({ count: 2 });
+  });
 });

@@ -149,22 +149,21 @@ const TAG_VARIANTS = {
     marketing: 'danger',
     custom: 'secondary',
   },
-  // LEASE_TYPE_OPTIONS
+  // LEASE_TYPE_OPTIONS + LEASE_STATUS_OPTIONS
   lease: {
     residential: 'info',
     commercial: 'info',
+    draft: 'secondary',
     active: 'success',
     expired: 'secondary',
     terminated: 'danger',
     pending: 'warning',
+    renewed: 'info',
   },
-  // Subscription tiers
+  // TIER_LIMITS (utils/subscription-plans.js)
   plan: {
     free: 'secondary',
-    starter: 'info',
-    growth: 'success',
     pro: 'success',
-    scale: 'brand',
     enterprise: 'info',
   },
   // Stripe and Paddle spell it `canceled`; both spellings are listed.

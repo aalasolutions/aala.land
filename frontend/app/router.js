@@ -30,6 +30,10 @@ Router.map(function () {
     this.route('panel');
     this.route('list');
     this.route('page-header');
+    // The child route gives the recipe's link column a dynamic segment to target.
+    this.route('recipes', function () {
+      this.route('record', { path: '/:record' });
+    });
     this.route('accordion');
     this.route('tabs');
     this.route('segmented');

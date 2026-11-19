@@ -1,0 +1,4 @@
+{{! Shown only by the stacked (mobile) table styles; `stackedLabel: false` on a column skips it. }}
+{{#unless (eq @column.stackedLabel false)}}
+  <span class="table-stacked__label">{{@column.name}}</span>
+{{/unless}}

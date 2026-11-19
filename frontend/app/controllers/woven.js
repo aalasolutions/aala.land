@@ -62,6 +62,7 @@ export default class WovenController extends Controller {
         { route: 'woven.panel', label: 'Panel and Toolbar', icon: '▦' },
         { route: 'woven.list', label: 'List', icon: '☰' },
         { route: 'woven.page-header', label: 'Page header', icon: '⌂' },
+        { route: 'woven.recipes', label: 'Page recipes', icon: '▤' },
         { route: 'woven.accordion', label: 'Accordion', icon: '▤' },
         { route: 'woven.tabs', label: 'Tabs', icon: '▤' },
         { route: 'woven.segmented', label: 'Segmented', icon: '⇄' },

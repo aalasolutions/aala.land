@@ -3,6 +3,8 @@ import { setupRenderingTest } from 'ember-qunit';
 import { click, render } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellTag from '@wovenui/ember/components/woven/cell/tag';
 
 module('Integration | Component | woven/data-table', function (hooks) {
   setupRenderingTest(hooks);
@@ -300,9 +302,85 @@ module('Integration | Component | woven/data-table', function (hooks) {
         <div data-test-late-slot {{did-insert this.setHost}}></div>
       `);
 
-      assert.dom('[data-test-late-slot] [data-test-data-table-options]').exists();
+      assert
+        .dom('[data-test-late-slot] [data-test-data-table-options]')
+        .exists();
       assert.dom('.data-table-shell__toolbar').doesNotExist();
       assert.dom('[data-test-data-table-options]').exists({ count: 1 });
+    });
+  });
+
+  module('column.cell', function () {
+    test('a column with a cell renders that component', async function (assert) {
+      this.columns = [
+        { name: 'Name', valuePath: 'name', cell: CellText },
+        {
+          name: 'Status',
+          valuePath: 'status',
+          cell: CellTag,
+          cellArgs: { variant: 'success' },
+        },
+      ];
+      this.rows = [{ id: '1', name: 'Ada', status: '' }];
+      await render(
+        hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+      );
+
+      assert.dom('tbody [data-test-wu-cell-text]').hasText('Ada');
+      assert.dom('tbody [data-test-wu-cell-empty]').exists({ count: 1 });
+    });
+
+    test('a dispatched cell gets the stacked label unless the column skips it', async function (assert) {
+      this.columns = [
+        {
+          name: 'Name',
+          valuePath: 'name',
+          cell: CellText,
+          stackedLabel: false,
+        },
+        { name: 'Email', valuePath: 'email', cell: CellText },
+      ];
+      this.rows = [{ id: '1', name: 'Ada', email: 'ada@example.com' }];
+      await render(
+        hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+      );
+
+      assert.dom('tbody .table-stacked__label').exists({ count: 1 });
+      assert.dom('tbody .table-stacked__label').hasText('Email');
+    });
+
+    test('cellArgs reach the cell through @column', async function (assert) {
+      this.columns = [
+        {
+          name: 'Status',
+          valuePath: 'status',
+          cell: CellTag,
+          cellArgs: { variant: 'success' },
+        },
+      ];
+      this.rows = [{ id: '1', status: 'Active' }];
+      await render(
+        hbs`<Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} />`,
+      );
+
+      assert.dom('tbody [data-test-wu-cell-tag]').hasText('Active');
+    });
+
+    test('columns without a cell still yield to the block', async function (assert) {
+      this.columns = [
+        { name: 'Name', valuePath: 'name', cell: CellText },
+        { name: 'Email', valuePath: 'email' },
+      ];
+      this.rows = [{ id: '1', name: 'Ada', email: 'ada@example.com' }];
+      await render(hbs`
+        <Woven::DataTable @columns={{this.columns}} @rows={{this.rows}} as |cell|>
+          <span data-test-yielded={{cell.key}}>{{cell.value}}</span>
+        </Woven::DataTable>
+      `);
+
+      assert.dom('[data-test-yielded="email"]').hasText('ada@example.com');
+      assert.dom('[data-test-yielded="name"]').doesNotExist();
+      assert.dom('tbody [data-test-wu-cell-text]').hasText('Ada');
     });
   });
 });

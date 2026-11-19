@@ -71,7 +71,10 @@ export default class ContactCompaniesComponent extends Component {
       this.total = 0;
       this.error = e.message || 'Could not load companies';
     } finally {
-      if (token === this.loadToken) this.isLoading = false;
+      if (token === this.loadToken) {
+        this.isLoading = false;
+        this.args.onTotal?.(this.total);
+      }
     }
   }
 

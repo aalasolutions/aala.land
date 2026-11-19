@@ -2,10 +2,12 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
+import { formatCount } from './-count';
 
 // Kit has no pills or sizes: pills maps to boxed, size is ignored.
 const VARIANT_CLASSES = { enclosed: 'card', pills: 'boxed' };
 
+// `count` on a tab renders a badge grouped for `@locale`; give it to every tab of a set or to none.
 export default class WovenTabsComponent extends Component {
   @tracked internalActiveTab = undefined;
 
@@ -45,6 +47,7 @@ export default class WovenTabsComponent extends Component {
   get tabs() {
     return (this.args.tabs || []).map((tab) => ({
       ...tab,
+      countLabel: formatCount(tab.count, this.args.locale),
       active: tab.id === this.currentTab,
     }));
   }
