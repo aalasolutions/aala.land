@@ -38,11 +38,10 @@
         <div class="flex end">
           <Woven::Button
             @variant="danger"
-            @size="sm"
             @icon="x"
             @disabled={{not this.hasActiveFilters}}
             {{on "click" this.clearFilters}}
-            data-test-history-clear-filters
+            data-test-clear-filters
           >
             Clear filters
           </Woven::Button>

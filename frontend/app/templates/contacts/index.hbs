@@ -107,7 +107,7 @@
             </Woven::Field>
           </div>
 
-          <div class="flex gap-3 x-center between">
+          <div class="flex">
             <Woven::Toggle
               @checked={{this.isWhatsapp}}
               @onChange={{this.toggleWhatsappFilter}}
@@ -115,9 +115,11 @@
             >
               Has WhatsApp
             </Woven::Toggle>
+          </div>
+
+          <div class="flex end">
             <Woven::Button
-              @variant="subtle"
-              @size="sm"
+              @variant="danger"
               @icon="x"
               @disabled={{not this.hasActiveFilters}}
               {{on "click" this.clearFilters}}
