@@ -11,7 +11,7 @@
       {{on "click" @onRetry}}
       data-test-load-error-retry
     >
-      Try again
+      {{if @retryLabel @retryLabel "Try again"}}
     </Woven::Button>
   </:actions>
 </Woven::Alert>

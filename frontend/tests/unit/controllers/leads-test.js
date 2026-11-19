@@ -267,6 +267,73 @@ module('Unit | Controller | leads', function (hooks) {
     });
   });
 
+  module('stage filter', function () {
+    function withPreferences(ctx, stored) {
+      const saved = {};
+      ctx.owner.register(
+        'service:preferences',
+        {
+          get: (key, fallback) => (key in stored ? stored[key] : fallback),
+          set: (key, value) => (saved[key] = value),
+        },
+        { instantiate: false },
+      );
+      return saved;
+    }
+
+    function boardLeads(controller) {
+      controller.agents = [{ id: 'a1', name: 'Agent One' }];
+      controller.model = {
+        data: [
+          { id: '1', status: 'NEW', assignedTo: 'a1', agentRank: 'a' },
+          { id: '2', status: 'WON', assignedTo: 'a1', agentRank: 'b' },
+          { id: '3', status: 'NEW', assignedTo: null, agentRank: 'c' },
+        ],
+      };
+      return controller.agentColumns.map((column) =>
+        column.leads.map((l) => l.id),
+      );
+    }
+
+    test('offers All plus every pipeline stage in order', function (assert) {
+      withPreferences(this, {});
+      assert.deepEqual(
+        makeController(this).stageFilterTabs.map((tab) => tab.id),
+        ['all', 'NEW', 'CONTACTED', 'VIEWING', 'NEGOTIATING', 'WON', 'LOST'],
+      );
+    });
+
+    test('All keeps every lead on the Owner Board', function (assert) {
+      withPreferences(this, {});
+      const controller = makeController(this);
+      assert.strictEqual(controller.stageFilter, 'all');
+      assert.deepEqual(boardLeads(controller), [['3'], ['1', '2']]);
+    });
+
+    test('one stage narrows every Owner Board column', function (assert) {
+      withPreferences(this, {});
+      const controller = makeController(this);
+      controller.setStageFilter('NEW');
+      assert.deepEqual(boardLeads(controller), [['3'], ['1']]);
+    });
+
+    test('setStageFilter stores the choice under its own key', function (assert) {
+      const saved = withPreferences(this, {});
+      makeController(this).setStageFilter('WON');
+      assert.deepEqual(saved, { 'leads-stage-filter': 'WON' });
+    });
+
+    test('restores the saved stage', function (assert) {
+      withPreferences(this, { 'leads-stage-filter': 'LOST' });
+      assert.strictEqual(makeController(this).stageFilter, 'LOST');
+    });
+
+    test('falls back to All for an unknown saved stage', function (assert) {
+      withPreferences(this, { 'leads-stage-filter': 'bogus' });
+      assert.strictEqual(makeController(this).stageFilter, 'all');
+    });
+  });
+
   module('agent role', function () {
     function tabIds(controller) {
       return {
@@ -434,10 +501,42 @@ module('Unit | Controller | leads', function (hooks) {
   test('loadFor buckets the agent workload by lead count', function (assert) {
     const controller = makeController(this);
 
-    assert.deepEqual(controller.loadFor(0), { variant: 'success', value: 25 });
-    assert.deepEqual(controller.loadFor(4), { variant: 'success', value: 25 });
-    assert.deepEqual(controller.loadFor(5), { variant: 'warning', value: 60 });
-    assert.deepEqual(controller.loadFor(8), { variant: 'warning', value: 60 });
-    assert.deepEqual(controller.loadFor(9), { variant: 'danger', value: 100 });
+    const bucket = (count) => {
+      const { variant, value } = controller.loadFor(count);
+      return { variant, value };
+    };
+
+    assert.deepEqual(bucket(0), { variant: 'success', value: 0 });
+    assert.deepEqual(bucket(1), { variant: 'success', value: 25 });
+    assert.deepEqual(bucket(4), { variant: 'success', value: 25 });
+    assert.deepEqual(bucket(5), { variant: 'warning', value: 60 });
+    assert.deepEqual(bucket(8), { variant: 'warning', value: 60 });
+    assert.deepEqual(bucket(9), { variant: 'danger', value: 100 });
+  });
+
+  test('loadFor explains the workload buckets in its tooltip', function (assert) {
+    const controller = makeController(this);
+    const rule = 'Light is up to 4, busy is 5 to 8, heavy is 9 or more.';
+
+    assert.strictEqual(
+      controller.loadFor(0).tooltip,
+      `Workload: 0 leads. ${rule}`,
+    );
+    assert.strictEqual(
+      controller.loadFor(1).tooltip,
+      `Workload: 1 lead. ${rule}`,
+    );
+    assert.strictEqual(
+      controller.loadFor(4).tooltip,
+      `Workload: 4 leads. ${rule}`,
+    );
+    assert.strictEqual(
+      controller.loadFor(5).tooltip,
+      `Workload: 5 leads. ${rule}`,
+    );
+    assert.strictEqual(
+      controller.loadFor(9).tooltip,
+      `Workload: 9 leads. ${rule}`,
+    );
   });
 });

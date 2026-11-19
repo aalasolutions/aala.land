@@ -68,7 +68,7 @@ export default class TeamMemberDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create';
+    return this.isEdit ? 'Save Changes' : 'Create';
   }
 
   get roles() {

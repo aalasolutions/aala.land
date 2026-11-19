@@ -5,7 +5,7 @@ module('Unit | Utility | tag-label', function () {
   test('reads labels from value-keyed options, case-insensitively', function (assert) {
     assert.strictEqual(
       tagLabel('wo', 'PENDING_APPROVAL'),
-      'Pending Approval (Owner/Manager)',
+      'Waiting for Approval',
     );
     assert.strictEqual(tagLabel('priority', 'urgent'), 'Urgent');
     assert.strictEqual(tagLabel('lead', 'WON'), 'Won & Closed');
@@ -37,6 +37,17 @@ module('Unit | Utility | tag-label', function () {
     );
   });
 
+  test('lead sources, activity types and audit values read their option labels', function (assert) {
+    assert.strictEqual(tagLabel('source', 'SOCIAL_MEDIA'), 'Social Media');
+    assert.strictEqual(tagLabel('source', 'WALK_IN'), 'Walk-in');
+    assert.strictEqual(tagLabel('activity', 'STATUS_CHANGE'), 'Stage changed');
+    assert.strictEqual(tagLabel('activity', 'ASSIGNMENT'), 'Assigned');
+    assert.strictEqual(tagLabel('audit', 'LOGIN'), 'Signed in');
+    assert.strictEqual(tagLabel('audit', 'BULK_UPDATE'), 'Bulk update');
+    assert.strictEqual(tagLabel('auditEntity', 'WorkOrder'), 'Work Order');
+    assert.strictEqual(tagLabel('auditEntity', 'EmailTemplate'), 'Email Template');
+  });
+
   test('access request statuses read their option labels', function (assert) {
     assert.strictEqual(tagLabel('accessRequest', 'REJECTED'), 'Rejected');
   });
@@ -50,7 +61,7 @@ module('Unit | Utility | tag-label', function () {
     assert.strictEqual(tagLabel('payment', 'CHEQUE'), 'Cheque');
     assert.strictEqual(
       tagLabel('payment', 'BANK_TRANSFER'),
-      'Bank Transfer / Wire',
+      'Bank Transfer',
     );
   });
 

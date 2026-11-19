@@ -143,7 +143,7 @@
                           />
                         </div>
                         <div class="flex gap-4 text-sm text-muted">
-                          <span>Source: {{lead.source}}</span>
+                          <span>Source: {{tag-label "source" lead.source}}</span>
                           {{#if lead.budgetMin}}
                             <span>Budget:
                               <Money
@@ -170,12 +170,12 @@
                                   as |activity|
                                 }}
                                   <Woven::TimelineItem
-                                    @title={{activity.type}}
+                                    @title={{tag-label "activity" activity.type}}
                                     @timestamp={{format-date-time
                                       activity.createdAt
                                       region=lead.regionCode
                                     }}
-                                    @description={{activity.notes}}
+                                    @description={{activity-notes activity.type activity.notes}}
                                     @meta={{if
                                       activity.performedByName
                                       (concat "by " activity.performedByName)

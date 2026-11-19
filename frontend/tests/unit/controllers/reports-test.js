@@ -106,7 +106,7 @@ module('Unit | Controller | reports', function (hooks) {
     });
 
     const [bulk, exported] = controller.activityRows;
-    assert.strictEqual(bulk.actionLabel, 'Bulk Delete');
+    assert.strictEqual(bulk.actionLabel, 'Bulk delete');
     assert.strictEqual(bulk.actionVariant, 'danger');
     assert.strictEqual(exported.actionVariant, 'secondary');
   });

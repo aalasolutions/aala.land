@@ -72,9 +72,9 @@
                 >
                   <Woven::Tag
                     @variant={{tag-variant "audit" log.action}}
-                    @text={{log.action}}
+                    @text={{tag-label "audit" log.action}}
                   />
-                  <span class="audit-entity">{{log.entityType}}</span>
+                  <span class="audit-entity">{{tag-label "auditEntity" log.entityType}}</span>
                   <span class="audit-entity-id">{{log.entityId}}</span>
                   <span class="audit-user">{{log.userEmail}}</span>
                   <span class="audit-date">{{format-date-time

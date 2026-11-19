@@ -1,32 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
-
-const AUDIT_ACTIONS = [
-  { value: '', label: 'All Actions' },
-  { value: 'CREATE', label: 'Create' },
-  { value: 'UPDATE', label: 'Update' },
-  { value: 'DELETE', label: 'Delete' },
-  { value: 'ASSIGN', label: 'Assign' },
-  { value: 'LOGIN', label: 'Login' },
-  { value: 'LOGOUT', label: 'Logout' },
-  { value: 'IMPORT', label: 'Import' },
-  { value: 'EXPORT', label: 'Export' },
-  { value: 'VIEW', label: 'View' },
-  { value: 'ACCESS_VERIFY_FAILED', label: 'Access Verify Failed' },
-];
-
-const ENTITY_TYPES = [
-  { value: '', label: 'All Entities' },
-  { value: 'User', label: 'User' },
-  { value: 'Lead', label: 'Lead' },
-  { value: 'Asset', label: 'Asset' },
-  { value: 'Unit', label: 'Property' },
-  { value: 'Owner', label: 'Owner' },
-  { value: 'Lease', label: 'Lease' },
-  { value: 'WorkOrder', label: 'Work Order' },
-  { value: 'Cheque', label: 'Cheque' },
-  { value: 'Transaction', label: 'Transaction' },
-];
+import { AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from 'land/constants';
 
 export default class AuditRoute extends AuthenticatedRoute {
   @service auth;
@@ -53,7 +27,7 @@ export default class AuditRoute extends AuthenticatedRoute {
         total: json.data?.total || 0,
         page: json.data?.page || 1,
         auditActions: AUDIT_ACTIONS,
-        entityTypes: ENTITY_TYPES,
+        entityTypes: AUDIT_ENTITY_TYPES,
       };
     } catch (e) {
       return {
@@ -62,7 +36,7 @@ export default class AuditRoute extends AuthenticatedRoute {
         page: 1,
         forbidden: e?.status === 403,
         auditActions: AUDIT_ACTIONS,
-        entityTypes: ENTITY_TYPES,
+        entityTypes: AUDIT_ENTITY_TYPES,
       };
     }
   }

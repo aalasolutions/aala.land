@@ -215,9 +215,12 @@ export const EMAIL_FILTER_CATEGORIES = [
 // Mirrors MAX_BACKDATE_DAYS in backend transaction-date-window.util.ts.
 export const MAX_BACKDATE_DAYS = 30;
 
+// Mirrors MAX_RANGE_DAYS in backend date-range.ts.
+export const MAX_RANGE_DAYS = 366;
+
 export const TRANSACTION_TYPE_OPTIONS = [
-  { value: 'INCOME', label: 'Income / Revenue' },
-  { value: 'EXPENSE', label: 'Expense / Outflow' },
+  { value: 'INCOME', label: 'Income' },
+  { value: 'EXPENSE', label: 'Expense' },
 ];
 
 export const TRANSACTION_CATEGORY_OPTIONS = [
@@ -225,21 +228,21 @@ export const TRANSACTION_CATEGORY_OPTIONS = [
   { value: 'SALE', label: 'Property Sale Proceeds' },
   { value: 'DEPOSIT', label: 'Security Deposit' },
   { value: 'MAINTENANCE', label: 'Routine Maintenance / Repairs' },
-  { value: 'COMMISSION', label: 'Agency Commission / Brokerage' },
-  { value: 'OTHER', label: 'Other Miscellaneous' },
+  { value: 'COMMISSION', label: 'Agent Commission' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 export const PAYMENT_METHOD_OPTIONS = [
   { value: 'CASH', label: 'Cash' },
   { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'BANK_TRANSFER', label: 'Bank Transfer / Wire' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
   { value: 'CREDIT_CARD', label: 'Credit / Debit Card' },
   { value: 'ONLINE', label: 'Online Payment Link' },
 ];
 
 export const TRANSACTION_STATUS_OPTIONS = [
-  { value: 'PENDING', label: 'Pending / Unpaid' },
-  { value: 'COMPLETED', label: 'Completed / Paid' },
+  { value: 'PENDING', label: 'Unpaid' },
+  { value: 'COMPLETED', label: 'Paid' },
   { value: 'CANCELLED', label: 'Cancelled' },
   { value: 'FAILED', label: 'Failed' },
 ];
@@ -281,6 +284,56 @@ export const LEAD_SOURCE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+// Mirrors ActivityType in backend lead-activity.entity.ts.
+export const LEAD_ACTIVITY_TYPES = [
+  { value: 'CALL', label: 'Call' },
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+  { value: 'VIEWING', label: 'Viewing' },
+  { value: 'NOTE', label: 'Note' },
+  { value: 'STATUS_CHANGE', label: 'Stage changed' },
+  { value: 'ASSIGNMENT', label: 'Assigned' },
+];
+
+// Mirrors AuditAction in backend query-audit-logs.dto.ts.
+export const AUDIT_ACTIONS = [
+  { value: '', label: 'All Actions' },
+  { value: 'CREATE', label: 'Created' },
+  { value: 'UPDATE', label: 'Updated' },
+  { value: 'DELETE', label: 'Deleted' },
+  { value: 'ASSIGN', label: 'Assigned' },
+  { value: 'LOGIN', label: 'Signed in' },
+  { value: 'LOGOUT', label: 'Signed out' },
+  { value: 'IMPORT', label: 'Imported' },
+  { value: 'EXPORT', label: 'Exported' },
+  { value: 'BULK_DELETE', label: 'Bulk delete' },
+  { value: 'BULK_UPDATE', label: 'Bulk update' },
+  { value: 'VIEW', label: 'Viewed' },
+  { value: 'ACCESS_VERIFY_FAILED', label: 'Access check failed' },
+];
+
+// Filter values; the backend audit interceptor's ENTITY_TYPE_MAP holds the full set.
+export const AUDIT_ENTITY_TYPES = [
+  { value: '', label: 'All Entities' },
+  { value: 'User', label: 'User' },
+  { value: 'Lead', label: 'Lead' },
+  { value: 'Asset', label: 'Asset' },
+  { value: 'Unit', label: 'Property' },
+  { value: 'Owner', label: 'Owner' },
+  { value: 'Lease', label: 'Lease' },
+  { value: 'WorkOrder', label: 'Work Order' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'Transaction', label: 'Transaction' },
+];
+
+// Display-only names for audit entity types that are not filter options.
+export const AUDIT_ENTITY_LABELS = [
+  { value: 'EmailTemplate', label: 'Email Template' },
+  { value: 'ReminderRule', label: 'Reminder Rule' },
+  { value: 'AuditLog', label: 'Audit Log' },
+  { value: 'WhatsApp', label: 'WhatsApp' },
+];
+
 export const NONE_OPTION = { value: '', label: '-- None --' };
 
 export const UUID_PATTERN =
@@ -315,10 +368,10 @@ export const ARCHIVED_FILTER_OPTIONS = [
 
 export const MAINTENANCE_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'OPEN', label: 'New / Unassigned' },
-  { value: 'IN_PROGRESS', label: 'In Progress / Work Underway' },
-  { value: 'PENDING_APPROVAL', label: 'Pending Approval (Owner/Manager)' },
-  { value: 'COMPLETED', label: 'Completed & Closed' },
+  { value: 'OPEN', label: 'Open' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING_APPROVAL', label: 'Waiting for Approval' },
+  { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
@@ -338,14 +391,14 @@ export const PRIORITY_OPTIONS = [
 
 // Alphabetical, "Other" last.
 export const MAINTENANCE_CATEGORY_OPTIONS = [
-  { value: 'CLEANING', label: 'Cleaning & Deep Wash' },
-  { value: 'ELECTRICAL', label: 'Electrical / Power' },
-  { value: 'APPLIANCE', label: 'Home Appliances / White Goods' },
-  { value: 'HVAC', label: 'HVAC / Air Conditioning' },
-  { value: 'PEST_CONTROL', label: 'Pest Control / Sanitisation' },
-  { value: 'PLUMBING', label: 'Plumbing / Water Systems' },
-  { value: 'STRUCTURAL', label: 'Structural / Masonry / Civil' },
-  { value: 'OTHER', label: 'Other Miscellaneous' },
+  { value: 'CLEANING', label: 'Cleaning' },
+  { value: 'ELECTRICAL', label: 'Electrical' },
+  { value: 'APPLIANCE', label: 'Appliances' },
+  { value: 'HVAC', label: 'HVAC' },
+  { value: 'PEST_CONTROL', label: 'Pest Control' },
+  { value: 'PLUMBING', label: 'Plumbing' },
+  { value: 'STRUCTURAL', label: 'Structural' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 export const SPECIALTY_OPTIONS = [
@@ -355,7 +408,7 @@ export const SPECIALTY_OPTIONS = [
   { value: 'STRUCTURAL', label: 'Structural' },
   { value: 'CLEANING', label: 'Cleaning' },
   { value: 'PEST_CONTROL', label: 'Pest Control' },
-  { value: 'APPLIANCE', label: 'Appliance' },
+  { value: 'APPLIANCE', label: 'Appliances' },
   { value: 'PAINTING', label: 'Painting' },
   { value: 'GENERAL', label: 'General' },
 ];

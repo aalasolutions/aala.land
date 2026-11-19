@@ -241,6 +241,7 @@
       {{#if this.isCustomRange}}
         <div class="finance-filters__dates" data-test-financials-custom-range>
           <Woven::Input
+            id="financials-from"
             type="date"
             aria-label="From date"
             max={{this.to}}
@@ -337,12 +338,22 @@
         data-test-financials-forbidden
       />
     {{else if @model.error}}
-      <Financials::LoadError
-        @title="Could not load financials"
-        @description={{@model.error}}
-        @onRetry={{this.retryLoad}}
-        data-test-financials-error
-      />
+      {{#if this.rangeTooLong}}
+        <Financials::LoadError
+          @title="Could not load financials"
+          @description="Pick a date range of one year or less."
+          @retryLabel="Change dates"
+          @onRetry={{this.focusRangeStart}}
+          data-test-financials-error
+        />
+      {{else}}
+        <Financials::LoadError
+          @title="Could not load financials"
+          @description={{@model.error}}
+          @onRetry={{this.retryLoad}}
+          data-test-financials-error
+        />
+      {{/if}}
     {{else if @model.total}}
       <Woven::EmptyState
         data-test-financials-page-empty

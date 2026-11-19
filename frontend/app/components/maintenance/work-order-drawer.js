@@ -9,6 +9,7 @@ import {
   MAINTENANCE_CATEGORY_OPTIONS,
 } from 'land/constants';
 import { toDateOnly } from 'land/utils/local-date';
+import { tagLabel } from 'land/utils/tag-label';
 import { safeJson } from 'land/utils/safe-json';
 
 function formFrom(wo) {
@@ -138,7 +139,7 @@ export default class MaintenanceWorkOrderDrawerComponent extends Component {
       ...vendors.map((vendor) => ({
         value: vendor.id,
         label: vendor.specialties?.length
-          ? `${vendor.name} (${vendor.specialties.join(', ')})`
+          ? `${vendor.name} (${vendor.specialties.map((s) => tagLabel('trade', s)).join(', ')})`
           : vendor.name,
       })),
     ];

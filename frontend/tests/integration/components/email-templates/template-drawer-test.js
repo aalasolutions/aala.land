@@ -72,7 +72,7 @@ module(
       await renderDrawer();
       assert.dom('#t-name').hasValue('Rent Due');
       assert.dom('#t-vars').hasValue('firstName, amount');
-      assert.dom('[data-test-save-template]').hasText('Update');
+      assert.dom('[data-test-save-template]').hasText('Save Changes');
 
       await fillIn('#t-subject', 'Rent reminder');
       await click('[data-test-save-template]');

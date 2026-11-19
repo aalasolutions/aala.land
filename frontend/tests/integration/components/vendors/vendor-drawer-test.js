@@ -101,7 +101,7 @@ module('Integration | Component | vendors/vendor-drawer', function (hooks) {
     assert
       .dom('[data-test-specialty-option="HVAC"] input')
       .isChecked();
-    assert.dom('[data-test-save-vendor]').hasText('Update');
+    assert.dom('[data-test-save-vendor]').hasText('Save Changes');
 
     await fillIn('#v-notes', 'Very fast');
     await click('[data-test-save-vendor]');

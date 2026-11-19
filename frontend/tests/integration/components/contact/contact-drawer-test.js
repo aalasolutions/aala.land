@@ -91,7 +91,7 @@ module('Integration | Component | contact/contact-drawer', function (hooks) {
     assert.dom('[data-test-input-email]').hasValue('user@example.com');
     assert.dom('[data-test-input-notes]').hasValue('Old notes');
     assert.dom('[data-test-input-is-whatsapp] input').isChecked();
-    assert.dom('[data-test-save-contact]').hasText('Update');
+    assert.dom('[data-test-save-contact]').hasText('Save Changes');
 
     await fillIn('[data-test-input-company]', '');
     await fillIn('[data-test-input-notes]', 'New notes');

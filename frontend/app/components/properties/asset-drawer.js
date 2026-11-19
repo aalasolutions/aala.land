@@ -63,7 +63,7 @@ export default class PropertiesAssetDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create Asset';
+    return this.isEdit ? 'Save Changes' : 'Create Asset';
   }
 
   get citySearchUrl() {

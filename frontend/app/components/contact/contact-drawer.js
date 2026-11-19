@@ -58,7 +58,7 @@ export default class ContactContactDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create Contact';
+    return this.isEdit ? 'Save Changes' : 'Create Contact';
   }
 
   dropFieldErrors(...names) {

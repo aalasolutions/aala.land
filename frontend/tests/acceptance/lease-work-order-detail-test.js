@@ -307,7 +307,7 @@ module('Acceptance | maintenance/detail', function (hooks) {
   test('the header carries the tags and Edit opens the drawer prefilled', async function (assert) {
     await visit('/maintenance/wo-1');
 
-    assert.dom('[data-test-work-order-status]').hasText('New / Unassigned');
+    assert.dom('[data-test-work-order-status]').hasText('Open');
     assert.dom('[data-test-work-order-priority]').hasText('High');
     assert.dom('[data-test-work-order-category]').hasText('HVAC');
 

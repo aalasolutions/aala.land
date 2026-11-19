@@ -65,7 +65,7 @@
         {{#if cell.value.length}}
           <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
             {{#each cell.value as |code|}}
-              <Woven::Tag @variant="secondary" @text={{code}} />
+              <Woven::Tag @variant="secondary" @text={{region-name code}} />
             {{/each}}
           </div>
         {{else}}

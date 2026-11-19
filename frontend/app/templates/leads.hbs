@@ -28,14 +28,22 @@
 
   {{! Agent board columns are already the ownership breakdown }}
   <:toolbar>
-    {{#unless (eq this.viewMode "agent")}}
+    {{#if (eq this.viewMode "agent")}}
+      <Woven::Segmented
+        class="lead-stage-filters"
+        @options={{this.stageFilterTabs}}
+        @value={{this.stageFilter}}
+        @onChange={{this.setStageFilter}}
+        data-test-lead-stage-filters
+      />
+    {{else}}
       <Woven::Segmented
         @options={{this.filterTabs}}
         @value={{this.filterType}}
         @onChange={{this.setFilter}}
         data-test-lead-filters
       />
-    {{/unless}}
+    {{/if}}
   </:toolbar>
 
   <:body as |page|>
@@ -195,6 +203,8 @@
               @variant={{column.load.variant}}
               @size="sm"
               aria-label="{{column.agentName}} workload"
+              data-tooltip={{column.load.tooltip}}
+              data-tooltip-position="bottom"
               data-test-agent-load
             />
 
@@ -390,11 +400,11 @@
         {{/if}}
         <Woven::Tag
           @variant={{tag-variant "temp" this.detailLead.temperature}}
-          @text={{this.detailLead.temperature}}
+          @text={{tag-label "temp" this.detailLead.temperature}}
         />
         <Woven::Tag
           @variant={{tag-variant "lead" this.detailLead.status}}
-          @text={{this.detailLead.status}}
+          @text={{tag-label "lead" this.detailLead.status}}
         />
       </div>
     </div>
@@ -435,7 +445,7 @@
                 {{/if}}
               </span>
             {{else}}
-              <span class="text-muted">N/A</span>
+              <span class="text-muted">Not added</span>
             {{/if}}
           </Woven::InfoRow>
           {{#unless (is-limited-contact this.detailLead.contact)}}
@@ -445,7 +455,7 @@
                     this.detailLead.contact
                   }}</span>
               {{else}}
-                <span class="text-muted">N/A</span>
+                <span class="text-muted">Not added</span>
               {{/if}}
             </Woven::InfoRow>
           {{/unless}}
@@ -464,9 +474,9 @@
           {{/if}}
           <Woven::InfoRow @label="Source">
             {{#if this.detailLead.source}}
-              {{this.detailLead.source}}
+              {{tag-label "source" this.detailLead.source}}
             {{else}}
-              <span class="text-muted">Unknown</span>
+              <span class="text-muted">Not added</span>
             {{/if}}
           </Woven::InfoRow>
         </section>
@@ -477,7 +487,7 @@
             {{#if this.detailLead.locality}}
               {{this.detailLead.locality.name}}
             {{else}}
-              <span class="text-muted">No area selected</span>
+              <span class="text-muted">Not added</span>
             {{/if}}
           </Woven::InfoRow>
           {{#if this.detailLead.unit}}
@@ -493,7 +503,7 @@
                 <Money @amount={{this.detailLead.budgetMax}} />
               {{/if}}
             {{else}}
-              <span class="text-muted">Not specified</span>
+              <span class="text-muted">Not added</span>
             {{/if}}
           </Woven::InfoRow>
         </section>
@@ -515,12 +525,12 @@
             <Woven::Timeline>
               {{#each this.leadActivities as |activity|}}
                 <Woven::TimelineItem
-                  @title={{activity.type}}
+                  @title={{tag-label "activity" activity.type}}
                   @timestamp={{format-date-time
                     activity.createdAt
                     region=this.detailLead.regionCode
                   }}
-                  @description={{activity.notes}}
+                  @description={{activity-notes activity.type activity.notes}}
                   @meta={{if
                     activity.performedByName
                     (concat "by " activity.performedByName)

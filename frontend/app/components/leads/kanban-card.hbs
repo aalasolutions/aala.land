@@ -19,12 +19,12 @@
       {{#if this.isTemperatureBoard}}
         <Woven::Tag
           @variant={{tag-variant "lead" @lead.status}}
-          @text={{@lead.status}}
+          @text={{tag-label "lead" @lead.status}}
         />
       {{else}}
         <Woven::Tag
           @variant={{tag-variant "temp" @lead.temperature}}
-          @text={{@lead.temperature}}
+          @text={{tag-label "temp" @lead.temperature}}
         />
       {{/if}}
     </div>
@@ -53,7 +53,7 @@
     {{#if this.isAgentBoard}}
       <Woven::Tag
         @variant={{tag-variant "lead" @lead.status}}
-        @text={{@lead.status}}
+        @text={{tag-label "lead" @lead.status}}
       />
     {{else if (contact-email @lead.contact)}}
       <p class="text-muted text-xs" data-test-lead-email>{{contact-email

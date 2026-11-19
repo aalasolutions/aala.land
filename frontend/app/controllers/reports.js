@@ -1,6 +1,7 @@
 import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { tagLabel } from 'land/utils/tag-label';
 
 const VISIBLE_FLAGS_PER_GROUP = 10;
 
@@ -121,7 +122,7 @@ export default class ReportsController extends PaginatedController {
   get activityRows() {
     return (this.model?.activity ?? []).map((item) => ({
       ...item,
-      actionLabel: titleCase(item.action),
+      actionLabel: tagLabel('audit', item.action),
       actionVariant: ACTION_VARIANTS[item.action] ?? 'secondary',
     }));
   }

@@ -17,6 +17,11 @@ $lead-temps: (
   }
 }
 
+// Seven stages: equal 1fr columns sized to the longest label overflow the toolbar.
+.lead-stage-filters {
+  grid-auto-columns: auto;
+}
+
 .lead-card {
   --wu-card--Padding: #{wu-space(3)};
 

@@ -4,6 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import {
   DEFAULT_RANGE,
+  daysUntil,
   formatCalendarDate,
   formatShortDate,
   isDateOnly,
@@ -12,6 +13,7 @@ import {
   todayInZone,
 } from 'land/utils/local-date';
 import { dueStatus } from 'land/utils/due-status';
+import { MAX_RANGE_DAYS } from 'land/constants';
 import CellText from '@wovenui/ember/components/woven/cell/text';
 import CellLabel from 'land/components/cell/label';
 import CellStatus from 'land/components/cell/status';
@@ -101,6 +103,16 @@ export default class FinancialsController extends PaginatedController {
   // Re-runs the model hook so a failed load retries with the filters already in the URL.
   @action retryLoad() {
     this.router.refresh('financials');
+  }
+
+  get rangeTooLong() {
+    const { from, to } = this.model?.bounds ?? {};
+    const span = daysUntil(to, from);
+    return span !== null && span + 1 > MAX_RANGE_DAYS;
+  }
+
+  @action focusRangeStart() {
+    document.getElementById('financials-from')?.focus();
   }
 
   get cashflow() {

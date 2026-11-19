@@ -193,7 +193,7 @@ module('Integration | Component | cheques/cheque-drawer', function (hooks) {
     assert
       .dom('#chq-unit [data-test-wu-dropdown-trigger]')
       .includesText('Area - Tower - Property 101');
-    assert.dom('[data-test-save-cheque]').hasText('Update');
+    assert.dom('[data-test-save-cheque]').hasText('Save Changes');
 
     await fillIn('[data-test-input-amount]', '9000');
     await click('[data-test-save-cheque]');

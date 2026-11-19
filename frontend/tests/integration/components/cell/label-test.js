@@ -26,7 +26,7 @@ module('Integration | Component | cell/label', function (hooks) {
     );
     assert
       .dom('[data-test-wu-cell-text]')
-      .hasText('Pending Approval (Owner/Manager)');
+      .hasText('Waiting for Approval');
   });
 
   test('an unknown value is title cased', async function (assert) {

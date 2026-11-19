@@ -20,7 +20,7 @@ module('Integration | Component | cell/status', function (hooks) {
     await render(
       hbs`<div data-test-out><Cell::Status @value="PENDING_APPROVAL" @domain="wo" @column={{this.column}} /></div>`,
     );
-    assert.dom('[data-test-out]').hasText('Pending Approval (Owner/Manager)');
+    assert.dom('[data-test-out]').hasText('Waiting for Approval');
     assert.dom('[data-test-out] .wu-tag.warning').exists();
   });
 

@@ -76,7 +76,7 @@ export default class VendorsVendorDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create Vendor';
+    return this.isEdit ? 'Save Changes' : 'Create Vendor';
   }
 
   get showRegionField() {

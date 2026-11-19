@@ -68,7 +68,7 @@
                 )
                 (hash
                   key="clear-cheque"
-                  label="Clear"
+                  label="Mark as cleared"
                   icon="check-circle"
                   onSelect=(fn this.openClear cell.row)
                   hidden=(not
@@ -83,7 +83,7 @@
                 )
                 (hash
                   key="bounce"
-                  label="Bounce"
+                  label="Mark as bounced"
                   icon="x-circle"
                   variant="danger"
                   onSelect=(fn this.openBounceModal cell.row)
@@ -218,7 +218,7 @@
       @variant="danger"
       data-test-confirm-bounce
       {{on "click" this.confirmBounce}}
-    >Confirm Bounce</Woven::Button>
+    >Yes, mark as bounced</Woven::Button>
   </Woven::FormActions>
 </Woven::Modal>
 
@@ -292,7 +292,7 @@
       @disabled={{this.clearWindowUnusable}}
       data-test-confirm-clear
       {{on "click" this.confirmClear}}
-    >Clear and record payment</Woven::Button>
+    >Mark as cleared and record payment</Woven::Button>
   </Woven::FormActions>
 </Woven::Modal>
 

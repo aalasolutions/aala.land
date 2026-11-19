@@ -412,7 +412,7 @@
           <Woven::Input
             id="c-national-id"
             type="text"
-            placeholder="EID / passport number"
+            placeholder="ID or passport number"
             @value={{this.formNationalId}}
             @onInput={{fn this.setFieldValue "formNationalId"}}
             data-test-input-national-id
@@ -492,7 +492,7 @@
     >{{if
         this.isSaving
         "Saving..."
-        (if this.editContact "Update" "Create Contact")
+        (if this.editContact "Save Changes" "Create Contact")
       }}</Woven::Button>
   </:footer>
 </Woven::Drawer>

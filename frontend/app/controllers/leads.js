@@ -30,6 +30,13 @@ const FILTER_TABS = [
 ];
 const OWN_FILTER_TABS = FILTER_TABS.filter((tab) => tab.id !== 'others');
 
+const STAGE_FILTER_PREF_KEY = 'leads-stage-filter';
+const DEFAULT_STAGE_FILTER = 'all';
+const STAGE_FILTER_TABS = [
+  { id: DEFAULT_STAGE_FILTER, label: 'All' },
+  ...LEAD_STAGES.map(({ status, label }) => ({ id: status, label })),
+];
+
 export function insertionIndex(midpoints, pointerY) {
   return midpoints.filter((midpoint) => pointerY > midpoint).length;
 }
@@ -158,6 +165,24 @@ export default class LeadsController extends PaginatedController {
     this._filterType = val;
   }
 
+  stageFilterTabs = STAGE_FILTER_TABS;
+
+  @tracked _stageFilter = null;
+
+  get stageFilter() {
+    if (this._stageFilter) return this._stageFilter;
+    const saved = this.preferences.get(
+      STAGE_FILTER_PREF_KEY,
+      DEFAULT_STAGE_FILTER,
+    );
+    return STAGE_FILTER_TABS.some((tab) => tab.id === saved)
+      ? saved
+      : DEFAULT_STAGE_FILTER;
+  }
+  set stageFilter(val) {
+    this._stageFilter = val;
+  }
+
   @tracked dropBeforeId = null;
   // Drop-time order shown until the refreshed model replaces the one it was built from.
   @tracked _optimistic = null;
@@ -262,6 +287,11 @@ export default class LeadsController extends PaginatedController {
     return leads;
   }
 
+  applyStageFilter(leads) {
+    if (this.stageFilter === DEFAULT_STAGE_FILTER) return leads;
+    return leads.filter((l) => l.status === this.stageFilter);
+  }
+
   // A board's leads in its own column order; after a drop the optimistic order already is.
   sortedFor(board) {
     if (
@@ -296,13 +326,18 @@ export default class LeadsController extends PaginatedController {
 
   // Workload buckets for the column bar: a business rule, so not in the template.
   loadFor(count) {
-    if (count > HIGH_LOAD) return { variant: 'danger', value: 100 };
-    if (count > MEDIUM_LOAD) return { variant: 'warning', value: 60 };
-    return { variant: 'success', value: 25 };
+    const tooltip =
+      `Workload: ${count} ${count === 1 ? 'lead' : 'leads'}. ` +
+      `Light is up to ${MEDIUM_LOAD}, busy is ${MEDIUM_LOAD + 1} to ${HIGH_LOAD}, ` +
+      `heavy is ${HIGH_LOAD + 1} or more.`;
+    if (count > HIGH_LOAD) return { variant: 'danger', value: 100, tooltip };
+    if (count > MEDIUM_LOAD) return { variant: 'warning', value: 60, tooltip };
+    if (count > 0) return { variant: 'success', value: 25, tooltip };
+    return { variant: 'success', value: 0, tooltip };
   }
 
   get agentColumns() {
-    const leads = this.sortedFor('agent');
+    const leads = this.applyStageFilter(this.sortedFor('agent'));
     const column = (agentId, agentName, ownLeads) => {
       const key = agentId ?? 'unassigned';
       return {
@@ -335,6 +370,11 @@ export default class LeadsController extends PaginatedController {
   @action setFilter(filter) {
     this.filterType = filter;
     this.preferences.set(FILTER_PREF_KEY, filter);
+  }
+
+  @action setStageFilter(stage) {
+    this.stageFilter = stage;
+    this.preferences.set(STAGE_FILTER_PREF_KEY, stage);
   }
 
   isColumnCollapsed = (board, columnKey) => {

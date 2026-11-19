@@ -8,6 +8,7 @@ import {
   LEASE_TYPE_OPTIONS,
   PROPERTY_SUB_TYPES,
 } from 'land/constants';
+import { tagLabel } from 'land/utils/tag-label';
 import { addCalendarDays, toDateOnly } from 'land/utils/local-date';
 import { safeJson } from 'land/utils/safe-json';
 import ContactSelection, {
@@ -143,7 +144,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    if (this.isEdit) return 'Update';
+    if (this.isEdit) return 'Save Changes';
     return this.isRenew ? 'Renew Lease' : 'Create Lease';
   }
 
@@ -171,7 +172,7 @@ export default class LeasesLeaseDrawerComponent extends Component {
   get statusOptions() {
     const current = this.args.lease?.status;
     const statuses = NEXT_STATUSES[current] ?? (current ? [current] : []);
-    return statuses.map((s) => ({ value: s, label: s }));
+    return statuses.map((s) => ({ value: s, label: tagLabel('lease', s) }));
   }
 
   leaseTypeFor(unitId) {

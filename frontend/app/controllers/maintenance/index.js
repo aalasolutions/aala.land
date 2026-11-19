@@ -58,7 +58,7 @@ export default class MaintenanceController extends PaginatedController {
       cellArgs: { domain: 'priority' },
     },
     {
-      name: 'Est. Cost',
+      name: 'Estimated Cost',
       valuePath: 'estimatedCost',
       width: 140,
       numeric: true,

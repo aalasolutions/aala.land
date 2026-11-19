@@ -103,7 +103,7 @@ module('Integration | Component | team/member-drawer', function (hooks) {
     assert.dom('#t-email').hasValue('member@example.com');
     assert.dom('[data-test-input-password]').doesNotExist();
     assert.dom('[data-test-seat-count]').doesNotExist('no seat note on edit');
-    assert.dom('[data-test-save-member]').hasText('Update');
+    assert.dom('[data-test-save-member]').hasText('Save Changes');
 
     await fillIn('#t-name', 'Renamed Member');
     await pickRole('Manager');

@@ -187,7 +187,7 @@ module(
       assert.dom('#unit-price').hasValue('5000');
       assert.dom('#unit-baths').hasValue('1.5');
       assert.dom('[data-test-unit-floor]').doesNotExist();
-      assert.dom('[data-test-unit-save]').hasText('Update');
+      assert.dom('[data-test-unit-save]').hasText('Save Changes');
 
       await pickOption('#unit-property-type', 'Not Listed');
       await click('[data-test-unit-save]');
@@ -217,7 +217,7 @@ module(
       assert.dom('[data-test-unit-floor]').hasValue('3');
       assert.dom('[data-test-unit-number]').doesNotHaveAttribute('required');
       assert.dom('[data-test-amenities-picker]').exists();
-      assert.dom('[data-test-unit-save]').hasText('Update Property');
+      assert.dom('[data-test-unit-save]').hasText('Save Changes');
 
       await fillIn('[data-test-unit-description]', 'Sea view');
       await click('[data-test-unit-save]');

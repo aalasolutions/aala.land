@@ -89,7 +89,7 @@ export default class LeadsLeadDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create Lead';
+    return this.isEdit ? 'Save Changes' : 'Create Lead';
   }
 
   get showRegionField() {

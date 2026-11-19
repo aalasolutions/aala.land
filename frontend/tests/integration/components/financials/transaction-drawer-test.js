@@ -132,7 +132,7 @@ module(
 
       test('completing with no date is refused before any request', async function (assert) {
         await renderDrawer();
-        await pick('#tx-status', 'Completed / Paid');
+        await pick('#tx-status', 'Paid');
         await fillIn('#tx-date', '');
         await fillIn('[data-test-tx-amount]', '100');
         await click('[data-test-save-transaction]');
@@ -148,8 +148,8 @@ module(
 
       test('an expense names the date it was paid', async function (assert) {
         await renderDrawer();
-        await pick('#tx-type', 'Expense / Outflow');
-        await pick('#tx-status', 'Completed / Paid');
+        await pick('#tx-type', 'Expense');
+        await pick('#tx-status', 'Paid');
         await fillIn('#tx-date', '');
         await fillIn('[data-test-tx-amount]', '100');
         await click('[data-test-save-transaction]');
@@ -165,20 +165,20 @@ module(
         await renderDrawer();
         await pick('#tx-payment', 'Cheque');
 
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
         assert.dom(`#tx-type ${TRIGGER}`).isDisabled();
       });
 
       test('rental income and sale categories force income and lock it', async function (assert) {
         await renderDrawer();
-        await pick('#tx-type', 'Expense / Outflow');
+        await pick('#tx-type', 'Expense');
 
         await pick('#tx-category', 'Rental Income');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income / Revenue');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income');
         assert.dom(`#tx-type ${TRIGGER}`).isDisabled();
 
         await pick('#tx-category', 'Property Sale Proceeds');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income / Revenue');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income');
         assert.dom(`#tx-type ${TRIGGER}`).isDisabled();
       });
 
@@ -187,7 +187,7 @@ module(
         await pick('#tx-category', 'Rental Income');
         await pick('#tx-payment', 'Cheque');
 
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
         assert.dom(`#tx-type ${TRIGGER}`).isDisabled();
       });
 
@@ -196,16 +196,16 @@ module(
         for (const label of [
           'Security Deposit',
           'Routine Maintenance / Repairs',
-          'Agency Commission / Brokerage',
-          'Other Miscellaneous',
+          'Agent Commission',
+          'Other',
         ]) {
           await pick('#tx-category', label);
           assert
             .dom(`#tx-type ${TRIGGER}`)
             .isNotDisabled(`${label} leaves type unlocked`);
         }
-        await pick('#tx-type', 'Expense / Outflow');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
+        await pick('#tx-type', 'Expense');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
       });
 
       test('the date label follows the direction of the money', async function (assert) {
@@ -227,8 +227,8 @@ module(
         assert.deepEqual(await optionLabels('#tx-category'), [
           'Security Deposit',
           'Routine Maintenance / Repairs',
-          'Agency Commission / Brokerage',
-          'Other Miscellaneous',
+          'Agent Commission',
+          'Other',
         ]);
       });
 
@@ -252,40 +252,40 @@ module(
 
       test('unlocking gives back the type the user had chosen', async function (assert) {
         await renderDrawer();
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income / Revenue');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income');
 
         await pick('#tx-payment', 'Cheque');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
 
         await pick('#tx-payment', 'Cash');
         assert.dom(`#tx-type ${TRIGGER}`).isNotDisabled('the control unlocks');
         assert
           .dom(`#tx-type ${TRIGGER}`)
-          .includesText('Income / Revenue', 'and the old choice returns');
+          .includesText('Income', 'and the old choice returns');
       });
 
       test('a second lock does not overwrite the remembered choice', async function (assert) {
         await renderDrawer();
-        await pick('#tx-type', 'Expense / Outflow');
+        await pick('#tx-type', 'Expense');
 
         await pick('#tx-category', 'Rental Income');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income / Revenue');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Income');
 
         await pick('#tx-payment', 'Cheque');
-        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
+        assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
 
         await pick('#tx-payment', 'Cash');
-        await pick('#tx-category', 'Other Miscellaneous');
+        await pick('#tx-category', 'Other');
         assert.dom(`#tx-type ${TRIGGER}`).isNotDisabled();
         assert
           .dom(`#tx-type ${TRIGGER}`)
-          .includesText('Expense / Outflow', 'the original choice survives');
+          .includesText('Expense', 'the original choice survives');
       });
     });
 
     test('create posts the full body with amount parsed to a number', async function (assert) {
       await renderDrawer();
-      await pick('#tx-category', 'Agency Commission / Brokerage');
+      await pick('#tx-category', 'Agent Commission');
       await fillIn('[data-test-tx-amount]', '1500.25');
       await fillIn('[data-test-tx-desc]', 'Broker fee');
       await fillIn('[data-test-tx-date]', '2026-10-01');
@@ -324,15 +324,15 @@ module(
       assert.dom('[data-test-tx-amount]').hasValue('450.00');
       assert.dom('[data-test-tx-desc]').hasValue('Pump repair');
       assert.dom('[data-test-tx-date]').hasValue('2026-10-05');
-      assert.dom(`#tx-payment ${TRIGGER}`).includesText('Bank Transfer / Wire');
+      assert.dom(`#tx-payment ${TRIGGER}`).includesText('Bank Transfer');
       assert
         .dom(`#tx-category ${TRIGGER}`)
         .includesText('Routine Maintenance / Repairs');
-      assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense / Outflow');
-      assert.dom('[data-test-save-transaction]').hasText('Update');
+      assert.dom(`#tx-type ${TRIGGER}`).includesText('Expense');
+      assert.dom('[data-test-save-transaction]').hasText('Save Changes');
 
       await fillIn('[data-test-tx-amount]', '500');
-      await pick('#tx-status', 'Completed / Paid');
+      await pick('#tx-status', 'Paid');
       await click('[data-test-save-transaction]');
 
       const patch = sent(this.calls, 'PATCH');
@@ -350,7 +350,7 @@ module(
       this.transaction = { ...TX, category: 'RENT', type: 'INCOME' };
       await renderDrawer();
       assert.dom(`#tx-type ${TRIGGER}`).isDisabled();
-      assert.dom(`#tx-type ${TRIGGER}`).includesText('Income / Revenue');
+      assert.dom(`#tx-type ${TRIGGER}`).includesText('Income');
     });
 
     test('a failed save shows the server message and keeps the drawer open', async function (assert) {

@@ -132,8 +132,8 @@ export default class PropertiesPropertyDrawerComponent extends Component {
   get submitLabel() {
     if (this.isList) return this.isSaving ? 'Creating...' : 'Create Property';
     if (this.isSaving) return 'Saving...';
-    if (this.isUnit) return 'Update Property';
-    return this.isEdit ? 'Update' : 'Create Property';
+    if (this.isUnit) return 'Save Changes';
+    return this.isEdit ? 'Save Changes' : 'Create Property';
   }
 
   get showFields() {

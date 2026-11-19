@@ -249,7 +249,7 @@ module('Integration | Component | leads/lead-drawer', function (hooks) {
     assert
       .dom('#lead-unit [data-test-wu-dropdown-trigger]')
       .containsText('Property 101');
-    assert.dom('[data-test-save-lead]').hasText('Update');
+    assert.dom('[data-test-save-lead]').hasText('Save Changes');
 
     await click('[data-test-save-lead]');
     const patch = sent(this.calls, 'PATCH');

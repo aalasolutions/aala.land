@@ -66,7 +66,7 @@ export default class EmailTemplatesTemplateDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create Template';
+    return this.isEdit ? 'Save Changes' : 'Create Template';
   }
 
   @action setField(name, value) {

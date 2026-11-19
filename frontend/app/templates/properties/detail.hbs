@@ -252,7 +252,7 @@
               />
             {{/if}}
           {{else if (eq cell.key "sqFt")}}
-            {{if cell.value (concat (format-number cell.value) " sqft") ""}}
+            {{if cell.value (concat (format-number cell.value) " sq ft") ""}}
           {{else if (eq cell.key "price")}}
             <span class="text-success">{{if
                 cell.value
