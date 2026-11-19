@@ -4,7 +4,9 @@ import { compatBuild } from '@embroider/compat';
 export default async function (defaults) {
   const { buildOnce } = await import('@embroider/vite');
 
-  const app = new EmberApp(defaults, {});
+  const app = new EmberApp(defaults, {
+    'ember-test-selectors': { strip: false },
+  });
 
   return compatBuild(app, buildOnce);
 }
