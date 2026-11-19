@@ -1,84 +1,81 @@
 <!DOCTYPE html>
 <html>
+  <head>
+    <meta charset="utf-8">
+    <title>Aala.land | Command Center</title>
+    <meta name="description" content="AALA.LAND property management">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate, noai, noimageai">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="slurp" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <meta name="duckduckbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
+      rel="stylesheet">
 
-<head>
-  <meta charset="utf-8">
-  <title>Aala.land | Command Center</title>
-  <meta name="description" content="AALA.LAND property management">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate, noai, noimageai">
-  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
-  <meta name="bingbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
-  <meta name="slurp" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
-  <meta name="duckduckbot" content="noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap"
-    rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="AALA.LAND">
 
-  <link rel="icon" type="image/x-icon" href="/icons/favicon.ico">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="AALA.LAND">
+    {{content-for "head"}}
 
-  {{content-for "head"}}
+    <link integrity="" rel="stylesheet" href="/@embroider/virtual/vendor.css">
 
-  <link integrity="" rel="stylesheet" href="/@embroider/virtual/vendor.css">
+    {{content-for "head-footer"}}
 
-  {{content-for "head-footer"}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
+  </head>
+  <body class="wu-animated">
+    {{content-for "body"}}
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css">
-</head>
+    <script src="/@embroider/virtual/vendor.js"></script>
+    <script type="module">
+      import Application from './app/app';
+      import environment from './app/config/environment';
 
-<body class="wu-animated">
-  {{content-for "body"}}
+      Application.create(environment.APP);
+    </script>
 
-  <script src="/@embroider/virtual/vendor.js"></script>
-  <script type="module">
-    import Application from './app/app';
-    import environment from './app/config/environment';
+    {{content-for "body-footer"}}
 
-    Application.create(environment.APP);
-  </script>
-
-  {{content-for "body-footer"}}
-
-  <script>
-    // Stale chunk after a deploy: reload once to fetch the new index.html
-    window.addEventListener('vite:preloadError', function (event) {
-      event.preventDefault();
-      try {
-        if (!sessionStorage.getItem('preloadReloaded')) {
-          sessionStorage.setItem('preloadReloaded', '1');
-          window.location.reload();
+    <script>
+      // Stale chunk after a deploy: reload once to fetch the new index.html
+      window.addEventListener('vite:preloadError', function (event) {
+        event.preventDefault();
+        try {
+          if (!sessionStorage.getItem('preloadReloaded')) {
+            sessionStorage.setItem('preloadReloaded', '1');
+            window.location.reload();
+          }
+        } catch (e) {}
+      });
+      window.addEventListener('load', function () {
+        // Delayed so a chunk that stays missing cannot reload in a loop
+        setTimeout(function () {
+          try { sessionStorage.removeItem('preloadReloaded'); } catch (e) {}
+        }, 10000);
+      });
+      if ('serviceWorker' in navigator) {
+        if (window.location.hostname === 'localhost') {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        } else {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js');
+          });
         }
-      } catch (e) {}
-    });
-    window.addEventListener('load', function () {
-      // Delayed so a chunk that stays missing cannot reload in a loop
-      setTimeout(function () {
-        try { sessionStorage.removeItem('preloadReloaded'); } catch (e) {}
-      }, 10000);
-    });
-    if ('serviceWorker' in navigator) {
-      if (window.location.hostname === 'localhost') {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) { r.unregister(); });
-        });
-      } else {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js');
-        });
       }
-    }
-  </script>
-</body>
-
+    </script>
+  </body>
 </html>

@@ -8,3 +8,9 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@wovenui/core@2.4.0 || 2.5.0'
   - '@wovenui/components@1.2.0 || 1.3.0'
+
+overrides:
+  ember-cli-htmlbars: ^7.0.1
+  ember-auto-import: ^2.13.1
+  ember-source: ~7.4.1
+  '@glimmer/component': ^2.2.1
