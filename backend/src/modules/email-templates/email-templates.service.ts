@@ -1,18 +1,18 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import {
   EmailTemplate,
   EmailTemplateCategory,
 } from './entities/email-template.entity';
-import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import {
+  Company,
+  SubscriptionTier,
+} from '../companies/entities/company.entity';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { assertTier } from '../../shared/utils/tier.util';
 
 @Injectable()
 export class EmailTemplatesService {
@@ -23,16 +23,13 @@ export class EmailTemplatesService {
     private readonly companyRepository: Repository<Company>,
   ) {}
 
-  private async assertProAccess(companyId: string): Promise<void> {
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-      select: ['id', 'subscriptionTier'],
-    });
-    if (!company || company.subscriptionTier === SubscriptionTier.FREE) {
-      throw new ForbiddenException(
-        'Email templates require a PRO or Enterprise plan. Upgrade your plan to customize CRM emails.',
-      );
-    }
+  private assertProAccess(companyId: string): Promise<void> {
+    return assertTier(
+      this.companyRepository,
+      companyId,
+      [SubscriptionTier.PRO, SubscriptionTier.ENTERPRISE],
+      'Email templates require a PRO or Enterprise plan. Upgrade your plan to customize CRM emails.',
+    );
   }
 
   async create(

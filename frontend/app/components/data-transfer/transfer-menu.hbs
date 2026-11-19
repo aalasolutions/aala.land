@@ -1,0 +1,50 @@
+{{#if this.visible}}
+  <Woven::SplitButton
+    @label="Import"
+    @icon="upload-simple"
+    @variant="subtle"
+    @menuLabel="Import and export options"
+    @onClick={{this.import}}
+    data-test-transfer-menu
+    ...attributes
+  >
+    <:menu as |close|>
+      <div role="group" aria-label="Import and export">
+        <button
+          type="button"
+          class="wu-dropdown-item"
+          role="menuitem"
+          tabindex="-1"
+          data-test-transfer-export="csv"
+          {{on "click" (fn this.exportAs "csv" close)}}
+        >
+          <span class="wu-dropdown-label">Export CSV</span>
+        </button>
+        <button
+          type="button"
+          class="wu-dropdown-item"
+          role="menuitem"
+          tabindex="-1"
+          data-test-transfer-export="xlsx"
+          {{on "click" (fn this.exportAs "xlsx" close)}}
+        >
+          <span class="wu-dropdown-label">Export Excel</span>
+        </button>
+        <button
+          type="button"
+          class="wu-dropdown-item"
+          role="menuitem"
+          tabindex="-1"
+          data-test-transfer-sample
+          {{on "click" (fn this.sample close)}}
+        >
+          <span class="wu-dropdown-label">Download sample file</span>
+        </button>
+      </div>
+    </:menu>
+  </Woven::SplitButton>
+  <DataTransfer::UpgradePrompt
+    @open={{this.promptOpen}}
+    @onClose={{this.closePrompt}}
+  />
+{{/if}}

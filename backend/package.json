@@ -57,8 +57,10 @@
     "bullmq": "^5.66.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "csv-parse": "7.0.3",
     "dotenv": "^17.3.1",
     "express": "5.2.1",
+    "fflate": "0.8.3",
     "file-type": "^21.0.0",
     "google-auth-library": "^10.9.0",
     "helmet": "^8.1.0",
@@ -69,13 +71,15 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.17.1",
+    "read-excel-file": "9.3.14",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.3",
     "stripe": "^22.3.0",
     "typeorm": "^0.3.28",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "write-excel-file": "4.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -12,6 +12,11 @@ import {
 } from '../../utils/delete-modal';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
+import { localMidnightIso } from '../../utils/local-date';
+import { saveResponseAsFile } from '../../utils/download';
+
+const EXPORT_WAIT_NOTICE_MS = 1000;
+export const EXPORT_CAP = 20000;
 
 export const CONTACTS_TAB = 'contacts';
 export const COMPANIES_TAB = 'companies';
@@ -26,6 +31,9 @@ export default class ContactsIndexController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
+  // `region` is the query param below; the service goes by another name.
+  @service('region') regionService;
+  @service dataTransfer;
 
   queryParams = [
     'page',
@@ -206,6 +214,57 @@ export default class ContactsIndexController extends PaginatedController {
       this.dateFrom,
       this.dateTo,
     ].filter(Boolean).length;
+  }
+
+  // The same query the route sends for the list, minus paging, so the file matches the page.
+  get exportParams() {
+    const params = {};
+    if (resolveAllRegions(this.allRegions, this.auth.currentUser?.role)) {
+      params.allRegions = 'true';
+    } else {
+      const regionCode = this.region || this.regionService?.regionCode;
+      if (regionCode) params.regionCode = regionCode;
+    }
+    if (this.search) params.search = this.search;
+    if (this.tag) params.tag = this.tag;
+    if (this.agentId) params.agentId = this.agentId;
+    if (this.isWhatsapp) params.isWhatsapp = 'true';
+    if (this.company) params.company = this.company;
+    if (this.company && this.companyExact === 'true')
+      params.companyExact = 'true';
+    if (this.nationality) params.nationality = this.nationality;
+    const zone =
+      this.regionService?.regions?.find((r) => r.code === this.region)
+        ?.timezone ?? this.regionService?.activeRegion?.timezone;
+    const fromIso = localMidnightIso(this.dateFrom, 0, zone);
+    const toIso = localMidnightIso(this.dateTo, 1, zone);
+    if (fromIso) params.dateFrom = fromIso;
+    if (toIso) params.dateTo = toIso;
+    return params;
+  }
+
+  @action async exportContacts(format) {
+    const notice = setTimeout(
+      () => this.notifications.info('Preparing your file'),
+      EXPORT_WAIT_NOTICE_MS,
+    );
+    try {
+      const response = await this.dataTransfer.exportList(
+        'contacts',
+        this.exportParams,
+        format,
+      );
+      clearTimeout(notice);
+      await saveResponseAsFile(response, `contacts.${format}`);
+      if (response.headers.get('X-Export-Truncated') === 'true') {
+        this.notifications.info(
+          `Only the first ${EXPORT_CAP.toLocaleString()} contacts were exported. Narrow the filters to export the rest.`,
+        );
+      }
+    } catch (error) {
+      clearTimeout(notice);
+      this.notifications.error(error.message);
+    }
   }
 
   @tracked showModal = false;

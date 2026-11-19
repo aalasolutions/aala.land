@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   Query,
+  Res,
   ParseIntPipe,
   ParseUUIDPipe,
   DefaultValuePipe,
@@ -21,6 +22,7 @@ import {
   ApiBearerAuth,
   ApiQuery,
 } from '@nestjs/swagger';
+import { Response } from 'express';
 import {
   CONTACT_TAGS,
   ContactsService,
@@ -36,13 +38,18 @@ import { DeleteContactDto } from './dto/delete-contact.dto';
 import { VerifyContactPhoneDto } from './dto/verify-contact-phone.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
+import { ContactsExportService } from './transfer/contacts-export.service';
+import { ExportContactsQueryDto } from './dto/export-contacts-query.dto';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('contacts')
 export class ContactsController {
-  constructor(private readonly contactsService: ContactsService) {}
+  constructor(
+    private readonly contactsService: ContactsService,
+    private readonly contactsExport: ContactsExportService,
+  ) {}
 
   @Post()
   @Roles(
@@ -189,6 +196,37 @@ export class ContactsController {
       },
       req.user,
     );
+  }
+
+  // Declared before :id. Streams the file itself, so the ResponseInterceptor never wraps it.
+  @Get('export')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({
+    summary:
+      'Export the contact list as CSV or XLSX with the same filters as the list (COMPANY_ADMIN)',
+  })
+  async exportList(
+    @Query() query: ExportContactsQueryDto,
+    @Request() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const file = await this.contactsExport.export(
+      requireCompanyId(req.user),
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        regionCodes: req.user.regionCodes,
+      },
+      query,
+    );
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.fileName}"`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (file.truncated) res.setHeader('X-Export-Truncated', 'true');
+    res.send(file.buffer);
   }
 
   // Limited to roles that see every contact in their regions in full, so no hidden company leaks.

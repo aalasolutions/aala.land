@@ -2,13 +2,15 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { json, type Request } from 'express';
 
 export const WHATSAPP_WEBHOOK_BODY_LIMIT = '4mb';
+export const DATA_TRANSFER_BODY_LIMIT = '5mb';
 
 // Meta batches webhooks past Express's 100kb default; only that route gets the larger limit.
 export function configureBodyParsers(
   app: NestExpressApplication,
   globalPrefix = '',
 ): void {
-  const webhookPath = `${globalPrefix ? `/${globalPrefix}` : ''}/whatsapp/webhook`;
+  const prefix = globalPrefix ? `/${globalPrefix}` : '';
+  const webhookPath = `${prefix}/whatsapp/webhook`;
   const webhookJson = json({
     limit: WHATSAPP_WEBHOOK_BODY_LIMIT,
     // Same bytes Nest's rawBody option keeps; the webhook HMAC is computed over them.
@@ -18,6 +20,12 @@ export function configureBodyParsers(
   });
 
   // Registered first; the global parser below then skips the already consumed body.
-  app.getHttpAdapter().getInstance().post(webhookPath, webhookJson);
+  const instance = app.getHttpAdapter().getInstance();
+  instance.post(webhookPath, webhookJson);
+  // Failed import rows travel back as JSON to become a file; up to 5,000 rows exceeds 100kb.
+  instance.post(
+    `${prefix}/data-transfer/:entity/failed-file`,
+    json({ limit: DATA_TRANSFER_BODY_LIMIT }),
+  );
   app.useBodyParser('json');
 }

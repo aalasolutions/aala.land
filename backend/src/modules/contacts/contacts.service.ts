@@ -399,68 +399,7 @@ export class ContactsService {
     }
 
     const qb = this.scopedListQuery(companyId, regionCodes);
-    // Set by every filter that narrows qb before the tag-count clone; tag is applied after it.
-    let narrowed = false;
-
-    if (search?.trim()) {
-      qb.andWhere(this.searchSql(search.trim(), caller));
-      narrowed = true;
-    }
-
-    if (filters?.agentId) {
-      // Agent assigned via a lead OR a unit this contact owns; both scoped via bound :companyId.
-      qb.andWhere(
-        `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
-          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
-        { agentId: filters.agentId },
-      );
-      narrowed = true;
-    }
-
-    if (filters?.isWhatsapp !== undefined) {
-      qb.andWhere('c.is_whatsapp = :isWhatsapp', {
-        isWhatsapp: filters.isWhatsapp,
-      });
-      narrowed = true;
-    }
-
-    if (filters?.company && filters.companyExact) {
-      // Same grouping as findCompanies, so a company link lists exactly its counted contacts.
-      qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
-        company: filters.company,
-      });
-      narrowed = true;
-    } else if (filters?.company) {
-      qb.andWhere('c.contact_company ILIKE :company', {
-        company: `%${filters.company}%`,
-      });
-      narrowed = true;
-    }
-
-    if (filters?.nationality) {
-      qb.andWhere('c.nationality ILIKE :nationality', {
-        nationality: `%${filters.nationality}%`,
-      });
-      narrowed = true;
-    }
-
-    if (filters?.dateFrom) {
-      qb.andWhere('c.created_at >= :dateFrom', {
-        dateFrom: filters.dateFrom,
-      });
-      narrowed = true;
-    }
-
-    if (filters?.dateTo) {
-      // Browsers send the next local midnight as an instant; a bare date is a UTC day.
-      const upper = isDateOnly(filters.dateTo)
-        ? ":dateTo::date + interval '1 day'"
-        : ':dateTo::timestamptz';
-      qb.andWhere(`c.created_at < ${upper}`, {
-        dateTo: filters.dateTo,
-      });
-      narrowed = true;
-    }
+    const narrowed = this.applyListFilters(qb, search, filters, caller);
 
     // Cloned before the tag filter so every total shares the list's scope and filters.
     let tagCounts: ContactTagCounts | undefined;
@@ -825,6 +764,97 @@ export class ContactsService {
       case 'portfolio_owner':
         return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
+  }
+
+  // Every list filter except tag, shared by the page and the export; returns true when any filter narrowed qb.
+  private applyListFilters(
+    qb: SelectQueryBuilder<Contact>,
+    search: string | undefined,
+    filters: ContactFilters | undefined,
+    caller: ContactViewer | undefined,
+  ): boolean {
+    let narrowed = false;
+
+    if (search?.trim()) {
+      qb.andWhere(this.searchSql(search.trim(), caller));
+      narrowed = true;
+    }
+
+    if (filters?.agentId) {
+      // Agent assigned via a lead OR a unit this contact owns; both scoped via bound :companyId.
+      qb.andWhere(
+        `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
+          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
+        { agentId: filters.agentId },
+      );
+      narrowed = true;
+    }
+
+    if (filters?.isWhatsapp !== undefined) {
+      qb.andWhere('c.is_whatsapp = :isWhatsapp', {
+        isWhatsapp: filters.isWhatsapp,
+      });
+      narrowed = true;
+    }
+
+    if (filters?.company && filters.companyExact) {
+      // Same grouping as findCompanies, so a company link lists exactly its counted contacts.
+      qb.andWhere('LOWER(TRIM(c.contact_company)) = LOWER(TRIM(:company))', {
+        company: filters.company,
+      });
+      narrowed = true;
+    } else if (filters?.company) {
+      qb.andWhere('c.contact_company ILIKE :company', {
+        company: `%${filters.company}%`,
+      });
+      narrowed = true;
+    }
+
+    if (filters?.nationality) {
+      qb.andWhere('c.nationality ILIKE :nationality', {
+        nationality: `%${filters.nationality}%`,
+      });
+      narrowed = true;
+    }
+
+    if (filters?.dateFrom) {
+      qb.andWhere('c.created_at >= :dateFrom', {
+        dateFrom: filters.dateFrom,
+      });
+      narrowed = true;
+    }
+
+    if (filters?.dateTo) {
+      // Browsers send the next local midnight as an instant; a bare date is a UTC day.
+      const upper = isDateOnly(filters.dateTo)
+        ? ":dateTo::date + interval '1 day'"
+        : ':dateTo::timestamptz';
+      qb.andWhere(`c.created_at < ${upper}`, {
+        dateTo: filters.dateTo,
+      });
+      narrowed = true;
+    }
+    return narrowed;
+  }
+
+  // The export's query: the list's scope, filters and tag with no order and no page; null when the scope is empty.
+  exportQuery(
+    companyId: string,
+    search: string | undefined,
+    tag: ContactTag | undefined,
+    filters: ContactFilters | undefined,
+    caller: ContactViewer | undefined,
+  ): SelectQueryBuilder<Contact> | null {
+    const scopeRegionCodes =
+      filters?.allRegions === true
+        ? null
+        : effectiveRegionCodes(filters?.regionCode, caller);
+    const regionCodes = search?.trim() ? null : scopeRegionCodes;
+    if (regionCodes?.length === 0) return null;
+    const qb = this.scopedListQuery(companyId, regionCodes);
+    this.applyListFilters(qb, search, filters, caller);
+    if (tag) qb.andWhere(this.tagExistsSql('c.id', tag));
+    return qb;
   }
 
   private scopedListQuery(

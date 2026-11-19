@@ -22,7 +22,14 @@ interface AuditRequestContext {
 }
 
 // billing/webhook skipped: billing module already persists every event in billing_events.
-const SKIP_SEGMENTS = ['auth/refresh', 'health', 'docs', 'billing/webhook'];
+// data-transfer skipped: its bodies are whole import files; the service writes one IMPORT or EXPORT row with counts.
+const SKIP_SEGMENTS = [
+  'auth/refresh',
+  'health',
+  'docs',
+  'billing/webhook',
+  'data-transfer',
+];
 
 const ACTION_OVERRIDES: Record<string, AuditAction> = {
   login: AuditAction.LOGIN,

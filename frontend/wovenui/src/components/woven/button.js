@@ -2,8 +2,8 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { SIZE_MAP } from './-constants';
 
-// success, warning and info have no kit equivalent.
-const VARIANT_CLASSES = {
+// success, warning and info have no kit equivalent. Exported so a split button's caret can match its primary.
+export const VARIANT_CLASSES = {
   brand: 'brand',
   danger: 'danger',
   secondary: 'subtle',

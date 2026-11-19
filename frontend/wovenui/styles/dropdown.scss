@@ -136,3 +136,8 @@
   justify-content: flex-end;
   text-align: end;
 }
+
+// A split button is a Dropdown root that is also the attached group, so the group's flex layout wins.
+.wu-dropdown-wrap.wu-btn-group {
+  display: inline-flex;
+}

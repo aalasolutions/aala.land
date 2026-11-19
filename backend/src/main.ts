@@ -39,6 +39,8 @@ async function bootstrap() {
     origin: envList('CORS_ORIGIN', ['http://localhost:4200']),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    // Downloads are cross-origin in dev; the browser needs the filename header.
+    exposedHeaders: ['Content-Disposition', 'X-Export-Truncated'],
     credentials: true,
     // Cache preflights: the browser default (5s) expires between 3s poll ticks and doubles request volume
     maxAge: 86400,

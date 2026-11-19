@@ -94,6 +94,11 @@ export function startOfDayInZone(
   return inZone(timeZone, at).startOf('day').toJSDate();
 }
 
+/** Calendar date and wall-clock time (YYYY-MM-DD HH:mm) of an instant in the given IANA zone. */
+export function dateTimeInZone(timeZone: string, at: Date): string {
+  return inZone(timeZone, at).toFormat('yyyy-LL-dd HH:mm');
+}
+
 /** Mirrors the frontend format-date helper's default (medium): "Sep 18, 2026". */
 export function formatDateMedium(value: string, locale = 'en-US'): string {
   const date = parseDateOnly(value);
