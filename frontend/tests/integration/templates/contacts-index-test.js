@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { click, findAll, settled } from '@ember/test-helpers';
+import { click, findAll } from '@ember/test-helpers';
 import template from 'land/templates/contacts/index';
 import { renderRouteTemplate } from 'land/tests/helpers/render-route-template';
 import { stubAuth, stubNotifications } from 'land/tests/helpers/stub-auth';
@@ -203,23 +203,13 @@ module('Integration | Template | contacts/index', function (hooks) {
     assert.dom(badge('portfolio_owner')).hasText('0', 'zero is shown');
   });
 
-  test('the toolbar count reads the list total, and the header carries none', async function (assert) {
+  test('the header carries no total', async function (assert) {
     await renderList(this, { total: 38, scopeTotal: 38 });
 
-    assert.dom('[data-test-wu-list-page-count]').hasText('38 contacts');
     assert.dom('[data-test-contacts-total]').doesNotExist();
   });
 
-  test('a filtered list counts against the scope total', async function (assert) {
-    const controller = await renderList(this, { total: 15, scopeTotal: 38 });
-
-    controller.tag = 'lead';
-    await settled();
-
-    assert.dom('[data-test-wu-list-page-count]').hasText('15 of 38 contacts');
-  });
-
-  test('the Companies tab counts companies and hosts its table options in the toolbar', async function (assert) {
+  test('the Companies tab hosts its table options in the toolbar', async function (assert) {
     await renderList(this, {
       role: 'manager',
       total: 38,
@@ -239,12 +229,10 @@ module('Integration | Template | contacts/index', function (hooks) {
             }
           : {},
     });
-    assert.dom('[data-test-wu-list-page-count]').hasText('38 contacts');
 
     await click('[data-test-wu-tabs-trigger="companies"]');
 
     assert.dom('[data-test-contact-companies-table]').exists();
-    assert.dom('[data-test-wu-list-page-count]').hasText('2 companies');
     assert
       .dom(
         '[data-test-wu-list-page-toolbar] [data-test-wu-list-page-options] [data-test-data-table-options]',
@@ -252,20 +240,6 @@ module('Integration | Template | contacts/index', function (hooks) {
       .exists('Options renders in the toolbar slot');
     assert.dom('.data-table-shell__toolbar').doesNotExist();
     assert.dom('[data-test-wu-pagination-status]').hasText('1-2');
-  });
-
-  test('the My requests tab shows no count', async function (assert) {
-    await renderList(this, {
-      respond: (path) =>
-        path.startsWith('/contact-access-requests')
-          ? { data: { data: [], total: 0, page: 1, limit: 20 } }
-          : {},
-    });
-    assert.dom('[data-test-wu-list-page-count]').exists();
-
-    await click('[data-test-wu-tabs-trigger="requests"]');
-
-    assert.dom('[data-test-wu-list-page-count]').doesNotExist();
   });
 
   test('a contact with no name links as Unnamed contact', async function (assert) {

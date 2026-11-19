@@ -84,7 +84,6 @@ module('Integration | Template | leads', function (hooks) {
     assert
       .dom(`${full} [data-test-wa-link]`)
       .hasAttribute('href', 'https://wa.me/971501112233');
-    assert.dom('[data-test-wu-list-page-count]').hasText('2 leads');
   });
 
   test('pipeline cards mask a limited contact the same way', async function (assert) {
@@ -100,7 +99,6 @@ module('Integration | Template | leads', function (hooks) {
     assert.dom(limited).doesNotContainText('undefined');
     assert.dom(`${full} [data-test-wa-link]`).exists();
     assert.dom(`${full} [data-test-lead-email]`).hasText('sara@example.com');
-    assert.dom('[data-test-wu-list-page-count]').doesNotExist();
   });
 
   test('the detail modal of a limited lead shows the masked phone, no email and no WhatsApp', async function (assert) {

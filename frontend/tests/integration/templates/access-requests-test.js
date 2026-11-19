@@ -57,8 +57,7 @@ module('Integration | Template | access-requests', function (hooks) {
   const pendingRow = '[data-test-data-table-row="r-1"]';
   const approvedRow = '[data-test-data-table-row="r-2"]';
 
-  test('the toolbar holds the count and the status filter', function (assert) {
-    assert.dom('[data-test-wu-list-page-count]').hasText('2 requests');
+  test('the toolbar holds the status filter', function (assert) {
     assert
       .dom('[data-test-wu-list-page-toolbar] [data-test-access-status-filter]')
       .exists();

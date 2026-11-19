@@ -293,11 +293,6 @@ export default class WovenRecipesController extends Controller {
     listPage: `<Woven::ListPage
   @title="Leases"
   @subtitle="Every lease in the active region."
-  @count={{this.count}}
-  @total={{10}}
-  @filtered={{this.isFiltered}}
-  @noun="item"
-  @nounPlural="items"
   @isEmpty={{not this.rows.length}}
 >
   <:action>
@@ -362,7 +357,7 @@ columns = [
   { name: 'Start', valuePath: 'startDate', cell: CellDate },
   { name: 'Actions', valuePath: 'id', isSortable: false },
 ];`,
-    minimal: `<Woven::ListPage @title="Vendors" @count={{3}} @noun="vendor" @nounPlural="vendors">
+    minimal: `<Woven::ListPage @title="Vendors">
   <:body as |page|>
     <Woven::DataTable
       @columns={{this.minimalColumns}}

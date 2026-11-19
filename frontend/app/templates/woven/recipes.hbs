@@ -6,24 +6,24 @@
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
-      A recipe owns the order, spacing, count and Options slot of a page, so
-      pages pass words and blocks instead of composing the parts by hand. A
-      table column declares its cell once in the controller, so every row of
-      that column has one shape.
+      A recipe owns the order, spacing and Options slot of a page, so pages pass
+      words and blocks instead of composing the parts by hand. A table column
+      declares its cell once in the controller, so every row of that column has
+      one shape.
     </p>
   </WovenDocs::Section>
 
   <WovenDocs::Section @title="List page, full" @id="list-page">
     <WovenDocs::Example
       @title="Every block"
-      @note="Header with one action, switcher Tabs with counts, a toolbar with a Segmented, search and Filters on the left, the count, sort and Options on the right, a table body with declared cells, and the range-only pager. The buttons switch the count text between its states."
+      @note="Header with one action, switcher Tabs with counts, a toolbar with a Segmented, search and Filters on the left, sort and Options on the right, a table body with declared cells, and the range-only pager. The buttons switch the table rows between states."
       @layout="block"
       @code={{this.code.listPage}}
     >
       <div
         class="flex x-center gap-2 wrap"
         role="group"
-        aria-label="Count state"
+        aria-label="Row state"
       >
         {{#each this.countStates as |state|}}
           <Woven::Button
@@ -40,11 +40,6 @@
       <Woven::ListPage
         @title="Leases"
         @subtitle="Every lease in the active region."
-        @count={{this.count}}
-        @total={{10}}
-        @filtered={{this.isFiltered}}
-        @noun="item"
-        @nounPlural="items"
         @isEmpty={{not this.rows.length}}
         data-test-woven-recipes-list
       >
@@ -156,17 +151,11 @@
   <WovenDocs::Section @title="List page, minimal" @id="list-page-minimal">
     <WovenDocs::Example
       @title="No switcher, no filters"
-      @note="The toolbar row always renders: with no toolbar blocks it holds the count and Options on the right."
+      @note="The toolbar row always renders: with no toolbar blocks it holds Options on the right."
       @layout="block"
       @code={{this.code.minimal}}
     >
-      <Woven::ListPage
-        @title="Vendors"
-        @count={{3}}
-        @noun="vendor"
-        @nounPlural="vendors"
-        data-test-woven-recipes-minimal
-      >
+      <Woven::ListPage @title="Vendors" data-test-woven-recipes-minimal>
         <:body as |page|>
           <Woven::DataTable
             @columns={{this.minimalColumns}}
