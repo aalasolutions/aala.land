@@ -24,6 +24,26 @@ module('Integration | Component | cell/status', function (hooks) {
     assert.dom('[data-test-out] .wu-tag.warning').exists();
   });
 
+  test('a value map turns a boolean into a domain value', async function (assert) {
+    this.set('column', {
+      cellArgs: {
+        domain: 'enabled',
+        valueMap: { true: 'active', false: 'inactive' },
+      },
+    });
+    await render(
+      hbs`<div data-test-out><Cell::Status @value={{true}} @column={{this.column}} /></div>`,
+    );
+    assert.dom('[data-test-out]').hasText('Active');
+    assert.dom('[data-test-out] .wu-tag.success').exists();
+
+    await render(
+      hbs`<div data-test-out><Cell::Status @value={{false}} @column={{this.column}} /></div>`,
+    );
+    assert.dom('[data-test-out]').hasText('Inactive');
+    assert.dom('[data-test-out] .wu-tag.gray').exists();
+  });
+
   test('an empty value renders "-"', async function (assert) {
     this.set('column', { cellArgs: { domain: 'lease' } });
     await render(

@@ -45,6 +45,7 @@ export default class PropertiesIndexController extends Controller {
   @tracked browseUnits = [];
   @tracked browseTotal = 0;
   @tracked browsePage = 1;
+  @tracked browseLimit = 50;
   @tracked isLoadingBrowse = false;
   browseRequestId = 0;
 
@@ -99,7 +100,19 @@ export default class PropertiesIndexController extends Controller {
   filterBedsOptions = FILTER_BEDS_OPTIONS;
 
   get browseHasNextPage() {
-    return this.browseTotal > this.browsePage * 20;
+    return this.browseTotal > this.browsePage * this.browseLimit;
+  }
+
+  get isBrowseEmpty() {
+    return (
+      this.currentView === 'browse' &&
+      !this.isLoadingBrowse &&
+      this.browseUnits.length === 0
+    );
+  }
+
+  get showBrowsePager() {
+    return this.currentView === 'browse' && this.browseTotal > 0;
   }
 
   get hasActiveFilters() {
@@ -213,11 +226,21 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
+  @action goToBrowsePage(page) {
+    this.browsePage = page;
+    this.loadBrowseUnits();
+  }
+
+  @action setBrowseLimit(limit) {
+    this.browseLimit = limit;
+    this.applyFilters();
+  }
+
   @action async loadBrowseUnits() {
     const requestId = ++this.browseRequestId;
     this.isLoadingBrowse = true;
     try {
-      let params = `page=${this.browsePage}&limit=20`;
+      let params = `page=${this.browsePage}&limit=${this.browseLimit}`;
       if (this.archivedFilterValue !== 'exclude')
         params += `&archived=${this.archivedFilterValue}`;
       if (this.filterType) params += `&propertyType=${this.filterType}`;

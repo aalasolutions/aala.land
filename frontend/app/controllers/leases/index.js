@@ -3,6 +3,10 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellLink from '@wovenui/ember/components/woven/cell/link';
+import CellLabel from 'land/components/cell/label';
+import CellMoney from 'land/components/cell/money';
 import {
   LEASE_TYPE_OPTIONS,
   LEASE_STATUS_OPTIONS,
@@ -66,16 +70,40 @@ export default class LeasesController extends PaginatedController {
       valuePath: 'contact.displayName',
       width: 220,
       isFixed: 'left',
+      stackedLabel: false,
     },
-    { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
-    { name: 'Type', valuePath: 'type', width: 140 },
-    { name: 'Rent', valuePath: 'monthlyRent', width: 140, numeric: true },
+    {
+      name: 'Unit',
+      valuePath: 'unit.unitNumber',
+      width: 140,
+      cell: CellLink,
+      cellArgs: {
+        route: 'properties.unit',
+        modelPaths: ['unit.areaId', 'unit.id'],
+      },
+    },
+    {
+      name: 'Type',
+      valuePath: 'type',
+      width: 140,
+      cell: CellLabel,
+      cellArgs: { domain: 'lease' },
+    },
+    {
+      name: 'Rent',
+      valuePath: 'monthlyRent',
+      width: 140,
+      numeric: true,
+      cell: CellMoney,
+      cellArgs: { currencyPath: 'currency' },
+    },
     { name: 'Period', valuePath: 'startDate', width: 220 },
     { name: 'Status', valuePath: 'status', width: 160 },
     {
       name: 'Tenancy Reg. Ref',
       valuePath: 'tenancyRegistrationRef',
       width: 180,
+      cell: CellText,
     },
     {
       name: 'Actions',
@@ -83,6 +111,7 @@ export default class LeasesController extends PaginatedController {
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 

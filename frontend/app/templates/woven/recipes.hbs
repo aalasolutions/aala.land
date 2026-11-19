@@ -16,7 +16,7 @@
   <WovenDocs::Section @title="List page, full" @id="list-page">
     <WovenDocs::Example
       @title="Every block"
-      @note="Header with one action, switcher Tabs with counts, a toolbar with the count first, a sm Segmented, search and Filters on the left, sort and Options on the right, a table body with declared cells, and the range-only pager. The buttons switch the count text between its states."
+      @note="Header with one action, switcher Tabs with counts, a toolbar with a Segmented, search and Filters on the left, the count, sort and Options on the right, a table body with declared cells, and the range-only pager. The buttons switch the count text between its states."
       @layout="block"
       @code={{this.code.listPage}}
     >
@@ -68,7 +68,6 @@
 
         <:toolbar>
           <Woven::Segmented
-            @size="sm"
             @options={{this.statusOptions}}
             @value={{this.statusFilter}}
             @onChange={{this.setStatusFilter}}
@@ -76,7 +75,6 @@
           />
           <div class="w-64">
             <Woven::Input
-              @size="sm"
               @value={{this.search}}
               @onInput={{this.setSearch}}
               type="search"
@@ -97,7 +95,6 @@
 
         <:toolbarEnd>
           <Woven::Dropdown
-            @size="sm"
             @align="end"
             @options={{this.sortOptions}}
             @value={{this.sort}}
@@ -159,7 +156,7 @@
   <WovenDocs::Section @title="List page, minimal" @id="list-page-minimal">
     <WovenDocs::Example
       @title="No switcher, no filters"
-      @note="The toolbar row always renders: with no toolbar blocks it holds the count on the left and Options on the right."
+      @note="The toolbar row always renders: with no toolbar blocks it holds the count and Options on the right."
       @layout="block"
       @code={{this.code.minimal}}
     >

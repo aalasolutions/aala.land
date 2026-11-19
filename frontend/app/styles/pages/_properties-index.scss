@@ -1,33 +1,7 @@
-// Only the browse toolbar and the grid/list tile are bespoke; everything else resolves to a kit component.
+// Only the grid/list tile is bespoke; everything else resolves to a kit component.
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
 @use "../variables" as vars;
-
-.browse-toolbar {
-  display: flex;
-  gap: wu-space(4);
-  align-items: flex-end;
-  justify-content: space-between;
-
-  @include media-down(sm) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.browse-toolbar__controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: wu-space(3);
-  align-items: center;
-}
-
-// Label inline, not stacked: <Woven::Field>'s margin pushes the direction button out of line.
-.browse-toolbar__sort {
-  display: flex;
-  gap: wu-space(2);
-  align-items: center;
-}
 
 // Stats render unconditionally so the row never collapses; a missing value shows a dash.
 .unit-stat.is-unset {

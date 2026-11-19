@@ -20,6 +20,7 @@
       @onClear={{this.onFilterClear}}
       @status={{this.status}}
       role="combobox"
+      aria-label={{@ariaLabel}}
       aria-expanded={{if this.isOpen "true" "false"}}
       aria-controls={{this.listboxId}}
       aria-autocomplete="list"
@@ -35,6 +36,7 @@
       class={{this.triggerClasses}}
       disabled={{@disabled}}
       aria-haspopup="listbox"
+      aria-label={{@ariaLabel}}
       aria-expanded={{if this.isOpen "true" "false"}}
       aria-controls={{unless this.showSearch this.listboxId}}
       aria-activedescendant={{unless this.showSearch this.activeDescendant}}

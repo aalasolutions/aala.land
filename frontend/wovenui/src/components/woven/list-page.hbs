@@ -7,7 +7,11 @@
     <Woven::PageHeader @title={{@title}} @subtitle={{@subtitle}} />
   {{/if}}
 
-  {{#if (has-block "switcher")}}
+  {{#if (has-block "summary")}}
+    <div data-test-wu-list-page-summary>{{yield to="summary"}}</div>
+  {{/if}}
+
+  {{#if (and (has-block "switcher") (not @hideSwitcher))}}
     <div
       class="flex between x-center gap-3 wrap"
       data-test-wu-list-page-switcher
@@ -16,16 +20,15 @@
     </div>
   {{/if}}
 
-  <div class="flex x-center gap-3 wrap" data-test-wu-list-page-toolbar>
-    {{#unless @hideCount}}
-      <span
-        class="text-sm text-muted"
-        role="status"
-        data-test-wu-list-page-count
-      >{{this.countText}}</span>
-    {{/unless}}
+  <div
+    class="wu-list-page-toolbar flex x-center gap-3 wrap"
+    data-test-wu-list-page-toolbar
+  >
     {{yield to="toolbar"}}
-    <div class="flex x-center gap-3 ms-auto" data-test-wu-list-page-toolbar-end>
+    <div
+      class="wu-list-page-toolbar-end flex x-center gap-3 wrap ms-auto"
+      data-test-wu-list-page-toolbar-end
+    >
       {{yield to="toolbarEnd"}}
       <div data-test-wu-list-page-options {{this.registerOptionsHost}}></div>
     </div>

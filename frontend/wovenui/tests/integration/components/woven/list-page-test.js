@@ -6,12 +6,11 @@ import { hbs } from 'ember-cli-htmlbars';
 module('Integration | Component | woven/list-page', function (hooks) {
   setupRenderingTest(hooks);
 
-  const count = '[data-test-wu-list-page-count]';
-
   test('root, order of rows and header without meta', async function (assert) {
     await render(hbs`
-      <Woven::ListPage @title="Contacts" @count={{38}} @noun="contact" @nounPlural="contacts" data-test-page>
+      <Woven::ListPage @title="Contacts" data-test-page>
         <:action><button type="button" data-test-action>New</button></:action>
+        <:summary><div data-test-stats>Stats</div></:summary>
         <:switcher><span data-test-switch>Tabs</span></:switcher>
         <:toolbar><span data-test-filter>Filter</span></:toolbar>
         <:body><div data-test-body>Body</div></:body>
@@ -29,15 +28,20 @@ module('Integration | Component | woven/list-page', function (hooks) {
       'header first',
     );
     assert.ok(
-      children[1].matches('[data-test-wu-list-page-switcher]'),
-      'switcher second',
+      children[1].matches('[data-test-wu-list-page-summary]'),
+      'summary second',
+    );
+    assert.dom('[data-test-wu-list-page-summary] [data-test-stats]').exists();
+    assert.ok(
+      children[2].matches('[data-test-wu-list-page-switcher]'),
+      'switcher third',
     );
     assert.ok(
-      children[2].matches('[data-test-wu-list-page-toolbar]'),
-      'toolbar third',
+      children[3].matches('[data-test-wu-list-page-toolbar]'),
+      'toolbar fourth',
     );
-    assert.ok(children[3].matches('[data-test-body]'), 'body fourth');
-    assert.ok(children[4].matches('[data-test-footer]'), 'footer last');
+    assert.ok(children[4].matches('[data-test-body]'), 'body fifth');
+    assert.ok(children[5].matches('[data-test-footer]'), 'footer last');
 
     assert.dom('[data-test-wu-page-header-title]').hasText('Contacts');
     assert
@@ -46,9 +50,9 @@ module('Integration | Component | woven/list-page', function (hooks) {
     assert.dom('[data-test-wu-page-header-meta]').doesNotExist();
   });
 
-  test('the toolbar renders without a toolbar block, count first, options last', async function (assert) {
+  test('the toolbar renders without a toolbar block, options last on the right', async function (assert) {
     await render(hbs`
-      <Woven::ListPage @title="Vendors" @count={{3}} @noun="vendor" @nounPlural="vendors">
+      <Woven::ListPage @title="Vendors">
         <:body>Body</:body>
       </Woven::ListPage>
     `);
@@ -57,11 +61,14 @@ module('Integration | Component | woven/list-page', function (hooks) {
       '[data-test-wu-list-page-toolbar]',
     );
     assert.ok(toolbar, 'toolbar is always rendered');
-    assert.ok(toolbar.firstElementChild.matches(count), 'count is first');
-    assert.dom(count).hasAttribute('role', 'status');
     assert.dom('[data-test-wu-list-page-switcher]').doesNotExist();
+    assert.dom('[data-test-wu-list-page-summary]').doesNotExist();
 
     const end = toolbar.lastElementChild;
+    assert.ok(
+      end.matches('[data-test-wu-list-page-toolbar-end]'),
+      'end group is the last toolbar child',
+    );
     assert.ok(
       end.lastElementChild.matches('[data-test-wu-list-page-options]'),
       'options host is the last control on the right',
@@ -70,7 +77,7 @@ module('Integration | Component | woven/list-page', function (hooks) {
 
   test('subtitle reaches the page header', async function (assert) {
     await render(hbs`
-      <Woven::ListPage @title="Team" @subtitle="People in this company" @count={{2}} @noun="member" @nounPlural="members">
+      <Woven::ListPage @title="Team" @subtitle="People in this company">
         <:body>Body</:body>
       </Woven::ListPage>
     `);
@@ -81,59 +88,6 @@ module('Integration | Component | woven/list-page', function (hooks) {
     assert.dom('[data-test-wu-page-header-actions]').doesNotExist();
   });
 
-  test('count text', async function (assert) {
-    this.setProperties({
-      count: 38,
-      total: undefined,
-      filtered: false,
-      noun: 'contact',
-      nounPlural: 'contacts',
-    });
-    await render(hbs`
-      <Woven::ListPage
-        @title="List"
-        @count={{this.count}}
-        @total={{this.total}}
-        @filtered={{this.filtered}}
-        @noun={{this.noun}}
-        @nounPlural={{this.nounPlural}}
-        @locale="en-US"
-      >
-        <:body>Body</:body>
-      </Woven::ListPage>
-    `);
-
-    assert.dom(count).hasText('38 contacts', 'unfiltered, no total');
-
-    this.set('total', 38);
-    assert.dom(count).hasText('38 contacts', 'total equals count, no filter');
-
-    this.set('filtered', true);
-    assert
-      .dom(count)
-      .hasText('38 of 38 contacts', 'total equals count under a filter');
-
-    this.setProperties({
-      count: 15,
-      filtered: false,
-      noun: 'property',
-      nounPlural: 'properties',
-    });
-    assert.dom(count).hasText('15 of 38 properties', 'filtered');
-
-    this.setProperties({ count: 1, total: undefined });
-    assert.dom(count).hasText('1 property', 'one');
-
-    this.set('total', 38);
-    assert.dom(count).hasText('1 of 38 properties', 'one of many');
-
-    this.setProperties({ count: 0, total: undefined });
-    assert.dom(count).hasText('0 properties', 'zero');
-
-    this.setProperties({ count: 1234, total: undefined });
-    assert.dom(count).hasText('1,234 properties', 'grouping');
-  });
-
   test('the options host receives a DataTable Options trigger', async function (assert) {
     this.columns = [
       { name: 'Name', valuePath: 'name' },
@@ -142,7 +96,7 @@ module('Integration | Component | woven/list-page', function (hooks) {
     this.rows = [{ id: '1', name: 'Ada', email: 'ada@example.com' }];
 
     await render(hbs`
-      <Woven::ListPage @title="List" @count={{1}} @noun="row" @nounPlural="rows">
+      <Woven::ListPage @title="List">
         <:body as |page|>
           <Woven::DataTable
             @columns={{this.columns}}
@@ -164,7 +118,8 @@ module('Integration | Component | woven/list-page', function (hooks) {
   test('@isEmpty swaps the body for the empty block', async function (assert) {
     this.set('isEmpty', true);
     await render(hbs`
-      <Woven::ListPage @title="List" @count={{0}} @noun="row" @nounPlural="rows" @isEmpty={{this.isEmpty}}>
+      <Woven::ListPage @title="List" @isEmpty={{this.isEmpty}}>
+        <:summary><div data-test-stats>Stats</div></:summary>
         <:body><div data-test-body>Body</div></:body>
         <:empty><div data-test-empty>Nothing</div></:empty>
       </Woven::ListPage>
@@ -172,32 +127,68 @@ module('Integration | Component | woven/list-page', function (hooks) {
 
     assert.dom('[data-test-empty]').exists();
     assert.dom('[data-test-body]').doesNotExist();
+    assert.dom('[data-test-stats]').exists('summary stays while empty');
 
     this.set('isEmpty', false);
     assert.dom('[data-test-body]').exists();
     assert.dom('[data-test-empty]').doesNotExist();
   });
 
-  test('@hideCount drops the count and keeps the toolbar', async function (assert) {
-    this.set('hideCount', true);
+  test('@hideSwitcher drops the switcher row even with a switcher block', async function (assert) {
+    this.set('hideSwitcher', true);
     await render(hbs`
-      <Woven::ListPage @title="List" @count={{4}} @noun="row" @nounPlural="rows" @hideCount={{this.hideCount}}>
-        <:toolbar><span data-test-filter>Filter</span></:toolbar>
+      <Woven::ListPage @title="List" @hideSwitcher={{this.hideSwitcher}}>
+        <:switcher><span data-test-switch>Tabs</span></:switcher>
         <:body>Body</:body>
       </Woven::ListPage>
     `);
 
-    assert.dom(count).doesNotExist();
-    assert.dom('[data-test-wu-list-page-toolbar] [data-test-filter]').exists();
-    assert.dom('[data-test-wu-list-page-options]').exists();
+    assert.dom('[data-test-wu-list-page-switcher]').doesNotExist();
+    assert.dom('[data-test-switch]').doesNotExist();
 
-    this.set('hideCount', false);
-    assert.dom(count).hasText('4 rows');
+    this.set('hideSwitcher', false);
+    assert.dom('[data-test-wu-list-page-switcher] [data-test-switch]').exists();
+  });
+
+  test('toolbar dropdowns keep their own width and a segmented control scrolls inside itself', async function (assert) {
+    await render(hbs`
+      <Woven::ListPage @title="List">
+        <:toolbar>
+          <Woven::Dropdown @align="start" @options={{array "Alpha" "Beta"}} @placeholder="All" />
+        </:toolbar>
+        <:toolbarEnd>
+          <Woven::Segmented
+            @options={{array (hash value="a" label="First") (hash value="b" label="Second")}}
+            @value="a"
+          />
+        </:toolbarEnd>
+        <:body>Body</:body>
+      </Woven::ListPage>
+    `);
+
+    const toolbar = this.element.querySelector(
+      '[data-test-wu-list-page-toolbar]',
+    );
+    assert.dom(toolbar).hasClass('wu-list-page-toolbar');
+    assert
+      .dom('[data-test-wu-list-page-toolbar-end]')
+      .hasClass('wu-list-page-toolbar-end');
+
+    const wrap = toolbar.querySelector('.wu-dropdown-wrap');
+    assert.ok(
+      wrap.getBoundingClientRect().width <
+        toolbar.getBoundingClientRect().width,
+      'the dropdown does not fill the row',
+    );
+
+    const segmented = toolbar.querySelector('.wu-segmented');
+    assert.strictEqual(getComputedStyle(segmented).overflowX, 'auto');
+    assert.strictEqual(getComputedStyle(segmented).maxWidth, '100%');
   });
 
   test('the yielded Pager prints the range only', async function (assert) {
     await render(hbs`
-      <Woven::ListPage @title="List" @count={{120}} @noun="row" @nounPlural="rows">
+      <Woven::ListPage @title="List">
         <:body>Body</:body>
         <:footer as |page|>
           <page.Pager @page={{1}} @limit={{50}} @total={{120}} />

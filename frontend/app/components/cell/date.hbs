@@ -1,7 +1,16 @@
 {{#if (has-value @value)~}}
   <span ...attributes>
     {{~#if (if (eq @withTime undefined) @column.cellArgs.withTime @withTime)~}}
-      {{format-date-time @value}}
+      {{format-date-time
+        @value
+        region=(if
+          (eq @region undefined)
+          (if
+            @column.cellArgs.regionPath (get @row @column.cellArgs.regionPath)
+          )
+          @region
+        )
+      }}
     {{~else~}}
       {{format-date @value zone="region"}}
     {{~/if~}}

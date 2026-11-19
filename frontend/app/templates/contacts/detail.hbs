@@ -1,411 +1,415 @@
-{{page-title (if @model.contact (contact-name @model.contact) "Contact")}}
+{{page-title
+  (or
+    (contact-name @model.contact)
+    (if @model.contact "Unnamed contact" "Contact")
+  )
+}}
 
-<div data-test-contact-detail class="flex col gap-6">
-  <Woven::PageHeader
-    @title={{if @model.contact (contact-name @model.contact) "Contact"}}
-    @subtitle="Contact record"
-  >
-    <:breadcrumb>
-      <Woven::Breadcrumb
-        @items={{array (hash label="Contacts" route="contacts.index")}}
-        @compact={{true}}
-        @parentsOnly={{true}}
-        data-test-breadcrumb-contacts
-      />
-    </:breadcrumb>
-    <:meta>
-      {{#if this.isLimited}}
-        <Woven::Badge @text="Limited" data-test-limited-badge />
-      {{else if @model.contact}}
-        <div class="flex gap-1 flex-wrap">
-          {{#each @model.contact.tags as |tag|}}
-            <Woven::Tag
-              @variant={{tag-variant "contact" tag}}
-              @text={{contact-tag-label tag}}
-            />
-          {{else}}
-            <Woven::Tag @variant="secondary" @text="Contact" />
-          {{/each}}
-        </div>
-      {{/if}}
-    </:meta>
-    <:actions>
-      {{#if this.isLimited}}
-        <Contact::AccessAction @contact={{@model.contact}} />
-      {{else if (and @model.contact (can-edit-contact @model.contact))}}
-        <Woven::Button
-          @variant="subtle"
-          @icon="pencil-simple"
-          @text="Edit"
-          data-test-edit-contact
-          {{on "click" this.openEdit}}
+<Woven::DetailPage
+  @title={{if @model.contact (contact-name @model.contact) "Contact"}}
+  @titleFallback="Unnamed contact"
+  @subtitle="Contact record"
+  @crumbs={{array (hash label="Contacts" route="contacts.index")}}
+  data-test-contact-detail
+>
+  <:meta>
+    {{#if this.isLimited}}
+      <Woven::Badge @text="Limited" data-test-limited-badge />
+    {{else if @model.contact}}
+      {{#each @model.contact.tags as |tag|}}
+        <Woven::Tag
+          @variant={{tag-variant "contact" tag}}
+          @text={{tag-label "contact" tag}}
         />
-      {{/if}}
-    </:actions>
-  </Woven::PageHeader>
-
-  {{#if @model.contact}}
-    <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
-    <div class="flex col gap-6">
-      {{#if this.isLimited}}
-        <Woven::Card @title="Contact Information">
-          <Woven::DescList @horizontal={{true}} data-test-limited-details>
-            <div>
-              <dt>Phone</dt>
-              <dd data-test-limited-phone><bdi
-                  dir="ltr"
-                >{{or (contact-phone @model.contact) "-"}}</bdi></dd>
-            </div>
-            <div>
-              <dt>Region</dt>
-              <dd
-                data-test-limited-region
-              >{{or @model.contact.regionCode "-"}}</dd>
-            </div>
-            <div>
-              <dt>Added by</dt>
-              <dd
-                data-test-contact-added-by
-              >{{or @model.contact.createdByName "-"}}</dd>
-            </div>
-            <div>
-              <dt>Created</dt>
-              <dd>{{format-date
-                  @model.contact.createdAt
-                  zone="region"
-                }}</dd>
-            </div>
-          </Woven::DescList>
-          <Contact::VerifyPhone
-            class="mt-4"
-            @contactId={{@model.contact.id}}
-            @onVerified={{this.onPhoneVerified}}
-          />
-        </Woven::Card>
       {{else}}
-        <Contact::Summary
-          @contact={{@model.contact}}
-          @totals={{@model.totals}}
-          @firstOpenLead={{@model.firstOpenLead}}
-          @firstActiveLease={{@model.firstActiveLease}}
-        />
-      {{/if}}
-
-      {{#unless this.isLimited}}
-        <Woven::Tabs
-          @tabs={{this.relatedTabs}}
-          @activeTab={{this.currentTab}}
-          @onChange={{this.setTab}}
-          data-test-contact-tabs
-        />
-
-        {{#if (eq this.currentTab "leads")}}
-          <Woven::Card data-test-contact-leads>
-            {{#if this.leadRows.length}}
-              <div class="flex col gap-3">
-                {{#each this.leadRows as |lead|}}
-                  <Woven::Panel
-                    data-test-lead-card
-                    {{on "click" (fn this.toggleLeadActivity lead.id)}}
-                  >
-                    <div class="flex col gap-2">
-                      <div class="flex between x-center">
-                        <div class="flex gap-2 x-center">
-                          <Woven::Tag
-                            @variant={{tag-variant "lead" lead.status}}
-                            @text={{lead.status}}
-                          />
-                          <Woven::Tag
-                            @variant={{tag-variant "temp" lead.temperature}}
-                            @text={{lead.temperature}}
-                          />
-                          {{#if lead.locality}}
-                            <span class="text-sm">{{lead.locality.name}}</span>
-                          {{/if}}
-                        </div>
-                        {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
-                        <Woven::Button
-                          @variant="subtle"
-                          @size="xs"
-                          @shape="circle"
-                          @icon={{if
-                            (eq this.expandedLeadId lead.id)
-                            "caret-up"
-                            "caret-down"
-                          }}
-                          aria-label={{if
-                            (eq this.expandedLeadId lead.id)
-                            "Collapse lead activity"
-                            "Expand lead activity"
-                          }}
-                          aria-expanded={{if
-                            (eq this.expandedLeadId lead.id)
-                            "true"
-                            "false"
-                          }}
-                          data-test-toggle-lead-activity
-                        />
-                      </div>
-                      <div class="flex gap-4 text-sm text-muted">
-                        <span>Source: {{lead.source}}</span>
-                        {{#if lead.budgetMin}}
-                          <span>Budget:
-                            <Money
-                              @amount={{lead.budgetMin}}
-                              @currency={{region-currency lead.regionCode}}
-                            />{{#if lead.budgetMax}}
-                              &ndash;
-                              <Money
-                                @amount={{lead.budgetMax}}
-                                @currency={{region-currency lead.regionCode}}
-                              />{{/if}}</span>
-                        {{/if}}
-                        <span>Created
-                          {{format-date lead.createdAt zone="region"}}</span>
-                      </div>
-                      {{#if (eq this.expandedLeadId lead.id)}}
-                        <div class="lead-detail__scroll">
-                          {{#if (eq this.loadingActivitiesFor lead.id)}}
-                            <Woven::Spinner @size="sm" />
-                          {{else}}
-                            <Woven::Timeline>
-                              {{#each
-                                (get this.leadActivities lead.id)
-                                as |activity|
-                              }}
-                                <Woven::TimelineItem
-                                  @title={{activity.type}}
-                                  @timestamp={{format-date-time
-                                    activity.createdAt
-                                    region=lead.regionCode
-                                  }}
-                                  @description={{activity.notes}}
-                                  @meta={{if
-                                    activity.performedByName
-                                    (concat "by " activity.performedByName)
-                                  }}
-                                >
-                                  <:icon><Ui::Ph
-                                      @icon={{get-activity-icon activity.type}}
-                                      @size="14px"
-                                    /></:icon>
-                                </Woven::TimelineItem>
-                              {{else}}
-                                <p class="text-muted text-sm mb-0">No activity yet.</p>
-                              {{/each}}
-                            </Woven::Timeline>
-                          {{/if}}
-                        </div>
-                      {{/if}}
-                    </div>
-                  </Woven::Panel>
-                {{/each}}
+        <Woven::Tag @variant="secondary" @text="Contact" />
+      {{/each}}
+    {{/if}}
+  </:meta>
+  <:actions>
+    {{#if this.isLimited}}
+      <Contact::AccessAction @contact={{@model.contact}} />
+    {{else if (and @model.contact (can-edit-contact @model.contact))}}
+      <Woven::Button
+        @variant="subtle"
+        @icon="pencil-simple"
+        @text="Edit"
+        data-test-edit-contact
+        {{on "click" this.openEdit}}
+      />
+    {{/if}}
+  </:actions>
+  <:body>
+    {{#if @model.contact}}
+      <RegionNotice @regionCode={{@model.contact.regionCode}} @noun="contact" />
+      <div class="flex col gap-6">
+        {{#if this.isLimited}}
+          <Woven::Card @title="Contact Information">
+            <Woven::DescList @horizontal={{true}} data-test-limited-details>
+              <div>
+                <dt>Phone</dt>
+                <dd data-test-limited-phone><bdi
+                    dir="ltr"
+                  >{{or (contact-phone @model.contact) "-"}}</bdi></dd>
               </div>
-              {{#if (gt this.totals.leads this.pageSize)}}
-                <Woven::Pagination
-                  class="mt-4"
-                  @page={{this.pages.leads}}
-                  @limit={{this.pageSize}}
-                  @total={{this.totals.leads}}
-                  @onPageChange={{fn this.goToRelatedPage "leads"}}
-                  data-test-contact-leads-pager
-                />
-              {{/if}}
-            {{else}}
-              <Woven::EmptyState @description="No lead requirements found." />
-            {{/if}}
-          </Woven::Card>
-        {{else if (eq this.currentTab "leases")}}
-          <Woven::Card data-test-contact-leases>
-            {{#if this.leaseRows.length}}
-              <Woven::DataTable
-                class="table-stacked"
-                @columns={{this.leaseColumns}}
-                @rows={{this.leaseRows}}
-                @pinColumns={{true}}
-                @reorderable={{true}}
-                @sortable={{true}}
-                @showOptions={{true}}
-                @tableId="contact-leases"
-                as |cell|
-              >
-                <DataTable::StackedLabel
-                  @columns={{this.leaseColumns}}
-                  @cellKey={{cell.key}}
-                  @skip={{array "unit.unitNumber"}}
-                />
-                {{#if (eq cell.key "unit.unitNumber")}}
-                  <LinkTo
-                    @route="leases.detail"
-                    @model={{cell.row.id}}
-                    class="text-brand"
-                    data-test-lease-row
-                  >{{cell.value}}</LinkTo>
-                {{else if (eq cell.key "status")}}
-                  <div class="flex gap-1 wrap">
-                    <Woven::Tag
-                      @variant={{tag-variant "lease" cell.value}}
-                      @text={{cell.value}}
-                    />
-                    {{#if cell.row.deletedAt}}
-                      <Woven::Tag
-                        @variant="secondary"
-                        @text="Archived"
-                        data-test-lease-archived-badge
-                      />
-                    {{/if}}
-                  </div>
-                {{else if (eq cell.key "startDate")}}
-                  <span>{{format-date cell.value}}</span>
-                {{else if (eq cell.key "endDate")}}
-                  <span>{{format-date cell.value}}</span>
-                {{else if (eq cell.key "monthlyRent")}}
-                  <Money
-                    @amount={{cell.value}}
-                    @currency={{cell.row.currency}}
-                  />
-                {{else}}
-                  <span class="text-muted">{{cell.value}}</span>
-                {{/if}}
-              </Woven::DataTable>
-              {{#if (gt this.totals.leases this.pageSize)}}
-                <Woven::Pagination
-                  class="mt-4"
-                  @page={{this.pages.leases}}
-                  @limit={{this.pageSize}}
-                  @total={{this.totals.leases}}
-                  @onPageChange={{fn this.goToRelatedPage "leases"}}
-                  data-test-contact-leases-pager
-                />
-              {{/if}}
-            {{else}}
-              <Woven::EmptyState
-                @description="No leases found for this tenant."
-              />
-            {{/if}}
-          </Woven::Card>
-        {{else if (eq this.currentTab "properties")}}
-          <Woven::Card data-test-contact-properties>
-            {{#if this.unitRows.length}}
-              <Woven::DataTable
-                class="table-stacked"
-                @columns={{this.unitColumns}}
-                @rows={{this.unitRows}}
-                @pinColumns={{true}}
-                @reorderable={{true}}
-                @sortable={{true}}
-                @showOptions={{true}}
-                @tableId="contact-units"
-                as |cell|
-              >
-                <DataTable::StackedLabel
-                  @columns={{this.unitColumns}}
-                  @cellKey={{cell.key}}
-                  @skip={{array "unitNumber" "id"}}
-                />
-                {{#if (eq cell.key "unitNumber")}}
-                  <span
-                    data-test-owned-unit-row
-                  >{{cell.value}}</span>
-                {{else if (eq cell.key "areaName")}}
-                  {{#if cell.value}}<span>{{cell.value}}</span>{{/if}}
-                {{else if (eq cell.key "propertyType")}}
-                  {{#if cell.value}}<span>{{property-type-label cell.value}}</span>{{/if}}
-                {{else if (eq cell.key "status")}}
-                  <Woven::Tag
-                    @variant={{tag-variant "unit" cell.value}}
-                    @text={{cell.value}}
-                  />
-                {{else if (eq cell.key "price")}}
-                  <Money
-                    @amount={{cell.value}}
-                    @currency={{region-currency cell.row.regionCode}}
-                  />
-                {{else if (eq cell.key "id")}}
-                  <div class="table-stacked__actions">
-                    <RowActions
-                      @label={{cell.row.unitNumber}}
-                      @actions={{array
-                        (hash
-                          key="view-owned-unit"
-                          label="View"
-                          icon="eye"
-                          route="properties.unit"
-                          models=(array cell.row.areaId cell.row.id)
-                        )
-                      }}
-                    />
-                  </div>
-                {{else}}
-                  <span class="text-muted">{{cell.value}}</span>
-                {{/if}}
-              </Woven::DataTable>
-              {{#if (gt this.totals.units this.pageSize)}}
-                <Woven::Pagination
-                  class="mt-4"
-                  @page={{this.pages.properties}}
-                  @limit={{this.pageSize}}
-                  @total={{this.totals.units}}
-                  @onPageChange={{fn this.goToRelatedPage "properties"}}
-                  data-test-contact-properties-pager
-                />
-              {{/if}}
-            {{else}}
-              <Woven::EmptyState
-                @description="No properties found for this owner."
-              />
-            {{/if}}
-          </Woven::Card>
-        {{else if (eq this.currentTab "history")}}
-          <Woven::Card data-test-contact-history>
-            <RecordHistoryList
-              @entityType="Contact"
-              @entityId={{@model.contact.id}}
+              <div>
+                <dt>Region</dt>
+                <dd
+                  data-test-limited-region
+                >{{or @model.contact.regionCode "-"}}</dd>
+              </div>
+              <div>
+                <dt>Added by</dt>
+                <dd
+                  data-test-contact-added-by
+                >{{or @model.contact.createdByName "-"}}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{{format-date
+                    @model.contact.createdAt
+                    zone="region"
+                  }}</dd>
+              </div>
+            </Woven::DescList>
+            <Contact::VerifyPhone
+              class="mt-4"
+              @contactId={{@model.contact.id}}
+              @onVerified={{this.onPhoneVerified}}
             />
           </Woven::Card>
         {{else}}
-          <section data-test-contact-documents>
-            <Documents::Panel
-              @filters={{hash contactId=@model.contact.id}}
-              @presetLink={{hash
-                type="contact"
-                id=@model.contact.id
-                label=@model.contact.displayName
-              }}
-              @compact={{true}}
-              @tableId="contact-documents"
-            >
-              <:header as |panel|>
-                <div class="flex between x-center">
-                  <h2 class="text-md font-bold">Documents</h2>
-                  {{#if panel.canUpload}}
-                    <Woven::Button
-                      @variant="brand"
-                      @size="sm"
-                      @icon="upload-simple"
-                      @text="Upload"
-                      data-test-contact-documents-upload
-                      {{on "click" panel.openUpload}}
+          <Contact::Summary
+            @contact={{@model.contact}}
+            @totals={{@model.totals}}
+            @firstOpenLead={{@model.firstOpenLead}}
+            @firstActiveLease={{@model.firstActiveLease}}
+          />
+        {{/if}}
+
+        {{#unless this.isLimited}}
+          <Woven::Tabs
+            @tabs={{this.relatedTabs}}
+            @activeTab={{this.currentTab}}
+            @onChange={{this.setTab}}
+            data-test-contact-tabs
+          />
+
+          {{#if (eq this.currentTab "leads")}}
+            <Woven::Card data-test-contact-leads>
+              {{#if this.leadRows.length}}
+                <div class="flex col gap-3">
+                  {{#each this.leadRows as |lead|}}
+                    <Woven::Panel
+                      data-test-lead-card
+                      {{on "click" (fn this.toggleLeadActivity lead.id)}}
+                    >
+                      <div class="flex col gap-2">
+                        <div class="flex between x-center">
+                          <div class="flex gap-2 x-center">
+                            <Woven::Tag
+                              @variant={{tag-variant "lead" lead.status}}
+                              @text={{tag-label "lead" lead.status}}
+                            />
+                            <Woven::Tag
+                              @variant={{tag-variant "temp" lead.temperature}}
+                              @text={{tag-label "temp" lead.temperature}}
+                            />
+                            {{#if lead.locality}}
+                              <span class="text-sm">{{lead.locality.name}}</span>
+                            {{/if}}
+                          </div>
+                          {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
+                          <Woven::Button
+                            @variant="subtle"
+                            @size="xs"
+                            @shape="circle"
+                            @icon={{if
+                              (eq this.expandedLeadId lead.id)
+                              "caret-up"
+                              "caret-down"
+                            }}
+                            aria-label={{if
+                              (eq this.expandedLeadId lead.id)
+                              "Collapse lead activity"
+                              "Expand lead activity"
+                            }}
+                            aria-expanded={{if
+                              (eq this.expandedLeadId lead.id)
+                              "true"
+                              "false"
+                            }}
+                            data-test-toggle-lead-activity
+                          />
+                        </div>
+                        <div class="flex gap-4 text-sm text-muted">
+                          <span>Source: {{lead.source}}</span>
+                          {{#if lead.budgetMin}}
+                            <span>Budget:
+                              <Money
+                                @amount={{lead.budgetMin}}
+                                @currency={{region-currency lead.regionCode}}
+                              />{{#if lead.budgetMax}}
+                                &ndash;
+                                <Money
+                                  @amount={{lead.budgetMax}}
+                                  @currency={{region-currency lead.regionCode}}
+                                />{{/if}}</span>
+                          {{/if}}
+                          <span>Created
+                            {{format-date lead.createdAt zone="region"}}</span>
+                        </div>
+                        {{#if (eq this.expandedLeadId lead.id)}}
+                          <div class="lead-detail__scroll">
+                            {{#if (eq this.loadingActivitiesFor lead.id)}}
+                              <Woven::Spinner @size="sm" />
+                            {{else}}
+                              <Woven::Timeline>
+                                {{#each
+                                  (get this.leadActivities lead.id)
+                                  as |activity|
+                                }}
+                                  <Woven::TimelineItem
+                                    @title={{activity.type}}
+                                    @timestamp={{format-date-time
+                                      activity.createdAt
+                                      region=lead.regionCode
+                                    }}
+                                    @description={{activity.notes}}
+                                    @meta={{if
+                                      activity.performedByName
+                                      (concat "by " activity.performedByName)
+                                    }}
+                                  >
+                                    <:icon><Ui::Ph
+                                        @icon={{get-activity-icon activity.type}}
+                                        @size="14px"
+                                      /></:icon>
+                                  </Woven::TimelineItem>
+                                {{else}}
+                                  <p class="text-muted text-sm mb-0">No activity yet.</p>
+                                {{/each}}
+                              </Woven::Timeline>
+                            {{/if}}
+                          </div>
+                        {{/if}}
+                      </div>
+                    </Woven::Panel>
+                  {{/each}}
+                </div>
+                {{#if (gt this.totals.leads this.pageSize)}}
+                  <Woven::Pagination
+                    class="mt-4"
+                    @page={{this.pages.leads}}
+                    @limit={{this.pageSize}}
+                    @total={{this.totals.leads}}
+                    @onPageChange={{fn this.goToRelatedPage "leads"}}
+                    data-test-contact-leads-pager
+                  />
+                {{/if}}
+              {{else}}
+                <Woven::EmptyState @description="No lead requirements found." />
+              {{/if}}
+            </Woven::Card>
+          {{else if (eq this.currentTab "leases")}}
+            <Woven::TableSection data-test-contact-leases>
+              <:body as |section|>
+                {{#if this.leaseRows.length}}
+                  <Woven::DataTable
+                    class="table-stacked"
+                    @columns={{this.leaseColumns}}
+                    @rows={{this.leaseRows}}
+                    @pinColumns={{true}}
+                    @reorderable={{true}}
+                    @sortable={{true}}
+                    @showOptions={{true}}
+                    @optionsTarget={{section.optionsTarget}}
+                    @tableId="contact-leases"
+                    as |cell|
+                  >
+                    <DataTable::StackedLabel
+                      @columns={{this.leaseColumns}}
+                      @cellKey={{cell.key}}
+                      @skip={{array "unit.unitNumber"}}
+                    />
+                    {{#if (eq cell.key "unit.unitNumber")}}
+                      <LinkTo
+                        @route="leases.detail"
+                        @model={{cell.row.id}}
+                        class="text-brand"
+                        data-test-lease-row
+                      >{{cell.value}}</LinkTo>
+                    {{else if (eq cell.key "status")}}
+                      <div class="flex gap-1 wrap">
+                        <Woven::Tag
+                          @variant={{tag-variant "lease" cell.value}}
+                          @text={{tag-label "lease" cell.value}}
+                        />
+                        {{#if cell.row.deletedAt}}
+                          <Woven::Tag
+                            @variant="secondary"
+                            @text="Archived"
+                            data-test-lease-archived-badge
+                          />
+                        {{/if}}
+                      </div>
+                    {{else if (eq cell.key "startDate")}}
+                      <span>{{format-date cell.value}}</span>
+                    {{else if (eq cell.key "endDate")}}
+                      <span>{{format-date cell.value}}</span>
+                    {{else if (eq cell.key "monthlyRent")}}
+                      <Money
+                        @amount={{cell.value}}
+                        @currency={{cell.row.currency}}
+                      />
+                    {{else}}
+                      <span class="text-muted">{{cell.value}}</span>
+                    {{/if}}
+                  </Woven::DataTable>
+                  {{#if (gt this.totals.leases this.pageSize)}}
+                    <Woven::Pagination
+                      @page={{this.pages.leases}}
+                      @limit={{this.pageSize}}
+                      @total={{this.totals.leases}}
+                      @onPageChange={{fn this.goToRelatedPage "leases"}}
+                      data-test-contact-leases-pager
                     />
                   {{/if}}
-                </div>
-              </:header>
-            </Documents::Panel>
-          </section>
-        {{/if}}
-      {{/unless}}
-    </div>
-    {{#if (and (not this.isLimited) (can-edit-contact @model.contact))}}
-      <Contact::ContactDrawer
-        @open={{this.showEdit}}
-        @contact={{@model.contact}}
-        @onClose={{this.closeEdit}}
-        @onSaved={{this.refresh}}
-      />
+                {{else}}
+                  <Woven::EmptyState
+                    @description="No leases found for this tenant."
+                  />
+                {{/if}}
+              </:body>
+            </Woven::TableSection>
+          {{else if (eq this.currentTab "properties")}}
+            <Woven::TableSection data-test-contact-properties>
+              <:body as |section|>
+                {{#if this.unitRows.length}}
+                  <Woven::DataTable
+                    class="table-stacked"
+                    @columns={{this.unitColumns}}
+                    @rows={{this.unitRows}}
+                    @pinColumns={{true}}
+                    @reorderable={{true}}
+                    @sortable={{true}}
+                    @showOptions={{true}}
+                    @optionsTarget={{section.optionsTarget}}
+                    @tableId="contact-units"
+                    as |cell|
+                  >
+                    <DataTable::StackedLabel
+                      @columns={{this.unitColumns}}
+                      @cellKey={{cell.key}}
+                      @skip={{array "unitNumber" "id"}}
+                    />
+                    {{#if (eq cell.key "unitNumber")}}
+                      <span
+                        data-test-owned-unit-row
+                      >{{cell.value}}</span>
+                    {{else if (eq cell.key "areaName")}}
+                      {{#if cell.value}}<span>{{cell.value}}</span>{{/if}}
+                    {{else if (eq cell.key "propertyType")}}
+                      {{#if cell.value}}<span>{{property-type-label cell.value}}</span>{{/if}}
+                    {{else if (eq cell.key "status")}}
+                      <Woven::Tag
+                        @variant={{tag-variant "unit" cell.value}}
+                        @text={{tag-label "unit" cell.value}}
+                      />
+                    {{else if (eq cell.key "price")}}
+                      <Money
+                        @amount={{cell.value}}
+                        @currency={{region-currency cell.row.regionCode}}
+                      />
+                    {{else if (eq cell.key "id")}}
+                      <div class="table-stacked__actions">
+                        <RowActions
+                          @label={{cell.row.unitNumber}}
+                          @actions={{array
+                            (hash
+                              key="view-owned-unit"
+                              label="View"
+                              icon="eye"
+                              route="properties.unit"
+                              models=(array cell.row.areaId cell.row.id)
+                            )
+                          }}
+                        />
+                      </div>
+                    {{else}}
+                      <span class="text-muted">{{cell.value}}</span>
+                    {{/if}}
+                  </Woven::DataTable>
+                  {{#if (gt this.totals.units this.pageSize)}}
+                    <Woven::Pagination
+                      @page={{this.pages.properties}}
+                      @limit={{this.pageSize}}
+                      @total={{this.totals.units}}
+                      @onPageChange={{fn this.goToRelatedPage "properties"}}
+                      data-test-contact-properties-pager
+                    />
+                  {{/if}}
+                {{else}}
+                  <Woven::EmptyState
+                    @description="No properties found for this owner."
+                  />
+                {{/if}}
+              </:body>
+            </Woven::TableSection>
+          {{else if (eq this.currentTab "history")}}
+            <Woven::TableSection data-test-contact-history>
+              <:body as |section|>
+                <RecordHistoryList
+                  @entityType="Contact"
+                  @entityId={{@model.contact.id}}
+                  @optionsTarget={{section.optionsTarget}}
+                />
+              </:body>
+            </Woven::TableSection>
+          {{else}}
+            <section data-test-contact-documents>
+              <Documents::Panel
+                @filters={{hash contactId=@model.contact.id}}
+                @presetLink={{hash
+                  type="contact"
+                  id=@model.contact.id
+                  label=@model.contact.displayName
+                }}
+                @compact={{true}}
+                @tableId="contact-documents"
+              >
+                <:header as |panel|>
+                  <div class="flex between x-center">
+                    <h2 class="text-md font-bold">Documents</h2>
+                    {{#if panel.canUpload}}
+                      <Woven::Button
+                        @variant="brand"
+                        @size="sm"
+                        @icon="upload-simple"
+                        @text="Upload"
+                        data-test-contact-documents-upload
+                        {{on "click" panel.openUpload}}
+                      />
+                    {{/if}}
+                  </div>
+                </:header>
+              </Documents::Panel>
+            </section>
+          {{/if}}
+        {{/unless}}
+      </div>
+      {{#if (and (not this.isLimited) (can-edit-contact @model.contact))}}
+        <Contact::ContactDrawer
+          @open={{this.showEdit}}
+          @contact={{@model.contact}}
+          @onClose={{this.closeEdit}}
+          @onSaved={{this.refresh}}
+        />
+      {{/if}}
+    {{else}}
+      <Woven::Card>
+        <Woven::EmptyState @description="Contact not found." />
+      </Woven::Card>
     {{/if}}
-  {{else}}
-    <Woven::Card>
-      <Woven::EmptyState @description="Contact not found." />
-    </Woven::Card>
-  {{/if}}
-</div>
+  </:body>
+</Woven::DetailPage>

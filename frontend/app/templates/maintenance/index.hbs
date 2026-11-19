@@ -1,236 +1,219 @@
 {{page-title "Maintenance"}}
 
-<div data-test-maintenance-page class="flex col gap-6">
-  <Woven::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
-    <:actions>
-      <Woven::Button @variant="brand" @icon="plus" data-test-work-order-new {{on "click" this.openCreate}}>
-        New Work Order
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Maintenance"
+  @subtitle="Track and manage property work orders."
+  @isEmpty={{and this.isOrdersSection (not this.filteredWorkOrders.length)}}
+  data-test-maintenance-page
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      @icon="plus"
+      data-test-work-order-new
+      {{on "click" this.openCreate}}
+    >
+      New Work Order
+    </Woven::Button>
+  </:action>
 
-  {{#if @model.costSummary}}
-    <div class="grid cols-1 cols-2@lg cols-4@xl gap-4">
-      <StatCard
-        @label="Total Estimated"
-        @value={{format-money @model.costSummary.totalEstimated}}
-      />
-      <StatCard
-        @label="Total Actual"
-        @value={{format-money @model.costSummary.totalActual}}
-      />
-      <StatCard
-        @label="Pending Cost"
-        @value={{format-money @model.costSummary.pendingCost}}
-      />
-      <StatCard
-        @label="Work Orders"
-        @value={{@model.costSummary.workOrderCount}}
-      />
-    </div>
-  {{/if}}
-
-  <Woven::Segmented
-    @options={{this.sectionTabs}}
-    @value={{this.activeSection}}
-    @onChange={{this.setSection}}
-  />
-
-  {{#if (eq this.activeSection "orders")}}
-    <div class="flex col gap-4">
-      <div class="flex gap-4 x-center">
-        <Woven::Field @label="Status">
-          <Woven::Dropdown
-            id="maintenance-status-filter"
-            @align="start"
-            @value={{this.filterStatus}}
-            @onSelect={{this.setStatusFilter}}
-            @options={{this.statusOptions}}
-            @placeholder="All"
-          />
-        </Woven::Field>
-        <Woven::Field @label="Period">
-          <Woven::Dropdown
-            id="maintenance-period-filter"
-            @align="start"
-            @value={{this.filterMonth}}
-            @onSelect={{this.setMonthFilter}}
-            @options={{this.monthOptions}}
-            @placeholder="All"
-          />
-        </Woven::Field>
+  <:summary>
+    {{#if @model.costSummary}}
+      <div class="grid cols-1 cols-2@lg cols-4@xl gap-4">
+        <StatCard
+          @label="Total Estimated"
+          @value={{format-money @model.costSummary.totalEstimated}}
+        />
+        <StatCard
+          @label="Total Actual"
+          @value={{format-money @model.costSummary.totalActual}}
+        />
+        <StatCard
+          @label="Pending Cost"
+          @value={{format-money @model.costSummary.pendingCost}}
+        />
+        <StatCard
+          @label="Work Orders"
+          @value={{@model.costSummary.workOrderCount}}
+        />
       </div>
+    {{/if}}
+  </:summary>
 
-      <div class="flex col gap-3">
-        {{#if this.filteredWorkOrders.length}}
-          <Woven::DataTable
-            @columns={{this.columns}}
-            @rows={{this.filteredWorkOrders}}
-            @pinColumns={{true}}
-            @reorderable={{true}}
-            @sortable={{true}}
-            @showOptions={{true}}
-            @tableId="maintenance"
-            class="table-stacked"
-            data-test-work-orders-table
-            as |cell|
-          >
-            <DataTable::StackedLabel
-              @columns={{this.columns}}
-              @cellKey={{cell.key}}
-              @skip={{array "title" "id"}}
-            />
-            {{#if (eq cell.key "title")}}
-              <p class="text-sm" data-test-work-order><LinkTo
-                  @route="maintenance.detail"
-                  @model={{cell.row.id}}
-                  class="text-brand"
-                  data-test-work-order-detail-link
-                >{{cell.value}}</LinkTo></p>
-              {{#if cell.row.vendorId}}<p class="text-muted text-xs"><Ui::Ph
-                    @icon="toolbox"
-                  />
-                  Vendor assigned</p>{{/if}}
-            {{else if (eq cell.key "assetName")}}
-              <span class="text-sm text-muted">
-                {{#if cell.row.unitNumber}}
-                  {{cell.row.areaName}}
-                  /
-                  {{cell.row.assetName}}
-                  /
-                  {{cell.row.unitNumber}}
-                {{else}}
-                  <span class="text-muted" data-empty>-</span>
-                {{/if}}
-              </span>
-            {{else if (eq cell.key "category")}}
-              <Woven::Tag
-                @variant={{tag-variant "trade" cell.value}}
-                @text={{cell.value}}
+  <:switcher>
+    <Woven::Tabs
+      @tabs={{this.sectionTabs}}
+      @activeTab={{this.activeSection}}
+      @onChange={{this.setSection}}
+      data-test-maintenance-tabs
+    />
+  </:switcher>
+
+  <:toolbar>
+    {{#if this.isOrdersSection}}
+      <Woven::Dropdown
+        id="maintenance-status-filter"
+        @ariaLabel="Status"
+        @align="start"
+        @value={{this.filterStatus}}
+        @onSelect={{this.setStatusFilter}}
+        @options={{this.statusOptions}}
+        @placeholder="All Statuses"
+      />
+      <Woven::Dropdown
+        id="maintenance-period-filter"
+        @ariaLabel="Period"
+        @align="start"
+        @value={{this.filterMonth}}
+        @onSelect={{this.setMonthFilter}}
+        @options={{this.monthOptions}}
+        @placeholder="All Periods"
+      />
+    {{/if}}
+  </:toolbar>
+
+  <:body as |page|>
+    {{#if this.isOrdersSection}}
+      <Woven::DataTable
+        @columns={{this.columns}}
+        @rows={{this.filteredWorkOrders}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @optionsTarget={{page.optionsTarget}}
+        @tableId="maintenance"
+        class="table-stacked"
+        data-test-work-orders-table
+        as |cell|
+      >
+        <DataTable::StackedLabel
+          @columns={{this.columns}}
+          @cellKey={{cell.key}}
+          @skip={{array "title" "id"}}
+        />
+        {{#if (eq cell.key "title")}}
+          <p class="text-sm" data-test-work-order><LinkTo
+              @route="maintenance.detail"
+              @model={{cell.row.id}}
+              class="text-brand"
+              data-test-work-order-detail-link
+            >{{cell.value}}</LinkTo></p>
+          {{#if cell.row.vendorId}}<p class="text-muted text-xs"><Ui::Ph
+                @icon="toolbox"
               />
-            {{else if (eq cell.key "priority")}}
-              <Woven::Tag
-                @variant={{tag-variant "priority" cell.value}}
-                @text={{cell.value}}
-              />
-            {{else if (eq cell.key "estimatedCost")}}
-              {{#if cell.value}}<Money
-                  @amount={{cell.value}}
-                  @currency={{cell.row.currency}}
-                />{{else}}<span data-empty>-</span>{{/if}}
-            {{else if (eq cell.key "actualCost")}}
-              {{#if cell.value}}<Money
-                  @amount={{cell.value}}
-                  @currency={{cell.row.currency}}
-                />{{else}}<span data-empty>-</span>{{/if}}
-            {{else if (eq cell.key "scheduledDate")}}
-              <span
-                class="text-xs"
-                data-empty={{unless cell.value true}}
-              >{{#if cell.value}}{{format-date
-                    cell.value
-                  }}{{else}}-{{/if}}</span>
-            {{else if (eq cell.key "status")}}
-              <Woven::Tag
-                @variant={{tag-variant "wo" cell.value}}
-                @text={{cell.value}}
-              />
-            {{else if (eq cell.key "id")}}
-              <div class="table-stacked__actions">
-                <RowActions
-                  @label={{cell.row.title}}
-                  @actions={{array
-                    (hash
-                      key="edit-work-order"
-                      label="Edit"
-                      icon="pencil-simple"
-                      onSelect=(fn this.openEdit cell.row)
-                    )
-                    (hash
-                      key="delete-work-order"
-                      label="Delete"
-                      icon="trash"
-                      variant="danger"
-                      onSelect=(fn this.openDelete cell.row)
-                      hidden=(not (this.canDeleteWorkOrder cell.row))
-                    )
-                  }}
-                />
-              </div>
-            {{else}}
-              <span class="text-muted">{{cell.value}}</span>
-            {{/if}}
-          </Woven::DataTable>
-        {{else}}
-          {{#if @model.total}}
-            <Woven::EmptyState
-              @description="No work orders on this page with current filters. Navigate to find orders or adjust filters."
+              Vendor assigned</p>{{/if}}
+        {{else if (eq cell.key "assetName")}}
+          {{#if cell.row.unitNumber}}
+            <Woven::Cell::Text
+              @value={{concat
+                cell.row.areaName
+                " / "
+                cell.row.assetName
+                " / "
+                cell.row.unitNumber
+              }}
             />
           {{else}}
-            <Woven::EmptyState
-              @title="No work orders"
-              @description="No work orders match your filters."
-            />
+            <Woven::Cell::Empty />
           {{/if}}
+        {{else if (eq cell.key "id")}}
+          <div class="table-stacked__actions">
+            <RowActions
+              @label={{cell.row.title}}
+              @actions={{array
+                (hash
+                  key="edit-work-order"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                )
+                (hash
+                  key="delete-work-order"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                  hidden=(not (this.canDeleteWorkOrder cell.row))
+                )
+              }}
+            />
+          </div>
         {{/if}}
-
-        {{#if @model.total}}
-          <Woven::Pagination
-            @page={{this.page}}
-            @limit={{this.limit}}
-            @total={{@model.total}}
-            @onLimitChange={{this.setLimit}}
-            @onPrevious={{this.goToPreviousPage}}
-            @onNext={{this.goToNextPage}}
-            @onPageChange={{this.goToPage}}
+      </Woven::DataTable>
+    {{else}}
+      <Woven::Card>
+        <h4 class="text-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
+          Preventive Maintenance (Next 30 Days)</h4>
+        {{#if @model.upcoming.length}}
+          <div class="flex col gap-3">
+            {{#each @model.upcoming as |wo|}}
+              <div
+                class="flex between x-center p-4 rounded bg-white@02 border border-white@05"
+              >
+                <div class="flex col gap-1">
+                  <p class="text-sm font-bold">{{wo.title}}</p>
+                  <p class="text-muted text-xs">{{tag-label
+                      "trade"
+                      wo.category
+                    }}
+                    - Scheduled:
+                    {{format-date wo.scheduledDate}}</p>
+                </div>
+                <div class="flex x-center gap-3">
+                  <Woven::Tag
+                    @variant={{tag-variant "priority" wo.priority}}
+                    @text={{tag-label "priority" wo.priority}}
+                  />
+                  <Woven::Button
+                    data-test-work-order-edit
+                    @variant="subtle"
+                    @size="xs"
+                    @icon="pencil-simple"
+                    {{on "click" (fn this.openEdit wo)}}
+                  >
+                    Edit
+                  </Woven::Button>
+                </div>
+              </div>
+            {{/each}}
+          </div>
+        {{else}}
+          <Woven::EmptyState
+            @description="No preventive maintenance scheduled for the next 30 days."
           />
         {{/if}}
-      </div>
-    </div>
-  {{/if}}
+      </Woven::Card>
+    {{/if}}
+  </:body>
 
-  {{#if (eq this.activeSection "upcoming")}}
-    <Woven::Card>
-      <h4 class="text-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
-        Preventive Maintenance (Next 30 Days)</h4>
-      {{#if @model.upcoming.length}}
-        <div class="flex col gap-3">
-          {{#each @model.upcoming as |wo|}}
-            <div
-              class="flex between x-center p-4 rounded bg-white@02 border border-white@05"
-            >
-              <div class="flex col gap-1">
-                <p class="text-sm font-bold">{{wo.title}}</p>
-                <p class="text-muted text-xs">{{wo.category}}
-                  - Scheduled:
-                  {{format-date wo.scheduledDate}}</p>
-              </div>
-              <div class="flex x-center gap-3">
-                <Woven::Tag
-                  @variant={{tag-variant "priority" wo.priority}}
-                  @text={{wo.priority}}
-                />
-                <Woven::Button
-                  data-test-work-order-edit
-                  @variant="subtle"
-                  @size="xs"
-                  @icon="pencil-simple"
-                  {{on "click" (fn this.openEdit wo)}}
-                >
-                  Edit
-                </Woven::Button>
-              </div>
-            </div>
-          {{/each}}
-        </div>
-      {{else}}
-        <Woven::EmptyState
-          @description="No preventive maintenance scheduled for the next 30 days."
-        />
-      {{/if}}
-    </Woven::Card>
-  {{/if}}
-</div>
+  <:empty>
+    {{#if @model.total}}
+      <Woven::EmptyState
+        @description="No work orders on this page with current filters. Navigate to find orders or adjust filters."
+      />
+    {{else}}
+      <Woven::EmptyState
+        @title="No work orders"
+        @description="No work orders match your filters."
+      />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if (and this.isOrdersSection @model.total)}}
+      <page.Pager
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </:footer>
+</Woven::ListPage>
 
 <Maintenance::WorkOrderDrawer
   @open={{this.showModal}}

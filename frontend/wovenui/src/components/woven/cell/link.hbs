@@ -1,4 +1,4 @@
-{{! In a table column, @route comes from cellArgs and the model from the row (cellArgs.modelPath, default id). }}
+{{! @route and @models (or @model) come direct, or from cellArgs (route, modelPaths, modelPath) and the row. }}
 {{#let
   (if
     (or (eq @value null) (eq @value undefined) (eq @value ""))
@@ -11,11 +11,12 @@
     <Woven::Cell::Empty />
   {{else}}
     <LinkTo
-      @route={{or @route @column.cellArgs.route}}
-      @model={{or @model (get @row (or @column.cellArgs.modelPath "id"))}}
+      @route={{this.route}}
+      @models={{this.models}}
       class="text-brand whitespace-nowrap"
       title={{text}}
       data-test-wu-cell-link
+      ...attributes
     >{{text}}</LinkTo>
   {{/if}}
 {{/let}}

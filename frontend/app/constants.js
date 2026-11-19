@@ -180,6 +180,12 @@ export const ACCESS_LEVELS = [
   { value: 'ADMIN', label: 'Share with Admin' },
 ];
 
+// Short labels for table tags; forms keep ACCESS_LEVELS.
+export const ACCESS_LEVEL_SHORT_LABELS = [
+  { value: 'TEAM', label: 'Team' },
+  { value: 'ADMIN', label: 'Admin' },
+];
+
 // Values match the documents list `related` query param.
 export const RELATED_TYPES = [
   { value: '', label: 'All' },
@@ -317,7 +323,7 @@ export const MAINTENANCE_STATUS_OPTIONS = [
 ];
 
 export const MONTH_OPTIONS = [
-  { value: '', label: 'All Time' },
+  { value: '', label: 'All Periods' },
   { value: 'this_month', label: 'This Month' },
   { value: 'last_month', label: 'Last Month' },
   { value: 'last_3_months', label: 'Last 3 Months' },

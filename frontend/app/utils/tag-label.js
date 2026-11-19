@@ -1,15 +1,18 @@
 import {
-  ACCESS_LEVELS,
+  ACCESS_LEVEL_SHORT_LABELS,
+  ALL_ROLES,
   CATEGORIES,
   CHEQUE_TYPE_OPTIONS,
   COMMISSION_TYPE_OPTIONS,
   EMAIL_CATEGORIES,
   FILTER_STATUS_OPTIONS,
+  HISTORY_ACTIONS,
   LEAD_STATUS_OPTIONS,
   LEASE_STATUS_OPTIONS,
   LEASE_TYPE_OPTIONS,
   MAINTENANCE_CATEGORY_OPTIONS,
   MAINTENANCE_STATUS_OPTIONS,
+  PAYMENT_METHOD_OPTIONS,
   PRIORITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_SUB_TYPES,
@@ -21,6 +24,7 @@ import {
   TRANSACTION_TYPE_OPTIONS,
 } from 'land/constants';
 import { CONTACT_TAG_LABELS } from 'land/helpers/contact-tag-label';
+import { ACCESS_STATUS_OPTIONS } from 'land/utils/access-requests';
 
 // Same domains as utils/tag-variant.js; on a shared key the first source wins.
 const SOURCES = {
@@ -36,6 +40,7 @@ const SOURCES = {
   cheque: [CHEQUE_TYPE_OPTIONS],
   txntype: [TRANSACTION_TYPE_OPTIONS],
   txncat: [TRANSACTION_CATEGORY_OPTIONS],
+  payment: [PAYMENT_METHOD_OPTIONS],
   commtype: [COMMISSION_TYPE_OPTIONS],
   contact: [
     Object.entries(CONTACT_TAG_LABELS).map(([value, label]) => ({
@@ -44,9 +49,12 @@ const SOURCES = {
     })),
   ],
   doc: [CATEGORIES],
-  access: [ACCESS_LEVELS],
+  access: [ACCESS_LEVEL_SHORT_LABELS],
   email: [EMAIL_CATEGORIES],
   lease: [LEASE_TYPE_OPTIONS, LEASE_STATUS_OPTIONS],
+  role: [ALL_ROLES],
+  historyAction: [HISTORY_ACTIONS],
+  accessRequest: [ACCESS_STATUS_OPTIONS],
 };
 
 const LABELS = Object.fromEntries(

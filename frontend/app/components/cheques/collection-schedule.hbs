@@ -1,71 +1,66 @@
-<div data-test-collection-schedule ...attributes>
-  <Woven::Card @title="Collection schedule">
-    {{#if this.groups.length}}
-      <div
-        class="wu-table-scroll"
-        tabindex="0"
-        role="region"
-        aria-label="Collection schedule"
-      >
-        <table class="wu-table sm">
-          <thead>
-            <tr>
-              <th scope="col">Cheque</th>
-              <th scope="col">Bank</th>
-              <th scope="col">Account holder</th>
-              <th scope="col">Due</th>
-              <th scope="col">When</th>
-              <th scope="col" class="wu-table-num">Amount</th>
+<section class="flex col gap-4" data-test-collection-schedule ...attributes>
+  {{#if this.groups.length}}
+    <div
+      class="wu-table-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Collection schedule"
+    >
+      <table class="wu-table sm">
+        <thead>
+          <tr>
+            <th scope="col">Cheque</th>
+            <th scope="col">Bank</th>
+            <th scope="col">Account holder</th>
+            <th scope="col">Due</th>
+            <th scope="col">When</th>
+            <th scope="col" class="wu-table-num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each this.groups as |group|}}
+            <tr
+              class="cheque-schedule__group {{if group.isOverdue 'is-overdue'}}"
+              data-test-schedule-group={{group.period}}
+            >
+              <td colspan="5">{{group.period}}<span
+                  class="cheque-schedule__count"
+                >{{group.cheques.length}}</span></td>
+              <td class="wu-table-num" data-test-schedule-total>
+                {{#each group.totals as |total index|}}
+                  {{if index " · "}}<Money
+                    @amount={{total.amount}}
+                    @currency={{total.currency}}
+                  />
+                {{/each}}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {{#each this.groups as |group|}}
+            {{#each group.cheques as |cheque|}}
               <tr
-                class="cheque-schedule__group
-                  {{if group.isOverdue 'is-overdue'}}"
-                data-test-schedule-group={{group.period}}
+                class={{if group.isOverdue "is-overdue"}}
+                data-test-schedule-row
               >
-                <td colspan="5">{{group.period}}<span
-                    class="cheque-schedule__count"
-                  >{{group.cheques.length}}</span></td>
-                <td class="wu-table-num" data-test-schedule-total>
-                  {{#each group.totals as |total index|}}
-                    {{if index " · "}}<Money
-                      @amount={{total.amount}}
-                      @currency={{total.currency}}
-                    />
-                  {{/each}}
-                </td>
+                <td>{{cheque.chequeNumber}}</td>
+                <td class="cheque-schedule__muted">{{cheque.bankName}}</td>
+                <td class="cheque-schedule__muted">{{cheque.accountHolder}}</td>
+                <td>{{format-date cheque.dueDate}}</td>
+                <td
+                  class="cheque-schedule__when"
+                  data-test-schedule-when
+                >{{due-word cheque.dueDate format="relative"}}</td>
+                <td class="wu-table-num"><Money
+                    @amount={{cheque.amount}}
+                    @currency={{cheque.currency}}
+                  /></td>
               </tr>
-              {{#each group.cheques as |cheque|}}
-                <tr
-                  class={{if group.isOverdue "is-overdue"}}
-                  data-test-schedule-row
-                >
-                  <td>{{cheque.chequeNumber}}</td>
-                  <td class="cheque-schedule__muted">{{cheque.bankName}}</td>
-                  <td
-                    class="cheque-schedule__muted"
-                  >{{cheque.accountHolder}}</td>
-                  <td>{{format-date cheque.dueDate}}</td>
-                  <td
-                    class="cheque-schedule__when"
-                    data-test-schedule-when
-                  >{{due-word cheque.dueDate format="relative"}}</td>
-                  <td class="wu-table-num"><Money
-                      @amount={{cheque.amount}}
-                      @currency={{cheque.currency}}
-                    /></td>
-                </tr>
-              {{/each}}
             {{/each}}
-          </tbody>
-        </table>
-      </div>
-    {{else}}
-      <Woven::EmptyState
-        @description="No upcoming cheques in the collection schedule."
-      />
-    {{/if}}
-  </Woven::Card>
-</div>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <Woven::EmptyState
+      @description="No upcoming cheques in the collection schedule."
+    />
+  {{/if}}
+</section>

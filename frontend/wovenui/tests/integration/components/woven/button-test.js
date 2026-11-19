@@ -26,6 +26,7 @@ module('Integration | Component | woven/button', function (hooks) {
       ['brand', 'brand'],
       ['danger', 'danger'],
       ['secondary', 'subtle'],
+      ['subtle', 'subtle'],
       ['ghost', 'quiet'],
       ['link', 'link'],
     ];

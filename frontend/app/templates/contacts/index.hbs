@@ -3,12 +3,6 @@
 <Woven::ListPage
   @title="Contacts"
   @subtitle="Every person you deal with. Owners, tenants, leads and portfolio owners are views into this list, not separate records."
-  @count={{this.activeCount}}
-  @total={{this.activeTotal}}
-  @filtered={{this.isFiltered}}
-  @noun={{this.activeNoun}}
-  @nounPlural={{this.activeNounPlural}}
-  @hideCount={{this.activeHideCount}}
   @isEmpty={{and (eq this.currentTab "contacts") (not @model.contacts.length)}}
   data-test-contacts
 >
@@ -44,7 +38,6 @@
   <:toolbar>
     {{#if (eq this.currentTab "contacts")}}
       <Woven::Segmented
-        @size="sm"
         @options={{this.roleTabs}}
         @value={{this.tag}}
         @onChange={{this.setTag}}
@@ -55,7 +48,6 @@
           type="text"
           autocomplete="off"
           placeholder="Search name, email, phone..."
-          @size="sm"
           aria-label="Search contacts"
           value={{this.search}}
           {{on "input" (fn this.updateFilter "search")}}
@@ -261,7 +253,6 @@
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
-        @perPageOptions={{array 50 100}}
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}

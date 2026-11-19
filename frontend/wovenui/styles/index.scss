@@ -21,9 +21,11 @@
 @use "./dropdown" as dropdown-parts;
 @use "./form";
 @use "./layer";
+@use "./list-page";
 @use "./pagination" as pagination-parts;
 @use "./sidebar" as sidebar-parts;
 @use "./table" as table-parts;
+@use "./table-section";
 @use "./tooltip";
 
 // Logical-direction utilities filling a gap in core. Last, so they win over a

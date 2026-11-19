@@ -7,6 +7,7 @@ const VARIANT_CLASSES = {
   brand: 'brand',
   danger: 'danger',
   secondary: 'subtle',
+  subtle: 'subtle',
   ghost: 'quiet',
   link: 'link',
 };

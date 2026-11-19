@@ -1,157 +1,150 @@
 {{page-title "Team"}}
 
-<div data-test-team-page class="flex col gap-4">
-  <Woven::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
-    <:actions>
-      {{#unless this.isSuperAdmin}}
-        <div class="flex gap-3 wrap">
-          {{#if this.canTrim}}
-            <Woven::Button
-              @variant="subtle"
-              @icon="trend-down"
-              data-test-trim-users
-              {{on "click" this.openTrim}}
-            >
-              Prepare Downgrade
-            </Woven::Button>
-          {{/if}}
-          <Woven::Button
-            @variant="subtle"
-            @icon="envelope-simple"
-            data-test-invite-member
-            {{on "click" this.openInvite}}
-          >
-            Invite
-          </Woven::Button>
-          <Woven::Button
-            @variant="brand"
-            @icon="plus"
-            data-test-add-member
-            {{on "click" this.openCreate}}
-          >
-            Add Member
-          </Woven::Button>
-        </div>
-      {{/unless}}
-    </:actions>
-  </Woven::PageHeader>
-
-  <div class="flex col gap-3">
-    {{#if this.model.users.length}}
-      <Woven::DataTable
-        class="table-stacked"
-        @columns={{this.columns}}
-        @rows={{this.model.users}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="team"
-        as |cell|
+<Woven::ListPage
+  @title="Team"
+  @subtitle="Manage your team members and their roles."
+  @isEmpty={{not @model.users.length}}
+  data-test-team-page
+>
+  <:action>
+    {{#unless this.isSuperAdmin}}
+      <Woven::Button
+        @variant="brand"
+        @icon="plus"
+        data-test-add-member
+        {{on "click" this.openCreate}}
       >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "name" "id"}}
-        />
-        {{#if (eq cell.key "name")}}
-          <span data-test-user-id={{cell.row.id}}>{{cell.value}}</span>
-        {{else if (eq cell.key "email")}}
-          <span class="text-muted">{{cell.value}}</span>
-        {{else if (eq cell.key "role")}}
-          <Woven::Tag @text={{format-role cell.value}} />
-        {{else if (eq cell.key "regionCodes")}}
-          {{#if cell.value.length}}
-            <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
-              {{#each cell.value as |code|}}
-                <Woven::Tag @text={{code}} />
-              {{/each}}
-            </div>
-          {{else}}
-            <span
-              class="text-xs text-muted"
-              data-test-user-regions-empty={{cell.row.id}}
-            >None</span>
-          {{/if}}
-        {{else if (eq cell.key "company.name")}}
-          <span class="text-muted">{{or cell.value "—"}}</span>
-        {{else if (eq cell.key "isActive")}}
-          {{#if cell.value}}
-            <Woven::Tag @variant="success" @text="Active" />
-          {{else}}
-            <Woven::Tag @variant="secondary" @text="Inactive" />
-          {{/if}}
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            {{! Removal needs a company context; backend rejects users with no companyId. }}
-            <RowActions
-              @label={{cell.row.name}}
-              @actions={{array
-                (hash
-                  key="edit-user"
-                  label="Edit"
-                  icon="pencil-simple"
-                  onSelect=(fn this.openEdit cell.row)
-                )
-                (hash
-                  key="remove-user"
-                  label="Remove"
-                  icon="user-minus"
-                  variant="danger"
-                  onSelect=(fn this.openRemove cell.row)
-                  hidden=(not (and cell.row.companyId cell.row.isActive))
-                )
-                (hash
-                  key="reactivate-user"
-                  label="Reactivate"
-                  icon="user-plus"
-                  loading=(eq this.reactivatingUserId cell.row.id)
-                  disabled=this.isReactivating
-                  onSelect=(fn this.openReactivate cell.row)
-                  hidden=(not (and cell.row.companyId (not cell.row.isActive)))
-                )
-                (hash
-                  key="delete-user"
-                  label="Delete"
-                  icon="trash"
-                  variant="danger"
-                  onSelect=(fn this.openRemove cell.row)
-                  hidden=(not (and cell.row.companyId (not cell.row.isActive)))
-                )
-                (hash
-                  key="impersonate-user"
-                  label="Impersonate"
-                  icon="user-switch"
-                  loading=(eq this.impersonatingUserId cell.row.id)
-                  disabled=(or
-                    (eq cell.row.isActive false)
-                    this.isImpersonating
-                    (eq this.impersonatingUserId cell.row.id)
-                  )
-                  onSelect=(fn this.impersonateUser cell.row)
-                  hidden=(or (not this.isSuperAdmin) (eq cell.row.role "super_admin"))
-                )
-              }}
-            />
+        Add Member
+      </Woven::Button>
+    {{/unless}}
+  </:action>
+
+  <:toolbarEnd>
+    {{#unless this.isSuperAdmin}}
+      {{#if this.canTrim}}
+        <Woven::Button
+          @variant="subtle"
+          @icon="trend-down"
+          data-test-trim-users
+          {{on "click" this.openTrim}}
+        >
+          Prepare Downgrade
+        </Woven::Button>
+      {{/if}}
+      <Woven::Button
+        @variant="subtle"
+        @icon="envelope-simple"
+        data-test-invite-member
+        {{on "click" this.openInvite}}
+      >
+        Invite
+      </Woven::Button>
+    {{/unless}}
+  </:toolbarEnd>
+
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{@model.users}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="team"
+      class="table-stacked"
+      data-test-team-table
+      as |cell|
+    >
+      <DataTable::StackedLabel
+        @columns={{this.columns}}
+        @cellKey={{cell.key}}
+        @skip={{array "id"}}
+      />
+      {{#if (eq cell.key "regionCodes")}}
+        {{#if cell.value.length}}
+          <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
+            {{#each cell.value as |code|}}
+              <Woven::Tag @variant="secondary" @text={{code}} />
+            {{/each}}
           </div>
         {{else}}
-          <span class="text-muted">{{cell.value}}</span>
+          <Woven::Cell::Empty />
         {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      {{#if @model.total}}
-        <Woven::EmptyState
-          @description="No team members on page {{this.page}}. Navigate back to find members."
-        />
-      {{else}}
-        <Woven::EmptyState
-          @description="No team members yet. Add your first team member to get started."
-        />
+      {{else if (eq cell.key "id")}}
+        <div class="table-stacked__actions">
+          {{! Removal needs a company context; backend rejects users with no companyId. }}
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="edit-user"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+              )
+              (hash
+                key="remove-user"
+                label="Remove"
+                icon="user-minus"
+                variant="danger"
+                onSelect=(fn this.openRemove cell.row)
+                hidden=(not (and cell.row.companyId cell.row.isActive))
+              )
+              (hash
+                key="reactivate-user"
+                label="Reactivate"
+                icon="user-plus"
+                loading=(eq this.reactivatingUserId cell.row.id)
+                disabled=this.isReactivating
+                onSelect=(fn this.openReactivate cell.row)
+                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+              )
+              (hash
+                key="delete-user"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openRemove cell.row)
+                hidden=(not (and cell.row.companyId (not cell.row.isActive)))
+              )
+              (hash
+                key="impersonate-user"
+                label="Impersonate"
+                icon="user-switch"
+                loading=(eq this.impersonatingUserId cell.row.id)
+                disabled=(or
+                  (eq cell.row.isActive false)
+                  this.isImpersonating
+                  (eq this.impersonatingUserId cell.row.id)
+                )
+                onSelect=(fn this.impersonateUser cell.row)
+                hidden=(or
+                  (not this.isSuperAdmin) (eq cell.row.role "super_admin")
+                )
+              )
+            }}
+          />
+        </div>
       {{/if}}
-    {{/if}}
+    </Woven::DataTable>
+  </:body>
 
+  <:empty>
     {{#if @model.total}}
-      <Woven::Pagination
+      <Woven::EmptyState
+        @description="No team members on page {{this.page}}. Navigate back to find members."
+      />
+    {{else}}
+      <Woven::EmptyState
+        @description="No team members yet. Add your first team member to get started."
+      />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if @model.total}}
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -161,8 +154,8 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>
 
 <Team::MemberDrawer
   @open={{this.showModal}}

@@ -98,6 +98,32 @@ module('Integration | Component | woven/cell', function (hooks) {
     assert.dom('[data-test-wu-cell-link]').hasAttribute('href', '/leases/9');
   });
 
+  test('Link builds several route models from the column and row', async function (assert) {
+    this.owner.setupRouter();
+    this.column = {
+      cellArgs: {
+        route: 'properties.unit',
+        modelPaths: ['unit.areaId', 'unit.id'],
+      },
+    };
+    this.row = { id: '1', unit: { areaId: 'a1', id: 'u2' } };
+    await render(
+      hbs`<Woven::Cell::Link @value="101" @row={{this.row}} @column={{this.column}} data-test-out />`,
+    );
+    assert
+      .dom('[data-test-wu-cell-link]')
+      .hasText('101')
+      .hasAttribute('href', '/properties/a1/unit/u2')
+      .hasAttribute('data-test-out');
+
+    await render(
+      hbs`<Woven::Cell::Link @value="101" @route="properties.unit" @models={{array "a3" "u4"}} />`,
+    );
+    assert
+      .dom('[data-test-wu-cell-link]')
+      .hasAttribute('href', '/properties/a3/unit/u4', 'direct @models');
+  });
+
   test('Person', async function (assert) {
     await render(hbs`<Woven::Cell::Person @name="Ada Lovelace" />`);
     assert

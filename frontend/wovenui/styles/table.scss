@@ -1,8 +1,10 @@
 // App overrides on the kit wu-table (@wovenui/components/table): text inside tables stays at regular weight.
 @use "./common/var" as *;
 
+// Header fill matches the data table header.
 .wu-table > thead th {
   font-weight: wu-font-weight(normal);
+  background-color: var(--wu-table--Background, var(--wu-bg-alternate));
 }
 
 .wu-table td {

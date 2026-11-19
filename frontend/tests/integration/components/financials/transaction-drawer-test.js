@@ -141,7 +141,9 @@ module(
           .dom('[data-test-wu-field-error]')
           .hasText('Enter the date the money arrived');
         assert.notOk(sent(this.calls, 'POST'));
-        assert.dom('[data-test-save-transaction]').hasText('Create');
+        assert
+          .dom('[data-test-save-transaction]')
+          .hasText('Create Transaction');
       });
 
       test('an expense names the date it was paid', async function (assert) {

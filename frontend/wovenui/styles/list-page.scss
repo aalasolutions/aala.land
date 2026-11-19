@@ -1,0 +1,17 @@
+// Woven::ListPage toolbar: controls keep their natural width and never widen the page.
+.wu-list-page-toolbar {
+  .wu-dropdown-wrap {
+    display: inline-flex;
+    inline-size: auto;
+  }
+
+  .wu-segmented {
+    max-inline-size: 100%;
+    overflow-x: auto;
+  }
+}
+
+.wu-list-page-toolbar-end {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}

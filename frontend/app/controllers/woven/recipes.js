@@ -309,15 +309,15 @@ export default class WovenRecipesController extends Controller {
   </:switcher>
 
   <:toolbar>
-    <Woven::Segmented @size="sm" @options={{this.statusOptions}} @value={{this.statusFilter}} @onChange={{this.setStatusFilter}} />
+    <Woven::Segmented @options={{this.statusOptions}} @value={{this.statusFilter}} @onChange={{this.setStatusFilter}} />
     <div class="w-64">
-      <Woven::Input @size="sm" type="search" aria-label="Search leases" @value={{this.search}} @onInput={{this.setSearch}} />
+      <Woven::Input type="search" aria-label="Search leases" @value={{this.search}} @onInput={{this.setSearch}} />
     </div>
     <FiltersButton @count={{1}}>...</FiltersButton>
   </:toolbar>
 
   <:toolbarEnd>
-    <Woven::Dropdown @size="sm" @align="end" @options={{this.sortOptions}} @value={{this.sort}} @onSelect={{this.setSort}} />
+    <Woven::Dropdown @align="end" @options={{this.sortOptions}} @value={{this.sort}} @onSelect={{this.setSort}} />
   </:toolbarEnd>
 
   <:body as |page|>

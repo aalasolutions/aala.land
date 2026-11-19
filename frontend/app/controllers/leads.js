@@ -1,7 +1,10 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellStatus from 'land/components/cell/status';
+import CellDate from 'land/components/cell/date';
 import { LEAD_STAGES, TEMPERATURE_STAGES } from 'land/constants';
 import { seesOnlyOwnLeads } from '../utils/roles';
 
@@ -75,7 +78,7 @@ export function columnIds(leads, field, value) {
   return leads.filter((l) => inColumn(l, field, value)).map((l) => l.id);
 }
 
-export default class LeadsController extends Controller {
+export default class LeadsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
@@ -108,8 +111,6 @@ export default class LeadsController extends Controller {
   }
 
   queryParams = ['page', 'limit', 'status'];
-  page = 1;
-  limit = 50;
   status = '';
 
   // Keyed by user too: the controller outlives logout and impersonation switches.
@@ -187,19 +188,44 @@ export default class LeadsController extends Controller {
       valuePath: 'contact.displayName',
       width: 220,
       isFixed: 'left',
+      stackedLabel: false,
     },
-    { name: 'Contact', valuePath: 'contact.phone', width: 220 },
-    { name: 'Status', valuePath: 'status', width: 140 },
-    { name: 'Temperature', valuePath: 'temperature', width: 140 },
+    { name: 'Phone', valuePath: 'contact.phone', width: 180 },
+    {
+      name: 'Email',
+      valuePath: 'contact.email',
+      width: 220,
+      cell: CellText,
+    },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 160,
+      cell: CellStatus,
+      cellArgs: { domain: 'lead' },
+    },
+    {
+      name: 'Temperature',
+      valuePath: 'temperature',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'temp' },
+    },
     { name: 'Property', valuePath: 'locality.name', width: 200 },
     { name: 'Assigned', valuePath: 'assignedAgentName', width: 180 },
-    { name: 'Created', valuePath: 'createdAt', width: 140 },
+    {
+      name: 'Created',
+      valuePath: 'createdAt',
+      width: 140,
+      cell: CellDate,
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 
@@ -212,6 +238,13 @@ export default class LeadsController extends Controller {
 
   get filteredLeads() {
     return this.applyFilter(this.allLeads);
+  }
+
+  // Scope tabs filter the loaded page in the browser, so only "All" has an API total.
+  get listCount() {
+    return this.filterType === 'all'
+      ? (this.model?.total ?? 0)
+      : this.filteredLeads.length;
   }
 
   applyFilter(leads) {

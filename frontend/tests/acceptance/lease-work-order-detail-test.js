@@ -146,7 +146,9 @@ module('Acceptance | leases/detail', function (hooks) {
 
     assert.dom('[data-test-wu-page-header-title]').hasText('Test Tenant');
     assert
-      .dom('[data-test-breadcrumb-leases] [data-test-wu-breadcrumb-link]')
+      .dom(
+        '[data-test-lease-detail] [data-test-wu-breadcrumb] [data-test-wu-breadcrumb-link]',
+      )
       .hasAttribute('href', '/leases');
     assert.dom('[data-test-lease-unit-link]').hasText('Bay Tower - 101');
     assert.deepEqual(documentListCalls(this.calls), [
@@ -275,7 +277,9 @@ module('Acceptance | maintenance/detail', function (hooks) {
 
     assert.dom('[data-test-wu-page-header-title]').hasText('Fix AC');
     assert
-      .dom('[data-test-breadcrumb-maintenance] [data-test-wu-breadcrumb-link]')
+      .dom(
+        '[data-test-work-order-detail] [data-test-wu-breadcrumb] [data-test-wu-breadcrumb-link]',
+      )
       .hasAttribute('href', '/maintenance');
     assert.deepEqual(documentListCalls(this.calls), [
       '/documents?page=1&limit=20&workOrderId=wo-1',
@@ -303,8 +307,8 @@ module('Acceptance | maintenance/detail', function (hooks) {
   test('the header carries the tags and Edit opens the drawer prefilled', async function (assert) {
     await visit('/maintenance/wo-1');
 
-    assert.dom('[data-test-work-order-status]').hasText('OPEN');
-    assert.dom('[data-test-work-order-priority]').hasText('HIGH');
+    assert.dom('[data-test-work-order-status]').hasText('New / Unassigned');
+    assert.dom('[data-test-work-order-priority]').hasText('High');
     assert.dom('[data-test-work-order-category]').hasText('HVAC');
 
     await click('[data-test-edit-work-order]');

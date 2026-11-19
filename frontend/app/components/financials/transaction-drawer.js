@@ -157,7 +157,7 @@ export default class FinancialsTransactionDrawerComponent extends Component {
 
   get submitLabel() {
     if (this.isSaving) return 'Saving...';
-    return this.isEdit ? 'Update' : 'Create';
+    return this.isEdit ? 'Update' : 'Create Transaction';
   }
 
   get categoryOptions() {

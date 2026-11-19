@@ -51,7 +51,7 @@ module(
 
       assert.strictEqual(
         calls[0].path,
-        '/contact-access-requests?mine=true&page=1&limit=20',
+        '/contact-access-requests?mine=true&page=1&limit=50',
       );
       const approved = '[data-test-data-table-row="r-1"]';
       const pending = '[data-test-data-table-row="r-2"]';

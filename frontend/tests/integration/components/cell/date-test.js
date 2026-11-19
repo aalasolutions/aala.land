@@ -40,6 +40,28 @@ module('Integration | Component | cell/date', function (hooks) {
     assert.dom('[data-test-out]').hasText('16 Sep 2025');
   });
 
+  test('regionPath adds the record region zone beside the local time', async function (assert) {
+    const region = this.owner.lookup('service:region');
+    const zone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone === 'Pacific/Pago_Pago'
+        ? 'Pacific/Kiritimati'
+        : 'Pacific/Pago_Pago';
+    region.regions = [{ code: 'far', name: 'Far Region', timezone: zone }];
+    this.set('column', {
+      cellArgs: { withTime: true, regionPath: 'regionCode' },
+    });
+    this.set('row', { regionCode: 'far' });
+    await render(
+      hbs`<div data-test-out><Cell::Date @value="2025-09-16T06:00:00Z" @row={{this.row}} @column={{this.column}} /></div>`,
+    );
+    assert.dom('[data-test-out]').includesText('Far Region');
+
+    await render(
+      hbs`<div data-test-out><Cell::Date @value="2025-09-16T06:00:00Z" @region={{null}} @row={{this.row}} @column={{this.column}} /></div>`,
+    );
+    assert.dom('[data-test-out]').doesNotIncludeText('Far Region');
+  });
+
   test('null, undefined and "" render "-"', async function (assert) {
     for (const value of [null, undefined, '']) {
       this.set('value', value);

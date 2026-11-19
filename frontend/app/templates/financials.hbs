@@ -1,127 +1,236 @@
 {{page-title "Financials"}}
 
-<div data-test-financials-page class="flex col gap-6">
-  <Woven::PageHeader
-    @title="Financial Overview"
-    @subtitle="Transactions, revenue, and payment tracking."
-  >
-    <:actions>
-      <Woven::Button
-        @variant="brand"
-        @icon="plus"
-        data-test-new-transaction
-        {{on "click" this.openCreate}}
-      >
-        New Transaction
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
-
-  {{#unless @model.forbidden}}
-    <Woven::Card
-      @title="Cheques to chase"
-      @subtitle="Overdue and due this week, as of today. The period below does not filter this list."
-      data-test-financials-queue
+<Woven::ListPage
+  @title="Financial Overview"
+  @subtitle="Transactions, revenue, and payment tracking."
+  @isEmpty={{not this.filteredTransactions.length}}
+  data-test-financials-page
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      @icon="plus"
+      data-test-new-transaction
+      {{on "click" this.openCreate}}
     >
-      <div class="flex col gap-3">
-        {{#if this.queueFailed}}
-          <Financials::LoadError
-            @title="Could not load everything that is due"
-            @description="Cheques or payments may be missing from this list."
-            @onRetry={{this.retryLoad}}
-            data-test-queue-error
-          />
-        {{/if}}
+      New Transaction
+    </Woven::Button>
+  </:action>
 
-        {{#if this.queue.count}}
-          {{#if this.queue.overdueCount}}
-            <p class="text-sm font-bold text-danger" data-test-queue-overdue>
-              <Money @amount={{this.queue.overdueTotal}} />
-              overdue across
-              {{format-number this.queue.overdueCount unit="item"}}
-            </p>
-          {{/if}}
+  <:summary>
+    <div class="flex col gap-4">
+      {{#unless @model.forbidden}}
+        <Woven::Card
+          @title="Cheques to chase"
+          @subtitle="Overdue and due this week, as of today. The period below does not filter this list."
+          data-test-financials-queue
+        >
+          <div class="flex col gap-3">
+            {{#if this.queueFailed}}
+              <Financials::LoadError
+                @title="Could not load everything that is due"
+                @description="Cheques or payments may be missing from this list."
+                @onRetry={{this.retryLoad}}
+                data-test-queue-error
+              />
+            {{/if}}
 
-          <ul class="finance-queue">
-            {{#each this.queue.rows key="key" as |row|}}
-              <li class="finance-queue__row" data-test-queue-row={{row.kind}}>
-                <Woven::Tag
-                  @variant={{if row.isOverdue "danger"}}
-                  @text={{row.dueLabel}}
-                  data-test-queue-due
-                />
-                <div class="finance-queue__what">
-                  <p class="text-sm font-bold"><DueLabel
-                      @label={{row.title}}
-                      @word={{row.dueWord}}
-                      @dueDate={{row.dueDate}}
-                    /></p>
-                  <p class="text-muted text-xs">
-                    {{#if (eq row.kind "cheque")}}
-                      {{row.holder}},
-                      {{row.detail}}
-                    {{else}}
-                      Payment due
-                    {{/if}}
-                    &middot;
-                    {{format-date row.dueDate}}
-                  </p>
-                </div>
-                <div class="finance-queue__links">
-                  {{#if (eq row.kind "cheque")}}
-                    <LinkTo
-                      @route="cheques"
-                      class="text-brand"
-                      data-test-queue-cheque-link={{row.id}}
-                    >Open in Cheques</LinkTo>
-                  {{else}}
-                    {{#if row.areaId}}
-                      <LinkTo
-                        @route="properties.unit"
-                        @models={{array row.areaId row.unitId}}
-                        class="text-brand"
-                        data-test-reminder-unit-link={{row.unitId}}
-                      >Unit {{row.unitNumber}}</LinkTo>
-                    {{/if}}
-                    {{#if row.tenantContactId}}
-                      <LinkTo
-                        @route="contacts.detail"
-                        @model={{row.tenantContactId}}
-                        class="text-brand"
-                        data-test-reminder-tenant-link={{row.tenantContactId}}
-                      >{{or row.tenantName "Tenant"}}</LinkTo>
-                    {{/if}}
-                  {{/if}}
-                </div>
-                <p class="finance-queue__amount" data-test-queue-amount>
-                  <Money @amount={{row.amount}} @currency={{row.currency}} />
+            {{#if this.queue.count}}
+              {{#if this.queue.overdueCount}}
+                <p
+                  class="text-sm font-bold text-danger"
+                  data-test-queue-overdue
+                >
+                  <Money @amount={{this.queue.overdueTotal}} />
+                  overdue across
+                  {{format-number this.queue.overdueCount unit="item"}}
                 </p>
-              </li>
-            {{/each}}
-          </ul>
+              {{/if}}
 
-          {{#if this.queue.hiddenCount}}
-            <LinkTo
-              @route="cheques"
-              class="text-brand text-sm"
-              data-test-queue-view-all
-            >View all in Cheques ({{format-number this.queue.hiddenCount}}
-              more)</LinkTo>
-          {{/if}}
-        {{else if (not this.queueFailed)}}
-          <Woven::EmptyState
-            @description="Nothing to chase. No cheque or payment is overdue or due this week."
-            data-test-queue-empty
+              <ul class="finance-queue">
+                {{#each this.queue.rows key="key" as |row|}}
+                  <li
+                    class="finance-queue__row"
+                    data-test-queue-row={{row.kind}}
+                  >
+                    <Woven::Tag
+                      @variant={{if row.isOverdue "danger"}}
+                      @text={{row.dueLabel}}
+                      data-test-queue-due
+                    />
+                    <div class="finance-queue__what">
+                      <p class="text-sm font-bold"><DueLabel
+                          @label={{row.title}}
+                          @word={{row.dueWord}}
+                          @dueDate={{row.dueDate}}
+                        /></p>
+                      <p class="text-muted text-xs">
+                        {{#if (eq row.kind "cheque")}}
+                          {{row.holder}},
+                          {{row.detail}}
+                        {{else}}
+                          Payment due
+                        {{/if}}
+                        &middot;
+                        {{format-date row.dueDate}}
+                      </p>
+                    </div>
+                    <div class="finance-queue__links">
+                      {{#if (eq row.kind "cheque")}}
+                        <LinkTo
+                          @route="cheques"
+                          class="text-brand"
+                          data-test-queue-cheque-link={{row.id}}
+                        >Open in Cheques</LinkTo>
+                      {{else}}
+                        {{#if row.areaId}}
+                          <LinkTo
+                            @route="properties.unit"
+                            @models={{array row.areaId row.unitId}}
+                            class="text-brand"
+                            data-test-reminder-unit-link={{row.unitId}}
+                          >Unit {{row.unitNumber}}</LinkTo>
+                        {{/if}}
+                        {{#if row.tenantContactId}}
+                          <LinkTo
+                            @route="contacts.detail"
+                            @model={{row.tenantContactId}}
+                            class="text-brand"
+                            data-test-reminder-tenant-link={{row.tenantContactId}}
+                          >{{or row.tenantName "Tenant"}}</LinkTo>
+                        {{/if}}
+                      {{/if}}
+                    </div>
+                    <p class="finance-queue__amount" data-test-queue-amount>
+                      <Money
+                        @amount={{row.amount}}
+                        @currency={{row.currency}}
+                      />
+                    </p>
+                  </li>
+                {{/each}}
+              </ul>
+
+              {{#if this.queue.hiddenCount}}
+                <LinkTo
+                  @route="cheques"
+                  class="text-brand text-sm"
+                  data-test-queue-view-all
+                >View all in Cheques ({{format-number this.queue.hiddenCount}}
+                  more)</LinkTo>
+              {{/if}}
+            {{else if (not this.queueFailed)}}
+              <Woven::EmptyState
+                @description="Nothing to chase. No cheque or payment is overdue or due this week."
+                data-test-queue-empty
+              />
+            {{/if}}
+          </div>
+        </Woven::Card>
+      {{/unless}}
+
+      {{#if this.totals}}
+        <div class="grid cols-1 cols-3@lg gap-4">
+          <StatCard
+            data-test-summary="total-income"
+            @variant="success"
+            @label="Collected"
+            @value={{format-money this.totals.income}}
+            @delta={{this.rangeLabel}}
           />
-        {{/if}}
-      </div>
-    </Woven::Card>
-  {{/unless}}
+          <StatCard
+            data-test-summary="total-expense"
+            @variant="danger"
+            @label="Spent"
+            @value={{format-money this.totals.expense}}
+            @delta={{this.rangeLabel}}
+          />
+          <StatCard
+            data-test-summary="net"
+            @label="Net"
+            @value={{format-money this.totals.net}}
+            @delta={{this.rangeLabel}}
+          />
+        </div>
+      {{/if}}
 
-  <div class="finance-filters" data-test-financials-period>
-    <h2 class="text-lg font-bold">{{this.rangeLabel}}</h2>
+      {{#unless @model.forbidden}}
+        <div class="grid cols-1 cols-2@lg gap-4">
+          <Woven::Card
+            @title="Cash flow"
+            @subtitle="Completed income and expense by {{this.bucketNoun}}, ending with the selected period."
+            data-test-financials-cashflow
+          >
+            {{#if this.cashflowFailed}}
+              <Financials::LoadError
+                @title="Could not load the cash flow"
+                @onRetry={{this.retryLoad}}
+                data-test-cashflow-error
+              />
+            {{else if this.cashflow.length}}
+              <CashflowChart @points={{this.cashflow}} />
+            {{else}}
+              <Woven::EmptyState
+                @description="No cash flow for this period."
+                data-test-cashflow-empty
+              />
+            {{/if}}
+          </Woven::Card>
 
-    <div class="finance-filters__range">
+          <Woven::Card
+            @title="Where the money went"
+            @subtitle="Completed expenses by category for the selected period."
+            data-test-financials-categories
+          >
+            {{#if this.categoriesFailed}}
+              <Financials::LoadError
+                @title="Could not load spending by category"
+                @onRetry={{this.retryLoad}}
+                data-test-categories-error
+              />
+            {{else if this.expenseCategories.length}}
+              <div class="flex col gap-3">
+                {{#each this.expenseCategories key="category" as |row|}}
+                  <div
+                    class="flex col gap-1"
+                    data-test-category-row={{row.category}}
+                  >
+                    <div class="flex between x-center gap-2 text-sm">
+                      <span>{{transaction-category-label row.category}}</span>
+                      <span class="font-bold"><Money
+                          @amount={{row.total}}
+                        /></span>
+                    </div>
+                    <Woven::Progress
+                      @value={{row.share}}
+                      @variant="danger"
+                      @size="sm"
+                      @showText={{true}}
+                      @label="{{row.share}}%"
+                    />
+                  </div>
+                {{/each}}
+              </div>
+            {{else}}
+              <Woven::EmptyState
+                @description="No completed expenses in this period."
+                data-test-categories-empty
+              />
+            {{/if}}
+          </Woven::Card>
+        </div>
+      {{/unless}}
+    </div>
+  </:summary>
+
+  <:toolbar>
+    <Woven::Segmented
+      @options={{this.transactionTabs}}
+      @value={{this.activeTab}}
+      @onChange={{this.setTab}}
+      data-test-financials-tabs
+    />
+    <div class="finance-filters__range" data-test-financials-period>
       <Woven::Segmented
         @options={{this.rangeOptions}}
         @value={{this.range}}
@@ -160,110 +269,66 @@
         {{/if}}
       {{/if}}
     </div>
-  </div>
+  </:toolbar>
 
-  {{#if this.totals}}
-    <div class="grid cols-1 cols-3@lg gap-4">
-      <StatCard
-        data-test-summary="total-income"
-        @variant="success"
-        @label="Collected"
-        @value={{format-money this.totals.income}}
-        @delta={{this.rangeLabel}}
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{this.filteredTransactions}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="financials"
+      @getRowClass={{this.getRowClass}}
+      class="table-stacked"
+      data-test-financials-table
+      as |cell|
+    >
+      <DataTable::StackedLabel
+        @columns={{this.columns}}
+        @cellKey={{cell.key}}
+        @skip={{array "id"}}
       />
-      <StatCard
-        data-test-summary="total-expense"
-        @variant="danger"
-        @label="Spent"
-        @value={{format-money this.totals.expense}}
-        @delta={{this.rangeLabel}}
-      />
-      <StatCard
-        data-test-summary="net"
-        @label="Net"
-        @value={{format-money this.totals.net}}
-        @delta={{this.rangeLabel}}
-      />
-    </div>
-  {{/if}}
-
-  {{#unless @model.forbidden}}
-    <div class="grid cols-1 cols-2@lg gap-4">
-      <Woven::Card
-        @title="Cash flow"
-        @subtitle="Completed income and expense by {{this.bucketNoun}}, ending with the selected period."
-        data-test-financials-cashflow
-      >
-        {{#if this.cashflowFailed}}
-          <Financials::LoadError
-            @title="Could not load the cash flow"
-            @onRetry={{this.retryLoad}}
-            data-test-cashflow-error
+      {{#if (eq cell.key "amount")}}
+        <span
+          class="{{if
+              (eq cell.row.type 'INCOME')
+              'text-success'
+              'text-danger'
+            }}"
+        >
+          {{if (eq cell.row.type "INCOME") "+" "-"}}<Money
+            @amount={{cell.value}}
+            @currency={{cell.row.currency}}
+            @compact={{false}}
           />
-        {{else if this.cashflow.length}}
-          <CashflowChart @points={{this.cashflow}} />
-        {{else}}
-          <Woven::EmptyState
-            @description="No cash flow for this period."
-            data-test-cashflow-empty
-          />
-        {{/if}}
-      </Woven::Card>
+        </span>
+      {{else if (eq cell.key "id")}}
+        <div class="table-stacked__actions">
+          {{#if cell.row.chequeId}}
+            {{! The cheque owns this row; editing it is refused with a 409. }}
+            <Woven::Cell::Empty />
+          {{else}}
+            <RowActions
+              @label={{cell.row.description}}
+              @actions={{array
+                (hash
+                  key="edit-transaction"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                )
+              }}
+            />
+          {{/if}}
+        </div>
+      {{/if}}
+    </Woven::DataTable>
+  </:body>
 
-      <Woven::Card
-        @title="Where the money went"
-        @subtitle="Completed expenses by category for the selected period."
-        data-test-financials-categories
-      >
-        {{#if this.categoriesFailed}}
-          <Financials::LoadError
-            @title="Could not load spending by category"
-            @onRetry={{this.retryLoad}}
-            data-test-categories-error
-          />
-        {{else if this.expenseCategories.length}}
-          <div class="flex col gap-3">
-            {{#each this.expenseCategories key="category" as |row|}}
-              <div
-                class="flex col gap-1"
-                data-test-category-row={{row.category}}
-              >
-                <div class="flex between x-center gap-2 text-sm">
-                  <span>{{transaction-category-label row.category}}</span>
-                  <span class="font-bold"><Money @amount={{row.total}} /></span>
-                </div>
-                <Woven::Progress
-                  @value={{row.share}}
-                  @variant="danger"
-                  @size="sm"
-                  @showText={{true}}
-                  @label="{{row.share}}%"
-                />
-              </div>
-            {{/each}}
-          </div>
-        {{else}}
-          <Woven::EmptyState
-            @description="No completed expenses in this period."
-            data-test-categories-empty
-          />
-        {{/if}}
-      </Woven::Card>
-    </div>
-  {{/unless}}
-
-  <div>
-    <Woven::Segmented
-      @options={{this.transactionTabs}}
-      @value={{this.activeTab}}
-      @onChange={{this.setTab}}
-      data-test-financials-tabs
-    />
-  </div>
-
-  <div class="flex col gap-3">
-    <h3 class="text-md font-bold" data-test-financials-transactions-title>Transactions</h3>
-
+  <:empty>
     {{#if @model.forbidden}}
       <Woven::Alert
         @variant="danger"
@@ -278,67 +343,6 @@
         @onRetry={{this.retryLoad}}
         data-test-financials-error
       />
-    {{else if this.filteredTransactions.length}}
-      <Woven::DataTable
-        @columns={{this.columns}}
-        @rows={{this.filteredTransactions}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="financials"
-        @getRowClass={{this.getRowClass}}
-        class="table-stacked"
-        data-test-financials-table
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "description" "id"}}
-        />
-        {{#if (eq cell.key "description")}}
-          <span data-test-transaction>{{cell.value}}</span>
-        {{else if (eq cell.key "amount")}}
-          <span
-            class="{{if (eq cell.row.type 'INCOME') 'text-success' 'text-danger'}}"
-          >
-            {{if (eq cell.row.type "INCOME") "+" "-"}}<Money
-              @amount={{cell.value}}
-              @currency={{cell.row.currency}}
-              @compact={{false}}
-            />
-          </span>
-        {{else if (eq cell.key "status")}}
-          <Woven::Tag
-            @variant={{tag-variant "txn" cell.value}}
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "transactionDate")}}
-          <span class="text-xs">{{format-date cell.value}}</span>
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            {{#if cell.row.chequeId}}
-              {{! The cheque owns this row; editing it is refused with a 409. }}
-              <span class="text-xs text-muted" data-test-from-cheque>From cheque</span>
-            {{else}}
-              <RowActions
-                @label={{cell.row.description}}
-                @actions={{array
-                  (hash
-                    key="edit-transaction"
-                    label="Edit"
-                    icon="pencil-simple"
-                    onSelect=(fn this.openEdit cell.row)
-                  )
-                }}
-              />
-            {{/if}}
-          </div>
-        {{else if (has-value cell.value)}}
-          <span>{{cell.value}}</span>
-        {{/if}}
-      </Woven::DataTable>
     {{else if @model.total}}
       <Woven::EmptyState
         data-test-financials-page-empty
@@ -358,9 +362,11 @@
         }}
       />
     {{/if}}
+  </:empty>
 
+  <:footer as |page|>
     {{#if @model.total}}
-      <Woven::Pagination
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -370,8 +376,8 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>
 
 <Financials::TransactionDrawer
   @open={{this.showModal}}

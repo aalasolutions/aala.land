@@ -120,6 +120,7 @@
       "./components/woven/spinner.js": "./dist/_app_/components/woven/spinner.js",
       "./components/woven/stat-inner.js": "./dist/_app_/components/woven/stat-inner.js",
       "./components/woven/stat.js": "./dist/_app_/components/woven/stat.js",
+      "./components/woven/table-section.js": "./dist/_app_/components/woven/table-section.js",
       "./components/woven/tabs.js": "./dist/_app_/components/woven/tabs.js",
       "./components/woven/tag.js": "./dist/_app_/components/woven/tag.js",
       "./components/woven/text.js": "./dist/_app_/components/woven/text.js",

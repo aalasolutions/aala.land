@@ -1,5 +1,7 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
+import { tagLabel } from 'land/utils/tag-label';
+import { tagVariant } from 'land/utils/tag-variant';
 
 module('Unit | Route | history', function (hooks) {
   setupTest(hooks);
@@ -77,7 +79,7 @@ module('Unit | Route | history', function (hooks) {
 module('Unit | Controller | history', function (hooks) {
   setupTest(hooks);
 
-  test('rows carry display labels', function (assert) {
+  test('rows carry the type label and the raw action for the status cell', function (assert) {
     const controller = this.owner.lookup('controller:history');
     controller.model = {
       entries: [
@@ -87,11 +89,14 @@ module('Unit | Controller | history', function (hooks) {
     };
 
     const [first, second] = controller.rows;
-    assert.strictEqual(first.actionLabel, 'Cancelled');
-    assert.strictEqual(first.actionVariant, 'danger');
     assert.strictEqual(first.entityTypeLabel, 'Work Order');
-    assert.strictEqual(second.actionLabel, 'SOMETHING_NEW');
-    assert.strictEqual(second.actionVariant, 'secondary');
+    assert.strictEqual(tagLabel('historyAction', first.action), 'Cancelled');
+    assert.strictEqual(tagVariant('historyAction', first.action), 'danger');
+    assert.strictEqual(
+      tagLabel('historyAction', second.action),
+      'Something New',
+    );
+    assert.strictEqual(tagVariant('historyAction', second.action), undefined);
   });
 
   test('goToPage sets a page inside the range and refuses one outside it', function (assert) {

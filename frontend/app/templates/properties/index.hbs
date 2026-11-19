@@ -1,410 +1,396 @@
 {{page-title "Properties"}}
 
-<div data-test-properties-page class="flex col gap-4">
-  <Woven::PageHeader
-    @title="Properties"
-    @subtitle="Locations, assets, and properties."
-  >
-    <:actions>
-      <Woven::Button
-        @variant="brand"
-        data-test-new-unit
-        @icon="plus"
-        {{on "click" this.openNewUnitModal}}
-      >
-        New Property
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Properties"
+  @subtitle="Locations, assets, and properties."
+  @isEmpty={{this.isBrowseEmpty}}
+  data-test-properties-page
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      data-test-new-unit
+      @icon="plus"
+      {{on "click" this.openNewUnitModal}}
+    >
+      New Property
+    </Woven::Button>
+  </:action>
 
-  {{#if (eq this.currentView "cards")}}
-    {{#if @model.length}}
-      <div class="flex col gap-3">
-        {{#each @model as |loc|}}
-          <Woven::Card data-test-locality-card>
-            <div class="flex between x-center">
-              <div class="flex gap-6">
-                <div>
-                  <h4 class="text-md font-bold"><LinkTo
-                      class="wu-card-link"
-                      @route="properties.detail"
-                      @model={{loc.id}}
-                    >{{loc.name}}</LinkTo></h4>
-                  <p class="text-muted text-xs mt-1">{{loc.cityName}}</p>
-                </div>
-                <div class="flex gap-4 text-sm">
-                  <span class="text-muted">{{loc.assetCount}} Assets</span>
-                  <span class="text-muted">{{loc.unitCount}} Properties</span>
-                </div>
-              </div>
-              <Ui::Ph @icon="caret-right" @size="20" />
-            </div>
-          </Woven::Card>
-        {{/each}}
-      </div>
-    {{else}}
-      <Woven::EmptyState
-        @title="No assets yet"
-        @description="Click New Property to add your first property."
-      />
-    {{/if}}
-  {{else if (eq this.currentView "list")}}
-    {{#if @model.length}}
-      <Woven::DataTable
-        @columns={{this.columns}}
-        @rows={{@model}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="properties-localities"
-        class="table-stacked"
-        data-test-localities-table
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "name" "id"}}
-        />
-        {{#if (eq cell.key "name")}}
-          <span>{{cell.value}}</span>
-        {{else if (eq cell.key "cityName")}}
-          <span class="text-muted">{{cell.value}}</span>
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            <RowActions
-              @label={{cell.row.name}}
-              @actions={{array
-                (hash
-                  key="view-locality"
-                  label="View"
-                  icon="eye"
-                  variant="brand"
-                  route="properties.detail"
-                  models=(array cell.value)
-                )
-              }}
-            />
-          </div>
-        {{else}}
-          {{#if (has-value cell.value)}}<span>{{cell.value}}</span>{{/if}}
-        {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      <Woven::EmptyState
-        @title="No assets yet"
-        @description="Click New Property to add your first property."
-      />
-    {{/if}}
-  {{else}}
-    <div class="browse-toolbar" data-test-browse-toolbar>
-      <div class="flex x-center gap-3">
-        <FiltersButton @count={{this.activeFilterCount}}>
-          <div class="flex col gap-4" data-test-browse-filters>
-            <div class="wu-filter-row">
-              <Woven::Field @label="Type">
-                <Woven::Dropdown
-                  @align="start"
-                  @value={{this.filterType}}
-                  @onSelect={{this.setFilterType}}
-                  @options={{this.filterTypeOptions}}
-                  @placeholder="All"
-                  data-test-filter-type
-                />
-              </Woven::Field>
-              <Woven::Field @label="Status">
-                <Woven::Dropdown
-                  @align="start"
-                  @value={{this.filterStatus}}
-                  @onSelect={{this.setFilterStatus}}
-                  @options={{this.filterStatusOptions}}
-                  @placeholder="All"
-                  data-test-filter-status
-                />
-              </Woven::Field>
-              <Woven::Field @label="Bedrooms">
-                <Woven::Dropdown
-                  @align="start"
-                  @value={{this.filterBeds}}
-                  @onSelect={{this.setFilterBeds}}
-                  @options={{this.filterBedsOptions}}
-                  @placeholder="Any"
-                  data-test-filter-beds
-                />
-              </Woven::Field>
-              <Woven::Field
-                @label="Visibility"
-                @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
-              >
-                <Woven::Dropdown
-                  @align="start"
-                  @value={{this.archivedFilterValue}}
-                  @onSelect={{this.setArchivedFilter}}
-                  @options={{this.archivedFilterOptions}}
-                  data-test-archived-filter
-                />
-              </Woven::Field>
-              <Woven::Field @label="Min Price">
-                <Woven::Input
-                  type="number"
-                  placeholder="Min"
-                  @value={{this.filterMinPrice}}
-                  @onInput={{fn this.setFieldValue "filterMinPrice"}}
-                  data-test-filter-min-price
-                  {{on "change" this.applyFilters}}
-                />
-              </Woven::Field>
-              <Woven::Field @label="Max Price">
-                <Woven::Input
-                  type="number"
-                  placeholder="Max"
-                  @value={{this.filterMaxPrice}}
-                  @onInput={{fn this.setFieldValue "filterMaxPrice"}}
-                  data-test-filter-max-price
-                  {{on "change" this.applyFilters}}
-                />
-              </Woven::Field>
-            </div>
-
-            <div>
-              <span id="amenity-filter-label" class="text-xs text-muted mb-1">Amenities</span>
-              <div
-                class="flex gap-2 wrap"
-                role="group"
-                aria-labelledby="amenity-filter-label"
-              >
-                {{#each this.amenityOptions as |opt|}}
-                  <button
-                    type="button"
-                    class="wu-tag"
-                    data-test-amenity-filter={{opt.key}}
-                    aria-pressed={{if
-                      (includes this.filterAmenities opt.key)
-                      "true"
-                      "false"
-                    }}
-                    {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
-                  >
-                    <Ui::Ph @icon={{opt.icon}} />
-                    {{opt.label}}
-                  </button>
-                {{/each}}
-              </div>
-            </div>
-
-            <div class="flex end">
-              <Woven::Button
-                @variant="subtle"
-                @size="sm"
-                @icon="x"
-                @disabled={{not this.hasActiveFilters}}
-                {{on "click" this.clearFilters}}
-                data-test-clear-filters
-              >
-                Clear filters
-              </Woven::Button>
-            </div>
-          </div>
-        </FiltersButton>
-        <p
-          class="text-sm text-muted mb-0"
-          data-test-browse-result-count
-        >{{format-number
-            this.browseTotal
-            unit="property"
-            plural="properties"
-          }}</p>
-      </div>
-      <div class="browse-toolbar__controls">
-        <div class="browse-toolbar__sort">
-          <Woven::BtnGroup @attached={{true}} role="group" aria-label="Sort by">
+  <:toolbar>
+    <FiltersButton @count={{this.activeFilterCount}}>
+      <div class="flex col gap-4" data-test-browse-filters>
+        <div class="wu-filter-row">
+          <Woven::Field @label="Type">
             <Woven::Dropdown
-              id="browse-sort-field"
-              @size="xs"
-              @align="end"
-              @value={{this.sortField}}
-              @onSelect={{this.setSortField}}
-              @options={{this.sortFieldOptions}}
-              data-test-sort-field
+              @align="start"
+              @value={{this.filterType}}
+              @onSelect={{this.setFilterType}}
+              @options={{this.filterTypeOptions}}
+              @placeholder="All"
+              data-test-filter-type
             />
-            {{! Tooltip on a wrapper: a disabled button receives no pointer events. }}
-            <span
-              data-tooltip={{if
-                (eq this.sortDirection "desc")
-                "Descending, click for ascending"
-                "Ascending, click for descending"
-              }}
-              data-tooltip-position="start"
-            >
-              <Woven::Button
-                @variant="subtle"
-                @size="xs"
-                @icon={{if
-                  (eq this.sortDirection "desc")
-                  "sort-descending"
-                  "sort-ascending"
-                }}
-                @shape="square"
-                @disabled={{not this.sortField}}
-                aria-label="Toggle sort direction"
-                {{on "click" this.toggleSortDirection}}
-                data-test-sort-direction
-              />
-            </span>
-          </Woven::BtnGroup>
-        </div>
-        <Woven::Segmented
-          @options={{this.browseLayoutOptions}}
-          @value={{this.browseLayout}}
-          @onChange={{this.setBrowseLayout}}
-          @iconOnly={{true}}
-          aria-label="Layout"
-          data-test-browse-layout
-        />
-      </div>
-    </div>
-
-    {{#if this.isLoadingBrowse}}
-      <Woven::Card class="text-center">
-        <Woven::Spinner />
-        <p class="text-muted mt-2">Loading...</p>
-      </Woven::Card>
-    {{else if this.browseUnits.length}}
-      <div
-        class="browse-unit-grid {{if (eq this.browseLayout 'list') 'is-list'}}"
-        data-test-browse-grid
-      >
-        {{#each this.browseUnits as |unit|}}
-          <LinkTo
-            @route="properties.unit"
-            @models={{array unit.areaId unit.id}}
-            class="unit-browse-card"
-            data-test-browse-unit={{unit.id}}
+          </Woven::Field>
+          <Woven::Field @label="Status">
+            <Woven::Dropdown
+              @align="start"
+              @value={{this.filterStatus}}
+              @onSelect={{this.setFilterStatus}}
+              @options={{this.filterStatusOptions}}
+              @placeholder="All"
+              data-test-filter-status
+            />
+          </Woven::Field>
+          <Woven::Field @label="Bedrooms">
+            <Woven::Dropdown
+              @align="start"
+              @value={{this.filterBeds}}
+              @onSelect={{this.setFilterBeds}}
+              @options={{this.filterBedsOptions}}
+              @placeholder="Any"
+              data-test-filter-beds
+            />
+          </Woven::Field>
+          <Woven::Field
+            @label="Visibility"
+            @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
           >
-            <div class="unit-browse-card__photo">
-              {{#if unit.photos.length}}
-                <img
-                  src={{object-at unit.photos 0}}
-                  alt="Property {{unit.unitNumber}}"
-                  width="1600"
-                  height="1000"
-                  loading="lazy"
-                />
-              {{else}}
-                <span class="unit-browse-card__mark" aria-hidden="true">
-                  {{#if (eq this.browseLayout "list")}}
-                    <Ui::Ph @icon="buildings" />
-                  {{else}}
-                    {{unit.unitNumber}}
-                  {{/if}}
-                </span>
-              {{/if}}
-            </div>
-            <div class="unit-browse-card__state">
-              {{#if unit.deletedAt}}
-                <Woven::Tag
-                  @variant="secondary"
-                  @text="Archived"
-                  data-test-archived-badge
-                />
-              {{/if}}
-              <Woven::Tag
-                @variant={{tag-variant "unit" unit.status}}
-                @text={{capitalize unit.status}}
-              />
-              <Woven::Tag
-                @variant={{tag-variant "proptype" unit.propertyType}}
-                @text={{property-type-label unit.propertyType}}
-              />
-            </div>
-            <p class="unit-browse-card__title">{{unit.unitNumber}}</p>
-            {{#if unit.price}}
-              <p class="unit-browse-card__price"><Money @amount={{unit.price}} /></p>
-            {{/if}}
-            <p class="unit-browse-card__place">{{unit.assetName}}
-              &middot;
-              {{unit.areaName}}</p>
-            <div class="unit-browse-card__meta">
-              {{! Missing value shows a dash so the row never collapses and stays sortable. }}
-              <div class="unit-browse-card__stats">
-                <span
-                  class="unit-stat
-                    {{unless (has-value unit.bedrooms) 'is-unset'}}"
-                  data-test-unit-beds
-                ><Ui::Ph @icon="bed" />
-                  {{#if (has-value unit.bedrooms)}}
-                    {{unit.bedrooms}}
-                  {{else}}-{{/if}}
-                  bed
-                </span>
-                <span
-                  class="unit-stat
-                    {{unless (has-value unit.bathrooms) 'is-unset'}}"
-                  data-test-unit-baths
-                ><Ui::Ph @icon="bathtub" />
-                  {{#if (has-value unit.bathrooms)}}
-                    {{unit.bathrooms}}
-                  {{else}}-{{/if}}
-                  bath
-                </span>
-                <span
-                  class="unit-stat {{unless (has-value unit.sqFt) 'is-unset'}}"
-                  data-test-unit-area
-                ><Ui::Ph @icon="ruler" />
-                  {{#if (has-value unit.sqFt)}}
-                    {{format-number unit.sqFt}}
-                  {{else}}-{{/if}}
-                  sqft
-                </span>
-              </div>
-            </div>
-            {{#if unit.ownerName}}
-              <p class="unit-browse-card__owner"><Ui::Ph @icon="user" />
-                {{unit.ownerName}}</p>
-            {{/if}}
-          </LinkTo>
-        {{/each}}
-      </div>
+            <Woven::Dropdown
+              @align="start"
+              @value={{this.archivedFilterValue}}
+              @onSelect={{this.setArchivedFilter}}
+              @options={{this.archivedFilterOptions}}
+              data-test-archived-filter
+            />
+          </Woven::Field>
+          <Woven::Field @label="Min Price">
+            <Woven::Input
+              type="number"
+              placeholder="Min"
+              @value={{this.filterMinPrice}}
+              @onInput={{fn this.setFieldValue "filterMinPrice"}}
+              data-test-filter-min-price
+              {{on "change" this.applyFilters}}
+            />
+          </Woven::Field>
+          <Woven::Field @label="Max Price">
+            <Woven::Input
+              type="number"
+              placeholder="Max"
+              @value={{this.filterMaxPrice}}
+              @onInput={{fn this.setFieldValue "filterMaxPrice"}}
+              data-test-filter-max-price
+              {{on "change" this.applyFilters}}
+            />
+          </Woven::Field>
+        </div>
 
-      {{#if this.browseHasNextPage}}
-        <div class="flex center gap-4" data-test-browse-pagination>
-          <Woven::Button
-            data-test-browse-prev
-            @variant="subtle"
-            @size="sm"
-            @disabled={{eq this.browsePage 1}}
-            {{on "click" this.browsePrevPage}}
-          >Previous</Woven::Button>
-          <span class="text-sm text-muted">Page {{this.browsePage}}</span>
-          <Woven::Button
-            data-test-browse-next
-            @variant="subtle"
-            @size="sm"
-            {{on "click" this.browseNextPage}}
-          >Next</Woven::Button>
+        <div>
+          <span
+            id="amenity-filter-label"
+            class="text-xs text-muted mb-1"
+          >Amenities</span>
+          <div
+            class="flex gap-2 wrap"
+            role="group"
+            aria-labelledby="amenity-filter-label"
+          >
+            {{#each this.amenityOptions as |opt|}}
+              <button
+                type="button"
+                class="wu-tag"
+                data-test-amenity-filter={{opt.key}}
+                aria-pressed={{if
+                  (includes this.filterAmenities opt.key)
+                  "true"
+                  "false"
+                }}
+                {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
+              >
+                <Ui::Ph @icon={{opt.icon}} />
+                {{opt.label}}
+              </button>
+            {{/each}}
+          </div>
         </div>
-      {{else if (gt this.browsePage 1)}}
-        <div class="flex center gap-4" data-test-browse-pagination>
+
+        <div class="flex end">
           <Woven::Button
-            data-test-browse-prev-empty
             @variant="subtle"
             @size="sm"
-            {{on "click" this.browsePrevPage}}
-          >Previous</Woven::Button>
-          <span class="text-sm text-muted">Page {{this.browsePage}}</span>
+            @icon="x"
+            @disabled={{not this.hasActiveFilters}}
+            {{on "click" this.clearFilters}}
+            data-test-clear-filters
+          >
+            Clear filters
+          </Woven::Button>
         </div>
+      </div>
+    </FiltersButton>
+  </:toolbar>
+
+  <:toolbarEnd>
+    <Woven::Segmented
+      @options={{this.browseLayoutOptions}}
+      @value={{this.browseLayout}}
+      @onChange={{this.setBrowseLayout}}
+      @iconOnly={{true}}
+      aria-label="Layout"
+      data-test-browse-layout
+    />
+    <Woven::BtnGroup @attached={{true}} role="group" aria-label="Sort by">
+      <Woven::Dropdown
+        id="browse-sort-field"
+        @align="end"
+        @value={{this.sortField}}
+        @onSelect={{this.setSortField}}
+        @options={{this.sortFieldOptions}}
+        @ariaLabel="Sort by"
+        data-test-sort-field
+      />
+      {{! Tooltip on a wrapper: a disabled button receives no pointer events. }}
+      <span
+        data-tooltip={{if
+          (eq this.sortDirection "desc")
+          "Descending, click for ascending"
+          "Ascending, click for descending"
+        }}
+        data-tooltip-position="start"
+      >
+        <Woven::Button
+          @variant="subtle"
+          @icon={{if
+            (eq this.sortDirection "desc")
+            "sort-descending"
+            "sort-ascending"
+          }}
+          @shape="square"
+          @disabled={{not this.sortField}}
+          aria-label="Toggle sort direction"
+          {{on "click" this.toggleSortDirection}}
+          data-test-sort-direction
+        />
+      </span>
+    </Woven::BtnGroup>
+  </:toolbarEnd>
+
+  <:body as |page|>
+    {{#if (eq this.currentView "cards")}}
+      {{#if @model.length}}
+        <div class="flex col gap-3">
+          {{#each @model as |loc|}}
+            <Woven::Card data-test-locality-card>
+              <div class="flex between x-center">
+                <div class="flex gap-6">
+                  <div>
+                    <h4 class="text-md font-bold"><LinkTo
+                        class="wu-card-link"
+                        @route="properties.detail"
+                        @model={{loc.id}}
+                      >{{loc.name}}</LinkTo></h4>
+                    <p class="text-muted text-xs mt-1">{{loc.cityName}}</p>
+                  </div>
+                  <div class="flex gap-4 text-sm">
+                    <span class="text-muted">{{loc.assetCount}} Assets</span>
+                    <span class="text-muted">{{loc.unitCount}} Properties</span>
+                  </div>
+                </div>
+                <Ui::Ph @icon="caret-right" @size="20" />
+              </div>
+            </Woven::Card>
+          {{/each}}
+        </div>
+      {{else}}
+        <Woven::EmptyState
+          @title="No assets yet"
+          @description="Click New Property to add your first property."
+        />
+      {{/if}}
+    {{else if (eq this.currentView "list")}}
+      {{#if @model.length}}
+        <Woven::DataTable
+          @columns={{this.columns}}
+          @rows={{@model}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @optionsTarget={{page.optionsTarget}}
+          @tableId="properties-localities"
+          class="table-stacked"
+          data-test-localities-table
+          as |cell|
+        >
+          <DataTable::StackedLabel
+            @columns={{this.columns}}
+            @cellKey={{cell.key}}
+            @skip={{array "name" "id"}}
+          />
+          {{#if (eq cell.key "name")}}
+            <span>{{cell.value}}</span>
+          {{else if (eq cell.key "cityName")}}
+            <span class="text-muted">{{cell.value}}</span>
+          {{else if (eq cell.key "id")}}
+            <div class="table-stacked__actions">
+              <RowActions
+                @label={{cell.row.name}}
+                @actions={{array
+                  (hash
+                    key="view-locality"
+                    label="View"
+                    icon="eye"
+                    variant="brand"
+                    route="properties.detail"
+                    models=(array cell.value)
+                  )
+                }}
+              />
+            </div>
+          {{else}}
+            {{#if (has-value cell.value)}}<span>{{cell.value}}</span>{{/if}}
+          {{/if}}
+        </Woven::DataTable>
+      {{else}}
+        <Woven::EmptyState
+          @title="No assets yet"
+          @description="Click New Property to add your first property."
+        />
       {{/if}}
     {{else}}
-      <Woven::EmptyState
-        @title="No properties found"
-        @description="No properties match your filters."
-      >
-        <:icon><Ui::Ph @icon="magnifying-glass" /></:icon>
-      </Woven::EmptyState>
+      {{#if this.isLoadingBrowse}}
+        <Woven::Card class="text-center">
+          <Woven::Spinner />
+          <p class="text-muted mt-2">Loading...</p>
+        </Woven::Card>
+      {{else if this.browseUnits.length}}
+        <div
+          class="browse-unit-grid
+            {{if (eq this.browseLayout 'list') 'is-list'}}"
+          data-test-browse-grid
+        >
+          {{#each this.browseUnits as |unit|}}
+            <LinkTo
+              @route="properties.unit"
+              @models={{array unit.areaId unit.id}}
+              class="unit-browse-card"
+              data-test-browse-unit={{unit.id}}
+            >
+              <div class="unit-browse-card__photo">
+                {{#if unit.photos.length}}
+                  <img
+                    src={{object-at unit.photos 0}}
+                    alt="Property {{unit.unitNumber}}"
+                    width="1600"
+                    height="1000"
+                    loading="lazy"
+                  />
+                {{else}}
+                  <span class="unit-browse-card__mark" aria-hidden="true">
+                    {{#if (eq this.browseLayout "list")}}
+                      <Ui::Ph @icon="buildings" />
+                    {{else}}
+                      {{unit.unitNumber}}
+                    {{/if}}
+                  </span>
+                {{/if}}
+              </div>
+              <div class="unit-browse-card__state">
+                {{#if unit.deletedAt}}
+                  <Woven::Tag
+                    @variant="secondary"
+                    @text="Archived"
+                    data-test-archived-badge
+                  />
+                {{/if}}
+                <Woven::Tag
+                  @variant={{tag-variant "unit" unit.status}}
+                  @text={{capitalize unit.status}}
+                />
+                <Woven::Tag
+                  @variant={{tag-variant "proptype" unit.propertyType}}
+                  @text={{property-type-label unit.propertyType}}
+                />
+              </div>
+              <p class="unit-browse-card__title">{{unit.unitNumber}}</p>
+              {{#if unit.price}}
+                <p class="unit-browse-card__price"><Money
+                    @amount={{unit.price}}
+                  /></p>
+              {{/if}}
+              <p class="unit-browse-card__place">{{unit.assetName}}
+                &middot;
+                {{unit.areaName}}</p>
+              <div class="unit-browse-card__meta">
+                {{! Missing value shows a dash so the row never collapses and stays sortable. }}
+                <div class="unit-browse-card__stats">
+                  <span
+                    class="unit-stat
+                      {{unless (has-value unit.bedrooms) 'is-unset'}}"
+                    data-test-unit-beds
+                  ><Ui::Ph @icon="bed" />
+                    {{#if (has-value unit.bedrooms)}}
+                      {{unit.bedrooms}}
+                    {{else}}-{{/if}}
+                    bed
+                  </span>
+                  <span
+                    class="unit-stat
+                      {{unless (has-value unit.bathrooms) 'is-unset'}}"
+                    data-test-unit-baths
+                  ><Ui::Ph @icon="bathtub" />
+                    {{#if (has-value unit.bathrooms)}}
+                      {{unit.bathrooms}}
+                    {{else}}-{{/if}}
+                    bath
+                  </span>
+                  <span
+                    class="unit-stat
+                      {{unless (has-value unit.sqFt) 'is-unset'}}"
+                    data-test-unit-area
+                  ><Ui::Ph @icon="ruler" />
+                    {{#if (has-value unit.sqFt)}}
+                      {{format-number unit.sqFt}}
+                    {{else}}-{{/if}}
+                    sqft
+                  </span>
+                </div>
+              </div>
+              {{#if unit.ownerName}}
+                <p class="unit-browse-card__owner"><Ui::Ph @icon="user" />
+                  {{unit.ownerName}}</p>
+              {{/if}}
+            </LinkTo>
+          {{/each}}
+        </div>
+      {{/if}}
     {{/if}}
-  {{/if}}
-</div>
+  </:body>
+
+  <:empty>
+    <Woven::EmptyState
+      @title="No properties found"
+      @description="No properties match your filters."
+    >
+      <:icon><Ui::Ph @icon="magnifying-glass" /></:icon>
+    </Woven::EmptyState>
+  </:empty>
+
+  <:footer as |page|>
+    {{#if this.showBrowsePager}}
+      <page.Pager
+        @page={{this.browsePage}}
+        @limit={{this.browseLimit}}
+        @total={{this.browseTotal}}
+        @onLimitChange={{this.setBrowseLimit}}
+        @onPageChange={{this.goToBrowsePage}}
+        @onPrevious={{this.browsePrevPage}}
+        @onNext={{this.browseNextPage}}
+        data-test-browse-pagination
+      />
+    {{/if}}
+  </:footer>
+</Woven::ListPage>
 
 <Properties::PropertyDrawer
   @open={{this.showNewUnitModal}}

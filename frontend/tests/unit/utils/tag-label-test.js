@@ -28,6 +28,36 @@ module('Unit | Utility | tag-label', function () {
     assert.strictEqual(tagLabel('contact', 'lead'), 'Lead');
   });
 
+  test('team roles and history actions read their option labels', function (assert) {
+    assert.strictEqual(tagLabel('role', 'company_admin'), 'Company Admin');
+    assert.strictEqual(tagLabel('role', 'super_admin'), 'Super Admin');
+    assert.strictEqual(
+      tagLabel('historyAction', 'STATUS_CHANGE'),
+      'Status changed',
+    );
+  });
+
+  test('access request statuses read their option labels', function (assert) {
+    assert.strictEqual(tagLabel('accessRequest', 'REJECTED'), 'Rejected');
+  });
+
+  test('access levels use short table labels, not the form wording', function (assert) {
+    assert.strictEqual(tagLabel('access', 'TEAM'), 'Team');
+    assert.strictEqual(tagLabel('access', 'ADMIN'), 'Admin');
+  });
+
+  test('payment methods read their option labels', function (assert) {
+    assert.strictEqual(tagLabel('payment', 'CHEQUE'), 'Cheque');
+    assert.strictEqual(
+      tagLabel('payment', 'BANK_TRANSFER'),
+      'Bank Transfer / Wire',
+    );
+  });
+
+  test('cheque states have no option list and title-case their value', function (assert) {
+    assert.strictEqual(tagLabel('chequestate', 'BOUNCED'), 'Bounced');
+  });
+
   test('unknown values and domains fall back to title case', function (assert) {
     assert.strictEqual(tagLabel('sub', 'past_due'), 'Past Due');
     assert.strictEqual(tagLabel('plan', 'ENTERPRISE'), 'Enterprise');

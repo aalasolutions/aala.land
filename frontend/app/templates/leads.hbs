@@ -1,210 +1,223 @@
 {{page-title "Leads"}}
 
-<div data-test-leads-page class="flex col gap-4">
-  <Woven::PageHeader
-    @title="Lead Pipeline"
-    @subtitle="Track and manage your leads through the pipeline."
-  >
-    <:actions>
-      <Woven::Button
-        @variant="brand"
-        @icon="plus"
-        data-test-add-lead
-        {{on "click" this.openCreate}}
-      >
-        New Lead
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Lead Pipeline"
+  @subtitle="Track and manage your leads through the pipeline."
+  @isEmpty={{and (eq this.viewMode "list") (not this.filteredLeads.length)}}
+  @hideSwitcher={{eq this.viewMode "agent"}}
+  data-test-leads-page
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      @icon="plus"
+      data-test-add-lead
+      {{on "click" this.openCreate}}
+    >
+      New Lead
+    </Woven::Button>
+  </:action>
 
   {{! Agent board columns are already the ownership breakdown }}
-  {{#unless (eq this.viewMode "agent")}}
+  <:switcher>
     <Woven::Tabs
       @tabs={{this.filterTabs}}
       @activeTab={{this.filterType}}
       @onChange={{this.setFilter}}
       data-test-lead-filters
     />
-  {{/unless}}
-  <div class="flex leads-toolbar" data-test-leads-toolbar>
+  </:switcher>
+
+  <:toolbarEnd>
     <Woven::Segmented
       @options={{this.viewTabs}}
       @value={{this.viewMode}}
       @onChange={{this.setViewMode}}
       data-test-view-toggle
     />
-  </div>
-  {{#if (eq this.viewMode "pipeline")}}
-    <div
-      class="wu-kanban"
-      data-dragging={{if this.draggedLead "true"}}
-      data-hover-suppressed={{if this.suppressHover "true"}}
-      {{on "pointermove" this.releaseHover}}
-    >
-      {{#each this.columns as |column|}}
-        <div
-          data-test-kanban-column
-          data-test-column-status={{column.status}}
-          class="wu-kanban__column
-            {{if (this.isDropTarget 'pipeline' column.status) 'is-drag-over'}}
-            {{if (this.isGapAt 'pipeline' column.status 'end') 'is-drop-end'}}
-            {{if column.collapsed 'is-collapsed'}}"
-          {{on "dragover" (fn this.handleDragOver "pipeline" column.status)}}
-          {{on "dragleave" this.clearDropTarget}}
-          {{on "drop" (fn this.handleDrop "pipeline" column.status)}}
-        >
-          <Leads::KanbanColumnHeader
-            @collapsed={{column.collapsed}}
-            @count={{column.leads.length}}
-            @onToggle={{fn this.toggleColumn "pipeline" column.status}}
+  </:toolbarEnd>
+
+  <:body as |page|>
+    {{#if (eq this.viewMode "pipeline")}}
+      <div
+        class="wu-kanban"
+        data-dragging={{if this.draggedLead "true"}}
+        data-hover-suppressed={{if this.suppressHover "true"}}
+        {{on "pointermove" this.releaseHover}}
+      >
+        {{#each this.columns as |column|}}
+          <div
+            data-test-kanban-column
+            data-test-column-status={{column.status}}
+            class="wu-kanban__column
+              {{if (this.isDropTarget 'pipeline' column.status) 'is-drag-over'}}
+              {{if (this.isGapAt 'pipeline' column.status 'end') 'is-drop-end'}}
+              {{if column.collapsed 'is-collapsed'}}"
+            {{on "dragover" (fn this.handleDragOver "pipeline" column.status)}}
+            {{on "dragleave" this.clearDropTarget}}
+            {{on "drop" (fn this.handleDrop "pipeline" column.status)}}
           >
-            {{column.label}}
-          </Leads::KanbanColumnHeader>
+            <Leads::KanbanColumnHeader
+              @collapsed={{column.collapsed}}
+              @count={{column.leads.length}}
+              @onToggle={{fn this.toggleColumn "pipeline" column.status}}
+            >
+              {{column.label}}
+            </Leads::KanbanColumnHeader>
 
-          {{#each column.leads as |lead|}}
-            <Leads::KanbanCard
-              @lead={{lead}}
-              @board="pipeline"
-              @dragClass={{this.cardDragClass "pipeline" column.status lead.id}}
-              @onDragStart={{this.handleDragStart}}
-              @onDragEnd={{this.handleDragEnd}}
-              @onOpen={{this.openDetailModal}}
-              @onEdit={{this.openEdit}}
-              @onAssign={{this.openAssignModal}}
-            />
-          {{else}}
-            <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted text-xs">No leads</p>
-            </div>
-          {{/each}}
-        </div>
-      {{/each}}
-    </div>
-  {{/if}}
+            {{#each column.leads as |lead|}}
+              <Leads::KanbanCard
+                @lead={{lead}}
+                @board="pipeline"
+                @dragClass={{this.cardDragClass
+                  "pipeline"
+                  column.status
+                  lead.id
+                }}
+                @onDragStart={{this.handleDragStart}}
+                @onDragEnd={{this.handleDragEnd}}
+                @onOpen={{this.openDetailModal}}
+                @onEdit={{this.openEdit}}
+                @onAssign={{this.openAssignModal}}
+              />
+            {{else}}
+              <div class="p-4 rounded-xl border border-white@05 text-center">
+                <p class="text-muted text-xs">No leads</p>
+              </div>
+            {{/each}}
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
 
-  {{#if (eq this.viewMode "temperature")}}
-    <div
-      data-test-temperature-board
-      class="wu-kanban"
-      data-dragging={{if this.draggedLead "true"}}
-      data-hover-suppressed={{if this.suppressHover "true"}}
-      {{on "pointermove" this.releaseHover}}
-    >
-      {{#each this.temperatureColumns as |column|}}
-        <div
-          data-test-kanban-column
-          data-test-column-temp={{column.temperature}}
-          class="wu-kanban__column column-temp-{{lowercase column.temperature}}
-            {{if
-              (this.isDropTarget 'temperature' column.temperature)
-              'is-drag-over'
+    {{#if (eq this.viewMode "temperature")}}
+      <div
+        data-test-temperature-board
+        class="wu-kanban"
+        data-dragging={{if this.draggedLead "true"}}
+        data-hover-suppressed={{if this.suppressHover "true"}}
+        {{on "pointermove" this.releaseHover}}
+      >
+        {{#each this.temperatureColumns as |column|}}
+          <div
+            data-test-kanban-column
+            data-test-column-temp={{column.temperature}}
+            class="wu-kanban__column column-temp-{{lowercase
+                column.temperature
+              }}
+              {{if
+                (this.isDropTarget 'temperature' column.temperature)
+                'is-drag-over'
+              }}
+              {{if
+                (this.isGapAt 'temperature' column.temperature 'end')
+                'is-drop-end'
+              }}
+              {{if column.collapsed 'is-collapsed'}}"
+            {{on
+              "dragover"
+              (fn this.handleDragOver "temperature" column.temperature)
             }}
-            {{if
-              (this.isGapAt 'temperature' column.temperature 'end')
-              'is-drop-end'
-            }}
-            {{if column.collapsed 'is-collapsed'}}"
-          {{on
-            "dragover"
-            (fn this.handleDragOver "temperature" column.temperature)
-          }}
-          {{on "dragleave" this.clearDropTarget}}
-          {{on "drop" (fn this.handleDrop "temperature" column.temperature)}}
-        >
-          <Leads::KanbanColumnHeader
-            @collapsed={{column.collapsed}}
-            @count={{column.leads.length}}
-            @onToggle={{fn this.toggleColumn "temperature" column.temperature}}
+            {{on "dragleave" this.clearDropTarget}}
+            {{on "drop" (fn this.handleDrop "temperature" column.temperature)}}
           >
-            <span class="wu-kanban__column-accent"></span>
-            <Ui::Ph @icon={{column.icon}} />
-            {{column.label}}
-          </Leads::KanbanColumnHeader>
-
-          {{#each column.leads as |lead|}}
-            <Leads::KanbanCard
-              @lead={{lead}}
-              @board="temperature"
-              @dragClass={{this.cardDragClass
+            <Leads::KanbanColumnHeader
+              @collapsed={{column.collapsed}}
+              @count={{column.leads.length}}
+              @onToggle={{fn
+                this.toggleColumn
                 "temperature"
                 column.temperature
-                lead.id
               }}
-              @onDragStart={{this.handleDragStart}}
-              @onDragEnd={{this.handleDragEnd}}
-              @onOpen={{this.openDetailModal}}
-              @onEdit={{this.openEdit}}
-              @onAssign={{this.openAssignModal}}
-            />
-          {{else}}
-            <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted text-xs">No leads</p>
-            </div>
-          {{/each}}
-        </div>
-      {{/each}}
-    </div>
-  {{/if}}
+            >
+              <span class="wu-kanban__column-accent"></span>
+              <Ui::Ph @icon={{column.icon}} />
+              {{column.label}}
+            </Leads::KanbanColumnHeader>
 
-  {{#if (eq this.viewMode "agent")}}
-    <div
-      data-test-agent-board
-      class="wu-kanban"
-      data-dragging={{if this.draggedLead "true"}}
-      data-hover-suppressed={{if this.suppressHover "true"}}
-      {{on "pointermove" this.releaseHover}}
-    >
-      {{#each this.agentColumns as |column|}}
-        <div
-          data-test-kanban-column
-          data-test-column-agent={{column.key}}
-          class="wu-kanban__column
-            {{if (this.isDropTarget 'agent' column.agentId) 'is-drag-over'}}
-            {{if (this.isGapAt 'agent' column.agentId 'end') 'is-drop-end'}}
-            {{if column.collapsed 'is-collapsed'}}"
-          {{on "dragover" (fn this.handleDragOver "agent" column.agentId)}}
-          {{on "dragleave" this.clearDropTarget}}
-          {{on "drop" (fn this.handleDrop "agent" column.agentId)}}
-        >
-          <Leads::KanbanColumnHeader
-            @collapsed={{column.collapsed}}
-            @count={{column.leads.length}}
-            @onToggle={{fn this.toggleColumn "agent" column.key}}
+            {{#each column.leads as |lead|}}
+              <Leads::KanbanCard
+                @lead={{lead}}
+                @board="temperature"
+                @dragClass={{this.cardDragClass
+                  "temperature"
+                  column.temperature
+                  lead.id
+                }}
+                @onDragStart={{this.handleDragStart}}
+                @onDragEnd={{this.handleDragEnd}}
+                @onOpen={{this.openDetailModal}}
+                @onEdit={{this.openEdit}}
+                @onAssign={{this.openAssignModal}}
+              />
+            {{else}}
+              <div class="p-4 rounded-xl border border-white@05 text-center">
+                <p class="text-muted text-xs">No leads</p>
+              </div>
+            {{/each}}
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{#if (eq this.viewMode "agent")}}
+      <div
+        data-test-agent-board
+        class="wu-kanban"
+        data-dragging={{if this.draggedLead "true"}}
+        data-hover-suppressed={{if this.suppressHover "true"}}
+        {{on "pointermove" this.releaseHover}}
+      >
+        {{#each this.agentColumns as |column|}}
+          <div
+            data-test-kanban-column
+            data-test-column-agent={{column.key}}
+            class="wu-kanban__column
+              {{if (this.isDropTarget 'agent' column.agentId) 'is-drag-over'}}
+              {{if (this.isGapAt 'agent' column.agentId 'end') 'is-drop-end'}}
+              {{if column.collapsed 'is-collapsed'}}"
+            {{on "dragover" (fn this.handleDragOver "agent" column.agentId)}}
+            {{on "dragleave" this.clearDropTarget}}
+            {{on "drop" (fn this.handleDrop "agent" column.agentId)}}
           >
-            <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
-            {{column.agentName}}
-          </Leads::KanbanColumnHeader>
+            <Leads::KanbanColumnHeader
+              @collapsed={{column.collapsed}}
+              @count={{column.leads.length}}
+              @onToggle={{fn this.toggleColumn "agent" column.key}}
+            >
+              <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
+              {{column.agentName}}
+            </Leads::KanbanColumnHeader>
 
-          <Woven::Progress
-            @value={{column.load.value}}
-            @variant={{column.load.variant}}
-            @size="sm"
-            aria-label="{{column.agentName}} workload"
-            data-test-agent-load
-          />
-
-          {{#each column.leads as |lead|}}
-            <Leads::KanbanCard
-              @lead={{lead}}
-              @board="agent"
-              @dragClass={{this.cardDragClass "agent" column.agentId lead.id}}
-              @onDragStart={{this.handleDragStart}}
-              @onDragEnd={{this.handleDragEnd}}
-              @onOpen={{this.openDetailModal}}
-              @onEdit={{this.openEdit}}
+            <Woven::Progress
+              @value={{column.load.value}}
+              @variant={{column.load.variant}}
+              @size="sm"
+              aria-label="{{column.agentName}} workload"
+              data-test-agent-load
             />
-          {{else}}
-            <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted text-xs">No leads</p>
-            </div>
-          {{/each}}
-        </div>
-      {{/each}}
-    </div>
-  {{/if}}
 
-  {{#if (eq this.viewMode "list")}}
-    {{#if this.filteredLeads.length}}
+            {{#each column.leads as |lead|}}
+              <Leads::KanbanCard
+                @lead={{lead}}
+                @board="agent"
+                @dragClass={{this.cardDragClass "agent" column.agentId lead.id}}
+                @onDragStart={{this.handleDragStart}}
+                @onDragEnd={{this.handleDragEnd}}
+                @onOpen={{this.openDetailModal}}
+                @onEdit={{this.openEdit}}
+              />
+            {{else}}
+              <div class="p-4 rounded-xl border border-white@05 text-center">
+                <p class="text-muted text-xs">No leads</p>
+              </div>
+            {{/each}}
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
+
+    {{#if (eq this.viewMode "list")}}
       <Woven::DataTable
         @columns={{this.listColumns}}
         @rows={{this.filteredLeads}}
@@ -213,6 +226,7 @@
         @reorderable={{true}}
         @sortable={{true}}
         @showOptions={{true}}
+        @optionsTarget={{page.optionsTarget}}
         @tableId="leads-list"
         class="table-stacked"
         data-test-leads-table
@@ -234,45 +248,29 @@
             {{/if}}
           </span>
         {{else if (eq cell.key "contact.phone")}}
-          {{#if (or (contact-phone cell.row.contact) (contact-email cell.row.contact))}}
-            <div class="flex col gap-1">
-              <div class="flex gap-2 x-center">
-                <span
-                  class="text-xs"
-                  dir="ltr"
-                  data-test-lead-phone
-                >{{contact-phone cell.row.contact}}</span>
-                {{#if (can-whatsapp cell.row.contact)}}
-                  <a
-                    href={{wa-link cell.row.contact.phone}}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="wa-link"
-                    aria-label="Open WhatsApp chat with {{contact-name
-                      cell.row.contact
-                    }}"
-                    data-test-wa-link
-                  >
-                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                  </a>
-                {{/if}}
-              </div>
-              <span
-                class="text-xs text-muted"
-                data-test-lead-email
-              >{{contact-email cell.row.contact}}</span>
-            </div>
+          {{#if (contact-phone cell.row.contact)}}
+            <span class="flex gap-2 x-center">
+              <span dir="ltr" data-test-lead-phone>{{contact-phone
+                  cell.row.contact
+                }}</span>
+              {{#if (can-whatsapp cell.row.contact)}}
+                <a
+                  href={{wa-link cell.row.contact.phone}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  aria-label="Open WhatsApp chat with {{contact-name
+                    cell.row.contact
+                  }}"
+                  data-test-wa-link
+                >
+                  <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+                </a>
+              {{/if}}
+            </span>
+          {{else}}
+            <Woven::Cell::Empty />
           {{/if}}
-        {{else if (eq cell.key "status")}}
-          <Woven::Tag
-            @variant={{tag-variant "lead" cell.value}}
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "temperature")}}
-          <Woven::Tag
-            @variant={{tag-variant "temp" cell.value}}
-            @text={{cell.value}}
-          />
         {{else if (eq cell.key "locality.name")}}
           {{#if cell.row.locality}}
             <span>
@@ -287,16 +285,7 @@
             <span class="text-muted" data-empty>-</span>
           {{/if}}
         {{else if (eq cell.key "assignedAgentName")}}
-          {{#if cell.value}}
-            <span class="lead-assign m-sm">{{cell.value}}</span>
-          {{else}}
-            <span class="text-muted">Unassigned</span>
-          {{/if}}
-        {{else if (eq cell.key "createdAt")}}
-          <span class="text-xs text-muted">{{format-date
-              cell.value
-              zone="region"
-            }}</span>
+          <Woven::Cell::Text @value={{or cell.value "Unassigned"}} />
         {{else if (eq cell.key "id")}}
           <div class="table-stacked__actions">
             <RowActions
@@ -317,15 +306,29 @@
               }}
             />
           </div>
-        {{else if (has-value cell.value)}}
-          <span>{{cell.value}}</span>
         {{/if}}
       </Woven::DataTable>
-    {{else}}
-      <p class="text-center text-muted py-8">No leads found</p>
     {{/if}}
-  {{/if}}
-</div>
+  </:body>
+
+  <:empty>
+    <Woven::EmptyState @description="No leads found." />
+  </:empty>
+
+  <:footer as |page|>
+    {{#if (and (eq this.viewMode "list") @model.total)}}
+      <page.Pager
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.listCount}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </:footer>
+</Woven::ListPage>
 
 <Leads::LeadDrawer
   @open={{this.showModal}}

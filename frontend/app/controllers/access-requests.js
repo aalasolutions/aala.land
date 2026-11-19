@@ -2,10 +2,13 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellLink from '@wovenui/ember/components/woven/cell/link';
+import CellPerson from '@wovenui/ember/components/woven/cell/person';
+import CellStatus from 'land/components/cell/status';
 import { localEndOfDayIso, timeAgo, todayInZone } from '../utils/local-date';
 import {
   ACCESS_STATUS_OPTIONS,
-  ACCESS_STATUS_VARIANTS,
   accessExpiryLabel,
   accessSourceLabel,
 } from '../utils/access-requests';
@@ -48,13 +51,33 @@ export default class AccessRequestsController extends PaginatedController {
       valuePath: 'requester.name',
       width: 180,
       isFixed: 'left',
+      cell: CellPerson,
+      stackedLabel: false,
     },
-    { name: 'Contact', valuePath: 'contact.displayName', width: 200 },
-    { name: 'Region', valuePath: 'regionCode', width: 110 },
-    { name: 'Source', valuePath: 'sourceType', width: 130 },
-    { name: 'Note', valuePath: 'note', width: 220 },
+    {
+      name: 'Contact',
+      valuePath: 'contact.displayName',
+      width: 200,
+      cell: CellLink,
+      cellArgs: { route: 'contacts.detail', modelPath: 'contact.id' },
+    },
+    { name: 'Region', valuePath: 'regionCode', width: 110, cell: CellText },
+    { name: 'Source', valuePath: 'sourceLabel', width: 130, cell: CellText },
+    { name: 'Note', valuePath: 'note', width: 220, cell: CellText },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 130,
+      cell: CellStatus,
+      cellArgs: { domain: 'accessRequest' },
+    },
     { name: 'Requested', valuePath: 'createdAt', width: 130 },
-    { name: 'Decided by', valuePath: 'decidedBy.name', width: 170 },
+    {
+      name: 'Decided by',
+      valuePath: 'decidedBy.name',
+      width: 170,
+      cell: CellPerson,
+    },
     { name: 'Expires', valuePath: 'expiresAt', width: 140 },
     {
       name: 'Actions',
@@ -62,6 +85,7 @@ export default class AccessRequestsController extends PaginatedController {
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 
@@ -81,7 +105,6 @@ export default class AccessRequestsController extends PaginatedController {
   get rows() {
     return (this.model?.requests ?? []).map((request) => ({
       ...request,
-      statusVariant: ACCESS_STATUS_VARIANTS[request.status] ?? 'secondary',
       sourceLabel: accessSourceLabel(request.sourceType),
       requestedAgo: timeAgo(request.createdAt),
       expiryLabel: accessExpiryLabel(request),

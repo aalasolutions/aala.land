@@ -258,128 +258,131 @@
     {{/if}}
 
   {{else if (eq this.activeTab "payments")}}
-    <Woven::Panel>
-      <:header>
-        <h3 class="wu-panel-title">Payments</h3>
+    <Woven::TableSection @title="Payments">
+      <:actions>
         <Woven::Button
           @variant="brand"
           data-test-payment-record
           {{on "click" this.openPaymentModal}}
         >Record a payment</Woven::Button>
-      </:header>
-      <:body>
-      {{#if this.paymentsLoading}}
-        <p class="text-muted">Loading payments…</p>
-      {{else if this.paymentRows}}
-        <Woven::DataTable
-          @columns={{this.paymentColumns}}
-          @rows={{this.paymentRows}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="console-company-payments"
-          data-test-company-payments-table
-          as |cell|
-        >
-          {{#if (eq cell.key "date")}}
-            {{format-date cell.value}}
-          {{else if (eq cell.key "amount")}}
-            <span>{{format-money
-                cell.value
-                currency=cell.row.currency
-                minor=true
-              }}</span>
-          {{else if (eq cell.key "creditAmount")}}
-            {{#let (billing-history-status cell.row) as |status|}}
-              {{#if status.creditAmount}}
-                <span data-test-payment-credit>{{format-money
-                    status.creditAmount
-                    currency=cell.row.currency
-                    minor=true
-                  }}</span>
-                <span class="text-muted text-sm">{{status.creditNote}}</span>
+      </:actions>
+      <:body as |section|>
+        {{#if this.paymentsLoading}}
+          <p class="text-muted">Loading payments…</p>
+        {{else if this.paymentRows}}
+          <Woven::DataTable
+            @columns={{this.paymentColumns}}
+            @rows={{this.paymentRows}}
+            @pinColumns={{true}}
+            @reorderable={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @optionsTarget={{section.optionsTarget}}
+            @tableId="console-company-payments"
+            data-test-company-payments-table
+            as |cell|
+          >
+            {{#if (eq cell.key "date")}}
+              {{format-date cell.value}}
+            {{else if (eq cell.key "amount")}}
+              <span>{{format-money
+                  cell.value
+                  currency=cell.row.currency
+                  minor=true
+                }}</span>
+            {{else if (eq cell.key "creditAmount")}}
+              {{#let (billing-history-status cell.row) as |status|}}
+                {{#if status.creditAmount}}
+                  <span data-test-payment-credit>{{format-money
+                      status.creditAmount
+                      currency=cell.row.currency
+                      minor=true
+                    }}</span>
+                  <span class="text-muted text-sm">{{status.creditNote}}</span>
+                {{else}}
+                  <span class="text-muted">-</span>
+                {{/if}}
+              {{/let}}
+            {{else if (eq cell.key "type")}}
+              {{#let (billing-history-status cell.row) as |status|}}
+                <Woven::Tag
+                  @variant={{status.tagVariant}}
+                  @text={{status.label}}
+                  data-test-payment-status
+                />
+              {{/let}}
+            {{else if (eq cell.key "notes")}}
+              <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
+            {{else if (eq cell.key "hasReceipt")}}
+              {{#if cell.value}}
+                <Woven::Button
+                  @variant="link"
+                  @size="sm"
+                  data-test-company-view-receipt={{cell.row.id}}
+                  {{on "click" (fn this.viewReceipt cell.row.id)}}
+                >View</Woven::Button>
+              {{else if cell.row.invoiceUrl}}
+                <a
+                  href={{cell.row.invoiceUrl}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="link"
+                >Invoice</a>
               {{else}}
                 <span class="text-muted">-</span>
               {{/if}}
-            {{/let}}
-          {{else if (eq cell.key "type")}}
-            {{#let (billing-history-status cell.row) as |status|}}
-              <Woven::Tag
-                @variant={{status.tagVariant}}
-                @text={{status.label}}
-                data-test-payment-status
+            {{else if (eq cell.key "id")}}
+              <RowActions
+                @actions={{array
+                  (hash
+                    key="company-make-right"
+                    testValue=cell.row.id
+                    label="Refund or discount"
+                    icon="receipt-x"
+                    onSelect=(fn this.openRemedy cell.row)
+                    hidden=(not cell.row.paid)
+                  )
+                }}
               />
-            {{/let}}
-          {{else if (eq cell.key "notes")}}
-            <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
-          {{else if (eq cell.key "hasReceipt")}}
-            {{#if cell.value}}
-              <Woven::Button
-                @variant="link"
-                @size="sm"
-                data-test-company-view-receipt={{cell.row.id}}
-                {{on "click" (fn this.viewReceipt cell.row.id)}}
-              >View</Woven::Button>
-            {{else if cell.row.invoiceUrl}}
-              <a
-                href={{cell.row.invoiceUrl}}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="link"
-              >Invoice</a>
             {{else}}
-              <span class="text-muted">-</span>
+              {{cell.value}}
             {{/if}}
-          {{else if (eq cell.key "id")}}
-            <RowActions
-              @actions={{array
-                (hash
-                  key="company-make-right"
-                  testValue=cell.row.id
-                  label="Refund or discount"
-                  icon="receipt-x"
-                  onSelect=(fn this.openRemedy cell.row)
-                  hidden=(not cell.row.paid)
-                )
-              }}
-            />
-          {{else}}
-            {{cell.value}}
-          {{/if}}
-        </Woven::DataTable>
-      {{else}}
-        <p class="text-muted">No payments recorded yet.</p>
-      {{/if}}
+          </Woven::DataTable>
+        {{else}}
+          <p class="text-muted">No payments recorded yet.</p>
+        {{/if}}
       </:body>
-    </Woven::Panel>
+    </Woven::TableSection>
 
   {{else if (eq this.activeTab "history")}}
-    <Woven::Panel @title="History">
-      {{#if this.historyLoading}}
-        <p class="text-muted">Loading history…</p>
-      {{else if this.historyRows}}
-        <Woven::DataTable
-          @columns={{this.historyColumns}}
-          @rows={{this.historyRows}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="console-company-history"
-          data-test-company-history-table
-          as |cell|
-        >
-          {{#if (eq cell.key "when")}}
-            {{format-date-time cell.value}}
-          {{else}}
-            {{cell.value}}
-          {{/if}}
-        </Woven::DataTable>
-      {{else}}
-        <p class="text-muted">No operator events for this company yet.</p>
-      {{/if}}
-    </Woven::Panel>
+    <Woven::TableSection @title="History">
+      <:body as |section|>
+        {{#if this.historyLoading}}
+          <p class="text-muted">Loading history…</p>
+        {{else if this.historyRows}}
+          <Woven::DataTable
+            @columns={{this.historyColumns}}
+            @rows={{this.historyRows}}
+            @pinColumns={{true}}
+            @reorderable={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @optionsTarget={{section.optionsTarget}}
+            @tableId="console-company-history"
+            data-test-company-history-table
+            as |cell|
+          >
+            {{#if (eq cell.key "when")}}
+              {{format-date-time cell.value}}
+            {{else}}
+              {{cell.value}}
+            {{/if}}
+          </Woven::DataTable>
+        {{else}}
+          <p class="text-muted">No operator events for this company yet.</p>
+        {{/if}}
+      </:body>
+    </Woven::TableSection>
   {{/if}}
 
   <Woven::Drawer

@@ -1,23 +1,23 @@
 {{page-title "Leases"}}
 
-<div data-test-leases-page class="flex col gap-4">
-  <Woven::PageHeader @title="Lease Agreements" @subtitle="Manage tenant lease contracts and renewals.">
-    <:meta>
-      <p class="text-muted">{{format-number @model.total unit="lease"}}</p>
-    </:meta>
-    <:actions>
-      <Woven::Button
-        data-test-lease-new
-        @variant="brand"
-        @icon="plus"
-        {{on "click" this.openCreate}}
-      >
-        New Lease
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Lease Agreements"
+  @subtitle="Manage tenant lease contracts and renewals."
+  @isEmpty={{not @model.leases.length}}
+  data-test-leases-page
+>
+  <:action>
+    <Woven::Button
+      data-test-lease-new
+      @variant="brand"
+      @icon="plus"
+      {{on "click" this.openCreate}}
+    >
+      New Lease
+    </Woven::Button>
+  </:action>
 
-  <div class="flex x-center gap-3 wrap" data-test-leases-toolbar>
+  <:toolbar>
     <Woven::Segmented
       @options={{this.statusTabs}}
       @value={{this.status}}
@@ -92,162 +92,150 @@
         </div>
       </div>
     </FiltersButton>
-  </div>
+  </:toolbar>
 
-  <div class="flex col gap-3">
-    {{#if @model.leases.length}}
-      <Woven::DataTable
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{@model.leases}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="leases"
+      class="table-stacked"
+      data-test-leases-table
+      as |cell|
+    >
+      <DataTable::StackedLabel
         @columns={{this.columns}}
-        @rows={{@model.leases}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="leases"
-        class="table-stacked"
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "contact.displayName" "id"}}
-        />
-        {{#if (eq cell.key "contact.displayName")}}
-          <LinkTo
-            @route="leases.detail"
-            @model={{cell.row.id}}
-            class="text-brand"
-            data-test-lease-row
-            data-test-lease-detail-link
-          >{{or (contact-name cell.row.contact) "Unknown tenant"}}</LinkTo>
-        {{else if (eq cell.key "unit.unitNumber")}}
-          {{#if cell.row.unit}}
-            <Woven::Button
-              @variant="subtle"
-              @size="xs"
-              @route="properties.unit"
-              @models={{array cell.row.unit.areaId cell.row.unit.id}}
-              @text={{cell.row.unit.unitNumber}}
-              data-test-view-lease-unit
+        @cellKey={{cell.key}}
+        @skip={{array "contact.displayName" "id"}}
+      />
+      {{#if (eq cell.key "contact.displayName")}}
+        <LinkTo
+          @route="leases.detail"
+          @model={{cell.row.id}}
+          class="text-brand whitespace-nowrap"
+          data-test-lease-row
+          data-test-lease-detail-link
+        >{{or (contact-name cell.row.contact) "Unknown tenant"}}</LinkTo>
+      {{else if (eq cell.key "startDate")}}
+        <span>{{format-date cell.value}}
+          -
+          {{format-date cell.row.endDate}}</span>
+      {{else if (eq cell.key "status")}}
+        <div class="flex gap-1 wrap">
+          <Cell::Status @domain="lease" @value={{cell.value}} />
+          {{#if cell.row.deletedAt}}
+            <Woven::Tag
+              @variant="secondary"
+              @text="Archived"
+              data-test-lease-archived-badge
             />
           {{/if}}
-        {{else if (eq cell.key "monthlyRent")}}
-          <span class="text-muted"><Money
-              @amount={{cell.value}}
-              @currency={{cell.row.currency}}
-            />/mo</span>
-        {{else if (eq cell.key "startDate")}}
-          <span class="text-muted">{{format-date cell.value}} - {{format-date cell.row.endDate}}</span>
-        {{else if (eq cell.key "status")}}
-          <div class="flex gap-1 wrap">
-            <Woven::Tag
-              @variant={{tag-variant "lease" cell.value}}
-              @text={{cell.value}}
-            />
-            {{#if cell.row.deletedAt}}
-              <Woven::Tag
-                @variant="secondary"
-                @text="Archived"
-                data-test-lease-archived-badge
-              />
-            {{/if}}
-          </div>
-        {{else if (eq cell.key "tenancyRegistrationRef")}}
-          <span
-            class="text-muted"
-            data-empty={{unless cell.value true}}
-          >{{or cell.value "-"}}</span>
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            <RowActions
-              @label="lease of {{or (contact-name cell.row.contact) 'Unknown tenant'}}"
-              @actions={{array
-                (hash
-                  key="lease-history"
-                  label="History"
-                  icon="clock-counter-clockwise"
-                  onSelect=(fn this.openHistory cell.row)
-                  hidden=(not this.canViewHistory)
-                )
-                (hash
-                  key="unarchive-lease"
-                  label="Unarchive"
-                  icon="arrow-counter-clockwise"
-                  onSelect=(fn this.openArchive cell.row "unarchive")
-                  hidden=(not (and cell.row.deletedAt this.canArchiveLease))
-                )
-                (hash
-                  key="edit-lease"
-                  label="Edit"
-                  icon="pencil-simple"
-                  onSelect=(fn this.openEdit cell.row)
-                  hidden=cell.row.deletedAt
-                )
-                (hash
-                  key="renew-lease"
-                  label="Renew"
-                  icon="arrows-clockwise"
-                  onSelect=(fn this.renewLease cell.row)
-                  hidden=(or
-                    cell.row.deletedAt
-                    (not
-                      (or (eq cell.row.status "ACTIVE") (eq cell.row.status "EXPIRED"))
+        </div>
+      {{else if (eq cell.key "id")}}
+        <div class="table-stacked__actions">
+          <RowActions
+            @label="lease of {{or
+              (contact-name cell.row.contact)
+              'Unknown tenant'
+            }}"
+            @actions={{array
+              (hash
+                key="lease-history"
+                label="History"
+                icon="clock-counter-clockwise"
+                onSelect=(fn this.openHistory cell.row)
+                hidden=(not this.canViewHistory)
+              )
+              (hash
+                key="unarchive-lease"
+                label="Unarchive"
+                icon="arrow-counter-clockwise"
+                onSelect=(fn this.openArchive cell.row "unarchive")
+                hidden=(not (and cell.row.deletedAt this.canArchiveLease))
+              )
+              (hash
+                key="edit-lease"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+                hidden=cell.row.deletedAt
+              )
+              (hash
+                key="renew-lease"
+                label="Renew"
+                icon="arrows-clockwise"
+                onSelect=(fn this.renewLease cell.row)
+                hidden=(or
+                  cell.row.deletedAt
+                  (not
+                    (or
+                      (eq cell.row.status "ACTIVE")
+                      (eq cell.row.status "EXPIRED")
                     )
                   )
                 )
-                (hash
-                  key="terminate-lease"
-                  label="Terminate"
-                  icon="x-circle"
-                  variant="danger"
-                  onSelect=(fn this.openTerminate cell.row)
-                  hidden=(or cell.row.deletedAt (not (eq cell.row.status "ACTIVE")))
+              )
+              (hash
+                key="terminate-lease"
+                label="Terminate"
+                icon="x-circle"
+                variant="danger"
+                onSelect=(fn this.openTerminate cell.row)
+                hidden=(or
+                  cell.row.deletedAt (not (eq cell.row.status "ACTIVE"))
                 )
-                (hash
-                  key="delete-lease"
-                  label="Delete"
-                  icon="trash"
-                  variant="danger"
-                  onSelect=(fn this.openDelete cell.row)
-                  hidden=(or
-                    cell.row.deletedAt
-                    (not (eq cell.row.status "DRAFT"))
-                    (not this.canDeleteLease)
-                  )
+              )
+              (hash
+                key="delete-lease"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openDelete cell.row)
+                hidden=(or
+                  cell.row.deletedAt
+                  (not (eq cell.row.status "DRAFT"))
+                  (not this.canDeleteLease)
                 )
-                (hash
-                  key="archive-lease"
-                  label="Archive"
-                  icon="archive"
-                  onSelect=(fn this.openArchive cell.row "archive")
-                  hidden=(or
-                    cell.row.deletedAt
-                    (eq cell.row.status "DRAFT")
-                    (eq cell.row.status "ACTIVE")
-                    (not this.canArchiveLease)
-                  )
+              )
+              (hash
+                key="archive-lease"
+                label="Archive"
+                icon="archive"
+                onSelect=(fn this.openArchive cell.row "archive")
+                hidden=(or
+                  cell.row.deletedAt
+                  (eq cell.row.status "DRAFT")
+                  (eq cell.row.status "ACTIVE")
+                  (not this.canArchiveLease)
                 )
-              }}
-            />
-          </div>
-        {{else}}
-          <span class="text-muted">{{cell.value}}</span>
-        {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      {{#if @model.total}}
-        <Woven::EmptyState
-          @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
-        />
-      {{else}}
-        <Woven::EmptyState
-          @description="No leases yet. Create your first lease agreement."
-        />
+              )
+            }}
+          />
+        </div>
       {{/if}}
-    {{/if}}
+    </Woven::DataTable>
+  </:body>
 
+  <:empty>
     {{#if @model.total}}
-      <Woven::Pagination
+      <Woven::EmptyState
+        @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
+      />
+    {{else}}
+      <Woven::EmptyState
+        @description="No leases yet. Create your first lease agreement."
+      />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if @model.total}}
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -257,8 +245,8 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>
 
 <Leases::LeaseDrawer
   @open={{this.showModal}}
@@ -291,7 +279,12 @@
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
 >
-  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Woven::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Woven::Textarea
       id="lease-delete-reason"
       rows="2"
@@ -308,7 +301,11 @@
 
 <ConfirmModal
   @open={{this.showArchiveModal}}
-  @title={{if (eq this.archiveMode "archive") "Archive Lease" "Unarchive Lease"}}
+  @title={{if
+    (eq this.archiveMode "archive")
+    "Archive Lease"
+    "Unarchive Lease"
+  }}
   @message={{concat
     (if
       (eq this.archiveMode "archive")
@@ -326,7 +323,11 @@
   @cancelText="I changed my mind"
   @confirmVariant="brand"
   @isConfirming={{this.isArchiving}}
-  @confirmingText={{if (eq this.archiveMode "archive") "Archiving..." "Unarchiving..."}}
+  @confirmingText={{if
+    (eq this.archiveMode "archive")
+    "Archiving..."
+    "Unarchiving..."
+  }}
   @onClose={{this.closeArchiveModal}}
   @onConfirm={{this.confirmArchive}}
 >
@@ -359,7 +360,10 @@
 >
   <:body>
     {{#if this.historyLease}}
-      <RecordHistoryList @entityType="Lease" @entityId={{this.historyLease.id}} />
+      <RecordHistoryList
+        @entityType="Lease"
+        @entityId={{this.historyLease.id}}
+      />
     {{/if}}
   </:body>
 </Woven::Drawer>
