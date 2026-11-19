@@ -1,0 +1,9 @@
+{{#if (or (eq @value null) (eq @value undefined) (eq @value ""))}}
+  <Woven::Cell::Empty />
+{{else}}
+  <span
+    class="text-muted"
+    title={{@value}}
+    data-test-wu-cell-muted
+  >{{@value}}</span>
+{{/if}}

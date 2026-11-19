@@ -7,15 +7,6 @@ $stat-sparkline-height: 78px;
 
 $cashflow-chart-height: 260px;
 
-// The period title and its range control share one row.
-.finance-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: wu-space(3);
-  align-items: center;
-  justify-content: space-between;
-}
-
 .finance-filters__range {
   display: flex;
   flex-wrap: wrap;

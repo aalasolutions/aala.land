@@ -161,6 +161,19 @@ $shell-background-color: #154363;
   }
 }
 
+// The /woven showcase nests its own sidebar in the content area, so it needs the shell's dark surface.
+.app-shell .woven-shell .wu-sidebar {
+  background: $shell-background-color;
+
+  .wu-title {
+    color: var(--wu-text-inverted);
+  }
+
+  :is(.text-muted, .wu-sidebar-heading) {
+    color: var(--app-rail-text);
+  }
+}
+
 .app-shell .wu-topbar {
   border-block-end: 0;
   background: transparent;

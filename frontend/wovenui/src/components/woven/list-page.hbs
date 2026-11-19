@@ -1,0 +1,49 @@
+<div class="flex col gap-4" data-test-wu-list-page ...attributes>
+  {{#if (has-block "action")}}
+    <Woven::PageHeader @title={{@title}} @subtitle={{@subtitle}}>
+      <:actions>{{yield to="action"}}</:actions>
+    </Woven::PageHeader>
+  {{else}}
+    <Woven::PageHeader @title={{@title}} @subtitle={{@subtitle}} />
+  {{/if}}
+
+  {{#if (has-block "summary")}}
+    <div data-test-wu-list-page-summary>{{yield to="summary"}}</div>
+  {{/if}}
+
+  {{#if (and (has-block "switcher") (not @hideSwitcher))}}
+    <div
+      class="flex between x-center gap-3 wrap"
+      data-test-wu-list-page-switcher
+    >
+      {{yield to="switcher"}}
+    </div>
+  {{/if}}
+
+  <div
+    class="wu-list-page-toolbar flex x-center gap-3 wrap"
+    data-test-wu-list-page-toolbar
+  >
+    {{yield to="toolbar"}}
+    <div
+      class="wu-list-page-toolbar-end flex x-center gap-3 wrap ms-auto"
+      data-test-wu-list-page-toolbar-end
+    >
+      {{yield to="toolbarEnd"}}
+      <div data-test-wu-list-page-options {{this.registerOptionsHost}}></div>
+    </div>
+  </div>
+
+  {{#if @isEmpty}}
+    {{yield to="empty"}}
+  {{else}}
+    {{yield (hash optionsTarget=this.optionsHost) to="body"}}
+  {{/if}}
+
+  {{#if (has-block "footer")}}
+    {{yield
+      (hash Pager=(component "woven/pagination" rangeOnly=true))
+      to="footer"
+    }}
+  {{/if}}
+</div>

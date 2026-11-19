@@ -57,13 +57,22 @@ module('Integration | Template | access-requests', function (hooks) {
   const pendingRow = '[data-test-data-table-row="r-1"]';
   const approvedRow = '[data-test-data-table-row="r-2"]';
 
+  test('the toolbar holds the status filter', function (assert) {
+    assert
+      .dom('[data-test-wu-list-page-toolbar] [data-test-access-status-filter]')
+      .exists();
+    assert
+      .dom('[data-test-wu-list-page-options] [data-test-data-table-options]')
+      .exists();
+  });
+
   test('rows show requester, contact, region, source, note and the right actions', async function (assert) {
     assert
-      .dom(`${pendingRow} [data-test-access-request-row]`)
+      .dom(`${pendingRow} [data-test-wu-cell-person-name]`)
       .hasText('Test User');
-    assert
-      .dom(`${pendingRow} [data-test-access-request-contact]`)
-      .hasText('Omar Haddad');
+    assert.dom(`${pendingRow} [data-test-wu-cell-link]`).hasText('Omar Haddad');
+    assert.dom(`${pendingRow} [data-test-wu-cell-tag]`).hasText('Pending');
+    assert.dom(`${approvedRow} [data-test-wu-cell-tag]`).hasText('Approved');
     assert.dom(pendingRow).containsText('SHJ');
     assert.dom(pendingRow).containsText('Lead');
     assert.dom(pendingRow).containsText('Client called twice');

@@ -1,0 +1,21 @@
+// Fixed control heights for the kit wu-btn (@wovenui/components/button): core's button base adds padding-block, so content grew a min-height button.
+@use "@wovenui/core/mixins" as woven;
+
+@layer components {
+  .wu-btn {
+    block-size: woven.token(control-height-md);
+    padding-block: 0;
+  }
+
+  .wu-btn.sm,
+  :where(.wu-field-group.sm, .wu-field-row.sm) .wu-btn:not(.sm, .lg),
+  .wu-pagination.sm .wu-btn {
+    block-size: woven.token(control-height-sm);
+  }
+
+  .wu-btn.lg,
+  :where(.wu-field-group.lg, .wu-field-row.lg) .wu-btn:not(.sm, .lg),
+  .wu-pagination.lg .wu-btn {
+    block-size: woven.token(control-height-lg);
+  }
+}

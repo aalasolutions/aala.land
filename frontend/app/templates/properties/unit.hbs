@@ -2,434 +2,431 @@
   (if @model.unit (concat "Property " @model.unit.unitNumber) "Property Detail")
 }}
 
-<div data-test-unit-detail class="flex col gap-6">
-  <Woven::PageHeader>
-    <:breadcrumb>
-      <Woven::Breadcrumb
-        @items={{this.crumbs}}
-        @compact={{true}}
-        @parentsOnly={{true}}
-        data-test-breadcrumb
-      />
-    </:breadcrumb>
-  </Woven::PageHeader>
-
-  {{#if @model.unit}}
-    <RegionNotice @regionCode={{@model.unit.regionCode}} @noun="property" />
-    {{#if this.isArchived}}
-      <Woven::Alert
-        @variant="warning"
-        @title="Archived"
-        @description="This property is archived and read-only. Photos and documents can still be removed."
-        data-test-archived-banner
-      >
-        <:actions>
-          {{#if this.canArchiveUnit}}
-            <Woven::Button
-              @variant="subtle"
-              @size="sm"
-              @icon="arrow-counter-clockwise"
-              data-test-unarchive-unit
-              {{on "click" (fn this.openUnitAction "unarchive")}}
-            >
-              Unarchive
-            </Woven::Button>
-          {{/if}}
-        </:actions>
-      </Woven::Alert>
-    {{/if}}
-
-    <div class="unit-detail-grid">
-      <div class="unit-media">
-        {{#if this.isUploading}}
-          <div class="upload-progress" data-test-upload-progress>
-            <div class="upload-progress-bar">
-              <div class="upload-progress-bar__track"></div>
-            </div>
-          </div>
-        {{/if}}
-
-        {{#if @model.media.length}}
-          <div class="unit-main-photo" data-test-main-photo>
-            <img
-              src={{this.activePhoto.url}}
-              alt={{or this.activePhoto.fileName "Property photo"}}
-              width="1600"
-              height="1000"
-            />
-          </div>
-        {{else if this.previewUrl}}
-          <div
-            class="unit-main-photo upload-preview-active"
-            data-test-upload-preview
-          >
-            <img
-              src={{this.previewUrl}}
-              alt="Uploading preview"
-              width="1600"
-              height="1000"
-            />
-          </div>
-        {{else}}
-          <div class="unit-photo-placeholder" data-test-photo-placeholder>
-            <Ui::Ph @icon="image" />
-            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
-          </div>
-        {{/if}}
-
-        {{#unless this.isArchived}}
-          <div class="unit-media__tools">
-            <label
-              class="wu-btn brand icon round"
-              aria-disabled={{if this.isUploading "true"}}
-              data-tooltip="Add photo"
-              data-tooltip-position="start"
-              data-test-upload-photo-btn
-            >
-              {{#if this.isUploading}}
-                <Woven::Spinner @size="sm" />
-              {{else}}
-                <Ui::Ph @icon="camera-plus" />
-              {{/if}}
-              <span class="sr-only">{{if
-                  this.isUploading
-                  this.uploadStatus
-                  "Add photo"
-                }}</span>
-              <input
-                data-test-photo-upload-input
-                type="file"
-                class="sr-only"
-                accept="image/jpeg,image/png,image/webp"
-                {{on "change" this.uploadPhoto}}
-              />
-            </label>
-          </div>
-        {{/unless}}
-
-        {{#if @model.media.length}}
-          <div class="unit-media__lane">
-            {{#each @model.media as |media|}}
-              <div
-                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}} {{if (eq media.id this.activePhoto.id) 'is-active'}}"
-                data-test-photo-thumb
+<Woven::DetailPage @crumbs={{this.crumbs}} data-test-unit-detail>
+  <:body>
+    {{#if @model.unit}}
+      <RegionNotice @regionCode={{@model.unit.regionCode}} @noun="property" />
+      {{#if this.isArchived}}
+        <Woven::Alert
+          @variant="warning"
+          @title="Archived"
+          @description="This property is archived and read-only. Photos and documents can still be removed."
+          data-test-archived-banner
+        >
+          <:actions>
+            {{#if this.canArchiveUnit}}
+              <Woven::Button
+                @variant="subtle"
+                @size="sm"
+                @icon="arrow-counter-clockwise"
+                data-test-unarchive-unit
+                {{on "click" (fn this.openUnitAction "unarchive")}}
               >
-                <img
-                  src={{or media.thumbnailUrl media.url}}
-                  alt={{media.fileName}}
-                  width="80"
-                  height="60"
-                  loading="lazy"
+                Unarchive
+              </Woven::Button>
+            {{/if}}
+          </:actions>
+        </Woven::Alert>
+      {{/if}}
+
+      <div class="unit-detail-grid">
+        <div class="unit-media">
+          {{#if this.isUploading}}
+            <div class="upload-progress" data-test-upload-progress>
+              <div class="upload-progress-bar">
+                <div class="upload-progress-bar__track"></div>
+              </div>
+            </div>
+          {{/if}}
+
+          {{#if @model.media.length}}
+            <div class="unit-main-photo" data-test-main-photo>
+              <img
+                src={{this.activePhoto.url}}
+                alt={{or this.activePhoto.fileName "Property photo"}}
+                width="1600"
+                height="1000"
+              />
+            </div>
+          {{else if this.previewUrl}}
+            <div
+              class="unit-main-photo upload-preview-active"
+              data-test-upload-preview
+            >
+              <img
+                src={{this.previewUrl}}
+                alt="Uploading preview"
+                width="1600"
+                height="1000"
+              />
+            </div>
+          {{else}}
+            <div class="unit-photo-placeholder" data-test-photo-placeholder>
+              <Ui::Ph @icon="image" />
+              <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
+            </div>
+          {{/if}}
+
+          {{#unless this.isArchived}}
+            <div class="unit-media__tools">
+              <label
+                class="wu-btn brand icon round"
+                aria-disabled={{if this.isUploading "true"}}
+                data-tooltip="Add photo"
+                data-tooltip-position="start"
+                data-test-upload-photo-btn
+              >
+                {{#if this.isUploading}}
+                  <Woven::Spinner @size="sm" />
+                {{else}}
+                  <Ui::Ph @icon="camera-plus" />
+                {{/if}}
+                <span class="sr-only">{{if
+                    this.isUploading
+                    this.uploadStatus
+                    "Add photo"
+                  }}</span>
+                <input
+                  data-test-photo-upload-input
+                  type="file"
+                  class="sr-only"
+                  accept="image/jpeg,image/png,image/webp"
+                  {{on "change" this.uploadPhoto}}
                 />
-                <button
-                  type="button"
-                  class="unit-thumb__select"
-                  aria-label="View {{media.fileName}}"
-                  data-test-photo-thumb-select={{media.id}}
-                  {{on "click" (fn this.selectPhoto media)}}
-                ></button>
-                <div class="unit-thumb-actions">
-                  {{#unless (or media.isPrimary this.isArchived)}}
+              </label>
+            </div>
+          {{/unless}}
+
+          {{#if @model.media.length}}
+            <div class="unit-media__lane">
+              {{#each @model.media as |media|}}
+                <div
+                  class="unit-thumb
+                    {{if media.isPrimary 'unit-thumb-primary'}}
+                    {{if (eq media.id this.activePhoto.id) 'is-active'}}"
+                  data-test-photo-thumb
+                >
+                  <img
+                    src={{or media.thumbnailUrl media.url}}
+                    alt={{media.fileName}}
+                    width="80"
+                    height="60"
+                    loading="lazy"
+                  />
+                  <button
+                    type="button"
+                    class="unit-thumb__select"
+                    aria-label="View {{media.fileName}}"
+                    data-test-photo-thumb-select={{media.id}}
+                    {{on "click" (fn this.selectPhoto media)}}
+                  ></button>
+                  <div class="unit-thumb-actions">
+                    {{#unless (or media.isPrimary this.isArchived)}}
+                      <Woven::Button
+                        @variant="subtle"
+                        @shape="circle"
+                        @size="xs"
+                        @icon="star"
+                        aria-label="Set {{media.fileName}} as the primary photo"
+                        data-tooltip="Set as primary"
+                        data-test-set-primary-photo-btn={{media.id}}
+                        {{on "click" (fn this.setPrimaryPhoto media)}}
+                      />
+                    {{/unless}}
                     <Woven::Button
-                      @variant="subtle"
+                      @variant="danger"
                       @shape="circle"
                       @size="xs"
-                      @icon="star"
-                      aria-label="Set {{media.fileName}} as the primary photo"
-                      data-tooltip="Set as primary"
-                      data-test-set-primary-photo-btn={{media.id}}
-                      {{on "click" (fn this.setPrimaryPhoto media)}}
+                      @icon="trash"
+                      aria-label="Delete {{media.fileName}}"
+                      data-tooltip="Delete photo"
+                      data-test-delete-photo-btn={{media.id}}
+                      {{on "click" (fn this.openDeletePhoto media)}}
                     />
-                  {{/unless}}
-                  <Woven::Button
-                    @variant="danger"
-                    @shape="circle"
-                    @size="xs"
-                    @icon="trash"
-                    aria-label="Delete {{media.fileName}}"
-                    data-tooltip="Delete photo"
-                    data-test-delete-photo-btn={{media.id}}
-                    {{on "click" (fn this.openDeletePhoto media)}}
+                  </div>
+                </div>
+              {{/each}}
+
+              {{#if this.previewUrl}}
+                <div
+                  class="unit-thumb upload-preview-thumb"
+                  data-test-upload-preview
+                >
+                  <img
+                    src={{this.previewUrl}}
+                    alt="Uploading preview"
+                    width="80"
+                    height="60"
                   />
                 </div>
-              </div>
-            {{/each}}
-
-            {{#if this.previewUrl}}
-              <div
-                class="unit-thumb upload-preview-thumb"
-                data-test-upload-preview
-              >
-                <img
-                  src={{this.previewUrl}}
-                  alt="Uploading preview"
-                  width="80"
-                  height="60"
-                />
-              </div>
-            {{/if}}
-          </div>
-        {{/if}}
-      </div>
-
-      <Woven::Card>
-        <div class="unit-summary">
-          <div class="flex between x-center gap-2 wrap">
-            <div class="flex gap-1 wrap" data-test-unit-badges>
-              <Woven::Tag @variant={{tag-variant "unit" @model.unit.status}}>
-                {{capitalize @model.unit.status}}
-              </Woven::Tag>
-              <Woven::Tag
-                @variant={{tag-variant "proptype" @model.unit.propertyType}}
-              >
-                {{property-type-label @model.unit.propertyType}}
-              </Woven::Tag>
-            </div>
-            <div class="flex gap-2 wrap">
-              {{#unless this.isArchived}}
-                <Woven::Button
-                  @variant="subtle"
-                  @size="sm"
-                  @icon="pencil-simple"
-                  data-test-edit-btn
-                  {{on "click" this.openEdit}}
-                >
-                  Edit
-                </Woven::Button>
-                {{#if this.canArchiveUnit}}
-                  <Woven::Button
-                    @variant="subtle"
-                    @size="sm"
-                    @icon="archive"
-                    data-test-archive-unit
-                    {{on "click" (fn this.openUnitAction "archive")}}
-                  >
-                    Archive
-                  </Woven::Button>
-                {{/if}}
-              {{/unless}}
-              {{#if this.canDeleteUnit}}
-                <Woven::Button
-                  @variant="danger"
-                  @size="sm"
-                  @icon="trash"
-                  data-test-delete-unit
-                  {{on "click" (fn this.openUnitAction "delete")}}
-                >
-                  Delete
-                </Woven::Button>
               {{/if}}
-            </div>
-          </div>
-
-          <div class="unit-summary__heading">
-            <h1 data-test-unit-title class="text-2xl font-bold">Property
-              {{@model.unit.unitNumber}}</h1>
-            {{#if @model.unit.asset}}
-              <p class="text-muted text-sm">
-                {{@model.unit.asset.name}}
-                {{#if @model.unit.asset.locality}}
-                  &middot;
-                  {{@model.unit.asset.locality.name}}
-                {{/if}}
-              </p>
-            {{/if}}
-          </div>
-
-          {{#if @model.unit.price}}
-            <p
-              data-test-unit-price
-              class="unit-summary__price"
-            ><Money @amount={{@model.unit.price}} /></p>
-          {{/if}}
-
-          {{#if
-            (or
-              @model.unit.bedrooms
-              @model.unit.bathrooms
-              @model.unit.sqFt
-              @model.unit.floor
-            )
-          }}
-            <dl class="unit-summary__specs" data-test-unit-specs>
-              {{#if @model.unit.bedrooms}}
-                <div class="unit-summary__spec">
-                  <dt><Ui::Ph @icon="bed" /> Beds</dt>
-                  <dd>{{@model.unit.bedrooms}}</dd>
-                </div>
-              {{/if}}
-              {{#if @model.unit.bathrooms}}
-                <div class="unit-summary__spec">
-                  <dt><Ui::Ph @icon="bathtub" /> Baths</dt>
-                  <dd>{{@model.unit.bathrooms}}</dd>
-                </div>
-              {{/if}}
-              {{#if @model.unit.sqFt}}
-                <div class="unit-summary__spec">
-                  <dt><Ui::Ph @icon="ruler" /> sqft</dt>
-                  <dd>{{format-number @model.unit.sqFt}}</dd>
-                </div>
-              {{/if}}
-              {{#if @model.unit.floor}}
-                <div class="unit-summary__spec">
-                  <dt><Ui::Ph @icon="stairs" /> Floor</dt>
-                  <dd>{{@model.unit.floor}}</dd>
-                </div>
-              {{/if}}
-            </dl>
-          {{/if}}
-
-          {{#if @model.unit.owner}}
-            <div class="wu-info-row" data-test-unit-owner>
-              <span class="wu-info-row-label"><Ui::Ph @icon="user" />
-                Owner</span>
-              <span class="wu-info-row-value">
-                <LinkTo
-                  data-test-owner-link
-                  @route="contacts.detail"
-                  @model={{@model.unit.owner.id}}
-                  class="text-brand owner-link"
-                >
-                  {{contact-name @model.unit.owner}}
-                </LinkTo>
-              </span>
-            </div>
-          {{/if}}
-
-          {{#if @model.unit.amenities.length}}
-            <div data-test-amenities-card>
-              <h2
-                class="text-xs font-bold uppercase text-muted mb-2"
-              >Amenities</h2>
-              <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
             </div>
           {{/if}}
         </div>
-      </Woven::Card>
-    </div>
 
-    {{#if @model.unit.description}}
-      <Woven::Card data-test-description>
-        <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
-          Description</h2>
-        <p class="text-muted">{{@model.unit.description}}</p>
-      </Woven::Card>
-    {{/if}}
-
-    <section data-test-unit-documents>
-      <Documents::Panel
-        @filters={{hash unitId=@model.unit.id includeDerived=true}}
-        @presetLink={{hash
-          type="unit"
-          id=@model.unit.id
-          label=this.documentLinkLabel
-        }}
-        @tableId="unit-documents"
-        @canEdit={{not this.isArchived}}
-        @canUpload={{not this.isArchived}}
-      >
-        <:header as |panel|>
-          <div class="flex between x-center">
-            <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
-              Documents</h2>
-            {{#if panel.canUpload}}
-              <Woven::Button
-                @variant="brand"
-                @size="sm"
-                @icon="upload-simple"
-                data-test-upload-document-btn
-                {{on "click" panel.openUpload}}
-              >
-                Upload
-              </Woven::Button>
-            {{/if}}
-          </div>
-        </:header>
-      </Documents::Panel>
-    </section>
-
-    <Woven::Card data-test-lease-history>
-      <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
-        Lease History</h2>
-      {{#if @model.leases.length}}
-        <Woven::DataTable
-          @columns={{this.leaseColumns}}
-          @rows={{@model.leases}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="unit-leases"
-          class="table-stacked"
-          as |cell|
-        >
-          <DataTable::StackedLabel
-            @columns={{this.leaseColumns}}
-            @cellKey={{cell.key}}
-            @skip={{array "contact.displayName"}}
-          />
-          {{#if (eq cell.key "contact.displayName")}}
-            <span data-test-lease-row>{{or
-                (contact-name cell.row.contact)
-                "Unknown tenant"
-              }}</span>
-          {{else if (eq cell.key "startDate")}}
-            <span>{{format-date cell.value}}</span>
-          {{else if (eq cell.key "endDate")}}
-            <span>{{format-date cell.value}}</span>
-          {{else if (eq cell.key "monthlyRent")}}
-            <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
-          {{else if (eq cell.key "status")}}
-            <div class="flex gap-1 wrap">
-              <Woven::Tag @variant={{tag-variant "lease" cell.value}}>
-                {{cell.value}}
-              </Woven::Tag>
-              {{#if cell.row.deletedAt}}
+        <Woven::Card>
+          <div class="unit-summary">
+            <div class="flex between x-center gap-2 wrap">
+              <div class="flex gap-1 wrap" data-test-unit-badges>
+                <Woven::Tag @variant={{tag-variant "unit" @model.unit.status}}>
+                  {{tag-label "unit" @model.unit.status}}
+                </Woven::Tag>
                 <Woven::Tag
-                  @variant="secondary"
-                  @text="Archived"
-                  data-test-lease-archived-badge
-                />
+                  @variant={{tag-variant "proptype" @model.unit.propertyType}}
+                >
+                  {{property-type-label @model.unit.propertyType}}
+                </Woven::Tag>
+              </div>
+              <div class="flex gap-2 wrap">
+                {{#unless this.isArchived}}
+                  <Woven::Button
+                    @variant="subtle"
+                    @size="sm"
+                    @icon="pencil-simple"
+                    data-test-edit-btn
+                    {{on "click" this.openEdit}}
+                  >
+                    Edit
+                  </Woven::Button>
+                  {{#if this.canArchiveUnit}}
+                    <Woven::Button
+                      @variant="subtle"
+                      @size="sm"
+                      @icon="archive"
+                      data-test-archive-unit
+                      {{on "click" (fn this.openUnitAction "archive")}}
+                    >
+                      Archive
+                    </Woven::Button>
+                  {{/if}}
+                {{/unless}}
+                {{#if this.canDeleteUnit}}
+                  <Woven::Button
+                    @variant="danger"
+                    @size="sm"
+                    @icon="trash"
+                    data-test-delete-unit
+                    {{on "click" (fn this.openUnitAction "delete")}}
+                  >
+                    Delete
+                  </Woven::Button>
+                {{/if}}
+              </div>
+            </div>
+
+            <div class="unit-summary__heading">
+              <h1 data-test-unit-title class="text-2xl font-bold">Property
+                {{@model.unit.unitNumber}}</h1>
+              {{#if @model.unit.asset}}
+                <p class="text-muted text-sm">
+                  {{@model.unit.asset.name}}
+                  {{#if @model.unit.asset.locality}}
+                    &middot;
+                    {{@model.unit.asset.locality.name}}
+                  {{/if}}
+                </p>
               {{/if}}
             </div>
-          {{else}}
-            <span class="text-muted">{{cell.value}}</span>
-          {{/if}}
-        </Woven::DataTable>
-      {{else}}
-        <p class="text-muted text-sm">No lease history for this property.</p>
-      {{/if}}
-    </Woven::Card>
 
-    {{#if this.canViewHistory}}
-      <Woven::Card data-test-unit-history>
-        <h2 class="text-md font-bold mb-3"><Ui::Ph
-            @icon="clock-counter-clockwise"
-          />
-          History</h2>
-        <RecordHistoryList
-          @entityType="Unit"
-          @entityId={{@model.unit.id}}
-          @reloadKey={{this.isArchived}}
-        />
-      </Woven::Card>
+            {{#if @model.unit.price}}
+              <p data-test-unit-price class="unit-summary__price"><Money
+                  @amount={{@model.unit.price}}
+                /></p>
+            {{/if}}
+
+            {{#if
+              (or
+                @model.unit.bedrooms
+                @model.unit.bathrooms
+                @model.unit.sqFt
+                @model.unit.floor
+              )
+            }}
+              <dl class="unit-summary__specs" data-test-unit-specs>
+                {{#if @model.unit.bedrooms}}
+                  <div class="unit-summary__spec">
+                    <dt><Ui::Ph @icon="bed" /> Beds</dt>
+                    <dd>{{@model.unit.bedrooms}}</dd>
+                  </div>
+                {{/if}}
+                {{#if @model.unit.bathrooms}}
+                  <div class="unit-summary__spec">
+                    <dt><Ui::Ph @icon="bathtub" /> Baths</dt>
+                    <dd>{{@model.unit.bathrooms}}</dd>
+                  </div>
+                {{/if}}
+                {{#if @model.unit.sqFt}}
+                  <div class="unit-summary__spec">
+                    <dt><Ui::Ph @icon="ruler" /> sqft</dt>
+                    <dd>{{format-number @model.unit.sqFt}}</dd>
+                  </div>
+                {{/if}}
+                {{#if @model.unit.floor}}
+                  <div class="unit-summary__spec">
+                    <dt><Ui::Ph @icon="stairs" /> Floor</dt>
+                    <dd>{{@model.unit.floor}}</dd>
+                  </div>
+                {{/if}}
+              </dl>
+            {{/if}}
+
+            {{#if @model.unit.owner}}
+              <div class="wu-info-row" data-test-unit-owner>
+                <span class="wu-info-row-label"><Ui::Ph @icon="user" />
+                  Owner</span>
+                <span class="wu-info-row-value">
+                  <LinkTo
+                    data-test-owner-link
+                    @route="contacts.detail"
+                    @model={{@model.unit.owner.id}}
+                    class="text-brand owner-link"
+                  >
+                    {{contact-name @model.unit.owner}}
+                  </LinkTo>
+                </span>
+              </div>
+            {{/if}}
+
+            {{#if @model.unit.amenities.length}}
+              <div data-test-amenities-card>
+                <h2
+                  class="text-xs font-bold uppercase text-muted mb-2"
+                >Amenities</h2>
+                <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
+              </div>
+            {{/if}}
+          </div>
+        </Woven::Card>
+      </div>
+
+      {{#if @model.unit.description}}
+        <Woven::Card data-test-description>
+          <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
+            Description</h2>
+          <p class="text-muted">{{@model.unit.description}}</p>
+        </Woven::Card>
+      {{/if}}
+
+      <section data-test-unit-documents>
+        <Documents::Panel
+          @filters={{hash unitId=@model.unit.id includeDerived=true}}
+          @presetLink={{hash
+            type="unit"
+            id=@model.unit.id
+            label=this.documentLinkLabel
+          }}
+          @tableId="unit-documents"
+          @canEdit={{not this.isArchived}}
+          @canUpload={{not this.isArchived}}
+        >
+          <:header as |panel|>
+            <div class="flex between x-center">
+              <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
+                Documents</h2>
+              {{#if panel.canUpload}}
+                <Woven::Button
+                  @variant="brand"
+                  @size="sm"
+                  @icon="upload-simple"
+                  data-test-upload-document-btn
+                  {{on "click" panel.openUpload}}
+                >
+                  Upload
+                </Woven::Button>
+              {{/if}}
+            </div>
+          </:header>
+        </Documents::Panel>
+      </section>
+
+      <Woven::TableSection
+        @title="Lease History"
+        @icon="file-text"
+        data-test-lease-history
+      >
+        <:body as |section|>
+          {{#if @model.leases.length}}
+            <Woven::DataTable
+              @columns={{this.leaseColumns}}
+              @rows={{@model.leases}}
+              @pinColumns={{true}}
+              @reorderable={{true}}
+              @sortable={{true}}
+              @showOptions={{true}}
+              @optionsTarget={{section.optionsTarget}}
+              @tableId="unit-leases"
+              class="table-stacked"
+              as |cell|
+            >
+              <DataTable::StackedLabel
+                @columns={{this.leaseColumns}}
+                @cellKey={{cell.key}}
+                @skip={{array "contact.displayName"}}
+              />
+              {{#if (eq cell.key "contact.displayName")}}
+                <span data-test-lease-row>{{or
+                    (contact-name cell.row.contact)
+                    "Unknown tenant"
+                  }}</span>
+              {{else if (eq cell.key "startDate")}}
+                <span>{{format-date cell.value}}</span>
+              {{else if (eq cell.key "endDate")}}
+                <span>{{format-date cell.value}}</span>
+              {{else if (eq cell.key "monthlyRent")}}
+                <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
+              {{else if (eq cell.key "status")}}
+                <div class="flex gap-1 wrap">
+                  <Woven::Tag @variant={{tag-variant "lease" cell.value}}>
+                    {{tag-label "lease" cell.value}}
+                  </Woven::Tag>
+                  {{#if cell.row.deletedAt}}
+                    <Woven::Tag
+                      @variant="secondary"
+                      @text="Archived"
+                      data-test-lease-archived-badge
+                    />
+                  {{/if}}
+                </div>
+              {{else}}
+                <span class="text-muted">{{cell.value}}</span>
+              {{/if}}
+            </Woven::DataTable>
+          {{else}}
+            <p class="text-muted text-sm">No lease history for this property.</p>
+          {{/if}}
+        </:body>
+      </Woven::TableSection>
+
+      {{#if this.canViewHistory}}
+        <Woven::TableSection
+          @title="History"
+          @icon="clock-counter-clockwise"
+          data-test-unit-history
+        >
+          <:body as |section|>
+            <RecordHistoryList
+              @entityType="Unit"
+              @entityId={{@model.unit.id}}
+              @reloadKey={{this.isArchived}}
+              @optionsTarget={{section.optionsTarget}}
+            />
+          </:body>
+        </Woven::TableSection>
+      {{/if}}
+    {{else}}
+      <Woven::EmptyState @title="Property not found" data-test-unit-not-found>
+        <:icon><Ui::Ph @icon="warning" /></:icon>
+        <:actions>
+          <Woven::Button
+            @variant="brand"
+            @route="properties"
+            data-test-not-found-back
+          >Back to Properties</Woven::Button>
+        </:actions>
+      </Woven::EmptyState>
     {{/if}}
-  {{else}}
-    <Woven::EmptyState
-      @title="Property not found"
-      data-test-unit-not-found
-    >
-      <:icon><Ui::Ph @icon="warning" /></:icon>
-      <:actions>
-        <Woven::Button
-          @variant="brand"
-          @route="properties"
-          data-test-not-found-back
-        >Back to Properties</Woven::Button>
-      </:actions>
-    </Woven::EmptyState>
-  {{/if}}
-</div>
+  </:body>
+</Woven::DetailPage>
 
 <Properties::PropertyDrawer
   @open={{this.showEditModal}}

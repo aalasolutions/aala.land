@@ -18,6 +18,18 @@ module('Unit | Utility | tag-variant', function () {
     assert.strictEqual(tagVariant('sub', 'cancelled'), 'secondary');
   });
 
+  test('commission, role and history action domains', function (assert) {
+    assert.strictEqual(tagVariant('commission', 'CANCELLED'), 'secondary');
+    assert.strictEqual(tagVariant('role', 'agent'), 'secondary');
+    assert.strictEqual(tagVariant('historyAction', 'DELETE'), 'danger');
+    assert.strictEqual(tagVariant('historyAction', 'UNARCHIVE'), 'success');
+  });
+
+  test('access request statuses follow the access-requests variants', function (assert) {
+    assert.strictEqual(tagVariant('accessRequest', 'PENDING'), 'warning');
+    assert.strictEqual(tagVariant('accessRequest', 'REVOKED'), 'secondary');
+  });
+
   test('unknown domains, values and empty input give no variant', function (assert) {
     assert.strictEqual(tagVariant('lead', 'archived'), undefined);
     assert.strictEqual(tagVariant('nope', 'won'), undefined);

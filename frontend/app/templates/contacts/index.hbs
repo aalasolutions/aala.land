@@ -1,26 +1,23 @@
 {{page-title "Contacts"}}
 
-<div data-test-contacts class="flex col gap-4">
-  <Woven::PageHeader
-    @title="Contacts"
-    @subtitle="Every person you deal with. Owners, tenants, leads and portfolio owners are views into this list, not separate records."
-  >
-    <:meta>
-      <span data-test-contacts-total>{{format-number @model.scopeTotal unit="contact"}}</span>
-    </:meta>
-    <:actions>
-      <Woven::Button
-        @variant="brand"
-        @icon="plus"
-        data-test-new-contact
-        {{on "click" this.openCreate}}
-      >
-        New Contact
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Contacts"
+  @subtitle="Every person you deal with. Owners, tenants, leads and portfolio owners are views into this list, not separate records."
+  @isEmpty={{and (eq this.currentTab "contacts") (not @model.contacts.length)}}
+  data-test-contacts
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      @icon="plus"
+      data-test-new-contact
+      {{on "click" this.openCreate}}
+    >
+      New Contact
+    </Woven::Button>
+  </:action>
 
-  <div class="flex between x-center gap-3 wrap">
+  <:switcher>
     <Woven::Tabs
       @tabs={{this.pageTabs}}
       @activeTab={{this.currentTab}}
@@ -36,14 +33,10 @@
         All regions
       </Woven::Toggle>
     {{/unless}}
-  </div>
+  </:switcher>
 
-  {{#if (eq this.currentTab "requests")}}
-    <AccessRequests::MyRequests />
-  {{else if (eq this.currentTab "companies")}}
-    <Contact::Companies @allRegions={{this.allRegionsOn}} />
-  {{else}}
-    <div class="flex x-center gap-3 wrap" data-test-contacts-toolbar>
+  <:toolbar>
+    {{#if (eq this.currentTab "contacts")}}
       <Woven::Segmented
         @options={{this.roleTabs}}
         @value={{this.tag}}
@@ -55,7 +48,6 @@
           type="text"
           autocomplete="off"
           placeholder="Search name, email, phone..."
-          @size="xs"
           aria-label="Search contacts"
           value={{this.search}}
           {{on "input" (fn this.updateFilter "search")}}
@@ -136,137 +128,141 @@
           </div>
         </div>
       </FiltersButton>
-      <div
-        class="ms-auto"
-        data-test-contacts-table-options
-        {{this.registerTableOptionsHost}}
-      ></div>
-    </div>
+    {{/if}}
+  </:toolbar>
 
-    <div class="flex col gap-3" data-test-contacts-list>
-      {{#if @model.contacts.length}}
-        <Woven::DataTable
+  <:body as |page|>
+    {{#if (eq this.currentTab "requests")}}
+      <AccessRequests::MyRequests />
+    {{else if (eq this.currentTab "companies")}}
+      <Contact::Companies
+        @allRegions={{this.allRegionsOn}}
+        @optionsTarget={{page.optionsTarget}}
+        @onTotal={{this.setCompaniesTotal}}
+      />
+    {{else}}
+      <Woven::DataTable
+        @columns={{this.columns}}
+        @rows={{@model.contacts}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @stickyHeader={{true}}
+        @optionsTarget={{page.optionsTarget}}
+        @tableId="contacts"
+        class="table-stacked"
+        data-test-contacts-table
+        as |cell|
+      >
+        <DataTable::StackedLabel
           @columns={{this.columns}}
-          @rows={{@model.contacts}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @stickyHeader={{true}}
-          @optionsSize="xs"
-          @optionsTarget={{this.tableOptionsHost}}
-          @tableId="contacts"
-          class="table-stacked"
-          data-test-contacts-table
-          as |cell|
-        >
-          <DataTable::StackedLabel
-            @columns={{this.columns}}
-            @cellKey={{cell.key}}
-            @skip={{array "displayName" "id"}}
-          />
-          {{#if (eq cell.key "displayName")}}
-            <span class="flex gap-2 x-center">
-              <LinkTo
-                @route="contacts.detail"
-                @model={{cell.row.id}}
-                class="text-brand whitespace-nowrap"
-                data-test-view-contact
-              >{{contact-name cell.row}}</LinkTo>
-              {{#if (is-limited-contact cell.row)}}
-                <Woven::Badge
-                  @text="Limited"
-                  data-test-limited-badge
-                />
-              {{/if}}
-            </span>
-          {{else if (eq cell.key "tags")}}
-            {{#unless (is-limited-contact cell.row)}}
-              <div class="data-table__chips">
-                {{#each cell.value as |tag|}}
-                  <Woven::Tag
-                    @variant={{tag-variant "contact" tag}}
-                    @text={{contact-tag-label tag}}
-                  />
-                {{else}}
-                  <Woven::Tag @variant="secondary" @text="Contact" />
-                {{/each}}
-              </div>
-            {{/unless}}
-          {{else if (eq cell.key "phone")}}
-            {{#if (contact-phone cell.row)}}
-              <span class="flex gap-2 x-center text-muted">
-                <span dir="ltr" data-test-contact-phone>{{contact-phone
-                    cell.row
-                  }}</span>
-                {{#if (can-whatsapp cell.row)}}
-                  <a
-                    href={{wa-link cell.row.phone}}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="wa-link"
-                    title="Open WhatsApp"
-                    aria-label="Open WhatsApp chat with {{contact-name
-                      cell.row
-                    }}"
-                    data-test-wa-link
-                  ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
-                {{/if}}
-              </span>
+          @cellKey={{cell.key}}
+          @skip={{array "displayName" "id"}}
+        />
+        {{#if (eq cell.key "displayName")}}
+          <span class="flex gap-2 x-center">
+            <LinkTo
+              @route="contacts.detail"
+              @model={{cell.row.id}}
+              class="text-brand whitespace-nowrap"
+              data-test-view-contact
+            >{{or (contact-name cell.row) "Unnamed contact"}}</LinkTo>
+            {{#if (is-limited-contact cell.row)}}
+              <Woven::Badge @text="Limited" data-test-limited-badge />
             {{/if}}
-          {{else if (eq cell.key "id")}}
-            <div class="table-stacked__actions">
-              {{#if (is-limited-contact cell.row)}}
-                <Contact::AccessAction
-                  @contact={{cell.row}}
-                  @size="xs"
-                  @pending={{includes this.requestedContactIds cell.row.id}}
-                  @onRequested={{this.markRequested}}
+          </span>
+        {{else if (eq cell.key "tags")}}
+          {{#if (is-limited-contact cell.row)}}
+            <Woven::Cell::Empty />
+          {{else}}
+            <div class="data-table__chips">
+              {{#each cell.value as |tag|}}
+                <Woven::Tag
+                  @variant={{tag-variant "contact" tag}}
+                  @text={{contact-tag-label tag}}
                 />
               {{else}}
-                <RowActions
-                  @label={{contact-name cell.row}}
-                  @actions={{array
-                    (hash
-                      key="edit-contact"
-                      label="Edit"
-                      icon="pencil-simple"
-                      onSelect=(fn this.openEdit cell.row)
-                      hidden=(not (can-edit-contact cell.row))
-                    )
-                  }}
-                />
-              {{/if}}
+                <Woven::Tag @variant="secondary" @text="Contact" />
+              {{/each}}
             </div>
-          {{else}}
-            <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </Woven::DataTable>
-      {{else}}
-        {{#if @model.total}}
-          <Woven::EmptyState
-            @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
-          />
-        {{else}}
-          <Woven::EmptyState @description="No contacts match these filters." />
+        {{else if (eq cell.key "phone")}}
+          {{#if (contact-phone cell.row)}}
+            <span class="flex gap-2 x-center">
+              <span dir="ltr" data-test-contact-phone>{{contact-phone
+                  cell.row
+                }}</span>
+              {{#if (can-whatsapp cell.row)}}
+                <a
+                  href={{wa-link cell.row.phone}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{contact-name cell.row}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{else}}
+            <Woven::Cell::Empty />
+          {{/if}}
+        {{else if (eq cell.key "regionCode")}}
+          <span data-test-contact-region>{{region-name cell.value}}</span>
+        {{else if (eq cell.key "id")}}
+          <div class="table-stacked__actions">
+            {{#if (is-limited-contact cell.row)}}
+              <Contact::AccessAction
+                @contact={{cell.row}}
+                @size="xs"
+                @pending={{includes this.requestedContactIds cell.row.id}}
+                @onRequested={{this.markRequested}}
+              />
+            {{else}}
+              <RowActions
+                @label={{contact-name cell.row}}
+                @actions={{array
+                  (hash
+                    key="edit-contact"
+                    label="Edit"
+                    icon="pencil-simple"
+                    onSelect=(fn this.openEdit cell.row)
+                    hidden=(not (can-edit-contact cell.row))
+                  )
+                }}
+              />
+            {{/if}}
+          </div>
         {{/if}}
-      {{/if}}
+      </Woven::DataTable>
+    {{/if}}
+  </:body>
 
-      {{#if @model.total}}
-        <Woven::Pagination
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @perPageOptions={{array 50 100}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{/if}}
-    </div>
-  {{/if}}
-</div>
+  <:empty>
+    {{#if @model.total}}
+      <Woven::EmptyState
+        @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
+      />
+    {{else}}
+      <Woven::EmptyState @description="No contacts match these filters." />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if (and (eq this.currentTab "contacts") @model.total)}}
+      <page.Pager
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </:footer>
+</Woven::ListPage>
 
 <Contact::ContactDrawer
   @open={{this.showModal}}

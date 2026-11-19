@@ -150,16 +150,21 @@
               data-wu-editable={{if (this.editorFor column) "true"}}
               {{on "dblclick" (fn this.startEdit row column)}}
             >
-              {{yield
-                (hash
-                  key=column.valuePath
-                  value=value
-                  row=row
-                  depth=rowMeta.depth
-                  hasChildren=rowMeta.canCollapse
-                  isCollapsed=rowMeta.isCollapsed
-                )
-              }}
+              {{#if column.cell}}
+                <Woven::DataTable::StackedLabel @column={{column}} />
+                <column.cell @value={{value}} @row={{row}} @column={{column}} />
+              {{else}}
+                {{yield
+                  (hash
+                    key=column.valuePath
+                    value=value
+                    row=row
+                    depth=rowMeta.depth
+                    hasChildren=rowMeta.canCollapse
+                    isCollapsed=rowMeta.isCollapsed
+                  )
+                }}
+              {{/if}}
             </div>
           {{/if}}
         </r.cell>

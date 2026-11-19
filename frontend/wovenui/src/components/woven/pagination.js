@@ -94,12 +94,16 @@ export default class WovenPaginationComponent extends Component {
     return items;
   }
 
+  // @rangeOnly drops the total for hosts that print the count elsewhere.
   get statusText() {
     if (!this.total) {
       return '0 results';
     }
     const start = (this.page - 1) * this.perPage + 1;
     const end = Math.min(this.page * this.perPage, this.total);
+    if (this.args.rangeOnly) {
+      return `${start}-${end}`;
+    }
     return `${start}-${end} of ${this.total}`;
   }
 

@@ -1,150 +1,144 @@
 {{page-title "Commissions"}}
 
-<div data-test-commissions-page class="flex col gap-6">
-  <Woven::PageHeader @title="Commissions" @subtitle="Track agent commissions and payouts.">
-    <:actions>
-      <div class="flex gap-3 x-end">
-        <Woven::Dropdown
-          id="commissions-status-filter"
-          @align="start"
-          @value={{this.filterStatus}}
-          @onSelect={{this.setStatusFilter}}
-          @options={{this.filterStatusOptions}}
-          @placeholder="All"
-        />
-        <Woven::Button
-          @variant="brand"
-          data-test-add-commission
-          @icon="plus"
-          {{on "click" this.openCreate}}
-        >
-          New Commission
-        </Woven::Button>
-      </div>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Commissions"
+  @subtitle="Track agent commissions and payouts."
+  @isEmpty={{not this.filteredCommissions.length}}
+  data-test-commissions-page
+>
+  <:action>
+    <Woven::Button
+      @variant="brand"
+      data-test-add-commission
+      @icon="plus"
+      {{on "click" this.openCreate}}
+    >
+      New Commission
+    </Woven::Button>
+  </:action>
 
-  <div class="flex col gap-3">
-    {{#if this.filteredCommissions.length}}
-      <Woven::DataTable
+  <:toolbar>
+    <Woven::Segmented
+      @options={{this.filterStatusOptions}}
+      @value={{this.filterStatus}}
+      @onChange={{this.setStatusFilter}}
+      data-test-commission-status-filter
+    />
+  </:toolbar>
+
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{this.filteredCommissions}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="commissions"
+      class="table-stacked"
+      data-test-commissions-table
+      as |cell|
+    >
+      <DataTable::StackedLabel
         @columns={{this.columns}}
-        @rows={{this.filteredCommissions}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="commissions"
-        class="table-stacked"
-        data-test-commissions-table
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "agentId" "id"}}
-        />
-        {{#if (eq cell.key "agentId")}}
-          {{#let (this.agentName cell.value) as |name|}}
-            {{#if name}}
-              <span data-test-commission-row>{{name}}</span>
-            {{else}}
-              <span class="text-xs" data-test-commission-row>{{truncate-id
-                  cell.value
-                }}</span>
-            {{/if}}
-          {{/let}}
-        {{else if (eq cell.key "leadId")}}
-          <span class="text-xs">
-            {{#if cell.row.leadId}}
-              {{truncate-id cell.row.leadId}}
-            {{else if cell.row.transactionId}}
-              {{truncate-id cell.row.transactionId}}
-            {{else}}
-              <span class="text-muted">N/A</span>
-            {{/if}}
-          </span>
-        {{else if (eq cell.key "type")}}
-          <Woven::Tag
-            @variant={{tag-variant "commtype" cell.value}}
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "commissionAmount")}}
-          <span><Money
-              @amount={{cell.value}}
-              @currency={{cell.row.currency}}
-            />
-            /
-            <Money
-              @amount={{cell.row.grossAmount}}
-              @currency={{cell.row.currency}}
-            /></span>
-        {{else if (eq cell.key "commissionRate")}}
-          <span>{{cell.value}}%</span>
-        {{else if (eq cell.key "status")}}
-          <Woven::Tag
-            @variant={{tag-variant "commission" cell.value}}
-            @text={{cell.value}}
-          />
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            {{#if (eq cell.row.status "PAID")}}
-              <span class="text-xs text-muted">
-                {{#if cell.row.paidAt}}
-                  Paid
-                  {{format-date cell.row.paidAt zone="region"}}
-                {{else}}
-                  Paid
-                {{/if}}
-              </span>
-            {{else}}
-              <RowActions
-                @actions={{array
-                  (hash
-                    key="approve-btn"
-                    label="Approve commission"
-                    icon="check"
-                    variant="brand"
-                    onSelect=(fn this.approveCommission cell.row)
-                    hidden=(not (eq cell.row.status "PENDING"))
-                  )
-                  (hash
-                    key="pay-btn"
-                    label="Mark commission paid"
-                    icon="currency-dollar"
-                    variant="brand"
-                    onSelect=(fn this.payCommission cell.row)
-                    hidden=(not (eq cell.row.status "APPROVED"))
-                  )
-                  (hash
-                    key="cancel-commission"
-                    label="Cancel commission"
-                    icon="prohibit"
-                    onSelect=(fn this.openCancel cell.row)
-                    hidden=(not (or
+        @cellKey={{cell.key}}
+        @skip={{array "agentId" "id"}}
+      />
+      {{#if (eq cell.key "agentId")}}
+        {{#let (this.agentName cell.value) as |name|}}
+          {{#if name}}
+            <span data-test-commission-row>{{name}}</span>
+          {{else}}
+            <span data-test-commission-row>{{truncate-id cell.value}}</span>
+          {{/if}}
+        {{/let}}
+      {{else if (eq cell.key "leadId")}}
+        {{#if cell.row.leadId}}
+          <span>{{truncate-id cell.row.leadId}}</span>
+        {{else if cell.row.transactionId}}
+          <span>{{truncate-id cell.row.transactionId}}</span>
+        {{else}}
+          <Woven::Cell::Empty />
+        {{/if}}
+      {{else if (eq cell.key "commissionAmount")}}
+        <span><Money @amount={{cell.value}} @currency={{cell.row.currency}} />
+          /
+          <Money
+            @amount={{cell.row.grossAmount}}
+            @currency={{cell.row.currency}}
+          /></span>
+      {{else if (eq cell.key "commissionRate")}}
+        <span>{{cell.value}}%</span>
+      {{else if (eq cell.key "id")}}
+        <div class="table-stacked__actions">
+          {{#if (eq cell.row.status "PAID")}}
+            <span>
+              {{#if cell.row.paidAt}}
+                Paid
+                {{format-date cell.row.paidAt zone="region"}}
+              {{else}}
+                Paid
+              {{/if}}
+            </span>
+          {{else if (eq cell.row.status "CANCELLED")}}
+            <Woven::Cell::Empty />
+          {{else}}
+            <RowActions
+              @label="commission for {{or
+                (this.agentName cell.row.agentId)
+                'unknown agent'
+              }}"
+              @actions={{array
+                (hash
+                  key="approve-btn"
+                  label="Approve commission"
+                  icon="check"
+                  variant="brand"
+                  onSelect=(fn this.approveCommission cell.row)
+                  hidden=(not (eq cell.row.status "PENDING"))
+                )
+                (hash
+                  key="pay-btn"
+                  label="Mark commission paid"
+                  icon="currency-dollar"
+                  variant="brand"
+                  onSelect=(fn this.payCommission cell.row)
+                  hidden=(not (eq cell.row.status "APPROVED"))
+                )
+                (hash
+                  key="cancel-commission"
+                  label="Cancel commission"
+                  icon="prohibit"
+                  onSelect=(fn this.openCancel cell.row)
+                  hidden=(not
+                    (or
                       (eq cell.row.status "PENDING")
                       (eq cell.row.status "APPROVED")
-                    ))
+                    )
                   )
-                }}
-              />
-            {{/if}}
-          </div>
-        {{else if (has-value cell.value)}}
-          <span>{{cell.value}}</span>
-        {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      {{#if @model.total}}
-        <Woven::EmptyState
-          @description="No commissions on this page with current filters. Navigate to find commissions or adjust filters."
-        />
-      {{else}}
-        <Woven::EmptyState @description="No commissions found." />
+                )
+              }}
+            />
+          {{/if}}
+        </div>
       {{/if}}
-    {{/if}}
+    </Woven::DataTable>
+  </:body>
 
+  <:empty>
     {{#if @model.total}}
-      <Woven::Pagination
+      <Woven::EmptyState
+        @description="No commissions on this page with current filters. Navigate to find commissions or adjust filters."
+      />
+    {{else}}
+      <Woven::EmptyState @description="No commissions found." />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if @model.total}}
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -154,8 +148,8 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>
 
 <Commissions::CommissionDrawer
   @open={{this.showModal}}
@@ -175,7 +169,12 @@
   @onClose={{this.closeCancelModal}}
   @onConfirm={{this.confirmCancel}}
 >
-  <Woven::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+  <Woven::Field
+    class="mt-4"
+    @label="Reason"
+    @required={{true}}
+    @error={{this.reasonError}}
+  >
     <Woven::Textarea
       id="commission-cancel-reason"
       rows="2"

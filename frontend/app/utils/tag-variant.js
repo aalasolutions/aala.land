@@ -1,3 +1,6 @@
+import { HISTORY_ACTION_VARIANTS } from 'land/constants';
+import { ACCESS_STATUS_VARIANTS } from 'land/utils/access-requests';
+
 // Woven::Tag variant per domain value; keys are the lowercased enum value. `secondary` renders the kit gray.
 const TAG_VARIANTS = {
   // LEAD_STAGES
@@ -28,6 +31,7 @@ const TAG_VARIANTS = {
     pending: 'warning',
     approved: 'info',
     paid: 'success',
+    cancelled: 'secondary',
   },
   // PROPERTY_STATUS_OPTIONS
   unit: {
@@ -149,22 +153,21 @@ const TAG_VARIANTS = {
     marketing: 'danger',
     custom: 'secondary',
   },
-  // LEASE_TYPE_OPTIONS
+  // LEASE_TYPE_OPTIONS + LEASE_STATUS_OPTIONS
   lease: {
     residential: 'info',
     commercial: 'info',
+    draft: 'secondary',
     active: 'success',
     expired: 'secondary',
     terminated: 'danger',
     pending: 'warning',
+    renewed: 'info',
   },
-  // Subscription tiers
+  // TIER_LIMITS (utils/subscription-plans.js)
   plan: {
     free: 'secondary',
-    starter: 'info',
-    growth: 'success',
     pro: 'success',
-    scale: 'brand',
     enterprise: 'info',
   },
   // Stripe and Paddle spell it `canceled`; both spellings are listed.
@@ -195,6 +198,29 @@ const TAG_VARIANTS = {
     import: 'warning',
     export: 'brand',
   },
+  // ACCESS_STATUS_OPTIONS (utils/access-requests.js)
+  accessRequest: Object.fromEntries(
+    Object.entries(ACCESS_STATUS_VARIANTS).map(([status, variant]) => [
+      status.toLowerCase(),
+      variant,
+    ]),
+  ),
+  // ALL_ROLES plus super_admin.
+  role: {
+    super_admin: 'secondary',
+    company_admin: 'secondary',
+    admin: 'secondary',
+    manager: 'secondary',
+    agent: 'secondary',
+    accountant: 'secondary',
+  },
+  // HISTORY_ACTIONS
+  historyAction: Object.fromEntries(
+    Object.entries(HISTORY_ACTION_VARIANTS).map(([action, variant]) => [
+      action.toLowerCase(),
+      variant,
+    ]),
+  ),
   // Derived in `controllers/admin/companies/company.js`'s `statusView`.
   account: {
     locked: 'danger',

@@ -1,130 +1,126 @@
 {{page-title "Documents"}}
 
-<div data-test-documents class="flex col gap-6">
-  <Documents::Panel
-    @tableId="documents"
-    @filters={{this.panelFilters}}
-    @filtered={{this.hasActiveFilters}}
-    @page={{this.page}}
-    @pageSize={{this.limit}}
-    @onPageChange={{this.setPage}}
-    @onPageSizeChange={{this.setLimit}}
-  >
-    <:header as |panel|>
-      <Woven::PageHeader
-        @title="Documents"
-        @subtitle="Store and organise property paperwork."
+<Woven::ListPage
+  @title="Documents"
+  @subtitle="Store and organize property paperwork."
+  data-test-documents
+>
+  <:action>
+    {{#if this.panel.canUpload}}
+      <Woven::Button
+        @variant="brand"
+        data-test-upload-btn
+        @icon="upload-simple"
+        {{on "click" this.panel.openUpload}}
       >
-        <:meta>
-          <span>{{format-number
-              panel.total
-              unit="document"
-            }}</span>
-        </:meta>
-        <:actions>
-          {{#if panel.canUpload}}
-            <Woven::Button
-              @variant="brand"
-              data-test-upload-btn
-              @icon="upload-simple"
-              {{on "click" panel.openUpload}}
-            >
-              Upload Document
-            </Woven::Button>
-          {{/if}}
-        </:actions>
-      </Woven::PageHeader>
+        Upload Document
+      </Woven::Button>
+    {{/if}}
+  </:action>
 
-      <div class="flex x-center gap-3 wrap" data-test-documents-toolbar>
-        <FiltersButton @count={{this.activeFilterCount}}>
-          <div class="flex col gap-4">
-            <div class="flex gap-3 wrap">
-              <Woven::Input
-                type="text"
-                autocomplete="off"
-                placeholder="Search document name..."
-                class="grow"
-                value={{this.search}}
-                {{on "input" (fn this.updateFilter "search")}}
-                data-test-documents-search
-              />
-            </div>
+  <:toolbar>
+    <FiltersButton @count={{this.activeFilterCount}}>
+      <div class="flex col gap-4">
+        <div class="flex gap-3 wrap">
+          <Woven::Input
+            type="text"
+            autocomplete="off"
+            placeholder="Search document name..."
+            class="grow"
+            value={{this.search}}
+            {{on "input" (fn this.updateFilter "search")}}
+            data-test-documents-search
+          />
+        </div>
 
-            <div class="flex gap-3 wrap x-end">
-              <Woven::Field
-                class="grow"
-                @label="Related To"
-                @tooltip="Filter by the kind of record a file is linked to. Library only means no link."
-              >
-                <Woven::Dropdown
-                  id="document-related-filter"
-                  @align="start"
-                  @value={{this.related}}
-                  @onSelect={{this.setRelated}}
-                  @options={{this.relatedTypes}}
-                  data-test-related-filter
-                />
-              </Woven::Field>
-              <Woven::Field class="grow" @label="Category">
-                <Woven::Dropdown
-                  id="document-category-filter"
-                  @align="start"
-                  @value={{this.category}}
-                  @onSelect={{this.setCategory}}
-                  @options={{this.categories}}
-                  @placeholder="All Categories"
-                  data-test-category-filter
-                />
-              </Woven::Field>
-              <Woven::Field
-                class="grow"
-                @label="Access Level"
-                @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
-              >
-                <Woven::Dropdown
-                  id="document-access-filter"
-                  @align="start"
-                  @value={{this.accessLevel}}
-                  @onSelect={{this.setAccessLevelFilter}}
-                  @options={{this.accessLevelFilterOptions}}
-                  data-test-access-filter
-                />
-              </Woven::Field>
-              <Woven::Field @label="Uploaded from">
-                <Woven::Input
-                  type="date"
-                  aria-label="Uploaded from"
-                  @value={{this.dateFrom}}
-                  {{on "change" this.setDateFrom}}
-                  data-test-date-from-filter
-                />
-              </Woven::Field>
-              <Woven::Field @label="Uploaded to">
-                <Woven::Input
-                  type="date"
-                  aria-label="Uploaded to"
-                  @value={{this.dateTo}}
-                  {{on "change" this.setDateTo}}
-                  data-test-date-to-filter
-                />
-              </Woven::Field>
-            </div>
+        <div class="flex gap-3 wrap x-end">
+          <Woven::Field
+            class="grow"
+            @label="Related To"
+            @tooltip="Filter by the kind of record a file is linked to. Library only means no link."
+          >
+            <Woven::Dropdown
+              id="document-related-filter"
+              @align="start"
+              @value={{this.related}}
+              @onSelect={{this.setRelated}}
+              @options={{this.relatedTypes}}
+              data-test-related-filter
+            />
+          </Woven::Field>
+          <Woven::Field class="grow" @label="Category">
+            <Woven::Dropdown
+              id="document-category-filter"
+              @align="start"
+              @value={{this.category}}
+              @onSelect={{this.setCategory}}
+              @options={{this.categories}}
+              @placeholder="All Categories"
+              data-test-category-filter
+            />
+          </Woven::Field>
+          <Woven::Field
+            class="grow"
+            @label="Access Level"
+            @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
+          >
+            <Woven::Dropdown
+              id="document-access-filter"
+              @align="start"
+              @value={{this.accessLevel}}
+              @onSelect={{this.setAccessLevelFilter}}
+              @options={{this.accessLevelFilterOptions}}
+              data-test-access-filter
+            />
+          </Woven::Field>
+          <Woven::Field @label="Uploaded from">
+            <Woven::Input
+              type="date"
+              aria-label="Uploaded from"
+              @value={{this.dateFrom}}
+              {{on "change" this.setDateFrom}}
+              data-test-date-from-filter
+            />
+          </Woven::Field>
+          <Woven::Field @label="Uploaded to">
+            <Woven::Input
+              type="date"
+              aria-label="Uploaded to"
+              @value={{this.dateTo}}
+              {{on "change" this.setDateTo}}
+              data-test-date-to-filter
+            />
+          </Woven::Field>
+        </div>
 
-            <div class="flex end">
-              <Woven::Button
-                @variant="danger"
-                @size="sm"
-                @icon="x"
-                @disabled={{not this.hasActiveFilters}}
-                {{on "click" this.clearFilters}}
-                data-test-clear-filters
-              >
-                Clear filters
-              </Woven::Button>
-            </div>
-          </div>
-        </FiltersButton>
+        <div class="flex end">
+          <Woven::Button
+            @variant="danger"
+            @size="sm"
+            @icon="x"
+            @disabled={{not this.hasActiveFilters}}
+            {{on "click" this.clearFilters}}
+            data-test-clear-filters
+          >
+            Clear filters
+          </Woven::Button>
+        </div>
       </div>
-    </:header>
-  </Documents::Panel>
-</div>
+    </FiltersButton>
+  </:toolbar>
+
+  <:body as |page|>
+    <Documents::Panel
+      @tableId="documents"
+      @filters={{this.panelFilters}}
+      @filtered={{this.hasActiveFilters}}
+      @page={{this.page}}
+      @pageSize={{this.limit}}
+      @onPageChange={{this.setPage}}
+      @onPageSizeChange={{this.setLimit}}
+      @optionsTarget={{page.optionsTarget}}
+      @rangeOnly={{true}}
+      @onRegister={{this.registerPanel}}
+    />
+  </:body>
+</Woven::ListPage>

@@ -31,8 +31,11 @@
           <Woven::Icon @icon={{tab.icon}} aria-hidden="true" />
         {{/if}}
         <span>{{tab.label}}</span>
-        {{#if tab.count}}
-          <span class="wu-badge">{{tab.count}}</span>
+        {{#if tab.countLabel}}
+          <span
+            class="wu-badge"
+            data-test-wu-tabs-count={{tab.id}}
+          >{{tab.countLabel}}</span>
         {{/if}}
       </button>
     {{/each}}

@@ -1,20 +1,12 @@
 {{page-title "History"}}
 
-<div data-test-history-page class="flex col gap-4">
-  <Woven::PageHeader
-    @title="History"
-    @subtitle="Deletes, archives, cancellations and other lifecycle actions"
-  >
-    <:meta>
-      <span>{{format-number
-          this.model.total
-          unit="entry"
-          plural="entries"
-        }}</span>
-    </:meta>
-  </Woven::PageHeader>
-
-  <div class="flex x-center gap-3 wrap" data-test-history-toolbar>
+<Woven::ListPage
+  @title="History"
+  @subtitle="Deletes, archives, cancellations and other lifecycle actions"
+  @isEmpty={{not this.rows.length}}
+  data-test-history-page
+>
+  <:toolbar>
     <FiltersButton @count={{this.activeFilterCount}}>
       <div class="flex col gap-4">
         <div class="flex gap-3 wrap x-end">
@@ -57,9 +49,24 @@
         </div>
       </div>
     </FiltersButton>
-  </div>
+  </:toolbar>
 
-  <div class="flex col gap-3">
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{this.rows}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="history"
+      class="table-stacked"
+      data-test-history-table
+    />
+  </:body>
+
+  <:empty>
     {{#if this.model.forbidden}}
       <Woven::Alert @variant="danger" data-test-history-forbidden>
         You don't have permission to view history.
@@ -70,55 +77,14 @@
         @description={{this.model.error}}
         data-test-history-error
       />
-    {{else if this.rows.length}}
-      <Woven::DataTable
-        @columns={{this.columns}}
-        @rows={{this.rows}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="history"
-        class="table-stacked"
-        data-test-history-table
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "createdAt"}}
-        />
-        {{#if (eq cell.key "createdAt")}}
-          <span
-            class="text-sm text-muted"
-            data-test-history-row={{cell.row.id}}
-          >{{format-date-time cell.value region=cell.row.regionCode}}</span>
-        {{else if (eq cell.key "actionLabel")}}
-          <Woven::Tag
-            @variant={{cell.row.actionVariant}}
-            @text={{cell.value}}
-            data-test-history-action
-          />
-        {{else if (eq cell.key "entityTypeLabel")}}
-          <span class="text-sm">{{cell.value}}</span>
-        {{else if (eq cell.key "entityTitle")}}
-          <span>{{cell.value}}</span>
-        {{else if (eq cell.key "contextTitle")}}
-          <span
-            class="text-sm text-muted"
-            data-empty={{unless cell.value true}}
-          >{{if cell.value cell.value "-"}}</span>
-        {{else if (eq cell.key "reason")}}
-          <span
-            class="text-sm"
-            data-empty={{unless cell.value true}}
-          >{{if cell.value cell.value "-"}}</span>
-        {{else}}
-          <span class="text-sm text-muted">{{cell.value}}</span>
-        {{/if}}
-      </Woven::DataTable>
+    {{else}}
+      <Woven::EmptyState @title="No history found" data-test-history-empty />
+    {{/if}}
+  </:empty>
 
-      <Woven::Pagination
+  <:footer as |page|>
+    {{#if this.model.total}}
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{this.model.total}}
@@ -128,8 +94,6 @@
         @onNext={{this.goToNextPage}}
         data-test-history-pagination
       />
-    {{else}}
-      <Woven::EmptyState @title="No history found" data-test-history-empty />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>

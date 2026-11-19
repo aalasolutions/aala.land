@@ -428,6 +428,16 @@ module('Integration | Component | woven/dropdown', function (hooks) {
     assert.dom('[data-test-wu-dropdown-trigger]').doesNotHaveAttribute('title');
   });
 
+  test('@ariaLabel names the trigger button, not the wrapper', async function (assert) {
+    await render(
+      hbs`<Woven::Dropdown @options={{this.options}} @ariaLabel="Status" />`,
+    );
+    assert
+      .dom('[data-test-wu-dropdown-trigger]')
+      .hasAttribute('aria-label', 'Status');
+    assert.dom('[data-test-wu-dropdown]').doesNotHaveAttribute('aria-label');
+  });
+
   test('an empty-valued "All" option sets no trigger title', async function (assert) {
     this.allOptions = [{ value: '', label: 'All Statuses' }, ...OPTIONS];
     await render(

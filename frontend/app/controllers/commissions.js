@@ -2,6 +2,8 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import CellLabel from 'land/components/cell/label';
+import CellStatus from 'land/components/cell/status';
 import { FILTER_STATUS_OPTIONS } from 'land/constants';
 
 export default class CommissionsController extends PaginatedController {
@@ -21,9 +23,21 @@ export default class CommissionsController extends PaginatedController {
   filterStatusOptions = FILTER_STATUS_OPTIONS;
 
   columns = [
-    { name: 'Agent', valuePath: 'agentId', width: 200, isFixed: 'left' },
+    {
+      name: 'Agent',
+      valuePath: 'agentId',
+      width: 200,
+      isFixed: 'left',
+      stackedLabel: false,
+    },
     { name: 'Deal ID', valuePath: 'leadId', width: 180 },
-    { name: 'Type', valuePath: 'type', width: 140 },
+    {
+      name: 'Type',
+      valuePath: 'type',
+      width: 140,
+      cell: CellLabel,
+      cellArgs: { domain: 'commtype' },
+    },
     {
       name: 'Amount',
       valuePath: 'commissionAmount',
@@ -31,13 +45,20 @@ export default class CommissionsController extends PaginatedController {
       numeric: true,
     },
     { name: 'Rate', valuePath: 'commissionRate', width: 120, numeric: true },
-    { name: 'Status', valuePath: 'status', width: 140 },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'commission' },
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 

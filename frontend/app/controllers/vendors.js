@@ -2,6 +2,8 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellMoney from 'land/components/cell/money';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -22,12 +24,26 @@ export default class VendorsController extends PaginatedController {
   @tracked isDeleting = false;
 
   columns = [
-    { name: 'Name', valuePath: 'name', width: 220, isFixed: 'left' },
+    {
+      name: 'Name',
+      valuePath: 'name',
+      width: 220,
+      isFixed: 'left',
+      cell: CellText,
+      stackedLabel: false,
+    },
     { name: 'Specialty', valuePath: 'specialties', width: 220 },
-    { name: 'Phone', valuePath: 'phone', width: 170 },
-    { name: 'Email', valuePath: 'email', width: 240 },
-    { name: 'Company', valuePath: 'companyName', width: 200 },
-    { name: 'Rate/hr', valuePath: 'hourlyRate', width: 140, numeric: true },
+    { name: 'Phone', valuePath: 'phone', width: 170, cell: CellText },
+    { name: 'Email', valuePath: 'email', width: 240, cell: CellText },
+    { name: 'Company', valuePath: 'companyName', width: 200, cell: CellText },
+    {
+      name: 'Rate/hr',
+      valuePath: 'hourlyRate',
+      width: 140,
+      numeric: true,
+      cell: CellMoney,
+      cellArgs: { currencyPath: 'currency' },
+    },
     { name: 'Rating', valuePath: 'rating', width: 120, numeric: true },
     {
       name: 'Actions',
@@ -35,6 +51,7 @@ export default class VendorsController extends PaginatedController {
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 

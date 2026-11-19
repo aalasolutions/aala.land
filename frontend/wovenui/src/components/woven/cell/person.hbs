@@ -1,0 +1,15 @@
+{{#if this.name}}
+  <span
+    class="flex x-center gap-2 whitespace-nowrap text-regular"
+    data-test-wu-cell-person
+  >
+    <Woven::Avatar @size="xs" @initials={{this.initials}} />
+    <span
+      class="overflow-label"
+      title={{this.name}}
+      data-test-wu-cell-person-name
+    >{{this.name}}</span>
+  </span>
+{{else}}
+  <Woven::Cell::Empty />
+{{/if}}

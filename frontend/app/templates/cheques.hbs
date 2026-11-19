@@ -1,222 +1,186 @@
 {{page-title "Cheques Received"}}
 
-<div data-test-cheques-page class="flex col gap-4">
-  <Woven::PageHeader
-    @title="Cheques Received"
-    @subtitle="Track incoming post-dated cheques and their collection schedule."
-  >
-    <:meta>
-      <p class="text-muted">{{format-number
-          @model.total
-          unit="cheque record"
-        }}</p>
-    </:meta>
-    <:actions>
-      {{#if this.canWriteCheques}}
-        <Woven::Button
-          @variant="brand"
-          data-test-new-cheque
-          @icon="plus"
-          {{on "click" this.openCreate}}
-        >
-          New Cheque
-        </Woven::Button>
-      {{/if}}
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Cheques Received"
+  @subtitle="Track incoming post-dated cheques and their collection schedule."
+  @isEmpty={{and (not this.isScheduleTab) (not @model.cheques.length)}}
+  data-test-cheques-page
+>
+  <:action>
+    {{#if this.canWriteCheques}}
+      <Woven::Button
+        @variant="brand"
+        data-test-new-cheque
+        @icon="plus"
+        {{on "click" this.openCreate}}
+      >
+        New Cheque
+      </Woven::Button>
+    {{/if}}
+  </:action>
 
-  <Woven::Segmented
-    @options={{this.tabs}}
-    @value={{this.activeTab}}
-    @onChange={{this.setTab}}
-  />
+  <:switcher>
+    <Woven::Tabs
+      @tabs={{this.tabs}}
+      @activeTab={{this.activeTab}}
+      @onChange={{this.setTab}}
+      data-test-cheques-tabs
+    />
+  </:switcher>
 
-  {{#if (eq this.activeTab "cheques")}}
-    <div class="flex col gap-3">
-      {{#if @model.cheques.length}}
-        <Woven::DataTable
-          @columns={{this.columns}}
-          @rows={{@model.cheques}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="cheques"
-          class="table-stacked"
-          data-test-cheques-table
-          as |cell|
-        >
-          <DataTable::StackedLabel
-            @columns={{this.columns}}
-            @cellKey={{cell.key}}
-            @skip={{array "chequeNumber" "id"}}
-          />
-          {{#if (eq cell.key "chequeNumber")}}
-            <span data-test-cheque-row>{{cell.value}}</span>
-          {{else if (eq cell.key "unit.unitNumber")}}
-            <span data-test-cheque-unit>
-              {{#if cell.row.unit}}
-                {{cell.row.unit.unitNumber}}
-              {{else}}
-                <span class="text-muted">No Unit</span>
-              {{/if}}
-            </span>
-          {{else if (eq cell.key "amount")}}
-            <span><Money
-                @amount={{cell.value}}
-                @currency={{cell.row.currency}}
-              /></span>
-          {{else if (eq cell.key "dueDate")}}
-            <span>{{format-date cell.value}}</span>
-          {{else if (eq cell.key "type")}}
-            <Woven::Tag
-              @variant={{tag-variant "cheque" cell.value}}
-              @text={{cell.value}}
+  <:body as |page|>
+    {{#if this.isScheduleTab}}
+      <Cheques::CollectionSchedule @groups={{@model.collectionSchedule}} />
+    {{else}}
+      <Woven::DataTable
+        @columns={{this.columns}}
+        @rows={{@model.cheques}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @optionsTarget={{page.optionsTarget}}
+        @tableId="cheques"
+        class="table-stacked"
+        data-test-cheques-table
+        as |cell|
+      >
+        {{#if (eq cell.key "id")}}
+          <div class="table-stacked__actions">
+            <RowActions
+              @label="cheque {{cell.row.chequeNumber}}"
+              @actions={{array
+                (hash
+                  key="edit-cheque"
+                  label="Edit"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openEdit cell.row)
+                  hidden=(not this.canWriteCheques)
+                )
+                (hash
+                  key="deposit-cheque"
+                  label="Deposit"
+                  icon="bank"
+                  onSelect=(fn this.updateStatus cell.row "DEPOSITED")
+                  hidden=(not
+                    (and this.canWriteCheques (eq cell.row.status "PENDING"))
+                  )
+                )
+                (hash
+                  key="clear-cheque"
+                  label="Clear"
+                  icon="check-circle"
+                  onSelect=(fn this.openClear cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                      )
+                    )
+                  )
+                )
+                (hash
+                  key="bounce"
+                  label="Bounce"
+                  icon="x-circle"
+                  variant="danger"
+                  onSelect=(fn this.openBounceModal cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                      )
+                    )
+                  )
+                )
+                (hash
+                  key="replace-cheque"
+                  label="Replace"
+                  icon="arrows-clockwise"
+                  onSelect=(fn this.updateStatus cell.row "REPLACED")
+                  hidden=(not
+                    (and this.canWriteCheques (eq cell.row.status "BOUNCED"))
+                  )
+                )
+                (hash
+                  key="unclear-cheque"
+                  label="Un-clear"
+                  icon="arrow-counter-clockwise"
+                  onSelect=(fn this.openUnclear cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      this.canDeleteCheque
+                      (eq cell.row.status "CLEARED")
+                    )
+                  )
+                )
+                (hash
+                  key="cancel-cheque"
+                  label="Cancel cheque"
+                  icon="prohibit"
+                  onSelect=(fn this.openCancel cell.row)
+                  hidden=(not
+                    (and
+                      this.canWriteCheques
+                      (or
+                        (eq cell.row.status "PENDING")
+                        (eq cell.row.status "DEPOSITED")
+                        (eq cell.row.status "BOUNCED")
+                      )
+                    )
+                  )
+                )
+                (hash
+                  key="delete-cheque"
+                  label="Delete"
+                  icon="trash"
+                  variant="danger"
+                  onSelect=(fn this.openDelete cell.row)
+                  hidden=(not
+                    (and
+                      this.canDeleteCheque (not (eq cell.row.status "CLEARED"))
+                    )
+                  )
+                )
+              }}
             />
-          {{else if (eq cell.key "status")}}
-            <Woven::Tag
-              @variant={{tag-variant "chequestate" cell.value}}
-              @text={{cell.value}}
-            />
-          {{else if (eq cell.key "id")}}
-            <div class="table-stacked__actions">
-              <RowActions
-                @label="cheque {{cell.row.chequeNumber}}"
-                @actions={{array
-                  (hash
-                    key="edit-cheque"
-                    label="Edit"
-                    icon="pencil-simple"
-                    onSelect=(fn this.openEdit cell.row)
-                    hidden=(not this.canWriteCheques)
-                  )
-                  (hash
-                    key="deposit-cheque"
-                    label="Deposit"
-                    icon="bank"
-                    onSelect=(fn this.updateStatus cell.row "DEPOSITED")
-                    hidden=(not
-                      (and this.canWriteCheques (eq cell.row.status "PENDING"))
-                    )
-                  )
-                  (hash
-                    key="clear-cheque"
-                    label="Clear"
-                    icon="check-circle"
-                    onSelect=(fn this.openClear cell.row)
-                    hidden=(not
-                      (and
-                        this.canWriteCheques
-                        (or
-                          (eq cell.row.status "PENDING")
-                          (eq cell.row.status "DEPOSITED")
-                        )
-                      )
-                    )
-                  )
-                  (hash
-                    key="bounce"
-                    label="Bounce"
-                    icon="x-circle"
-                    variant="danger"
-                    onSelect=(fn this.openBounceModal cell.row)
-                    hidden=(not
-                      (and
-                        this.canWriteCheques
-                        (or
-                          (eq cell.row.status "PENDING")
-                          (eq cell.row.status "DEPOSITED")
-                        )
-                      )
-                    )
-                  )
-                  (hash
-                    key="replace-cheque"
-                    label="Replace"
-                    icon="arrows-clockwise"
-                    onSelect=(fn this.updateStatus cell.row "REPLACED")
-                    hidden=(not
-                      (and this.canWriteCheques (eq cell.row.status "BOUNCED"))
-                    )
-                  )
-                  (hash
-                    key="unclear-cheque"
-                    label="Un-clear"
-                    icon="arrow-counter-clockwise"
-                    onSelect=(fn this.openUnclear cell.row)
-                    hidden=(not
-                      (and
-                        this.canWriteCheques
-                        this.canDeleteCheque
-                        (eq cell.row.status "CLEARED")
-                      )
-                    )
-                  )
-                  (hash
-                    key="cancel-cheque"
-                    label="Cancel cheque"
-                    icon="prohibit"
-                    onSelect=(fn this.openCancel cell.row)
-                    hidden=(not
-                      (and
-                        this.canWriteCheques
-                        (or
-                          (eq cell.row.status "PENDING")
-                          (eq cell.row.status "DEPOSITED")
-                          (eq cell.row.status "BOUNCED")
-                        )
-                      )
-                    )
-                  )
-                  (hash
-                    key="delete-cheque"
-                    label="Delete"
-                    icon="trash"
-                    variant="danger"
-                    onSelect=(fn this.openDelete cell.row)
-                    hidden=(not
-                      (and
-                        this.canDeleteCheque (not (eq cell.row.status "CLEARED"))
-                      )
-                    )
-                  )
-                }}
-              />
-            </div>
-          {{else if (has-value cell.value)}}
-            <span>{{cell.value}}</span>
-          {{/if}}
-        </Woven::DataTable>
-      {{else}}
-        {{#if @model.total}}
-          <Woven::EmptyState
-            @description="No cheques on this page. Navigate to find cheques or adjust filters."
-          />
-        {{else}}
-          <Woven::EmptyState
-            @description="No cheques yet. Add your first cheque record."
-          />
+          </div>
         {{/if}}
-      {{/if}}
+      </Woven::DataTable>
+    {{/if}}
+  </:body>
 
-      {{#if @model.total}}
-        <Woven::Pagination
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{/if}}
-    </div>
-  {{/if}}
+  <:empty>
+    {{#if @model.total}}
+      <Woven::EmptyState
+        @description="No cheques on this page. Navigate to find cheques or adjust filters."
+      />
+    {{else}}
+      <Woven::EmptyState
+        @description="No cheques yet. Add your first cheque record."
+      />
+    {{/if}}
+  </:empty>
 
-  {{#if (eq this.activeTab "schedule")}}
-    <Cheques::CollectionSchedule @groups={{@model.collectionSchedule}} />
-  {{/if}}
-</div>
+  <:footer as |page|>
+    {{#if (and (not this.isScheduleTab) @model.total)}}
+      <page.Pager
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </:footer>
+</Woven::ListPage>
 
 <Cheques::ChequeDrawer
   @open={{this.showModal}}

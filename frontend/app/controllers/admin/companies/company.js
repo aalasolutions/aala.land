@@ -621,7 +621,7 @@ export default class AdminCompaniesCompanyController extends Controller {
             ? `${this.formatDate(h.periodStart)} – ${this.formatDate(
                 h.periodEnd,
               )}`
-            : '—',
+            : '-',
         notes: null,
         paid: h.type === 'payment_succeeded',
         hasReceipt: false,

@@ -12,6 +12,10 @@ import {
   todayInZone,
 } from 'land/utils/local-date';
 import { dueStatus } from 'land/utils/due-status';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellLabel from 'land/components/cell/label';
+import CellStatus from 'land/components/cell/status';
+import CellDate from 'land/components/cell/date';
 
 const QUEUE_LIMIT = 8;
 
@@ -42,18 +46,44 @@ export default class FinancialsController extends PaginatedController {
       valuePath: 'description',
       width: 260,
       isFixed: 'left',
+      cell: CellText,
+      stackedLabel: false,
     },
-    { name: 'Category', valuePath: 'category', width: 160 },
-    { name: 'Payment', valuePath: 'paymentMethod', width: 160 },
+    {
+      name: 'Category',
+      valuePath: 'category',
+      width: 160,
+      cell: CellLabel,
+      cellArgs: { domain: 'txncat' },
+    },
+    {
+      name: 'Payment',
+      valuePath: 'paymentMethod',
+      width: 160,
+      cell: CellLabel,
+      cellArgs: { domain: 'payment' },
+    },
     { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Status', valuePath: 'status', width: 140 },
-    { name: 'Date', valuePath: 'transactionDate', width: 140 },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'txn' },
+    },
+    {
+      name: 'Date',
+      valuePath: 'transactionDate',
+      width: 140,
+      cell: CellDate,
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 90,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 

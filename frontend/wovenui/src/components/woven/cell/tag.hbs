@@ -1,0 +1,12 @@
+{{#let
+  (or @label @value) (or @variant @column.cellArgs.variant)
+  as |label variant|
+}}
+  {{#if (or (eq label null) (eq label undefined) (eq label ""))}}
+    <Woven::Cell::Empty />
+  {{else}}
+    <Woven::Tag @variant={{variant}} class="max-w-full" data-test-wu-cell-tag>
+      <span class="overflow-label" title={{label}}>{{label}}</span>
+    </Woven::Tag>
+  {{/if}}
+{{/let}}

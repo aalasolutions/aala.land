@@ -2,6 +2,7 @@
   class="flex col gap-4"
   data-test-documents-panel
   {{this.reloadOn this.filtersKey this.page this.pageSize}}
+  {{this.registerWithHost}}
 >
   {{#if (has-block "header")}}
     {{yield
@@ -13,7 +14,7 @@
       )
       to="header"
     }}
-  {{else}}
+  {{else if (not @onRegister)}}
     <div class="flex between x-center gap-3">
       <p class="text-sm text-muted" data-test-documents-count>
         {{format-number this.total unit="document"}}
@@ -58,6 +59,7 @@
         @sortable={{true}}
         @showOptions={{true}}
         @tableId={{this.tableId}}
+        @optionsTarget={{@optionsTarget}}
         as |cell|
       >
         <DataTable::StackedLabel
@@ -77,16 +79,6 @@
               />
             {{/if}}
           </div>
-        {{else if (eq cell.key "category")}}
-          <Woven::Tag
-            @variant={{tag-variant "doc" cell.value}}
-            @text={{this.categoryLabel cell.value}}
-          />
-        {{else if (eq cell.key "accessLevel")}}
-          <Woven::Tag
-            @variant={{tag-variant "access" cell.value}}
-            @text={{cell.value}}
-          />
         {{else if (eq cell.key "unit.assetName")}}
           <span class="text-sm" data-test-document-property>
             {{#if cell.row.unit}}
@@ -126,29 +118,21 @@
                 >{{cell.row.relatedLabel}}</span>
               {{/if}}
             {{else}}
-              <span
-                class="text-sm text-muted"
-                data-test-document-related-none
-              >Library only</span>
+              <span class="text-sm" data-test-document-related-none>Library only</span>
             {{/if}}
           </div>
         {{else if (eq cell.key "fileSize")}}
-          <span class="text-sm text-muted">{{format-bytes cell.value}}</span>
+          <span class="text-sm">{{format-bytes cell.value}}</span>
         {{else if (eq cell.key "uploadedByName")}}
-          <span class="text-sm text-muted" data-test-document-uploader>
+          <span class="text-sm" data-test-document-uploader>
             {{#if (eq cell.row.uploadedBy this.currentUserId)}}
-              ME
+              Me
             {{else if (has-value cell.value)}}
               {{cell.value}}
             {{else}}
               <span data-empty>-</span>
             {{/if}}
           </span>
-        {{else if (eq cell.key "createdAt")}}
-          <span class="text-sm text-muted">{{format-date
-              cell.value
-              zone="region"
-            }}</span>
         {{else if (eq cell.key "id")}}
           <div class="table-stacked__actions">
             <RowActions
@@ -210,6 +194,7 @@
       @total={{this.total}}
       @onLimitChange={{@onPageSizeChange}}
       @onPageChange={{this.goToPage}}
+      @rangeOnly={{@rangeOnly}}
       data-test-documents-pagination
     />
   {{/if}}

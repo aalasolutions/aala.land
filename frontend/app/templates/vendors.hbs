@@ -1,94 +1,100 @@
 {{page-title "Vendors"}}
 
-<div data-test-vendors-page class="flex col gap-6">
-  <Woven::PageHeader @title="Vendors" @subtitle="Manage service providers and contractors.">
-    <:actions>
-      <Woven::Button
-        data-test-new-vendor
-        @variant="brand"
-        @icon="plus"
-        {{on "click" this.openCreate}}
-      >
-        New Vendor
-      </Woven::Button>
-    </:actions>
-  </Woven::PageHeader>
+<Woven::ListPage
+  @title="Vendors"
+  @subtitle="Manage service providers and contractors."
+  @isEmpty={{not @model.vendors.length}}
+  data-test-vendors-page
+>
+  <:action>
+    <Woven::Button
+      data-test-new-vendor
+      @variant="brand"
+      @icon="plus"
+      {{on "click" this.openCreate}}
+    >
+      New Vendor
+    </Woven::Button>
+  </:action>
 
-  <div class="flex col gap-3">
-    {{#if @model.vendors.length}}
-      <Woven::DataTable
+  <:body as |page|>
+    <Woven::DataTable
+      @columns={{this.columns}}
+      @rows={{@model.vendors}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @sortable={{true}}
+      @showOptions={{true}}
+      @optionsTarget={{page.optionsTarget}}
+      @tableId="vendors"
+      class="table-stacked"
+      data-test-vendors-table
+      as |cell|
+    >
+      <DataTable::StackedLabel
         @columns={{this.columns}}
-        @rows={{@model.vendors}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="vendors"
-        class="table-stacked"
-        as |cell|
-      >
-        <DataTable::StackedLabel
-          @columns={{this.columns}}
-          @cellKey={{cell.key}}
-          @skip={{array "name" "id"}}
-        />
-        {{#if (eq cell.key "name")}}
-          <span data-test-vendor-row>{{cell.value}}</span>
-        {{else if (eq cell.key "specialties")}}
-          {{#if cell.value.length}}
-            <div class="flex gap-2 wrap">
-              {{#each cell.value as |sp|}}
-                <Woven::Tag @variant={{tag-variant "trade" sp}} @text={{sp}} />
-              {{/each}}
-            </div>
-          {{/if}}
-        {{else if (eq cell.key "hourlyRate")}}
-          {{#if (has-value cell.value)}}
-            <Money @amount={{cell.value}} @currency={{cell.row.currency}} />
-          {{/if}}
-        {{else if (eq cell.key "rating")}}
-          {{#if cell.value}}
-            <span>{{cell.value}} / 5</span>
-          {{/if}}
-        {{else if (eq cell.key "id")}}
-          <div class="table-stacked__actions">
-            <RowActions
-              @label={{cell.row.name}}
-              @actions={{array
-                (hash
-                  key="edit-vendor"
-                  label="Edit"
-                  icon="pencil-simple"
-                  onSelect=(fn this.openEdit cell.row)
-                )
-                (hash
-                  key="delete-vendor"
-                  label="Delete"
-                  icon="trash"
-                  variant="danger"
-                  onSelect=(fn this.openDelete cell.row)
-                )
-              }}
-            />
+        @cellKey={{cell.key}}
+        @skip={{array "id"}}
+      />
+      {{#if (eq cell.key "specialties")}}
+        {{#if cell.value.length}}
+          <div class="flex gap-2 wrap">
+            {{#each cell.value as |sp|}}
+              <Woven::Tag
+                @variant={{tag-variant "trade" sp}}
+                @text={{tag-label "trade" sp}}
+              />
+            {{/each}}
           </div>
         {{else}}
-          {{#if (has-value cell.value)}}<span>{{cell.value}}</span>{{/if}}
+          <Woven::Cell::Empty />
         {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      {{#if @model.total}}
-        <Woven::EmptyState
-          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
-        />
-      {{else}}
-        <Woven::EmptyState
-          @description="No vendors yet. Add your first vendor above."
-        />
+      {{else if (eq cell.key "rating")}}
+        {{#if cell.value}}
+          <span>{{cell.value}} / 5</span>
+        {{else}}
+          <Woven::Cell::Empty />
+        {{/if}}
+      {{else if (eq cell.key "id")}}
+        <div class="table-stacked__actions">
+          <RowActions
+            @label={{cell.row.name}}
+            @actions={{array
+              (hash
+                key="edit-vendor"
+                label="Edit"
+                icon="pencil-simple"
+                onSelect=(fn this.openEdit cell.row)
+              )
+              (hash
+                key="delete-vendor"
+                label="Delete"
+                icon="trash"
+                variant="danger"
+                onSelect=(fn this.openDelete cell.row)
+              )
+            }}
+          />
+        </div>
       {{/if}}
-    {{/if}}
+    </Woven::DataTable>
+  </:body>
 
+  <:empty>
     {{#if @model.total}}
-      <Woven::Pagination
+      <Woven::EmptyState
+        @description="No vendors on page {{this.page}}. Navigate back to find vendors."
+      />
+    {{else}}
+      <Woven::EmptyState
+        @description="No vendors yet. Add your first vendor above."
+      />
+    {{/if}}
+  </:empty>
+
+  <:footer as |page|>
+    {{#if @model.total}}
+      <page.Pager
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{@model.total}}
@@ -98,8 +104,8 @@
         @onPageChange={{this.goToPage}}
       />
     {{/if}}
-  </div>
-</div>
+  </:footer>
+</Woven::ListPage>
 
 <Vendors::VendorDrawer
   @open={{this.showModal}}

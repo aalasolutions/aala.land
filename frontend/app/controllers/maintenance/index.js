@@ -9,6 +9,9 @@ import {
   confirmDeleteModal,
 } from '../../utils/delete-modal';
 import { MAINTENANCE_STATUS_OPTIONS, MONTH_OPTIONS } from 'land/constants';
+import CellStatus from 'land/components/cell/status';
+import CellMoney from 'land/components/cell/money';
+import CellDate from 'land/components/cell/date';
 
 export default class MaintenanceController extends PaginatedController {
   @service auth;
@@ -32,29 +35,64 @@ export default class MaintenanceController extends PaginatedController {
   statusOptions = MAINTENANCE_STATUS_OPTIONS;
 
   columns = [
-    { name: 'Title', valuePath: 'title', width: 250, isFixed: 'left' },
+    {
+      name: 'Title',
+      valuePath: 'title',
+      width: 250,
+      isFixed: 'left',
+      stackedLabel: false,
+    },
     { name: 'Property', valuePath: 'assetName', width: 220 },
-    { name: 'Category', valuePath: 'category', width: 140 },
-    { name: 'Priority', valuePath: 'priority', width: 120 },
+    {
+      name: 'Category',
+      valuePath: 'category',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'trade' },
+    },
+    {
+      name: 'Priority',
+      valuePath: 'priority',
+      width: 120,
+      cell: CellStatus,
+      cellArgs: { domain: 'priority' },
+    },
     {
       name: 'Est. Cost',
       valuePath: 'estimatedCost',
       width: 140,
       numeric: true,
+      cell: CellMoney,
+      cellArgs: { currencyPath: 'currency' },
     },
-    { name: 'Actual Cost', valuePath: 'actualCost', width: 140, numeric: true },
+    {
+      name: 'Actual Cost',
+      valuePath: 'actualCost',
+      width: 140,
+      numeric: true,
+      cell: CellMoney,
+      cellArgs: { currencyPath: 'currency' },
+    },
     {
       name: 'Scheduled',
       valuePath: 'scheduledDate',
       width: 140,
+      cell: CellDate,
     },
-    { name: 'Status', valuePath: 'status', width: 140 },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'wo' },
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 
@@ -76,6 +114,22 @@ export default class MaintenanceController extends PaginatedController {
   }
 
   monthOptions = MONTH_OPTIONS;
+
+  get isOrdersSection() {
+    return this.activeSection === 'orders';
+  }
+
+  get activeCount() {
+    return this.isOrdersSection
+      ? this.model?.total
+      : (this.model?.upcoming?.length ?? 0);
+  }
+
+  get isFiltered() {
+    return (
+      this.isOrdersSection && Boolean(this.filterStatus || this.filterMonth)
+    );
+  }
 
   get filteredWorkOrders() {
     return this.model?.workOrders || [];

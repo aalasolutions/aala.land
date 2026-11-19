@@ -9,6 +9,8 @@ import { validPage } from 'land/utils/page-number';
 import { ROLES, isAdminRole } from 'land/utils/roles';
 import { contactName } from 'land/utils/contact-display';
 import { closeDeleteModal, openDeleteModal } from 'land/utils/delete-modal';
+import CellStatus from 'land/components/cell/status';
+import CellDate from 'land/components/cell/date';
 import {
   ACCESS_LEVELS,
   CATEGORIES,
@@ -41,13 +43,25 @@ const EDIT_ROLES = [
 
 const COLUMNS = [
   { name: 'Name', valuePath: 'name', width: 250, isFixed: 'left' },
-  { name: 'Category', valuePath: 'category', width: 140 },
-  { name: 'Access', valuePath: 'accessLevel', width: 120 },
+  {
+    name: 'Category',
+    valuePath: 'category',
+    width: 140,
+    cell: CellStatus,
+    cellArgs: { domain: 'doc' },
+  },
+  {
+    name: 'Access',
+    valuePath: 'accessLevel',
+    width: 120,
+    cell: CellStatus,
+    cellArgs: { domain: 'access' },
+  },
   { name: 'Property', valuePath: 'unit.assetName', width: 220 },
   { name: 'Related', valuePath: 'link.label', width: 260 },
   { name: 'Size', valuePath: 'fileSize', width: 120, numeric: true },
   { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
-  { name: 'Uploaded', valuePath: 'createdAt', width: 140 },
+  { name: 'Uploaded', valuePath: 'createdAt', width: 140, cell: CellDate },
   {
     name: 'Actions',
     valuePath: 'id',
@@ -204,8 +218,6 @@ export default class DocumentsPanelComponent extends Component {
     this.canEdit &&
     (isAdminRole(this.role) || doc?.uploadedBy === this.currentUserId);
 
-  categoryLabel = (value) => optionLabelFor(CATEGORIES, value);
-
   get canDelete() {
     return isAdminRole(this.role);
   }
@@ -337,6 +349,23 @@ export default class DocumentsPanelComponent extends Component {
     if (next) patch[LINK_FIELDS[next.type]] = next.id;
     return patch;
   }
+
+  // A list page that renders the count and upload action itself gets this panel's state through @onRegister.
+  registerWithHost = modifier(() => {
+    const register = this.args.onRegister;
+    if (!register) return;
+    const panel = this;
+    register({
+      get total() {
+        return panel.total;
+      },
+      get canUpload() {
+        return panel.canUpload;
+      },
+      openUpload: this.openUpload,
+    });
+    return () => register(null);
+  });
 
   reloadOn = modifier((element, [filtersKey, page, pageSize]) => {
     if (

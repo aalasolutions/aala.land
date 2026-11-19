@@ -2,6 +2,8 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellStatus from 'land/components/cell/status';
 import { toSeatInfo } from '../utils/seat-info';
 
 export default class TeamController extends PaginatedController {
@@ -52,20 +54,50 @@ export default class TeamController extends PaginatedController {
   // The Company column only exists for super admins.
   get columns() {
     return [
-      { name: 'Name', valuePath: 'name', width: 200, isFixed: 'left' },
-      { name: 'Email', valuePath: 'email', width: 240 },
-      { name: 'Role', valuePath: 'role', width: 160 },
+      {
+        name: 'Name',
+        valuePath: 'name',
+        width: 200,
+        isFixed: 'left',
+        cell: CellText,
+        stackedLabel: false,
+      },
+      { name: 'Email', valuePath: 'email', width: 240, cell: CellText },
+      {
+        name: 'Role',
+        valuePath: 'role',
+        width: 160,
+        cell: CellStatus,
+        cellArgs: { domain: 'role' },
+      },
       { name: 'Regions', valuePath: 'regionCodes', width: 160 },
       ...(this.isSuperAdmin
-        ? [{ name: 'Company', valuePath: 'company.name', width: 200 }]
+        ? [
+            {
+              name: 'Company',
+              valuePath: 'company.name',
+              width: 200,
+              cell: CellText,
+            },
+          ]
         : []),
-      { name: 'Status', valuePath: 'isActive', width: 120 },
+      {
+        name: 'Status',
+        valuePath: 'isActive',
+        width: 120,
+        cell: CellStatus,
+        cellArgs: {
+          domain: 'enabled',
+          valueMap: { true: 'active', false: 'inactive' },
+        },
+      },
       {
         name: 'Actions',
         valuePath: 'id',
         width: 100,
         isSortable: false,
         isResizable: false,
+        stackedLabel: false,
       },
     ];
   }

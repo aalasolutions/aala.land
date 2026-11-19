@@ -3,14 +3,14 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
-import { modifier } from 'ember-modifier';
+import CellPerson from '@wovenui/ember/components/woven/cell/person';
+import CellText from '@wovenui/ember/components/woven/cell/text';
 import {
   closeDeleteModal,
   confirmDeleteModal,
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
-import { formatNumber } from '../../helpers/format-number';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
 
 export const CONTACTS_TAB = 'contacts';
@@ -57,13 +57,15 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked allRegions = '';
   @tracked tab = CONTACTS_TAB;
   @tracked requestedContactIds = [];
+  // Set by the Companies tab once its list loads; null until then.
+  @tracked companiesTotal = null;
 
   get roleTabs() {
     const counts = this.model?.tagCounts;
     if (!counts) return ROLE_TABS;
     return ROLE_TABS.map((tab) => ({
       ...tab,
-      label: `${tab.label} ${formatNumber([counts[tab.id || 'all']])}`,
+      count: counts[tab.id || 'all'] ?? 0,
     }));
   }
 
@@ -88,23 +90,66 @@ export default class ContactsIndexController extends PaginatedController {
     return this.tab === REQUESTS_TAB ? REQUESTS_TAB : CONTACTS_TAB;
   }
 
+  get isCompaniesTab() {
+    return this.currentTab === COMPANIES_TAB;
+  }
+
+  get activeCount() {
+    return this.isCompaniesTab ? this.companiesTotal : this.model?.total;
+  }
+
+  get activeTotal() {
+    return this.isCompaniesTab ? undefined : this.model?.scopeTotal;
+  }
+
+  get activeNoun() {
+    return this.isCompaniesTab ? 'company' : 'contact';
+  }
+
+  get activeNounPlural() {
+    return this.isCompaniesTab ? 'companies' : 'contacts';
+  }
+
+  get activeHideCount() {
+    if (this.currentTab === REQUESTS_TAB) return true;
+    return this.isCompaniesTab && this.companiesTotal === null;
+  }
+
   get allRegionsOn() {
     return resolveAllRegions(this.allRegions, this.auth.currentUser?.role);
   }
 
   columns = [
-    { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left' },
+    {
+      name: 'Name',
+      valuePath: 'displayName',
+      width: 250,
+      isFixed: 'left',
+      stackedLabel: false,
+    },
     { name: 'Role', valuePath: 'tags', width: 220 },
-    { name: 'Email', valuePath: 'email', width: 240 },
+    { name: 'Email', valuePath: 'email', width: 240, cell: CellText },
     { name: 'Phone', valuePath: 'phone', width: 190 },
-    { name: 'Company', valuePath: 'contactCompany', width: 170 },
-    { name: 'Added by', valuePath: 'createdByName', width: 180 },
+    {
+      name: 'Company',
+      valuePath: 'contactCompany',
+      width: 170,
+      cell: CellText,
+    },
+    { name: 'Region', valuePath: 'regionCode', width: 180 },
+    {
+      name: 'Added by',
+      valuePath: 'createdByName',
+      width: 180,
+      cell: CellPerson,
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
 
@@ -122,6 +167,7 @@ export default class ContactsIndexController extends PaginatedController {
     this.allRegions = '';
     this.tab = CONTACTS_TAB;
     this.requestedContactIds = [];
+    this.companiesTotal = null;
     this.page = 1;
     this.showModal = false;
     this.editContact = null;
@@ -140,6 +186,10 @@ export default class ContactsIndexController extends PaginatedController {
         label: agent.name,
       })),
     ];
+  }
+
+  get isFiltered() {
+    return Boolean(this.search || this.tag || this.activeFilterCount);
   }
 
   get hasActiveFilters() {
@@ -165,15 +215,6 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked isDeleting = false;
   @tracked deleteReason = '';
   @tracked reasonError = '';
-  @tracked tableOptionsHost = null;
-
-  // Hands the toolbar slot to the table's Options trigger.
-  registerTableOptionsHost = modifier((element) => {
-    this.tableOptionsHost = element;
-    return () => {
-      if (this.tableOptionsHost === element) this.tableOptionsHost = null;
-    };
-  });
 
   // Woven inputs pass (value, event), not the raw DOM event legacy setField expects.
   @action setFieldValue(fieldName, value) {
@@ -187,6 +228,10 @@ export default class ContactsIndexController extends PaginatedController {
 
   @action setTab(tabId) {
     this.tab = tabId;
+  }
+
+  @action setCompaniesTotal(total) {
+    this.companiesTotal = total;
   }
 
   @action toggleAllRegions(checked) {

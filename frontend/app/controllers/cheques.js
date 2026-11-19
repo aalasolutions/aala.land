@@ -11,6 +11,11 @@ import {
 import { addCalendarDays, toDateOnly, todayInZone } from '../utils/local-date';
 import { formatDate } from '../helpers/format-date';
 import { MAX_BACKDATE_DAYS } from 'land/constants';
+import CellText from '@wovenui/ember/components/woven/cell/text';
+import CellLabel from 'land/components/cell/label';
+import CellStatus from 'land/components/cell/status';
+import CellMoney from 'land/components/cell/money';
+import CellDate from 'land/components/cell/date';
 
 const REASON_FIELDS = ['unclearReason', 'cancelReason', 'deleteReason'];
 
@@ -57,26 +62,64 @@ export default class ChequesController extends PaginatedController {
     { id: 'schedule', label: 'Collection Schedule', icon: 'calendar-check' },
   ];
 
+  get isScheduleTab() {
+    return this.activeTab === 'schedule';
+  }
+
+  get scheduleCount() {
+    return (this.model?.collectionSchedule ?? []).reduce(
+      (sum, group) => sum + group.cheques.length,
+      0,
+    );
+  }
+
   columns = [
     {
       name: 'Cheque #',
       valuePath: 'chequeNumber',
       width: 160,
       isFixed: 'left',
+      cell: CellText,
+      stackedLabel: false,
     },
-    { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
-    { name: 'Bank', valuePath: 'bankName', width: 180 },
-    { name: 'Account Holder', valuePath: 'accountHolder', width: 200 },
-    { name: 'Amount', valuePath: 'amount', width: 140, numeric: true },
-    { name: 'Due Date', valuePath: 'dueDate', width: 140 },
-    { name: 'Type', valuePath: 'type', width: 140 },
-    { name: 'Status', valuePath: 'status', width: 140 },
+    { name: 'Unit', valuePath: 'unit.unitNumber', width: 140, cell: CellText },
+    { name: 'Bank', valuePath: 'bankName', width: 180, cell: CellText },
+    {
+      name: 'Account Holder',
+      valuePath: 'accountHolder',
+      width: 200,
+      cell: CellText,
+    },
+    {
+      name: 'Amount',
+      valuePath: 'amount',
+      width: 140,
+      numeric: true,
+      cell: CellMoney,
+      cellArgs: { currencyPath: 'currency' },
+    },
+    { name: 'Due Date', valuePath: 'dueDate', width: 140, cell: CellDate },
+    {
+      name: 'Type',
+      valuePath: 'type',
+      width: 140,
+      cell: CellLabel,
+      cellArgs: { domain: 'cheque' },
+    },
+    {
+      name: 'Status',
+      valuePath: 'status',
+      width: 140,
+      cell: CellStatus,
+      cellArgs: { domain: 'chequestate' },
+    },
     {
       name: 'Actions',
       valuePath: 'id',
       width: 100,
       isSortable: false,
       isResizable: false,
+      stackedLabel: false,
     },
   ];
   @tracked showBounceModal = false;

@@ -80,7 +80,7 @@ export default class PropertiesDetailController extends Controller {
           tenantName: contactName(lease.contact) || 'Unknown tenant',
           startDate: lease.startDate
             ? formatShortDate(lease.startDate, { todayZone })
-            : 'N/A',
+            : '-',
           endDate: lease.endDate
             ? formatShortDate(lease.endDate, { todayZone })
             : 'Present',

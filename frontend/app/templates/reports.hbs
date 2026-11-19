@@ -169,15 +169,8 @@
     {{/if}}
 
     {{#if @model.agents.length}}
-      <Woven::Panel>
-        <:header>
-          <h4 class="wu-panel-title"><Ui::Ph
-              @icon="users-three"
-              @size="20px"
-            />
-            Agent Performance</h4>
-        </:header>
-        <:body>
+      <Woven::TableSection @title="Agent Performance" @icon="users-three">
+        <:body as |section|>
           <Woven::DataTable
             @columns={{this.columns}}
             @rows={{this.agentRows}}
@@ -185,6 +178,7 @@
             @reorderable={{true}}
             @sortable={{true}}
             @showOptions={{true}}
+            @optionsTarget={{section.optionsTarget}}
             @tableId="reports-agents"
             class="table-stacked"
             as |cell|
@@ -232,7 +226,7 @@
             {{/if}}
           </Woven::DataTable>
         </:body>
-      </Woven::Panel>
+      </Woven::TableSection>
     {{else}}
       <Woven::Panel class="text-center">
         <p class="text-muted">No agent data available.</p>
@@ -241,14 +235,7 @@
   {{/if}}
 
   {{#if (eq this.currentTab "activity")}}
-    <Woven::Panel>
-      <:header>
-        <h4 class="wu-panel-title"><Ui::Ph
-            @icon="clock-counter-clockwise"
-            @size="20px"
-          />
-          Activity Logs</h4>
-      </:header>
+    <Woven::TableSection @title="Activity Logs" @icon="clock-counter-clockwise">
       <:body>
         {{#if this.activityRows.length}}
           <Woven::DataTable
@@ -304,6 +291,6 @@
           />
         {{/if}}
       </:body>
-    </Woven::Panel>
+    </Woven::TableSection>
   {{/if}}
 </div>

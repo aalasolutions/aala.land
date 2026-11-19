@@ -1,123 +1,124 @@
 {{page-title "System"}}
 
 <div class="flex col gap-6">
-  <Woven::PageHeader @title="System" @subtitle="Billing health and price catalogue.">
-  </Woven::PageHeader>
+  <Woven::PageHeader
+    @title="System"
+    @subtitle="Billing health and price catalogue."
+  />
 
-  <Woven::Card data-test-system-price-health>
-    <div class="flex between x-center mb-4">
-      <div class="flex x-center gap-3">
-        <h3 class="text-lg font-bold">Price catalogue</h3>
-        <Woven::Tag
-          @variant={{this.healthBadge.variant}}
-          @text={{this.healthBadge.text}}
-          data-test-system-price-status
-        />
-      </div>
-      <div class="flex x-center gap-2">
-        {{#if this.needsFix}}
-          <Woven::Button
-            @variant="subtle"
-            @loading={{this.fixing}}
-            data-test-system-price-fix
-            {{on "click" this.fix}}
-          >{{if this.fixing "Syncing…" "Fix"}}</Woven::Button>
-        {{/if}}
+  <Woven::TableSection @title="Price catalogue" data-test-system-price-health>
+    <:meta>
+      <Woven::Tag
+        @variant={{this.healthBadge.variant}}
+        @text={{this.healthBadge.text}}
+        data-test-system-price-status
+      />
+    </:meta>
+    <:actions>
+      {{#if this.needsFix}}
         <Woven::Button
-          @variant="brand"
-          data-test-system-price-add
-          {{on "click" this.openAdd}}
-        >Add price</Woven::Button>
-      </div>
-    </div>
+          @variant="subtle"
+          @loading={{this.fixing}}
+          data-test-system-price-fix
+          {{on "click" this.fix}}
+        >{{if this.fixing "Syncing…" "Fix"}}</Woven::Button>
+      {{/if}}
+      <Woven::Button
+        @variant="brand"
+        data-test-system-price-add
+        {{on "click" this.openAdd}}
+      >Add price</Woven::Button>
+    </:actions>
+    <:body as |section|>
+      {{#if this.data.checkedAt}}
+        <p class="text-sm text-muted">Last checked
+          {{format-date-time this.data.checkedAt}}
+          (automatic).</p>
+      {{/if}}
 
-    {{#if this.data.checkedAt}}
-      <p class="text-sm text-muted mb-4">Last checked
-        {{format-date-time this.data.checkedAt}}
-        (automatic).</p>
-    {{/if}}
-
-    {{#if this.rows.length}}
-      <Woven::DataTable
-        @columns={{this.columns}}
-        @rows={{this.rows}}
-        @pinColumns={{true}}
-        @reorderable={{true}}
-        @sortable={{true}}
-        @showOptions={{true}}
-        @tableId="console-system-prices"
-        data-test-system-prices-table
-        as |cell|
-      >
-        {{#if (eq cell.key "label")}}
-          <span
-            data-test-system-price-row={{cell.row.id}}
-          >{{cell.value}}</span>
-        {{else if (eq cell.key "countries")}}
-          <span
-            data-test-system-price-countries={{cell.row.id}}
-          >{{cell.value}}</span>
-        {{else if (eq cell.key "unitAmount")}}
-          {{format-money cell.value currency=cell.row.currency minor=true}}
-        {{else if (eq cell.key "status")}}
-          {{#if (eq cell.value "registered")}}
-            <Woven::Tag @variant="success" @text="Registered" />
-          {{else if (eq cell.value "missing")}}
-            <Woven::Tag @variant="warning" @text="Not yet registered" />
-          {{else if (eq cell.value "pending")}}
-            <div class="flex col gap-2" data-test-system-price-pending>
-              <Woven::Tag @variant="warning" @text="Change pending" />
-              <p class="text-sm text-muted">Still selling at the previous price
-                until the provider registers this one. Use Fix to retry.</p>
-              {{#if cell.row.lastError}}
-                <Woven::Alert @variant="danger" data-test-system-price-error>
-                  <p class="text-sm">{{cell.row.lastError}}</p>
-                </Woven::Alert>
-              {{/if}}
-            </div>
+      {{#if this.rows.length}}
+        <Woven::DataTable
+          @columns={{this.columns}}
+          @rows={{this.rows}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @optionsTarget={{section.optionsTarget}}
+          @tableId="console-system-prices"
+          data-test-system-prices-table
+          as |cell|
+        >
+          {{#if (eq cell.key "label")}}
+            <span
+              data-test-system-price-row={{cell.row.id}}
+            >{{cell.value}}</span>
+          {{else if (eq cell.key "countries")}}
+            <span
+              data-test-system-price-countries={{cell.row.id}}
+            >{{cell.value}}</span>
+          {{else if (eq cell.key "unitAmount")}}
+            {{format-money cell.value currency=cell.row.currency minor=true}}
+          {{else if (eq cell.key "status")}}
+            {{#if (eq cell.value "registered")}}
+              <Woven::Tag @variant="success" @text="Registered" />
+            {{else if (eq cell.value "missing")}}
+              <Woven::Tag @variant="warning" @text="Not yet registered" />
+            {{else if (eq cell.value "pending")}}
+              <div class="flex col gap-2" data-test-system-price-pending>
+                <Woven::Tag @variant="warning" @text="Change pending" />
+                <p class="text-sm text-muted">Still selling at the previous
+                  price until the provider registers this one. Use Fix to retry.</p>
+                {{#if cell.row.lastError}}
+                  <Woven::Alert @variant="danger" data-test-system-price-error>
+                    <p class="text-sm">{{cell.row.lastError}}</p>
+                  </Woven::Alert>
+                {{/if}}
+              </div>
+            {{else}}
+              <div class="flex col gap-2">
+                <Woven::Tag @variant="danger" @text="Failed" />
+                {{#if cell.row.lastError}}
+                  <Woven::Alert @variant="danger" data-test-system-price-error>
+                    <p class="text-sm">{{cell.row.lastError}}</p>
+                    {{#if cell.row.lastErrorAt}}
+                      <p class="text-xs text-muted mt-1">Failed
+                        {{format-date-time cell.row.lastErrorAt}}</p>
+                    {{/if}}
+                  </Woven::Alert>
+                {{/if}}
+              </div>
+            {{/if}}
+          {{else if (eq cell.key "id")}}
+            <RowActions
+              @label={{cell.row.label}}
+              @actions={{array
+                (hash
+                  key="system-price-change-amount"
+                  testValue=cell.row.id
+                  label="Change price"
+                  icon="pencil-simple"
+                  onSelect=(fn this.openAmount cell.row)
+                )
+                (hash
+                  key="system-price-deactivate"
+                  testValue=cell.row.id
+                  label="Deactivate"
+                  icon="prohibit"
+                  variant="danger"
+                  onSelect=(fn this.openDeactivate cell.row)
+                )
+              }}
+            />
           {{else}}
-            <div class="flex col gap-2">
-              <Woven::Tag @variant="danger" @text="Failed" />
-              {{#if cell.row.lastError}}
-                <Woven::Alert @variant="danger" data-test-system-price-error>
-                  <p class="text-sm">{{cell.row.lastError}}</p>
-                  {{#if cell.row.lastErrorAt}}
-                    <p class="text-xs text-muted mt-1">Failed
-                      {{format-date-time cell.row.lastErrorAt}}</p>
-                  {{/if}}
-                </Woven::Alert>
-              {{/if}}
-            </div>
+            {{cell.value}}
           {{/if}}
-        {{else if (eq cell.key "id")}}
-          <RowActions
-            @label={{cell.row.label}}
-            @actions={{array
-              (hash
-                key="system-price-change-amount"
-                testValue=cell.row.id
-                label="Change price"
-                icon="pencil-simple"
-                onSelect=(fn this.openAmount cell.row)
-              )
-              (hash
-                key="system-price-deactivate"
-                testValue=cell.row.id
-                label="Deactivate"
-                icon="prohibit"
-                variant="danger"
-                onSelect=(fn this.openDeactivate cell.row)
-              )
-            }}
-          />
-        {{else}}
-          {{cell.value}}
-        {{/if}}
-      </Woven::DataTable>
-    {{else}}
-      <p class="text-muted">No active price rows.</p>
-    {{/if}}
-  </Woven::Card>
+        </Woven::DataTable>
+      {{else}}
+        <p class="text-muted">No active price rows.</p>
+      {{/if}}
+    </:body>
+  </Woven::TableSection>
 
   <Woven::Modal
     @open={{this.addOpen}}

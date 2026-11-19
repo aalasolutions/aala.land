@@ -1,0 +1,10 @@
+// Woven::TableSection: a heading row with no title, meta or actions shows only once a table renders its options into it.
+@use "@wovenui/core/mixins" as woven;
+
+.wu-table-section-head {
+  min-block-size: woven.token(control-height-md);
+}
+
+.wu-table-section-head.is-bare:not(:has(.wu-table-section-options > *)) {
+  display: none;
+}

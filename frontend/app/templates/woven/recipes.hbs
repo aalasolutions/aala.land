@@ -1,0 +1,389 @@
+<WovenDocs::Page
+  @id="recipes"
+  @title="Page recipes"
+  @subtitle="List and detail page recipes with the declared table cells."
+  @components="Woven::ListPage, Woven::DetailPage, Woven::Cell::*"
+>
+  <WovenDocs::Section @title="Overview" @id="overview">
+    <p class="woven-doc__intro">
+      A recipe owns the order, spacing and Options slot of a page, so pages pass
+      words and blocks instead of composing the parts by hand. A table column
+      declares its cell once in the controller, so every row of that column has
+      one shape.
+    </p>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="List page, full" @id="list-page">
+    <WovenDocs::Example
+      @title="Every block"
+      @note="Header with one action, switcher Tabs with counts, a toolbar with a Segmented, search and Filters on the left, sort and Options on the right, a table body with declared cells, and the range-only pager. The buttons switch the table rows between states."
+      @layout="block"
+      @code={{this.code.listPage}}
+    >
+      <div
+        class="flex x-center gap-2 wrap"
+        role="group"
+        aria-label="Row state"
+      >
+        {{#each this.countStates as |state|}}
+          <Woven::Button
+            @size="xs"
+            @variant={{if (eq this.countState state.id) "brand"}}
+            @text={{state.label}}
+            @onClick={{fn this.setCountState state.id}}
+            aria-pressed={{if (eq this.countState state.id) "true" "false"}}
+            data-test-woven-recipes-state={{state.id}}
+          />
+        {{/each}}
+      </div>
+
+      <Woven::ListPage
+        @title="Leases"
+        @subtitle="Every lease in the active region."
+        @isEmpty={{not this.rows.length}}
+        data-test-woven-recipes-list
+      >
+        <:action>
+          <Woven::Button
+            @variant="brand"
+            @icon="plus"
+            @text="New Lease"
+            data-test-woven-recipes-new
+          />
+        </:action>
+
+        <:switcher>
+          <Woven::Tabs
+            @tabs={{this.tabs}}
+            @activeTab={{this.activeTab}}
+            @onChange={{this.setTab}}
+            data-test-woven-recipes-tabs
+          />
+        </:switcher>
+
+        <:toolbar>
+          <Woven::Segmented
+            @options={{this.statusOptions}}
+            @value={{this.statusFilter}}
+            @onChange={{this.setStatusFilter}}
+            data-test-woven-recipes-status
+          />
+          <div class="w-64">
+            <Woven::Input
+              @value={{this.search}}
+              @onInput={{this.setSearch}}
+              type="search"
+              autocomplete="off"
+              placeholder="Search reference, tenant..."
+              aria-label="Search leases"
+              data-test-woven-recipes-search
+            />
+          </div>
+          <FiltersButton @count={{1}} data-test-woven-recipes-filters>
+            <Woven::Text
+              @size="sm"
+              @muted={{true}}
+              @text="Filter fields sit in this drawer, never inline."
+            />
+          </FiltersButton>
+        </:toolbar>
+
+        <:toolbarEnd>
+          <Woven::Dropdown
+            @align="end"
+            @options={{this.sortOptions}}
+            @value={{this.sort}}
+            @onSelect={{this.setSort}}
+            data-test-woven-recipes-sort
+          />
+        </:toolbarEnd>
+
+        <:body as |page|>
+          <Woven::DataTable
+            @columns={{this.columns}}
+            @rows={{this.rows}}
+            @pinColumns={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @optionsTarget={{page.optionsTarget}}
+            class="table-stacked"
+            data-test-woven-recipes-table
+            as |cell|
+          >
+            {{#if (eq cell.key "id")}}
+              <div class="table-stacked__actions">
+                <RowActions
+                  @label="lease {{cell.row.reference}}"
+                  @actions={{this.rowActions}}
+                />
+              </div>
+            {{/if}}
+          </Woven::DataTable>
+        </:body>
+
+        <:empty>
+          <Woven::EmptyState
+            @description="No leases match these filters."
+            data-test-woven-recipes-empty
+          />
+        </:empty>
+
+        <:footer as |page|>
+          <page.Pager @page={{1}} @limit={{50}} @total={{this.count}} />
+        </:footer>
+      </Woven::ListPage>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Declared columns"
+      @note="Each dispatched column names its cell class and static cellArgs. Only the Actions column keeps the block path."
+      @layout="block"
+      @code={{this.code.columns}}
+    >
+      <Woven::Text
+        @size="sm"
+        @muted={{true}}
+        @text="The table above is rendered from these definitions."
+      />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="List page, minimal" @id="list-page-minimal">
+    <WovenDocs::Example
+      @title="No switcher, no filters"
+      @note="The toolbar row always renders: with no toolbar blocks it holds Options on the right."
+      @layout="block"
+      @code={{this.code.minimal}}
+    >
+      <Woven::ListPage @title="Vendors" data-test-woven-recipes-minimal>
+        <:body as |page|>
+          <Woven::DataTable
+            @columns={{this.minimalColumns}}
+            @rows={{this.minimalRows}}
+            @showOptions={{true}}
+            @optionsTarget={{page.optionsTarget}}
+            class="table-stacked"
+            data-test-woven-recipes-minimal-table
+          />
+        </:body>
+      </Woven::ListPage>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Detail page" @id="detail-page">
+    <WovenDocs::Example
+      @title="Crumbs, meta and actions"
+      @note="Parent-only crumbs, never a Back button. Tags go in meta, record actions in actions, cards in the body."
+      @layout="block"
+      @code={{this.code.detail}}
+    >
+      <Woven::DetailPage
+        @crumbs={{this.crumbs}}
+        @title="Unit 101, Sample Tower"
+        @subtitle="Lease L-1001"
+        data-test-woven-recipes-detail
+      >
+        <:meta>
+          <Woven::Tag
+            @variant={{tag-variant "lease" "ACTIVE"}}
+            @text={{tag-label "lease" "ACTIVE"}}
+          />
+          <Woven::Tag
+            @variant={{tag-variant "lease" "RESIDENTIAL"}}
+            @text={{tag-label "lease" "RESIDENTIAL"}}
+          />
+        </:meta>
+        <:actions>
+          <Woven::Button
+            @variant="subtle"
+            @icon="pencil-simple"
+            @text="Edit"
+            data-test-woven-recipes-edit
+          />
+          <Woven::Button
+            @variant="brand"
+            @text="Renew"
+            data-test-woven-recipes-renew
+          />
+        </:actions>
+        <:body>
+          <div class="grid cols-1 cols-2@md gap-4">
+            <Woven::Card @title="Summary">
+              <Woven::Text
+                @size="sm"
+                @text="Tenant Test User, Unit 101, twelve months from 15 January 2026."
+              />
+            </Woven::Card>
+            <Woven::Card @title="Payments">
+              <Woven::Text
+                @size="sm"
+                @text="Four cheques, the next due on 15 January 2027."
+              />
+            </Woven::Card>
+          </div>
+        </:body>
+      </Woven::DetailPage>
+    </WovenDocs::Example>
+
+    <WovenDocs::Example
+      @title="Title fallback"
+      @note="A record with no name still gets an h1: titleFallback is used when title is empty."
+      @layout="block"
+      @code={{this.code.detailFallback}}
+    >
+      <Woven::DetailPage
+        @crumbs={{this.crumbs}}
+        @title={{null}}
+        @titleFallback="Unnamed contact"
+        data-test-woven-recipes-detail-fallback
+      >
+        <:body>
+          <Woven::Text
+            @size="sm"
+            @muted={{true}}
+            @text="The record has no name."
+          />
+        </:body>
+      </Woven::DetailPage>
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Cell vocabulary" @id="cells">
+    <p class="woven-note">Every cell renders "-" for null, undefined or an empty
+      string. Kit cells carry no business words; app cells own money, region
+      dates and enum labels.</p>
+    <div
+      class="wu-table-scroll woven-doc__table"
+      tabindex="0"
+      role="region"
+      aria-label="Cell vocabulary"
+      data-test-woven-recipes-cells
+    >
+      <table class="wu-table sm">
+        <thead>
+          <tr>
+            <th scope="col">Cell</th>
+            <th scope="col">Layer</th>
+            <th scope="col">Arguments</th>
+            <th scope="col">Value</th>
+            <th scope="col">Empty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Text</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@value</code></td>
+            <td><Woven::Cell::Text @value="Unit 101" /></td>
+            <td><Woven::Cell::Text @value={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Muted</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@value</code></td>
+            <td><Woven::Cell::Muted @value="Secondary note" /></td>
+            <td><Woven::Cell::Muted @value="" /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Link</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@value @route @model</code>
+              (cellArgs
+              <code class="wu-code">route modelPath</code>)</td>
+            <td><Woven::Cell::Link
+                @value="L-1001"
+                @route="woven.recipes.record"
+                @model="1"
+              /></td>
+            <td><Woven::Cell::Link
+                @value={{null}}
+                @route="woven.recipes.record"
+              /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Person</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@name @initials</code>
+              (or
+              <code class="wu-code">@value</code>)</td>
+            <td><Woven::Cell::Person @name="Test User" /></td>
+            <td><Woven::Cell::Person @name={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Tag</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@label @variant</code>
+              (cellArgs
+              <code class="wu-code">variant</code>)</td>
+            <td><Woven::Cell::Tag @label="Residential" @variant="info" /></td>
+            <td><Woven::Cell::Tag @label={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Number</code></td>
+            <td>kit</td>
+            <td><code class="wu-code">@value @locale</code></td>
+            <td><Woven::Cell::Number @value={{12450}} /></td>
+            <td><Woven::Cell::Number @value={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Woven::Cell::Empty</code></td>
+            <td>kit</td>
+            <td>none</td>
+            <td><Woven::Cell::Empty /></td>
+            <td><Woven::Cell::Empty /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Cell::Status</code></td>
+            <td>app</td>
+            <td><code class="wu-code">@domain @value</code>
+              (cellArgs
+              <code class="wu-code">domain</code>)</td>
+            <td><Cell::Status @domain="lease" @value="ACTIVE" /></td>
+            <td><Cell::Status @domain="lease" @value={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Cell::Money</code></td>
+            <td>app</td>
+            <td><code class="wu-code">@amount @currency @minor</code>
+              (cellArgs
+              <code class="wu-code">currencyPath minor</code>)</td>
+            <td><Cell::Money
+                @amount={{8500000}}
+                @currency="AED"
+                @minor={{true}}
+              /></td>
+            <td><Cell::Money @amount={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">Cell::Date</code></td>
+            <td>app</td>
+            <td><code class="wu-code">@value @withTime</code>
+              (cellArgs
+              <code class="wu-code">withTime</code>)</td>
+            <td><Cell::Date @value="2026-01-15" /></td>
+            <td><Cell::Date @value={{null}} /></td>
+          </tr>
+          <tr>
+            <td><code class="wu-code">RowActions</code></td>
+            <td>app, block path</td>
+            <td><code class="wu-code">@label @actions</code></td>
+            <td><RowActions
+                @label="lease L-1001"
+                @actions={{this.rowActions}}
+              /></td>
+            <td>none</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Stacked mode" @id="stacked">
+    <Woven::Alert
+      @variant="info"
+      @title="Resize the window below 768px"
+      @description="Tables with the table-stacked class turn each row into a card. Dispatched columns print their column name as a label before the value; columns with stackedLabel false (Reference) and block-path columns (Actions) do not."
+      data-test-woven-recipes-stacked-note
+    />
+  </WovenDocs::Section>
+</WovenDocs::Page>

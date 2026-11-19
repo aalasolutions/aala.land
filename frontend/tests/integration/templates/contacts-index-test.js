@@ -51,6 +51,7 @@ module('Integration | Template | contacts/index', function (hooks) {
       respond,
       tagCounts,
       scopeTotal,
+      total = contacts.length,
     } = {},
   ) {
     ctx.calls = stubAuth(ctx.owner, { role, respond });
@@ -61,7 +62,7 @@ module('Integration | Template | contacts/index', function (hooks) {
       controller,
       model: {
         contacts,
-        total: contacts.length,
+        total,
         page: 1,
         limit: 50,
         tagCounts,
@@ -193,20 +194,71 @@ module('Integration | Template | contacts/index', function (hooks) {
     });
 
     const segment = (id) => `[data-test-wu-segmented-item="${id}"]`;
+    const badge = (id) => `[data-test-wu-segmented-count="${id}"]`;
     assert.dom(segment('')).hasText('All 9');
-    assert.dom(segment('lead')).hasText('Lead 4');
-    assert.dom(segment('owner')).hasText('Owner 3');
-    assert.dom(segment('tenant')).hasText('Tenant 2');
-    assert.dom(segment('portfolio_owner')).hasText('Portfolio Owner 0');
+    assert.dom(badge('')).hasText('9');
+    assert.dom(badge('lead')).hasText('4');
+    assert.dom(badge('owner')).hasText('3');
+    assert.dom(badge('tenant')).hasText('2');
+    assert.dom(badge('portfolio_owner')).hasText('0', 'zero is shown');
   });
 
-  test('the header shows the scope total, not the filtered list total', async function (assert) {
+  test('the header carries no total', async function (assert) {
+    await renderList(this, { total: 38, scopeTotal: 38 });
+
+    assert.dom('[data-test-contacts-total]').doesNotExist();
+  });
+
+  test('the Companies tab hosts its table options in the toolbar', async function (assert) {
     await renderList(this, {
-      scopeTotal: 37,
-      tagCounts: { all: 9, lead: 4, owner: 3, tenant: 2, portfolio_owner: 0 },
+      role: 'manager',
+      total: 38,
+      scopeTotal: 38,
+      respond: (path) =>
+        path.startsWith('/contacts/companies')
+          ? {
+              data: {
+                data: [
+                  { name: 'Example Holdings', regionCode: 'DXB', count: 4 },
+                  { name: 'Sample Trading', regionCode: 'DXB', count: 2 },
+                ],
+                total: 2,
+                page: 1,
+                limit: 20,
+              },
+            }
+          : {},
     });
 
-    assert.dom('[data-test-contacts-total]').hasText('37 contacts');
+    await click('[data-test-wu-tabs-trigger="companies"]');
+
+    assert.dom('[data-test-contact-companies-table]').exists();
+    assert
+      .dom(
+        '[data-test-wu-list-page-toolbar] [data-test-wu-list-page-options] [data-test-data-table-options]',
+      )
+      .exists('Options renders in the toolbar slot');
+    assert.dom('.data-table-shell__toolbar').doesNotExist();
+    assert.dom('[data-test-wu-pagination-status]').hasText('1-2');
+  });
+
+  test('a contact with no name links as Unnamed contact', async function (assert) {
+    await renderList(this, {
+      contacts: [
+        {
+          ...FULL,
+          id: 'c-blank',
+          displayName: '',
+          firstName: '',
+          lastName: '',
+          phone: '',
+        },
+      ],
+    });
+
+    assert
+      .dom(`${row('c-blank')} [data-test-view-contact]`)
+      .hasText('Unnamed contact');
   });
 
   test('the role bar keeps plain labels when the list carries no totals', async function (assert) {
@@ -220,14 +272,14 @@ module('Integration | Template | contacts/index', function (hooks) {
     await renderList(this);
 
     assert
-      .dom('[data-test-contacts-toolbar] [data-test-contacts-search]')
+      .dom('[data-test-wu-list-page-toolbar] [data-test-contacts-search]')
       .exists('search is visible without opening Filters');
     assert
       .dom(
-        '[data-test-contacts-toolbar] [data-test-contacts-table-options] [data-test-data-table-options]',
+        '[data-test-wu-list-page-toolbar] [data-test-wu-list-page-options] [data-test-data-table-options]',
       )
       .exists('Options renders in the toolbar slot');
     assert.dom('.data-table-shell__toolbar').doesNotExist();
-    assert.dom('[data-test-contacts-list] .wu-card').doesNotExist();
+    assert.dom('[data-test-contacts] .wu-card').doesNotExist();
   });
 });

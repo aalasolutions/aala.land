@@ -1,134 +1,127 @@
 {{page-title (if @model.lease this.tenantName "Lease")}}
 
-<div data-test-lease-detail class="flex col gap-6">
-  <Woven::PageHeader
-    @title={{if @model.lease this.tenantName "Lease"}}
-    @subtitle={{this.subtitle}}
-  >
-    <:breadcrumb>
-      <Woven::Breadcrumb
-        @items={{array (hash label="Lease Agreements" route="leases.index")}}
-        @compact={{true}}
-        @parentsOnly={{true}}
-        data-test-breadcrumb-leases
+<Woven::DetailPage
+  @title={{if @model.lease this.tenantName}}
+  @titleFallback="Lease"
+  @subtitle={{this.subtitle}}
+  @crumbs={{array (hash label="Lease Agreements" route="leases.index")}}
+  data-test-lease-detail
+>
+  <:meta>
+    {{#if @model.lease}}
+      <Woven::Tag
+        @variant={{tag-variant "lease" @model.lease.status}}
+        @text={{tag-label "lease" @model.lease.status}}
+        data-test-lease-status
       />
-    </:breadcrumb>
-    <:meta>
-      {{#if @model.lease}}
-        <div class="flex gap-1 wrap">
-          <Woven::Tag
-            @variant={{tag-variant "lease" @model.lease.status}}
-            @text={{@model.lease.status}}
-            data-test-lease-status
-          />
-          {{#if @model.lease.deletedAt}}
-            <Woven::Tag
-              @variant="secondary"
-              @text="Archived"
-              data-test-lease-archived
-            />
-          {{/if}}
-        </div>
+      {{#if @model.lease.deletedAt}}
+        <Woven::Tag
+          @variant="secondary"
+          @text="Archived"
+          data-test-lease-archived
+        />
       {{/if}}
-    </:meta>
-    <:actions>
+    {{/if}}
+  </:meta>
+  <:actions>
+    {{#if this.canManage}}
+      {{#if this.canTerminate}}
+        <Woven::Button
+          @variant="danger"
+          @subtle={{true}}
+          @icon="x-circle"
+          @text="Terminate"
+          data-test-terminate-lease
+          {{on "click" this.openTerminate}}
+        />
+      {{/if}}
+      {{#if this.canRenew}}
+        <Woven::Button
+          @variant="subtle"
+          @icon="arrows-clockwise"
+          @text="Renew"
+          data-test-renew-lease
+          {{on "click" (fn this.openDrawer "renew")}}
+        />
+      {{/if}}
+      <Woven::Button
+        @variant="subtle"
+        @icon="pencil-simple"
+        @text="Edit"
+        data-test-edit-lease
+        {{on "click" (fn this.openDrawer "edit")}}
+      />
+    {{/if}}
+  </:actions>
+  <:body>
+    {{#if @model.lease}}
+      <RegionNotice @regionCode={{@model.lease.regionCode}} @noun="lease" />
+
+      <Leases::Summary @lease={{@model.lease}} @unit={{@model.unit}} />
+
+      <section data-test-lease-documents>
+        <Documents::Panel
+          @filters={{this.documentFilters}}
+          @presetLink={{this.presetLink}}
+          @compact={{true}}
+          @tableId="lease-documents"
+          @canUpload={{this.canUpload}}
+          @canEdit={{this.canUpload}}
+        >
+          <:header as |panel|>
+            <div class="flex between x-center">
+              <h2 class="text-md font-bold">Documents</h2>
+              {{#if panel.canUpload}}
+                <Woven::Button
+                  @variant="brand"
+                  @size="sm"
+                  @icon="upload-simple"
+                  @text="Upload"
+                  data-test-lease-documents-upload
+                  {{on "click" panel.openUpload}}
+                />
+              {{/if}}
+            </div>
+          </:header>
+        </Documents::Panel>
+      </section>
+
+      {{#if this.canViewHistory}}
+        <Woven::TableSection @title="History" data-test-lease-history-card>
+          <:body as |section|>
+            <RecordHistoryList
+              @entityType="Lease"
+              @entityId={{@model.lease.id}}
+              @reloadKey={{@model.lease}}
+              @optionsTarget={{section.optionsTarget}}
+            />
+          </:body>
+        </Woven::TableSection>
+      {{/if}}
+
       {{#if this.canManage}}
-        <div class="flex gap-2 wrap">
-          {{#if this.canTerminate}}
-            <Woven::Button
-              @variant="danger"
-              @subtle={{true}}
-              @icon="x-circle"
-              @text="Terminate"
-              data-test-terminate-lease
-              {{on "click" this.openTerminate}}
-            />
-          {{/if}}
-          {{#if this.canRenew}}
-            <Woven::Button
-              @variant="subtle"
-              @icon="arrows-clockwise"
-              @text="Renew"
-              data-test-renew-lease
-              {{on "click" (fn this.openDrawer "renew")}}
-            />
-          {{/if}}
-          <Woven::Button
-            @variant="subtle"
-            @icon="pencil-simple"
-            @text="Edit"
-            data-test-edit-lease
-            {{on "click" (fn this.openDrawer "edit")}}
-          />
-        </div>
+        <Leases::LeaseDrawer
+          @open={{this.showDrawer}}
+          @mode={{this.drawerMode}}
+          @lease={{this.drawerLease}}
+          @unitArchived={{if @model.unit.deletedAt true false}}
+          @onClose={{this.closeDrawer}}
+          @onSaved={{this.afterSave}}
+        />
+        <Leases::TerminateModal
+          @open={{this.showTerminate}}
+          @lease={{@model.lease}}
+          @onClose={{this.closeTerminate}}
+          @onTerminated={{this.refresh}}
+        />
       {{/if}}
-    </:actions>
-  </Woven::PageHeader>
-
-  {{#if @model.lease}}
-    <RegionNotice @regionCode={{@model.lease.regionCode}} @noun="lease" />
-
-    <Leases::Summary @lease={{@model.lease}} @unit={{@model.unit}} />
-
-    <section data-test-lease-documents>
-      <Documents::Panel
-        @filters={{this.documentFilters}}
-        @presetLink={{this.presetLink}}
-        @compact={{true}}
-        @tableId="lease-documents"
-        @canUpload={{this.canUpload}}
-        @canEdit={{this.canUpload}}
-      >
-        <:header as |panel|>
-          <div class="flex between x-center">
-            <h2 class="text-md font-bold">Documents</h2>
-            {{#if panel.canUpload}}
-              <Woven::Button
-                @variant="brand"
-                @size="sm"
-                @icon="upload-simple"
-                @text="Upload"
-                data-test-lease-documents-upload
-                {{on "click" panel.openUpload}}
-              />
-            {{/if}}
-          </div>
-        </:header>
-      </Documents::Panel>
-    </section>
-
-    {{#if this.canViewHistory}}
-      <Woven::Card @title="History" data-test-lease-history-card>
-        <RecordHistoryList
-          @entityType="Lease"
-          @entityId={{@model.lease.id}}
-          @reloadKey={{@model.lease}}
+    {{else}}
+      <Woven::Card>
+        <Woven::EmptyState
+          @description="Lease not found."
+          data-test-lease-not-found
         />
       </Woven::Card>
     {{/if}}
-
-    {{#if this.canManage}}
-      <Leases::LeaseDrawer
-        @open={{this.showDrawer}}
-        @mode={{this.drawerMode}}
-        @lease={{this.drawerLease}}
-        @unitArchived={{if @model.unit.deletedAt true false}}
-        @onClose={{this.closeDrawer}}
-        @onSaved={{this.afterSave}}
-      />
-      <Leases::TerminateModal
-        @open={{this.showTerminate}}
-        @lease={{@model.lease}}
-        @onClose={{this.closeTerminate}}
-        @onTerminated={{this.refresh}}
-      />
-    {{/if}}
-  {{else}}
-    <Woven::Card>
-      <Woven::EmptyState
-        @description="Lease not found."
-        data-test-lease-not-found
-      />
-    </Woven::Card>
-  {{/if}}
-</div>
+  </:body>
+</Woven::DetailPage>

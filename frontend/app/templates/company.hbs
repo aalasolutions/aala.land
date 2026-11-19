@@ -44,34 +44,36 @@
     {{/if}}
 
     {{#if this.hasCreditAgents}}
-      <Woven::Card >
-        <div class="text-sm font-bold mb-2">AI credits by agent</div>
-        <Woven::DataTable
-          class="table-stacked"
-          @columns={{this.creditAgentColumns}}
-          @rows={{this.creditAgentRows}}
-          @pinColumns={{true}}
-          @reorderable={{true}}
-          @sortable={{true}}
-          @showOptions={{true}}
-          @tableId="company-credits"
-          data-test-credit-agents
-          as |cell|
-        >
-          <DataTable::StackedLabel
+      <Woven::TableSection @title="AI credits by agent">
+        <:body as |section|>
+          <Woven::DataTable
+            class="table-stacked"
             @columns={{this.creditAgentColumns}}
-            @cellKey={{cell.key}}
-            @skip={{array "name"}}
-          />
-          {{#if (eq cell.key "name")}}
-            <span
-              data-test-credit-agent-row={{cell.row.userId}}
-            >{{cell.value}}</span>
-          {{else}}
-            <span>{{cell.value}}</span>
-          {{/if}}
-        </Woven::DataTable>
-      </Woven::Card>
+            @rows={{this.creditAgentRows}}
+            @pinColumns={{true}}
+            @reorderable={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @optionsTarget={{section.optionsTarget}}
+            @tableId="company-credits"
+            data-test-credit-agents
+            as |cell|
+          >
+            <DataTable::StackedLabel
+              @columns={{this.creditAgentColumns}}
+              @cellKey={{cell.key}}
+              @skip={{array "name"}}
+            />
+            {{#if (eq cell.key "name")}}
+              <span
+                data-test-credit-agent-row={{cell.row.userId}}
+              >{{cell.value}}</span>
+            {{else}}
+              <span>{{cell.value}}</span>
+            {{/if}}
+          </Woven::DataTable>
+        </:body>
+      </Woven::TableSection>
     {{/if}}
 
     <Woven::Card >
@@ -271,93 +273,98 @@
     </Woven::Card>
 
     {{#if this.isCompanyAdmin}}
-      <Woven::Card class="mt-4" data-test-billing-history-panel>
-        <h3 class="text-lg font-bold mb-4">Billing History</h3>
-        {{#if this.billingHistory.length}}
-          <Woven::DataTable
-            class="table-stacked"
-            @columns={{this.billingHistoryColumns}}
-            @rows={{this.billingHistoryRows}}
-            @pinColumns={{true}}
-            @reorderable={{true}}
-            @sortable={{true}}
-            @showOptions={{true}}
-            @tableId="company-billing"
-            as |cell|
-          >
-            <DataTable::StackedLabel
+      <Woven::TableSection
+        @title="Billing History"
+        data-test-billing-history-panel
+      >
+        <:body as |section|>
+          {{#if this.billingHistory.length}}
+            <Woven::DataTable
+              class="table-stacked"
               @columns={{this.billingHistoryColumns}}
-              @cellKey={{cell.key}}
-              @skip={{array "occurredAt"}}
-            />
-            {{#if (eq cell.key "occurredAt")}}
-              <span data-test-billing-history-row>{{format-date
-                  cell.value
-                }}</span>
-            {{else if (eq cell.key "amount")}}
-              <span>{{format-money
-                  cell.value
-                  currency=cell.row.currency
-                  minor=true
-                }}</span>
-            {{else if (eq cell.key "creditAmount")}}
-              {{#let (billing-history-status cell.row) as |status|}}
-                {{#if status.creditAmount}}
-                  <span
-                    data-test-history-credit
-                  >{{format-money
-                      status.creditAmount
-                      currency=cell.row.currency
-                      minor=true
-                    }}</span>
-                  <span
-                    class="text-muted text-sm"
-                  >{{status.creditNote}}</span>
+              @rows={{this.billingHistoryRows}}
+              @pinColumns={{true}}
+              @reorderable={{true}}
+              @sortable={{true}}
+              @showOptions={{true}}
+              @optionsTarget={{section.optionsTarget}}
+              @tableId="company-billing"
+              as |cell|
+            >
+              <DataTable::StackedLabel
+                @columns={{this.billingHistoryColumns}}
+                @cellKey={{cell.key}}
+                @skip={{array "occurredAt"}}
+              />
+              {{#if (eq cell.key "occurredAt")}}
+                <span data-test-billing-history-row>{{format-date
+                    cell.value
+                  }}</span>
+              {{else if (eq cell.key "amount")}}
+                <span>{{format-money
+                    cell.value
+                    currency=cell.row.currency
+                    minor=true
+                  }}</span>
+              {{else if (eq cell.key "creditAmount")}}
+                {{#let (billing-history-status cell.row) as |status|}}
+                  {{#if status.creditAmount}}
+                    <span
+                      data-test-history-credit
+                    >{{format-money
+                        status.creditAmount
+                        currency=cell.row.currency
+                        minor=true
+                      }}</span>
+                    <span
+                      class="text-muted text-sm"
+                    >{{status.creditNote}}</span>
+                  {{else}}
+                    <span class="text-muted" data-empty>-</span>
+                  {{/if}}
+                {{/let}}
+              {{else if (eq cell.key "type")}}
+                {{#let (billing-history-status cell.row) as |status|}}
+                  <Woven::Tag
+                    @variant={{status.tagVariant}}
+                    @text={{status.label}}
+                    data-test-history-status
+                  />
+                {{/let}}
+              {{else if (eq cell.key "hostedInvoiceUrl")}}
+                {{#if cell.value}}
+                  <a
+                    href={{cell.value}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="link"
+                    data-test-history-invoice-link
+                  >
+                    <Ui::Ph @icon="receipt" />
+                    View
+                  </a>
                 {{else}}
-                  <span class="text-muted" data-empty>-</span>
+                  <span class="text-muted" data-empty>&mdash;</span>
                 {{/if}}
-              {{/let}}
-            {{else if (eq cell.key "type")}}
-              {{#let (billing-history-status cell.row) as |status|}}
-                <Woven::Tag
-                  @variant={{status.tagVariant}}
-                  @text={{status.label}}
-                  data-test-history-status
-                />
-              {{/let}}
-            {{else if (eq cell.key "hostedInvoiceUrl")}}
-              {{#if cell.value}}
-                <a
-                  href={{cell.value}}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="link"
-                  data-test-history-invoice-link
-                >
-                  <Ui::Ph @icon="receipt" />
-                  View
-                </a>
               {{else}}
-                <span class="text-muted" data-empty>&mdash;</span>
+                {{cell.value}}
               {{/if}}
-            {{else}}
-              {{cell.value}}
-            {{/if}}
-          </Woven::DataTable>
-          <Woven::Pagination
-            @page={{this.billingHistoryPage}}
-            @limit={{this.billingHistoryLimit}}
-            @total={{this.billingHistoryTotal}}
-            @onLimitChange={{this.setBillingHistoryLimit}}
-            @onPrevious={{this.billingHistoryPrevious}}
-            @onNext={{this.billingHistoryNext}}
-            @onPageChange={{this.billingHistoryGoToPage}}
-          />
-        {{else}}
-          <p class="text-muted" data-test-billing-history-empty>No payments yet.
-            Invoices appear here after your first charge.</p>
-        {{/if}}
-      </Woven::Card>
+            </Woven::DataTable>
+            <Woven::Pagination
+              @page={{this.billingHistoryPage}}
+              @limit={{this.billingHistoryLimit}}
+              @total={{this.billingHistoryTotal}}
+              @onLimitChange={{this.setBillingHistoryLimit}}
+              @onPrevious={{this.billingHistoryPrevious}}
+              @onNext={{this.billingHistoryNext}}
+              @onPageChange={{this.billingHistoryGoToPage}}
+            />
+          {{else}}
+            <p class="text-muted" data-test-billing-history-empty>No payments yet.
+              Invoices appear here after your first charge.</p>
+          {{/if}}
+        </:body>
+      </Woven::TableSection>
     {{/if}}
 
     <ConfirmModal

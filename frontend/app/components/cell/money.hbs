@@ -1,0 +1,21 @@
+{{#let
+  (if (eq @amount undefined) @value @amount)
+  (if
+    (eq @currency undefined)
+    (if @column.cellArgs.currencyPath (get @row @column.cellArgs.currencyPath))
+    @currency
+  )
+  (if (eq @minor undefined) @column.cellArgs.minor @minor)
+  as |amount currency minor|
+~}}
+  {{~#if (has-value amount)~}}
+    <Money
+      @amount={{amount}}
+      @currency={{currency}}
+      @minor={{minor}}
+      ...attributes
+    />
+  {{~else~}}
+    <Woven::Cell::Empty />
+  {{~/if~}}
+{{~/let}}

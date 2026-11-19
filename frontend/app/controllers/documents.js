@@ -30,6 +30,7 @@ export default class DocumentsController extends PaginatedController {
   @tracked dateFrom = '';
   @tracked dateTo = '';
   @tracked related = '';
+  @tracked panel = null;
 
   resetState() {
     this.page = 1;
@@ -101,6 +102,10 @@ export default class DocumentsController extends PaginatedController {
       this.category = '';
     }
     this.page = 1;
+  }
+
+  @action registerPanel(panel) {
+    this.panel = panel;
   }
 
   @action setPage(page) {

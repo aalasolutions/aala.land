@@ -15,9 +15,10 @@
   min-inline-size: 0;
 }
 
-// ember-table keeps every header cell sticky, so headers always need a fill.
-.data-table thead th {
-  background-color: var(--wu-table--Background, var(--wu-bg-surface));
+// ember-table keeps every header cell sticky, so headers always need a fill; the kit's sticky-header fill is outranked.
+.data-table thead th,
+.data-table .wu-table.sticky-header > thead th {
+  background-color: var(--wu-table--Background, var(--wu-bg-alternate));
 }
 
 // Pinned cells: opaque fill with the kit row tint (hover, selected) laid over it.
@@ -25,6 +26,10 @@
   background:
     linear-gradient(var(--wu-kit-table-tint, transparent), var(--wu-kit-table-tint, transparent)),
     var(--wu-table--Background, var(--wu-bg-surface));
+}
+
+.data-table thead th:is(.is-fixed-left, .is-fixed-right) {
+  background: var(--wu-table--Background, var(--wu-bg-alternate));
 }
 
 // Edge shadow on the side where the other columns scroll under the pinned ones. The table stays LTR, so the sides are physical.
@@ -229,10 +234,11 @@ $pinned-edge-left: wu-space(2) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned
   max-block-size: var(--wu-table--MaxHeight, calc(100dvh - 240px));
 }
 
-// One line per cell, clipped at the end edge.
+// One line per cell, cut with an ellipsis at the end edge.
 .data-table table td,
 .data-table .et-cell-content {
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -243,6 +249,7 @@ $pinned-edge-left: wu-space(2) 0 wu-space(2) calc(-1 * #{wu-space(2)}) #{$pinned
 
 .data-table__cell {
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 // Lets the focus ring of a cell button show.

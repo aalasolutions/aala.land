@@ -1,0 +1,22 @@
+{{! @route and @models (or @model) come direct, or from cellArgs (route, modelPaths, modelPath) and the row. }}
+{{#let
+  (if
+    (or (eq @value null) (eq @value undefined) (eq @value ""))
+    (or @fallback @column.cellArgs.fallback)
+    @value
+  )
+  as |text|
+}}
+  {{#if (or (eq text null) (eq text undefined) (eq text ""))}}
+    <Woven::Cell::Empty />
+  {{else}}
+    <LinkTo
+      @route={{this.route}}
+      @models={{this.models}}
+      class="text-brand whitespace-nowrap"
+      title={{text}}
+      data-test-wu-cell-link
+      ...attributes
+    >{{text}}</LinkTo>
+  {{/if}}
+{{/let}}

@@ -12,7 +12,7 @@ export default class ContactCompaniesComponent extends Component {
   @tracked companies = [];
   @tracked total = 0;
   @tracked page = 1;
-  @tracked limit = 20;
+  @tracked limit = 50;
   @tracked isLoading = true;
   @tracked error = '';
   loadToken = 0;
@@ -71,7 +71,10 @@ export default class ContactCompaniesComponent extends Component {
       this.total = 0;
       this.error = e.message || 'Could not load companies';
     } finally {
-      if (token === this.loadToken) this.isLoading = false;
+      if (token === this.loadToken) {
+        this.isLoading = false;
+        this.args.onTotal?.(this.total);
+      }
     }
   }
 
@@ -94,7 +97,7 @@ export default class ContactCompaniesComponent extends Component {
 
   @action
   setLimit(limit) {
-    this.limit = Number(limit) || 20;
+    this.limit = Number(limit) || 50;
     this.load(1);
   }
 }

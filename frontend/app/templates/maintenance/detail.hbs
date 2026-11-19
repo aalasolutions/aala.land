@@ -1,110 +1,107 @@
 {{page-title this.title}}
 
-<div data-test-work-order-detail class="flex col gap-6">
-  <Woven::PageHeader @title={{this.title}} @subtitle={{this.subtitle}}>
-    <:breadcrumb>
-      <Woven::Breadcrumb
-        @items={{array (hash label="Maintenance" route="maintenance.index")}}
-        @compact={{true}}
-        @parentsOnly={{true}}
-        data-test-breadcrumb-maintenance
+<Woven::DetailPage
+  @title={{this.title}}
+  @subtitle={{this.subtitle}}
+  @crumbs={{array (hash label="Maintenance" route="maintenance.index")}}
+  data-test-work-order-detail
+>
+  <:meta>
+    {{#if @model.workOrder}}
+      <Woven::Tag
+        @variant={{tag-variant "wo" @model.workOrder.status}}
+        @text={{tag-label "wo" @model.workOrder.status}}
+        data-test-work-order-status
       />
-    </:breadcrumb>
-    <:meta>
-      {{#if @model.workOrder}}
-        <div class="flex gap-1 wrap">
-          <Woven::Tag
-            @variant={{tag-variant "wo" @model.workOrder.status}}
-            @text={{@model.workOrder.status}}
-            data-test-work-order-status
-          />
-          <Woven::Tag
-            @variant={{tag-variant "priority" @model.workOrder.priority}}
-            @text={{@model.workOrder.priority}}
-            data-test-work-order-priority
-          />
-          <Woven::Tag
-            @variant={{tag-variant "trade" @model.workOrder.category}}
-            @text={{@model.workOrder.category}}
-            data-test-work-order-category
-          />
-        </div>
+      <Woven::Tag
+        @variant={{tag-variant "priority" @model.workOrder.priority}}
+        @text={{tag-label "priority" @model.workOrder.priority}}
+        data-test-work-order-priority
+      />
+      <Woven::Tag
+        @variant={{tag-variant "trade" @model.workOrder.category}}
+        @text={{tag-label "trade" @model.workOrder.category}}
+        data-test-work-order-category
+      />
+    {{/if}}
+  </:meta>
+  <:actions>
+    {{#if (and @model.workOrder this.canEdit)}}
+      <Woven::Button
+        @variant="subtle"
+        @icon="pencil-simple"
+        @text="Edit"
+        data-test-edit-work-order
+        {{on "click" this.openEdit}}
+      />
+    {{/if}}
+  </:actions>
+  <:body>
+    {{#if @model.workOrder}}
+      <RegionNotice
+        @regionCode={{@model.workOrder.regionCode}}
+        @noun="work order"
+      />
+      <Maintenance::Summary
+        @workOrder={{@model.workOrder}}
+        @unit={{@model.unit}}
+        @vendor={{@model.vendor}}
+        @assignee={{@model.assignee}}
+      />
+
+      <section data-test-work-order-documents>
+        <Documents::Panel
+          @filters={{this.documentFilters}}
+          @presetLink={{this.presetLink}}
+          @compact={{true}}
+          @tableId="work-order-documents"
+        >
+          <:header as |panel|>
+            <div class="flex between x-center">
+              <h2 class="text-md font-bold">Documents</h2>
+              {{#if panel.canUpload}}
+                <Woven::Button
+                  @variant="brand"
+                  @size="sm"
+                  @icon="upload-simple"
+                  @text="Upload"
+                  data-test-work-order-documents-upload
+                  {{on "click" panel.openUpload}}
+                />
+              {{/if}}
+            </div>
+          </:header>
+        </Documents::Panel>
+      </section>
+
+      {{#if this.canViewHistory}}
+        <Woven::TableSection @title="History" data-test-work-order-history-card>
+          <:body as |section|>
+            <RecordHistoryList
+              @entityType="WorkOrder"
+              @entityId={{@model.workOrder.id}}
+              @reloadKey={{@model.workOrder}}
+              @optionsTarget={{section.optionsTarget}}
+            />
+          </:body>
+        </Woven::TableSection>
       {{/if}}
-    </:meta>
-    <:actions>
-      {{#if (and @model.workOrder this.canEdit)}}
-        <Woven::Button
-          @variant="subtle"
-          @icon="pencil-simple"
-          @text="Edit"
-          data-test-edit-work-order
-          {{on "click" this.openEdit}}
+
+      {{#if this.canEdit}}
+        <Maintenance::WorkOrderDrawer
+          @open={{this.showEdit}}
+          @workOrder={{@model.workOrder}}
+          @onClose={{this.closeEdit}}
+          @onSaved={{this.refresh}}
         />
       {{/if}}
-    </:actions>
-  </Woven::PageHeader>
-
-  {{#if @model.workOrder}}
-    <RegionNotice
-      @regionCode={{@model.workOrder.regionCode}}
-      @noun="work order"
-    />
-    <Maintenance::Summary
-      @workOrder={{@model.workOrder}}
-      @unit={{@model.unit}}
-      @vendor={{@model.vendor}}
-      @assignee={{@model.assignee}}
-    />
-
-    <section data-test-work-order-documents>
-      <Documents::Panel
-        @filters={{this.documentFilters}}
-        @presetLink={{this.presetLink}}
-        @compact={{true}}
-        @tableId="work-order-documents"
-      >
-        <:header as |panel|>
-          <div class="flex between x-center">
-            <h2 class="text-md font-bold">Documents</h2>
-            {{#if panel.canUpload}}
-              <Woven::Button
-                @variant="brand"
-                @size="sm"
-                @icon="upload-simple"
-                @text="Upload"
-                data-test-work-order-documents-upload
-                {{on "click" panel.openUpload}}
-              />
-            {{/if}}
-          </div>
-        </:header>
-      </Documents::Panel>
-    </section>
-
-    {{#if this.canViewHistory}}
-      <Woven::Card @title="History" data-test-work-order-history-card>
-        <RecordHistoryList
-          @entityType="WorkOrder"
-          @entityId={{@model.workOrder.id}}
-          @reloadKey={{@model.workOrder}}
+    {{else}}
+      <Woven::Card>
+        <Woven::EmptyState
+          @description="Work order not found."
+          data-test-work-order-not-found
         />
       </Woven::Card>
     {{/if}}
-
-    {{#if this.canEdit}}
-      <Maintenance::WorkOrderDrawer
-        @open={{this.showEdit}}
-        @workOrder={{@model.workOrder}}
-        @onClose={{this.closeEdit}}
-        @onSaved={{this.refresh}}
-      />
-    {{/if}}
-  {{else}}
-    <Woven::Card>
-      <Woven::EmptyState
-        @description="Work order not found."
-        data-test-work-order-not-found
-      />
-    </Woven::Card>
-  {{/if}}
-</div>
+  </:body>
+</Woven::DetailPage>

@@ -19,6 +19,7 @@
       @sortable={{true}}
       @tableId="contact-companies"
       @showOptions={{true}}
+      @optionsTarget={{@optionsTarget}}
       data-test-contact-companies-table
       as |cell|
     >
@@ -61,7 +62,7 @@
       @page={{this.page}}
       @limit={{this.limit}}
       @total={{this.total}}
-      @perPageOptions={{array 20 50 100}}
+      @rangeOnly={{true}}
       @onLimitChange={{this.setLimit}}
       @onPrevious={{this.previousPage}}
       @onNext={{this.nextPage}}

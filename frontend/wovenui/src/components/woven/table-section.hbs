@@ -1,0 +1,37 @@
+<section class="flex col gap-3" data-test-wu-table-section ...attributes>
+  <div
+    class="flex between x-center gap-3 wrap wu-table-section-head
+      {{if
+        (not (or @title (has-block 'meta') (has-block 'actions')))
+        'is-bare'
+      }}"
+    data-test-wu-table-section-head
+  >
+    {{#if (or @title (has-block "meta"))}}
+      <div class="flex x-center gap-2 wrap" data-test-wu-table-section-start>
+        {{#if @title}}
+          <h2 class="text-md font-bold" data-test-wu-table-section-title>
+            {{#if @icon}}
+              <Woven::Icon @icon={{@icon}} aria-hidden="true" />
+            {{/if}}
+            {{@title}}
+          </h2>
+        {{/if}}
+        {{yield to="meta"}}
+      </div>
+    {{/if}}
+    <div
+      class="flex x-center gap-3 wrap ms-auto"
+      data-test-wu-table-section-end
+    >
+      {{yield to="actions"}}
+      <div
+        class="wu-table-section-options"
+        data-test-wu-table-section-options
+        {{this.registerOptionsHost}}
+      ></div>
+    </div>
+  </div>
+
+  {{yield (hash optionsTarget=this.optionsHost) to="body"}}
+</section>
