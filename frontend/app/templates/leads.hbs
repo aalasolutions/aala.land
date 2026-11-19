@@ -4,7 +4,6 @@
   @title="Lead Pipeline"
   @subtitle="Track and manage your leads through the pipeline."
   @isEmpty={{and (eq this.viewMode "list") (not this.filteredLeads.length)}}
-  @hideSwitcher={{eq this.viewMode "agent"}}
   data-test-leads-page
 >
   <:action>
@@ -18,24 +17,26 @@
     </Woven::Button>
   </:action>
 
-  {{! Agent board columns are already the ownership breakdown }}
   <:switcher>
     <Woven::Tabs
-      @tabs={{this.filterTabs}}
-      @activeTab={{this.filterType}}
-      @onChange={{this.setFilter}}
-      data-test-lead-filters
-    />
-  </:switcher>
-
-  <:toolbarEnd>
-    <Woven::Segmented
-      @options={{this.viewTabs}}
-      @value={{this.viewMode}}
+      @tabs={{this.viewTabs}}
+      @activeTab={{this.viewMode}}
       @onChange={{this.setViewMode}}
       data-test-view-toggle
     />
-  </:toolbarEnd>
+  </:switcher>
+
+  {{! Agent board columns are already the ownership breakdown }}
+  <:toolbar>
+    {{#unless (eq this.viewMode "agent")}}
+      <Woven::Segmented
+        @options={{this.filterTabs}}
+        @value={{this.filterType}}
+        @onChange={{this.setFilter}}
+        data-test-lead-filters
+      />
+    {{/unless}}
+  </:toolbar>
 
   <:body as |page|>
     {{#if (eq this.viewMode "pipeline")}}

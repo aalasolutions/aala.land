@@ -15,10 +15,10 @@ const DEFAULT_FILTER = 'mine';
 export const DROP_AT_END = 'end';
 
 const VIEW_TABS = [
-  { id: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
-  { id: 'temperature', label: 'Temperature', icon: 'thermometer' },
-  { id: 'agent', label: 'Agent', icon: 'users' },
-  { id: 'list', label: 'List', icon: 'list' },
+  { id: 'pipeline', label: 'Pipeline Board', icon: 'squares-four' },
+  { id: 'temperature', label: 'Temperature Board', icon: 'thermometer' },
+  { id: 'agent', label: 'Owner Board', icon: 'users' },
+  { id: 'list', label: 'List View', icon: 'list' },
 ];
 const OWN_VIEW_TABS = VIEW_TABS.filter((tab) => tab.id !== 'agent');
 
