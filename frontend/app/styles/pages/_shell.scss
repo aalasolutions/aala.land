@@ -2,20 +2,11 @@
 @use "@wovenui/ember/styles/common/var" as *;
 @use "@wovenui/ember/styles/mixins/bem" as *;
 
-$shell-background-color: #4a6d92;
-$shell-background-image: radial-gradient(
-  circle at center,
-  #7ca2ca 0%,
-  #1d3c4e 90%,
-  #2b1818 100%
-);
+$shell-background-color: #154363;
 .app-shell {
   display: flex;
   min-block-size: 100vh;
   background-color: $shell-background-color;
-  background-image: $shell-background-image;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
 }
 
 .app-shell__main {
@@ -227,6 +218,15 @@ $shell-background-image: radial-gradient(
     justify-content: center;
   }
 
+  // The icon is sized 1em inline, so the larger nav glyph comes from the item; the label tooltip keeps the rail size.
+  .wu-sidebar-list :is(.wu-sidebar-link, .wu-sidebar-toggle) {
+    font-size: 1.125rem;
+
+    > .wu-sidebar-label {
+      font-size: wu-font-size(sm);
+    }
+  }
+
   // One fill anchored to the current link glides between items; unsupported browsers keep the static fill.
   @supports (anchor-name: --a) {
     .wu-sidebar-link[aria-current="page"] {
@@ -268,7 +268,7 @@ $shell-background-image: radial-gradient(
     padding-block: calc((100% - var(--wu-control-height-sm)) / 2);
     border-radius: wu-radius(full);
     background: var(--app-rail-group);
-
+    border: 1px solid #006065;
     :is(.wu-sidebar-toggle, .wu-sidebar-link) {
       border-radius: wu-radius(full);
     }
@@ -462,7 +462,6 @@ $shell-background-image: radial-gradient(
 .app-shell > .wu-drawer {
   border-inline-end: 0;
   background-color: $shell-background-color;
-  background-image: $shell-background-image;
 
   .wu-sidebar {
     inline-size: 100%;

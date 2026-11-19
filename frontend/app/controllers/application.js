@@ -265,8 +265,7 @@ export default class ApplicationController extends Controller {
   constructor() {
     super(...arguments);
     this.routeDidChangeHandler = (transition) => {
-      const group = this.activeGroup;
-      if (group) this.expandedGroup = group;
+      this.expandedGroup = this.activeGroup;
       this.sidebarMobileOpen = false;
 
       // The shell scroller persists across routes; query-param-only changes keep their scroll.

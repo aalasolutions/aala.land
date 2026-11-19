@@ -3,13 +3,7 @@
 @use "@wovenui/ember/styles/mixins/bem" as *;
 
 
-$shell-background-color: #4a6d92;
-$shell-background-image: radial-gradient(
-  circle at center,
-  #7ca2ca 0%,
-  #1d3c4e 90%,
-  #2b1818 100%
-);
+$shell-background-color: #154363;
 
 .login-page {
   display: flex;
@@ -17,7 +11,6 @@ $shell-background-image: radial-gradient(
   justify-content: center;
   min-block-size: 100vh;
   background-color: $shell-background-color;
-  background-image: $shell-background-image;
   background-repeat: no-repeat;
   background-attachment: fixed;
 
