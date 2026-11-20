@@ -69,6 +69,15 @@
     --wu-control-height-sm: var(--wu-control-height-md);
   }
 
+  // iOS Safari zooms on focus below 16px.
+  .wu-input,
+  .wu-input-affix,
+  .wu-select,
+  .wu-textarea,
+  .wu-input-group {
+    font-size: var(--wu-font-size-md);
+  }
+
   .wu-tag:is(a[href], button) {
     min-block-size: var(--wu-control-height-md);
   }
