@@ -13,8 +13,4 @@ export default class ImportContactsRoute extends AuthenticatedRoute {
       this.router.transitionTo('contacts.index');
     }
   }
-
-  resetController(controller, isExiting) {
-    if (isExiting) controller.reset();
-  }
 }
