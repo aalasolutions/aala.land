@@ -9,12 +9,20 @@ import {
   FILTER_BEDS_OPTIONS,
   ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
+import { unitsListFilters } from '../../utils/units-query';
+import { saveResponseAsFile } from '../../utils/download';
+
+const EXPORT_WAIT_NOTICE_MS = 1000;
+export const EXPORT_CAP = 20000;
 
 export default class PropertiesIndexController extends Controller {
   queryParams = ['archived'];
   @service auth;
   @service router;
   @service preferences;
+  @service region;
+  @service dataTransfer;
+  @service notifications;
 
   @tracked activeView = null;
 
@@ -236,25 +244,46 @@ export default class PropertiesIndexController extends Controller {
     this.applyFilters();
   }
 
+  // The same query the browse list sends, minus paging and sort, so the file matches the page.
+  get exportParams() {
+    return unitsListFilters(this, { regionCode: this.region.regionCode });
+  }
+
+  @action async exportUnits(format) {
+    const notice = setTimeout(
+      () => this.notifications.info('Preparing your file'),
+      EXPORT_WAIT_NOTICE_MS,
+    );
+    try {
+      const response = await this.dataTransfer.exportList(
+        'units',
+        this.exportParams,
+        format,
+      );
+      clearTimeout(notice);
+      await saveResponseAsFile(response, `units.${format}`);
+      if (response.headers.get('X-Export-Truncated') === 'true') {
+        this.notifications.info(
+          `Only the first ${EXPORT_CAP.toLocaleString()} properties were exported. Narrow the filters to export the rest.`,
+        );
+      }
+    } catch (error) {
+      clearTimeout(notice);
+      this.notifications.error(error.message);
+    }
+  }
+
   @action async loadBrowseUnits() {
     const requestId = ++this.browseRequestId;
     this.isLoadingBrowse = true;
     try {
-      let params = `page=${this.browsePage}&limit=${this.browseLimit}`;
-      if (this.archivedFilterValue !== 'exclude')
-        params += `&archived=${this.archivedFilterValue}`;
-      if (this.filterType) params += `&propertyType=${this.filterType}`;
-      if (this.filterStatus) params += `&status=${this.filterStatus}`;
-      if (this.filterMinPrice) params += `&minPrice=${this.filterMinPrice}`;
-      if (this.filterMaxPrice) params += `&maxPrice=${this.filterMaxPrice}`;
-      if (this.filterBeds) {
-        params += `&minBeds=${this.filterBeds}`;
-        params += `&maxBeds=${this.filterBeds === '4' ? '99' : this.filterBeds}`;
+      const params = new URLSearchParams(unitsListFilters(this));
+      params.set('page', this.browsePage);
+      params.set('limit', this.browseLimit);
+      if (this.sortField) {
+        params.set('sort', this.sortField);
+        params.set('order', this.sortDirection);
       }
-      if (this.filterAmenities.length)
-        params += `&amenities=${this.filterAmenities.join(',')}`;
-      if (this.sortField)
-        params += `&sort=${this.sortField}&order=${this.sortDirection}`;
       const json = await this.auth.fetchJson(`/properties/units?${params}`);
       if (requestId !== this.browseRequestId) return;
       this.browseUnits = json.data?.data ?? [];

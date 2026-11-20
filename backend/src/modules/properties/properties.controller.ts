@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Res,
   ParseIntPipe,
   ParseUUIDPipe,
   ParseEnumPipe,
@@ -48,6 +49,10 @@ import { requireCompanyId, scopedCompanyId } from '@shared/utils/auth.util';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadMediaDto } from './dto/upload-media.dto';
+import { Response } from 'express';
+import { UnitsExportService } from './transfer/units-export.service';
+import { ExportUnitsQueryDto } from './dto/export-units-query.dto';
+import { headerSafeName } from '@shared/utils/file-name.util';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -57,7 +62,39 @@ export class PropertiesController {
   constructor(
     private readonly propertiesService: PropertiesService,
     private readonly mediaService: MediaService,
+    private readonly unitsExport: UnitsExportService,
   ) {}
+
+  // Declared before every param route. Streams the file itself, so the ResponseInterceptor never wraps it.
+  @Get('export')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({
+    summary:
+      'Export the unit list as CSV or XLSX with the same filters as GET /properties/units (COMPANY_ADMIN)',
+  })
+  async exportUnits(
+    @Query() query: ExportUnitsQueryDto,
+    @Request() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const file = await this.unitsExport.export(
+      requireCompanyId(req.user),
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        regionCodes: req.user.regionCodes,
+      },
+      query,
+    );
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${headerSafeName(file.fileName)}"`,
+    );
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (file.truncated) res.setHeader('X-Export-Truncated', 'true');
+    res.send(file.buffer);
+  }
 
   @Post('media/upload')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
@@ -172,17 +209,6 @@ export class PropertiesController {
     @Request() req: AuthenticatedRequest,
   ) {
     return this.mediaService.deleteMedia(id, requireCompanyId(req.user));
-  }
-
-  @Post('bulk-import')
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Bulk import units from CSV (ADMIN+, AGENT)' })
-  bulkImport(@Body('csv') csv: string, @Request() req: AuthenticatedRequest) {
-    return this.propertiesService.bulkImportUnits(
-      requireCompanyId(req.user),
-      csv,
-      req.user,
-    );
   }
 
   @Get('assets/list')

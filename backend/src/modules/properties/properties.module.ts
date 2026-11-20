@@ -14,6 +14,8 @@ import { EmailModule } from '../email/email.module';
 import { ContactsModule } from '../contacts/contacts.module';
 import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
 import { RecordHistoryModule } from '../record-history/record-history.module';
+import { AuditModule } from '../audit/audit.module';
+import { UnitsExportService } from './transfer/units-export.service';
 
 @Module({
   imports: [
@@ -30,9 +32,10 @@ import { RecordHistoryModule } from '../record-history/record-history.module';
     StoragePurgeModule,
     RecordHistoryModule,
     RedisModule,
+    AuditModule,
   ],
   controllers: [PropertiesController],
-  providers: [PropertiesService, MediaService],
+  providers: [PropertiesService, MediaService, UnitsExportService],
   exports: [PropertiesService, MediaService],
 })
 export class PropertiesModule {}

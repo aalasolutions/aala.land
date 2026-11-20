@@ -12,11 +12,25 @@ function parseWhatsapp(raw: string): ParseOutcome {
   return { error: 'Use Yes or No.' };
 }
 
-// Mirrors contact.entity.ts column lengths; the identity rule (name, phone or email) is checked per row, not here.
+// Mirrors contact.entity.ts column lengths; First Name and Phone are required, as on the contact form.
 export const CONTACT_COLUMNS: ColumnDef[] = [
-  { header: 'First Name', key: 'firstName', type: 'string', maxLength: 100 },
+  {
+    header: 'First Name',
+    key: 'firstName',
+    type: 'string',
+    required: true,
+    requiredReason: 'Enter a first name.',
+    maxLength: 100,
+  },
   { header: 'Last Name', key: 'lastName', type: 'string', maxLength: 100 },
-  { header: 'Phone', key: 'phone', type: 'string', maxLength: 50 },
+  {
+    header: 'Phone',
+    key: 'phone',
+    type: 'string',
+    required: true,
+    requiredReason: 'Enter a phone number.',
+    maxLength: 50,
+  },
   { header: 'Email', key: 'email', type: 'string', maxLength: 255 },
   {
     header: 'WhatsApp',

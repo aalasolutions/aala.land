@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
-import { GENERIC_ERROR } from 'land/services/data-transfer';
+import { EXPORT_PATHS, GENERIC_ERROR } from 'land/services/data-transfer';
 
 function jsonResponse(status, body) {
   return new Response(body == null ? null : JSON.stringify(body), {
@@ -92,6 +92,32 @@ module('Unit | Service | data-transfer', function (hooks) {
     assert.true(
       this.calls[1].url.endsWith(
         '/contacts/export?regionCode=makkah&format=csv',
+      ),
+    );
+  });
+
+  test('notesFile posts the note rows as JSON with the format in the query', async function (assert) {
+    this.nextResponse = new Response('a,b', { status: 200 });
+    const rows = [{ values: { asset: 'A', link: 'https://x/y' }, reason: 'r' }];
+    const response = await this.service.notesFile('units', rows, 'xlsx');
+    assert.strictEqual(response, this.nextResponse);
+    const { url, options } = this.calls[0];
+    assert.true(url.endsWith('/data-transfer/units/notes-file?format=xlsx'));
+    assert.strictEqual(options.method, 'POST');
+    assert.deepEqual(JSON.parse(options.body), { rows });
+  });
+
+  test('export maps the units entity onto the properties module route', async function (assert) {
+    assert.deepEqual(EXPORT_PATHS, { units: 'properties' });
+    this.nextResponse = new Response('a,b', { status: 200 });
+    await this.service.exportList(
+      'units',
+      { regionCode: 'makkah', status: 'rented' },
+      'xlsx',
+    );
+    assert.true(
+      this.calls[0].url.endsWith(
+        '/properties/export?regionCode=makkah&status=rented&format=xlsx',
       ),
     );
   });

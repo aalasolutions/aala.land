@@ -1,0 +1,264 @@
+<div data-test-import-step={{this.step}} ...attributes>
+  {{#if this.locked}}
+    <Woven::Alert
+      @variant="warning"
+      @title={{this.lockedTitle}}
+      @description="Upgrade to import {{this.plural}} from a file."
+      data-test-import-locked
+    >
+      <:actions>
+        <Woven::Button
+          @variant="brand"
+          @route="company"
+          @query={{hash tab="billing"}}
+          data-test-import-see-plans
+        >
+          See plans
+        </Woven::Button>
+      </:actions>
+    </Woven::Alert>
+  {{else if (eq this.step "upload")}}
+    <Woven::Card data-test-import-upload>
+      <div class="flex col gap-4">
+        <p class="text-muted" data-test-import-intro>{{@intro}}</p>
+        <div class="flex gap-3 wrap">
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-sample="csv"
+            {{on "click" (fn this.downloadTemplate "csv")}}
+          >
+            Download sample (CSV)
+          </Woven::Button>
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-sample="xlsx"
+            {{on "click" (fn this.downloadTemplate "xlsx")}}
+          >
+            Download sample (Excel)
+          </Woven::Button>
+        </div>
+        {{#if this.needsRegionPick}}
+          <Woven::Field
+            @label="Region for rows without one"
+            @hint="Optional. Rows with their own Region cell keep it; rows without one need this or they are not imported."
+            data-test-import-region-field
+          >
+            <Woven::Dropdown
+              id="import-region"
+              @align="start"
+              @placeholder="Choose a region"
+              @value={{this.regionCode}}
+              @onSelect={{this.setRegion}}
+              @options={{this.regionOptions}}
+              data-test-import-region
+            />
+          </Woven::Field>
+        {{/if}}
+        <DataTransfer::FileDrop
+          @accept={{this.accept}}
+          @maxSize={{this.maxBytes}}
+          @hint="CSV or Excel (.xlsx), up to 5 MB"
+          @onFile={{this.setFile}}
+        />
+        <div class="flex end gap-3">
+          <Woven::Button
+            @variant="brand"
+            @icon="magnifying-glass"
+            @disabled={{not this.canCheck}}
+            @loading={{this.busy}}
+            data-test-import-check
+            {{on "click" this.check}}
+          >
+            Check file
+          </Woven::Button>
+        </div>
+      </div>
+    </Woven::Card>
+  {{else if (eq this.step "confirm")}}
+    <div class="flex col gap-4" data-test-import-confirm>
+      {{#if this.fileErrors.length}}
+        <Woven::Alert
+          @variant="danger"
+          @title="This file cannot be imported"
+          data-test-import-file-errors
+        >
+          <ul class="flex col gap-1">
+            {{#each this.fileErrors as |problem|}}
+              <li>{{problem.message}}</li>
+            {{/each}}
+          </ul>
+        </Woven::Alert>
+      {{else}}
+        <Woven::Alert
+          @variant={{if this.plan.failed "warning" "info"}}
+          @title={{this.confirmTitle}}
+          @description="Skipped rows already exist or repeat an earlier row in the file. Rows with errors are not imported; fix them in the file and upload it again later."
+          data-test-import-counts
+        />
+        {{#if this.problemRows.length}}
+          <Woven::DataTable
+            @columns={{this.columns}}
+            @rows={{this.problemRows}}
+            @getRowClass={{this.getRowClass}}
+            @tableId="import-{{this.entity}}-problems"
+            data-test-import-problems
+            as |cell|
+          >
+            {{#if (eq cell.key "status")}}
+              {{#let (this.statusTag cell.value) as |tag|}}
+                <Woven::Tag @variant={{tag.variant}} @text={{tag.text}} />
+              {{/let}}
+            {{else if cell.value}}
+              {{cell.value}}
+            {{else}}
+              <Woven::Cell::Empty />
+            {{/if}}
+          </Woven::DataTable>
+        {{/if}}
+        {{#if this.failedRows.length}}
+          <div class="flex gap-3 wrap">
+            <Woven::Button
+              @variant="subtle"
+              @icon="download-simple"
+              data-test-import-failed="csv"
+              {{on "click" (fn this.downloadFailed "csv")}}
+            >
+              Download rows not imported (CSV)
+            </Woven::Button>
+            <Woven::Button
+              @variant="subtle"
+              @icon="download-simple"
+              data-test-import-failed="xlsx"
+              {{on "click" (fn this.downloadFailed "xlsx")}}
+            >
+              Download rows not imported (Excel)
+            </Woven::Button>
+          </div>
+        {{/if}}
+      {{/if}}
+      <div class="flex gap-3 wrap">
+        {{#unless this.fileErrors.length}}
+          <Woven::Button
+            @variant="brand"
+            @icon="upload-simple"
+            @disabled={{not this.canConfirm}}
+            @loading={{this.busy}}
+            data-test-import-confirm-button
+            {{on "click" this.confirm}}
+          >
+            Import
+            {{this.plan.willAdd}}
+            {{if (eq this.plan.willAdd 1) this.singular this.plural}}
+          </Woven::Button>
+        {{/unless}}
+        <Woven::Button
+          @variant="subtle"
+          data-test-import-choose-another
+          {{on "click" this.reset}}
+        >
+          Choose another file
+        </Woven::Button>
+      </div>
+    </div>
+  {{else}}
+    <div class="flex col gap-4" data-test-import-result>
+      <Woven::Alert
+        @variant="success"
+        @title={{this.resultTitle}}
+        data-test-import-result-counts
+      />
+      {{#if this.notes.length}}
+        <Woven::Alert
+          @variant="info"
+          @title="{{this.notes.length}} {{if
+            (eq this.notes.length 1)
+            this.singular
+            this.plural
+          }} {{@notes.summary}}"
+          data-test-import-notes-count
+        />
+        <Woven::DataTable
+          @columns={{this.noteColumns}}
+          @rows={{this.notes}}
+          @tableId="import-{{this.entity}}-notes"
+          data-test-import-notes
+          as |cell|
+        >
+          {{#if (eq cell.key this.noteLinkKey)}}
+            <Woven::Cell::Link
+              @value={{cell.value}}
+              @route={{@notes.route}}
+              @models={{cell.row.models}}
+              data-test-import-note-link
+            />
+          {{else if cell.value}}
+            {{cell.value}}
+          {{else}}
+            <Woven::Cell::Empty />
+          {{/if}}
+        </Woven::DataTable>
+        <div class="flex gap-3 wrap">
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-notes-download="csv"
+            {{on "click" (fn this.downloadNotes "csv")}}
+          >
+            Download
+            {{this.plural}}
+            {{@notes.summary}}
+            (CSV)
+          </Woven::Button>
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-notes-download="xlsx"
+            {{on "click" (fn this.downloadNotes "xlsx")}}
+          >
+            Download
+            {{this.plural}}
+            {{@notes.summary}}
+            (Excel)
+          </Woven::Button>
+        </div>
+      {{/if}}
+      <div class="flex gap-3 wrap">
+        {{#if this.failedRows.length}}
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-failed="csv"
+            {{on "click" (fn this.downloadFailed "csv")}}
+          >
+            Download rows not imported (CSV)
+          </Woven::Button>
+          <Woven::Button
+            @variant="subtle"
+            @icon="download-simple"
+            data-test-import-failed="xlsx"
+            {{on "click" (fn this.downloadFailed "xlsx")}}
+          >
+            Download rows not imported (Excel)
+          </Woven::Button>
+        {{/if}}
+        <Woven::Button
+          @variant="subtle"
+          data-test-import-another
+          {{on "click" this.reset}}
+        >
+          Import another file
+        </Woven::Button>
+        <Woven::Button
+          @variant="brand"
+          @route={{@backRoute}}
+          data-test-import-back
+        >
+          Back to
+          {{this.plural}}
+        </Woven::Button>
+      </div>
+    </div>
+  {{/if}}
+</div>

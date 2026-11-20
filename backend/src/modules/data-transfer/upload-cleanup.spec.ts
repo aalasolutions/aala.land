@@ -7,13 +7,13 @@ import {
 } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DataTransferController } from './data-transfer.controller';
 import { DataTransferService } from './data-transfer.service';
-import { ContactsImportService } from './contacts-import.service';
+import { ENTITY_IMPORTERS } from './entity-importer';
 import { MulterExceptionFilter } from '@shared/filters/multer-exception.filter';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
@@ -32,10 +32,6 @@ jest.mock('node:fs/promises', () => {
 const REGION_MESSAGE = 'Choose one of your company’s active regions.';
 const CSV = Buffer.from('First Name,Phone\r\nSara,+966501234567\r\n', 'utf8');
 
-function spooledFiles(): string[] {
-  return readdirSync(tmpdir()).filter((name) => name.startsWith('import-'));
-}
-
 // The interceptor fires unlink without awaiting it, so the response can land before the file is gone.
 async function waitForRemoval(path: string): Promise<void> {
   for (let attempt = 0; attempt < 50 && existsSync(path); attempt += 1) {
@@ -47,8 +43,13 @@ describe('Import upload cleanup', () => {
   let app: INestApplication;
   let tier: SubscriptionTier;
   const unlinkSpy = unlink as jest.MockedFunction<typeof unlink>;
+  const actualUnlink =
+    jest.requireActual<typeof import('node:fs/promises')>(
+      'node:fs/promises',
+    ).unlink;
   const findOne = jest.fn();
   const seen: string[] = [];
+  const presentAtUnlink: boolean[] = [];
 
   const importer = (
     file: Express.Multer.File,
@@ -68,8 +69,8 @@ describe('Import upload cleanup', () => {
         DataTransferService,
         { provide: getRepositoryToken(Company), useValue: { findOne } },
         {
-          provide: ContactsImportService,
-          useValue: { preview: importer, commit: importer },
+          provide: ENTITY_IMPORTERS,
+          useValue: { contacts: { preview: importer, commit: importer } },
         },
       ],
     })
@@ -115,7 +116,12 @@ describe('Import upload cleanup', () => {
         activeRegions: ['makkah', 'punjab'],
       }),
     );
-    unlinkSpy.mockClear();
+    presentAtUnlink.length = 0;
+    unlinkSpy.mockReset();
+    unlinkSpy.mockImplementation((path) => {
+      presentAtUnlink.push(existsSync(path));
+      return actualUnlink(path);
+    });
   });
 
   async function spooledPath(): Promise<string> {
@@ -123,27 +129,25 @@ describe('Import upload cleanup', () => {
     const path = unlinkSpy.mock.calls[0][0] as string;
     expect(path.startsWith(join(tmpdir(), 'import-'))).toBe(true);
     expect(path.endsWith('-contacts.csv')).toBe(true);
+    expect(presentAtUnlink).toEqual([true]);
     await waitForRemoval(path);
+    expect(existsSync(path)).toBe(false);
     return path;
   }
 
   for (const route of ['preview', 'commit']) {
     it(`removes the spooled file when ${route} is refused for the FREE tier`, async () => {
       tier = SubscriptionTier.FREE;
-      const before = spooledFiles();
       const res = await request(app.getHttpServer())
         .post(`/data-transfer/contacts/${route}`)
         .attach('file', CSV, 'contacts.csv')
         .expect(403);
       expect(res.body.message).toBe(TIER_FEATURE_MESSAGE);
       expect(seen).toHaveLength(0);
-      const path = await spooledPath();
-      expect(existsSync(path)).toBe(false);
-      expect(spooledFiles()).toEqual(before);
+      await spooledPath();
     });
 
     it(`removes the spooled file when ${route} is refused for a region the company lacks`, async () => {
-      const before = spooledFiles();
       const res = await request(app.getHttpServer())
         .post(`/data-transfer/contacts/${route}`)
         .field('regionCode', 'paris')
@@ -152,13 +156,10 @@ describe('Import upload cleanup', () => {
       expect(res.body.message).toBe(REGION_MESSAGE);
       const path = await spooledPath();
       expect(seen).toEqual([path]);
-      expect(existsSync(path)).toBe(false);
-      expect(spooledFiles()).toEqual(before);
     });
   }
 
   it('removes the spooled file after a successful preview', async () => {
-    const before = spooledFiles();
     await request(app.getHttpServer())
       .post('/data-transfer/contacts/preview')
       .field('regionCode', 'makkah')
@@ -166,7 +167,5 @@ describe('Import upload cleanup', () => {
       .expect(201);
     const path = await spooledPath();
     expect(seen).toEqual([path]);
-    expect(existsSync(path)).toBe(false);
-    expect(spooledFiles()).toEqual(before);
   });
 });

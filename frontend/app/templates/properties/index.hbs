@@ -7,6 +7,11 @@
   data-test-properties-page
 >
   <:action>
+    <DataTransfer::TransferMenu
+      @entity="units"
+      @importRoute="import.units"
+      @onExport={{this.exportUnits}}
+    />
     <Woven::Button
       @variant="brand"
       data-test-new-unit

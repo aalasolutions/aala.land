@@ -4,6 +4,7 @@
     @icon="upload-simple"
     @variant="subtle"
     @menuLabel="Import and export options"
+    @primaryDisabled={{not this.hasImport}}
     @onClick={{this.import}}
     data-test-transfer-menu
     ...attributes
@@ -30,16 +31,18 @@
         >
           <span class="wu-dropdown-label">Export Excel</span>
         </button>
-        <button
-          type="button"
-          class="wu-dropdown-item"
-          role="menuitem"
-          tabindex="-1"
-          data-test-transfer-sample
-          {{on "click" (fn this.sample close)}}
-        >
-          <span class="wu-dropdown-label">Download sample file</span>
-        </button>
+        {{#if this.hasImport}}
+          <button
+            type="button"
+            class="wu-dropdown-item"
+            role="menuitem"
+            tabindex="-1"
+            data-test-transfer-sample
+            {{on "click" (fn this.sample close)}}
+          >
+            <span class="wu-dropdown-label">Download sample file</span>
+          </button>
+        {{/if}}
       </div>
     </:menu>
   </Woven::SplitButton>

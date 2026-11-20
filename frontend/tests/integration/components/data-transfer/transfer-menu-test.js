@@ -58,7 +58,7 @@ module(
     test('a company admin on a paid plan gets Import plus the menu', async function (assert) {
       this.set('onExport', (format) => this.exports.push(format));
       await render(
-        hbs`<DataTransfer::TransferMenu @entity="contacts" @onExport={{this.onExport}} />`,
+        hbs`<DataTransfer::TransferMenu @entity="contacts" @importRoute="import.contacts" @onExport={{this.onExport}} />`,
       );
       assert.dom('[data-test-transfer-menu]').exists();
       assert.dom('[data-test-wu-split-button-primary]').hasText('Import');
@@ -85,7 +85,9 @@ module(
 
     test('a company admin on the free plan is shown the upgrade prompt instead', async function (assert) {
       this.tier = 'FREE';
-      await render(hbs`<DataTransfer::TransferMenu @entity="contacts" />`);
+      await render(
+        hbs`<DataTransfer::TransferMenu @entity="contacts" @importRoute="import.contacts" />`,
+      );
 
       await click('[data-test-wu-split-button-primary]');
       assert.deepEqual(this.transitions, []);
@@ -93,6 +95,26 @@ module(
 
       await click('[data-test-wu-confirm-modal-cancel]');
       assert.dom('[data-test-upgrade-prompt]').doesNotExist();
+    });
+
+    test('without an import route only the export items are offered', async function (assert) {
+      this.set('onExport', (format) => this.exports.push(format));
+      await render(
+        hbs`<DataTransfer::TransferMenu @entity="units" @onExport={{this.onExport}} />`,
+      );
+      assert.dom('[data-test-wu-split-button-primary]').isDisabled();
+      assert.dom('[data-test-wu-split-button-trigger]').isEnabled();
+
+      await click('[data-test-wu-split-button-trigger]');
+      const menu = document.querySelector('[data-test-wu-dropdown-menu]');
+      assert.dom('[data-test-transfer-export="csv"]', menu).isEnabled();
+      assert.dom('[data-test-transfer-export="xlsx"]', menu).isEnabled();
+      assert.dom('[data-test-transfer-sample]', menu).doesNotExist();
+
+      await click(menu.querySelector('[data-test-transfer-export="csv"]'));
+      assert.deepEqual(this.exports, ['csv']);
+      assert.deepEqual(this.transitions, []);
+      assert.deepEqual(this.templates, []);
     });
 
     test('other roles never see the control', async function (assert) {

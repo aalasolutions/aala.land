@@ -87,6 +87,7 @@ Router.map(function () {
   });
   this.route('import', function () {
     this.route('contacts');
+    this.route('units');
   });
   this.route('access-requests');
   // Development-only DataTable option showcase, a copy of the contacts list.

@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsObject,
+  IsOptional,
   IsString,
   MaxLength,
   ValidateNested,
@@ -19,6 +20,15 @@ export class FailedRowDto {
   @IsString()
   @MaxLength(500)
   reason: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Header of the column the reason is about',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  column?: string;
 }
 
 export class FailedFileBodyDto {

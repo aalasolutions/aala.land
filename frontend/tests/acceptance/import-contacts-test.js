@@ -134,7 +134,7 @@ module('Acceptance | import contacts', function (hooks) {
       .hasAttribute('data-test-import-step', 'confirm');
     assert
       .dom('[data-test-import-counts] [data-test-wu-alert-title]')
-      .hasText('Will add 2, skip 1, and 1 rows have errors');
+      .hasText('Will add 2 rows, skip 1 row, and 1 row has an error');
     assert
       .dom('[data-test-import-problems] [data-test-data-table-row]')
       .exists({ count: 2 });
@@ -151,7 +151,7 @@ module('Acceptance | import contacts', function (hooks) {
       .hasAttribute('data-test-import-step', 'result');
     assert
       .dom('[data-test-import-result-counts] [data-test-wu-alert-title]')
-      .hasText('Added 2, skipped 1, 1 not imported');
+      .hasText('Added 2 rows, skipped 1 row, 1 row not imported');
     assert.dom('[data-test-import-failed="csv"]').exists();
     assert.deepEqual(this.calls[1], [
       'commit',

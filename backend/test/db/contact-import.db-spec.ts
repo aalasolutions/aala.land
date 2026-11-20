@@ -92,7 +92,7 @@ describe('contacts import against a real database', () => {
 
   const TWO = [
     'Sara,Al Mansoori,+966501234567,sara@example.com,Yes,,,,,,,',
-    'Omar,,,omar@example.com,,,,,,,,',
+    'Omar,,+966501234568,omar@example.com,,,,,,,,',
   ];
 
   function count(manager: EntityManager = dataSource.manager) {
@@ -152,11 +152,12 @@ describe('contacts import against a real database', () => {
       companyId,
       undefined,
     );
-    expect(again).toMatchObject({ added: 0, skipped: 2, failed: 0 });
-    expect(again.failedRows.map((r) => r.reason)).toEqual([
-      'Already exists in Makkah',
-      'Already exists in Makkah',
-    ]);
+    expect(again).toMatchObject({
+      added: 0,
+      skipped: 2,
+      failed: 0,
+      failedRows: [],
+    });
     expect(await count()).toBe(2);
   });
 

@@ -1,0 +1,12 @@
+{{page-title "Import properties"}}
+
+<Woven::DetailPage
+  @title="Import properties"
+  @subtitle="Add many properties at once from a CSV or Excel file."
+  @crumbs={{array (hash label="Properties" route="properties.index")}}
+  data-test-import-units
+>
+  <:body>
+    <DataTransfer::ImportUnits />
+  </:body>
+</Woven::DetailPage>

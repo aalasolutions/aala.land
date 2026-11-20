@@ -13,9 +13,10 @@ import {
   In,
   IsNull,
   Not,
+  SelectQueryBuilder,
 } from 'typeorm';
 import { Asset } from './entities/asset.entity';
-import { MAX_BATHROOMS, Unit, UnitStatus } from './entities/unit.entity';
+import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
@@ -70,30 +71,11 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
-import { errorMessage } from '@shared/utils/error.util';
 
 function joinList(items: string[]): string {
   return items.length <= 1
     ? items.join('')
     : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}
-
-// Absent or non-numeric stays unknown (null); an explicit "0" is a real studio.
-function parseOptionalInt(value: string | undefined): number | null {
-  if (!value || !value.trim()) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
-// Blank or non-numeric is unknown; a number rounds to the nearest half; outside 0..MAX_BATHROOMS fails the row.
-function parseImportBathrooms(
-  value: string | undefined,
-): number | null | undefined {
-  if (!value || !value.trim()) return null;
-  const parsed = Number.parseFloat(value);
-  if (Number.isNaN(parsed)) return null;
-  const rounded = Math.round(parsed * 2) / 2;
-  return rounded >= 0 && rounded <= MAX_BATHROOMS ? rounded : undefined;
 }
 
 export type UnitResponse = Omit<Unit, 'owner'> & {
@@ -108,6 +90,21 @@ interface ResolvedOwner {
 }
 
 type UnitCaller = { userId: string; role: string; regionCodes: string[] };
+
+// The list's filters; the export parses the same query string into this shape.
+export interface UnitListFilters {
+  amenities?: string[];
+  propertyType?: string;
+  status?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minBeds?: number;
+  maxBeds?: number;
+  localityId?: string;
+  regionCode?: string;
+  ownerId?: string;
+  archived?: UnitArchivedFilter;
+}
 
 function viewerOf(
   userId: string | undefined,
@@ -492,26 +489,103 @@ export class PropertiesService {
     companyId: string,
     page = 1,
     limit = 100,
-    filters?: {
-      amenities?: string[];
-      propertyType?: string;
-      status?: string;
-      minPrice?: number;
-      maxPrice?: number;
-      minBeds?: number;
-      maxBeds?: number;
-      localityId?: string;
-      regionCode?: string;
-      ownerId?: string;
-      archived?: UnitArchivedFilter;
-    },
+    filters?: UnitListFilters,
     sort?: { field?: string; direction?: string },
     viewer?: ContactViewer,
   ) {
+    const qb = this.unitListQuery(companyId, filters, viewer);
+    if (!qb) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    qb.skip(pageSkip(page, limit)).take(clampLimit(limit));
+
+    const sortColumns = sort?.field ? UNIT_SORT_COLUMNS[sort.field] : undefined;
+    if (sortColumns) {
+      // NULLS LAST both ways so unpriced or unmeasured units never lead the list.
+      const direction = sort?.direction === 'DESC' ? 'DESC' : 'ASC';
+      qb.orderBy(sortColumns[0], direction, 'NULLS LAST');
+      for (const column of sortColumns.slice(1)) {
+        qb.addOrderBy(column, direction, 'NULLS LAST');
+      }
+    } else {
+      qb.orderBy('loc.name', 'ASC')
+        .addOrderBy('a.name', 'ASC')
+        .addOrderBy('u.unitNumber', 'ASC');
+    }
+
+    const [units, total] = await qb.getManyAndCount();
+
+    const unitIds = units.map((u) => u.id);
+    const primaryPhotoMap = new Map<string, string>();
+    if (unitIds.length > 0) {
+      const mediaList = await this.mediaRepository.find({
+        where: { unitId: In(unitIds), companyId },
+        order: { isPrimary: 'DESC', createdAt: 'DESC' },
+        select: ['unitId', 'url', 'thumbnailUrl'],
+      });
+      for (const m of mediaList) {
+        if (!primaryPhotoMap.has(m.unitId)) {
+          primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
+        }
+      }
+    }
+
+    const owners = units.map((u) => u.owner).filter((o): o is Contact => !!o);
+    const ownerLevels = await this.contactPrivacy.accessLevelFor(
+      companyId,
+      viewer,
+      owners,
+    );
+
+    const data = units.map((u) => ({
+      id: u.id,
+      unitNumber: u.unitNumber,
+      status: u.status,
+      price: u.price,
+      sqFt: u.sqFt,
+      bedrooms: u.bedrooms,
+      bathrooms: u.bathrooms,
+      propertyType: u.propertyType ?? null,
+      subType: u.subType,
+      amenities: u.amenities,
+      photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
+      floor: u.floor,
+      assetId: u.assetId,
+      assetName: u.asset?.name ?? '',
+      areaId: u.asset?.locality?.id ?? '',
+      areaName: u.asset?.locality?.name ?? '',
+      regionCode: u.asset?.locality?.city?.regionCode ?? null,
+      ownerName:
+        u.owner && ownerLevels.get(u.owner.id) === 'FULL'
+          ? contactDisplayName(u.owner)
+          : limitedDisplayName(u.owner),
+      deletedAt: u.deletedAt ?? null,
+    }));
+
+    return { data, total, page, limit };
+  }
+
+  // The list's scope and filters with the text columns the export writes; no order or page.
+  exportQuery(
+    companyId: string,
+    filters: UnitListFilters | undefined,
+    viewer: ContactViewer | undefined,
+  ): SelectQueryBuilder<Unit> | null {
+    const qb = this.unitListQuery(companyId, filters, viewer);
+    return qb ? qb.addSelect(['ci.name', 'o.email']) : null;
+  }
+
+  // Shared by the list and the export: joins, company scope and every filter. Null when the caller's region scope is empty.
+  private unitListQuery(
+    companyId: string,
+    filters: UnitListFilters | undefined,
+    viewer: ContactViewer | undefined,
+  ): SelectQueryBuilder<Unit> | null {
     // Record lists ignore the top-bar region.
     const recordCodes = filters?.ownerId ? scopedRegionCodes(viewer) : null;
     if (recordCodes?.length === 0) {
-      return { data: [], total: 0, page, limit };
+      return null;
     }
 
     const qb = this.unitRepository
@@ -581,72 +655,7 @@ export class PropertiesService {
       qb.andWhere('u.deletedAt IS NOT NULL');
     }
 
-    qb.skip(pageSkip(page, limit)).take(clampLimit(limit));
-
-    const sortColumns = sort?.field ? UNIT_SORT_COLUMNS[sort.field] : undefined;
-    if (sortColumns) {
-      // NULLS LAST both ways so unpriced or unmeasured units never lead the list.
-      const direction = sort?.direction === 'DESC' ? 'DESC' : 'ASC';
-      qb.orderBy(sortColumns[0], direction, 'NULLS LAST');
-      for (const column of sortColumns.slice(1)) {
-        qb.addOrderBy(column, direction, 'NULLS LAST');
-      }
-    } else {
-      qb.orderBy('loc.name', 'ASC')
-        .addOrderBy('a.name', 'ASC')
-        .addOrderBy('u.unitNumber', 'ASC');
-    }
-
-    const [units, total] = await qb.getManyAndCount();
-
-    const unitIds = units.map((u) => u.id);
-    const primaryPhotoMap = new Map<string, string>();
-    if (unitIds.length > 0) {
-      const mediaList = await this.mediaRepository.find({
-        where: { unitId: In(unitIds), companyId },
-        order: { isPrimary: 'DESC', createdAt: 'DESC' },
-        select: ['unitId', 'url', 'thumbnailUrl'],
-      });
-      for (const m of mediaList) {
-        if (!primaryPhotoMap.has(m.unitId)) {
-          primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
-        }
-      }
-    }
-
-    const owners = units.map((u) => u.owner).filter((o): o is Contact => !!o);
-    const ownerLevels = await this.contactPrivacy.accessLevelFor(
-      companyId,
-      viewer,
-      owners,
-    );
-
-    const data = units.map((u) => ({
-      id: u.id,
-      unitNumber: u.unitNumber,
-      status: u.status,
-      price: u.price,
-      sqFt: u.sqFt,
-      bedrooms: u.bedrooms,
-      bathrooms: u.bathrooms,
-      propertyType: u.propertyType ?? null,
-      subType: u.subType,
-      amenities: u.amenities,
-      photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
-      floor: u.floor,
-      assetId: u.assetId,
-      assetName: u.asset?.name ?? '',
-      areaId: u.asset?.locality?.id ?? '',
-      areaName: u.asset?.locality?.name ?? '',
-      regionCode: u.asset?.locality?.city?.regionCode ?? null,
-      ownerName:
-        u.owner && ownerLevels.get(u.owner.id) === 'FULL'
-          ? contactDisplayName(u.owner)
-          : limitedDisplayName(u.owner),
-      deletedAt: u.deletedAt ?? null,
-    }));
-
-    return { data, total, page, limit };
+    return qb;
   }
 
   async createUnit(
@@ -1175,104 +1184,6 @@ export class PropertiesService {
       regionCode: unit.asset?.locality?.city?.regionCode ?? null,
       metadata: input.metadata ?? null,
     });
-  }
-
-  async bulkImportUnits(
-    companyId: string,
-    csvContent: string,
-    user?: { role: string; regionCodes: string[] },
-  ): Promise<{ created: number; failed: number; errors: string[] }> {
-    if (!csvContent || typeof csvContent !== 'string') {
-      return {
-        created: 0,
-        failed: 0,
-        errors: ['CSV content is required and must be a string'],
-      };
-    }
-
-    const lines = csvContent.trim().split('\n');
-    if (lines.length < 2) {
-      return {
-        created: 0,
-        failed: 0,
-        errors: ['CSV must have a header row and at least one data row'],
-      };
-    }
-
-    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-    const results = { created: 0, failed: 0, errors: [] as string[] };
-    const unitsToCreate: Unit[] = [];
-    const scopedCodes = scopedRegionCodes(user);
-    const regionByAsset = new Map<string, string | undefined>();
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map((v) => v.trim());
-      const row: Record<string, string> = {};
-      headers.forEach((h, idx) => {
-        row[h] = values[idx] ?? '';
-      });
-
-      if (!row['unitnumber'] || !row['assetid']) {
-        results.failed++;
-        results.errors.push(`Row ${i}: unitNumber and assetId are required`);
-        continue;
-      }
-
-      if (scopedCodes) {
-        const assetId = row['assetid'];
-        if (!regionByAsset.has(assetId)) {
-          regionByAsset.set(assetId, await this.regionOfAsset(assetId));
-        }
-        const region = regionByAsset.get(assetId);
-        if (!region || !scopedCodes.includes(region)) {
-          results.failed++;
-          results.errors.push(`Row ${i}: asset is outside your regions`);
-          continue;
-        }
-      }
-
-      const bathrooms = parseImportBathrooms(row['bathrooms']);
-      if (bathrooms === undefined) {
-        results.failed++;
-        results.errors.push(
-          `Row ${i}: bathrooms must be from 0 to ${MAX_BATHROOMS}`,
-        );
-        continue;
-      }
-
-      try {
-        const sqFt = parseFloat(row['sqft'] || '0') || undefined;
-        const price = parseFloat(row['price'] || '0') || undefined;
-        const unit = this.unitRepository.create({
-          companyId,
-          unitNumber: row['unitnumber'],
-          assetId: row['assetid'],
-          bedrooms: parseOptionalInt(row['bedrooms']),
-          bathrooms,
-          sqFt,
-          price,
-          status: (row['status'] as any) || 'available',
-        });
-        unitsToCreate.push(unit);
-      } catch (err) {
-        const message = errorMessage(err);
-        results.failed++;
-        results.errors.push(`Row ${i}: ${message}`);
-      }
-    }
-
-    if (unitsToCreate.length > 0) {
-      try {
-        await this.unitRepository.save(unitsToCreate);
-        results.created = unitsToCreate.length;
-      } catch (err) {
-        const message = errorMessage(err);
-        results.errors.push(`Batch insert failed: ${message}`);
-        results.failed += unitsToCreate.length;
-      }
-    }
-
-    return results;
   }
 
   async getAssetOccupancy(

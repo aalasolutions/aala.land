@@ -60,6 +60,30 @@ describe('spreadsheet kernel', () => {
       });
     });
 
+    it('keeps an unquoted semicolon inside a cell of a comma file', async () => {
+      const path = await csvFile(
+        'semi-in-cell.csv',
+        'First Name,Phone,Notes\nSara,+966 50,gym;pool\n',
+      );
+      const result = await read(path);
+      expect(result.errors).toEqual([]);
+      expect(result.rows[0]).toEqual({
+        firstName: 'Sara',
+        phone: '+966 50',
+        notes: 'gym;pool',
+      });
+    });
+
+    it('keeps an unquoted comma inside a cell of a semicolon file', async () => {
+      const path = await csvFile(
+        'comma-in-cell.csv',
+        'First Name;Phone;Notes\nSara;+966 50;gym,pool\n',
+      );
+      const result = await read(path);
+      expect(result.errors).toEqual([]);
+      expect(result.rows[0].notes).toBe('gym,pool');
+    });
+
     it('maps empty cells and missing trailing cells to undefined', async () => {
       const path = await csvFile(
         'empty.csv',

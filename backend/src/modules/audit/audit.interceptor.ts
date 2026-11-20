@@ -43,7 +43,6 @@ const ACTION_OVERRIDES: Record<string, AuditAction> = {
   bounce: AuditAction.UPDATE,
   invite: AuditAction.CREATE,
   render: AuditAction.EXPORT,
-  'bulk-import': AuditAction.IMPORT,
   read: AuditAction.UPDATE,
   'read-all': AuditAction.BULK_UPDATE,
   'forgot-password': AuditAction.UPDATE,
