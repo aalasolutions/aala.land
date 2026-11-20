@@ -7,6 +7,10 @@
   data-test-contacts
 >
   <:action>
+    <DataTransfer::TransferMenu
+      @entity="contacts"
+      @onExport={{this.exportContacts}}
+    />
     <Woven::Button
       @variant="brand"
       @icon="plus"

@@ -118,6 +118,7 @@
       "./components/woven/sidebar.js": "./dist/_app_/components/woven/sidebar.js",
       "./components/woven/skeleton.js": "./dist/_app_/components/woven/skeleton.js",
       "./components/woven/spinner.js": "./dist/_app_/components/woven/spinner.js",
+      "./components/woven/split-button.js": "./dist/_app_/components/woven/split-button.js",
       "./components/woven/stat-inner.js": "./dist/_app_/components/woven/stat-inner.js",
       "./components/woven/stat.js": "./dist/_app_/components/woven/stat.js",
       "./components/woven/table-section.js": "./dist/_app_/components/woven/table-section.js",

@@ -15,6 +15,7 @@ import { ContactAccessRequestsModule } from '../contact-access-requests/contact-
 import { AuditModule } from '../audit/audit.module';
 import { ContactPrivacyService } from './contact-privacy.service';
 import { ContactAttachService } from './contact-attach.service';
+import { ContactsExportService } from './transfer/contacts-export.service';
 
 @Module({
   imports: [
@@ -33,7 +34,12 @@ import { ContactAttachService } from './contact-attach.service';
     AuditModule,
   ],
   controllers: [ContactsController],
-  providers: [ContactsService, ContactPrivacyService, ContactAttachService],
+  providers: [
+    ContactsService,
+    ContactPrivacyService,
+    ContactAttachService,
+    ContactsExportService,
+  ],
   exports: [ContactsService, ContactPrivacyService, ContactAttachService],
 })
 export class ContactsModule {}

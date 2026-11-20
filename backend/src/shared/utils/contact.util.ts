@@ -58,6 +58,11 @@ export function phoneDigitsSql(column: string): string {
   return `RIGHT(regexp_replace(${column}, '\\D', '', 'g'), ${SUBSCRIBER_DIGITS})`;
 }
 
+// phoneDigitsSql over a WhatsApp chat id, whose phone part precedes any ':' and the '@' suffix.
+export function chatIdDigitsSql(column: string): string {
+  return phoneDigitsSql(`split_part(split_part(${column}, '@', 1), ':', 1)`);
+}
+
 // Mirrors normalizePhone in SQL, avoiding a leading-wildcard ILIKE scan
 export function phoneDigitsWhere(inputPhone: string | null | undefined) {
   const digits = normalizePhone(inputPhone);

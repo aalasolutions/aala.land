@@ -1,0 +1,39 @@
+@use "@wovenui/ember/styles/common/var" as *;
+
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  gap: wu-space(2);
+}
+
+.file-drop__input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+.file-drop__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: wu-space(2);
+  padding: wu-space(8) wu-space(4);
+  border: 2px dashed var(--wu-border-regular);
+  border-radius: wu-radius(md);
+  background: var(--wu-bg-alternate);
+  text-align: center;
+  cursor: pointer;
+}
+
+.file-drop__label:hover,
+.file-drop.is-over .file-drop__label,
+.file-drop__input:focus-visible + .file-drop__label {
+  border-color: var(--wu-brand);
+}
+
+.file-drop.has-error .file-drop__label {
+  border-color: var(--wu-danger);
+}

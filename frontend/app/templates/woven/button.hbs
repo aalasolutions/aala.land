@@ -2,7 +2,7 @@
   @id="button"
   @title="Button"
   @subtitle="Triggers an action, submits a form, or links to a route."
-  @components="Woven::Button, Woven::BtnGroup"
+  @components="Woven::Button, Woven::BtnGroup, Woven::SplitButton"
 >
   <WovenDocs::Section @title="Overview" @id="overview">
     <p class="woven-doc__intro">
@@ -171,6 +171,38 @@
       @code={{this.code.block}}
     >
       <Woven::Button @text="Full width" class="w-full" />
+    </WovenDocs::Example>
+  </WovenDocs::Section>
+
+  <WovenDocs::Section @title="Split button" @id="split-button">
+    <WovenDocs::Example
+      @title="Primary action with a menu"
+      @note="Woven::SplitButton joins one primary action to a caret that opens a menu of related actions, on the kit attached group and caret modifier. The primary stays a plain button: Enter and Space on it never open the menu. The menu block yields close; wrap the items in a role group and give each wu-dropdown-item and role menuitem. variant applies to both halves and defaults to subtle; menuLabel names the caret for screen readers."
+      @code={{this.code.split}}
+    >
+      <Woven::SplitButton
+        @label="Import"
+        @icon="upload-simple"
+        @menuLabel="Import and export"
+        @onClick={{this.noteSplit}}
+        data-test-woven-split-button
+      >
+        <:menu as |close|>
+          <div role="group" aria-label="Import and export">
+            {{#each this.splitChoices as |choice|}}
+              <button
+                type="button"
+                class="wu-dropdown-item"
+                role="menuitem"
+                tabindex="-1"
+                data-test-woven-split-item={{choice.value}}
+                {{on "click" (fn this.pickSplit choice.value close)}}
+              >{{choice.label}}</button>
+            {{/each}}
+          </div>
+        </:menu>
+      </Woven::SplitButton>
+      <p class="woven-note" data-test-woven-split-last>{{this.splitLast}}</p>
     </WovenDocs::Example>
   </WovenDocs::Section>
 

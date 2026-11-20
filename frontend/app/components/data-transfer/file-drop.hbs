@@ -1,0 +1,42 @@
+<div
+  class="file-drop {{if this.isOver 'is-over'}} {{if this.error 'has-error'}}"
+  data-test-file-drop
+  {{on "dragover" this.over}}
+  {{on "dragleave" this.leave}}
+  {{on "drop" this.drop}}
+  ...attributes
+>
+  <input
+    id={{this.inputId}}
+    type="file"
+    class="file-drop__input"
+    accept={{@accept}}
+    data-test-file-drop-input
+    {{on "change" this.change}}
+  />
+  <label for={{this.inputId}} class="file-drop__label">
+    <Ui::Ph @icon="upload-simple" @size="28px" />
+    {{#if this.file}}
+      <span class="font-bold" data-test-file-drop-name>{{this.file.name}}</span>
+      <span class="text-muted text-sm" data-test-file-drop-size>{{format-bytes
+          this.file.size
+        }}</span>
+      <span class="text-brand text-sm">Choose a different file</span>
+    {{else}}
+      <span>Drop a file here, or
+        <span class="text-brand">choose a file</span></span>
+      {{#if @hint}}
+        <span
+          class="text-muted text-sm"
+          data-test-file-drop-hint
+        >{{@hint}}</span>
+      {{/if}}
+    {{/if}}
+  </label>
+  {{#if this.error}}
+    <p
+      class="wu-field-message error"
+      data-test-file-drop-error
+    >{{this.error}}</p>
+  {{/if}}
+</div>

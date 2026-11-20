@@ -1,0 +1,36 @@
+{{! Primary action plus a caret-only button that opens a menu. The menu block gets `close`; wrap the items in a role="group". }}
+<Woven::Dropdown
+  @placement="end"
+  @disabled={{this.isDisabled}}
+  class="wu-btn-group"
+  data-test-wu-split-button
+  ...attributes
+>
+  <:trigger as |toggle isOpen|>
+    <Woven::Button
+      @variant={{this.variant}}
+      @size={{@size}}
+      @icon={{@icon}}
+      @disabled={{this.isDisabled}}
+      @onClick={{@onClick}}
+      @text={{@label}}
+      data-test-wu-split-button-primary
+      {{on "keydown" this.keepPrimaryKeys}}
+    >
+      {{#if (has-block)}}{{yield}}{{else}}{{@label}}{{/if}}
+    </Woven::Button>
+    <button
+      type="button"
+      class={{this.caretClasses}}
+      disabled={{this.isDisabled}}
+      aria-label={{this.menuLabel}}
+      aria-haspopup="menu"
+      aria-expanded={{if isOpen "true" "false"}}
+      data-test-wu-split-button-trigger
+      {{on "click" toggle}}
+    ></button>
+  </:trigger>
+  <:menu as |close|>
+    {{yield close to="menu"}}
+  </:menu>
+</Woven::Dropdown>

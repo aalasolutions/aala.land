@@ -6,10 +6,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { DeleteContactDto } from './dto/delete-contact.dto';
+import { ContactsExportService } from './transfer/contacts-export.service';
+import { ExportContactsQueryDto } from './dto/export-contacts-query.dto';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('ContactsController', () => {
   let controller: ContactsController;
   let service: jest.Mocked<ContactsService>;
+  let exportService: jest.Mocked<ContactsExportService>;
 
   const companyId = 'company-uuid-1';
   const callerRegions = ['dubai'];
@@ -51,6 +56,10 @@ describe('ContactsController', () => {
             verifyPhone: jest.fn(),
           },
         },
+        {
+          provide: ContactsExportService,
+          useValue: { export: jest.fn() },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -59,6 +68,89 @@ describe('ContactsController', () => {
 
     controller = module.get<ContactsController>(ContactsController);
     service = module.get(ContactsService);
+    exportService = module.get(ContactsExportService);
+  });
+
+  describe('exportList', () => {
+    const query = (overrides: Partial<ExportContactsQueryDto> = {}) =>
+      Object.assign(new ExportContactsQueryDto(), overrides);
+    const res = () => ({ setHeader: jest.fn(), send: jest.fn() });
+    const file = (truncated = false) => ({
+      buffer: Buffer.from('a,b'),
+      contentType: 'text/csv; charset=utf-8',
+      extension: 'csv' as const,
+      fileName: 'contacts-dubai-2026-11-19.csv',
+      rows: 1,
+      truncated,
+    });
+
+    it('is COMPANY_ADMIN only', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, controller.exportList)).toEqual([
+        Role.COMPANY_ADMIN,
+      ]);
+    });
+
+    it('hands the query and the viewer to the export service and streams the file', async () => {
+      exportService.export.mockResolvedValue(file());
+      const response = res();
+      const q = query({ format: 'csv', tag: 'tenant', search: 'Ahmed' });
+
+      await controller.exportList(q, mockReq, response as never);
+
+      expect(exportService.export).toHaveBeenCalledWith(
+        companyId,
+        {
+          userId: 'user-uuid-1',
+          role: 'company_admin',
+          regionCodes: callerRegions,
+        },
+        q,
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/csv; charset=utf-8',
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="contacts-dubai-2026-11-19.csv"',
+      );
+      expect(response.setHeader).not.toHaveBeenCalledWith(
+        'X-Export-Truncated',
+        'true',
+      );
+      expect(response.send).toHaveBeenCalledWith(Buffer.from('a,b'));
+    });
+
+    it('marks a capped export with the truncation header', async () => {
+      exportService.export.mockResolvedValue(file(true));
+      const response = res();
+      await controller.exportList(query(), mockReq, response as never);
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'X-Export-Truncated',
+        'true',
+      );
+    });
+
+    it('rejects a format outside csv and xlsx and an unknown tag at the DTO', async () => {
+      const bad = plainToInstance(ExportContactsQueryDto, {
+        format: 'pdf',
+        tag: 'vendor',
+        companyExact: 'yes',
+      });
+      const errors = await validate(bad);
+      expect(errors.map((e) => e.property).sort()).toEqual([
+        'companyExact',
+        'format',
+        'tag',
+      ]);
+      const good = plainToInstance(ExportContactsQueryDto, {
+        format: 'xlsx',
+        tag: 'owner',
+        allRegions: 'true',
+        regionCode: 'dubai',
+      });
+      expect(await validate(good)).toEqual([]);
+    });
   });
 
   it('should be defined', () => {

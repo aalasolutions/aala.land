@@ -12,6 +12,11 @@ import {
 } from '../../utils/delete-modal';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
+import { contactsListFilters } from '../../utils/contacts-query';
+import { saveResponseAsFile } from '../../utils/download';
+
+const EXPORT_WAIT_NOTICE_MS = 1000;
+export const EXPORT_CAP = 20000;
 
 export const CONTACTS_TAB = 'contacts';
 export const COMPANIES_TAB = 'companies';
@@ -26,6 +31,9 @@ export default class ContactsIndexController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
+  // `region` is the query param below; the service goes by another name.
+  @service('region') regionService;
+  @service dataTransfer;
 
   queryParams = [
     'page',
@@ -206,6 +214,38 @@ export default class ContactsIndexController extends PaginatedController {
       this.dateFrom,
       this.dateTo,
     ].filter(Boolean).length;
+  }
+
+  // The same query the route sends for the list, minus paging, so the file matches the page.
+  get exportParams() {
+    return contactsListFilters(this, {
+      role: this.auth.currentUser?.role,
+      regionService: this.regionService,
+    });
+  }
+
+  @action async exportContacts(format) {
+    const notice = setTimeout(
+      () => this.notifications.info('Preparing your file'),
+      EXPORT_WAIT_NOTICE_MS,
+    );
+    try {
+      const response = await this.dataTransfer.exportList(
+        'contacts',
+        this.exportParams,
+        format,
+      );
+      clearTimeout(notice);
+      await saveResponseAsFile(response, `contacts.${format}`);
+      if (response.headers.get('X-Export-Truncated') === 'true') {
+        this.notifications.info(
+          `Only the first ${EXPORT_CAP.toLocaleString()} contacts were exported. Narrow the filters to export the rest.`,
+        );
+      }
+    } catch (error) {
+      clearTimeout(notice);
+      this.notifications.error(error.message);
+    }
   }
 
   @tracked showModal = false;

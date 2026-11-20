@@ -1,0 +1,12 @@
+{{page-title "Import contacts"}}
+
+<Woven::DetailPage
+  @title="Import contacts"
+  @subtitle="Add many contacts at once from a CSV or Excel file."
+  @crumbs={{array (hash label="Contacts" route="contacts.index")}}
+  data-test-import-contacts
+>
+  <:body>
+    <DataTransfer::ImportContacts />
+  </:body>
+</Woven::DetailPage>

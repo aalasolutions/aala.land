@@ -38,6 +38,7 @@ import { RedisModule } from '@modules/redis/redis.module';
 import { getRedisConnection } from '@modules/redis/redis.config';
 import { StoragePurgeModule } from '@modules/storage-purge/storage-purge.module';
 import { RecordHistoryModule } from '@modules/record-history/record-history.module';
+import { DataTransferModule } from '@modules/data-transfer/data-transfer.module';
 import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
 
 @Module({
@@ -93,6 +94,7 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     RedisModule,
     StoragePurgeModule,
     RecordHistoryModule,
+    DataTransferModule,
   ],
   controllers: [AppController],
   providers: [

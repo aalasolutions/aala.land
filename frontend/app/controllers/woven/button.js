@@ -28,6 +28,25 @@ export default class WovenButtonController extends Controller {
     this.loadingDemo = !this.loadingDemo;
   }
 
+  @tracked splitLast = 'Nothing chosen yet.';
+
+  splitChoices = [
+    { value: 'csv', label: 'Export CSV' },
+    { value: 'xlsx', label: 'Export XLSX' },
+    { value: 'template', label: 'Download sample file' },
+  ];
+
+  @action
+  noteSplit() {
+    this.splitLast = 'Primary action: Import.';
+  }
+
+  @action
+  pickSplit(value, close) {
+    this.splitLast = `Menu action: ${value}.`;
+    close();
+  }
+
   variantExamples = Object.keys(VARIANT_NOTES).map((variant) => ({
     variant: variant === 'default' ? undefined : variant,
     title: capitalize(variant),
@@ -49,6 +68,14 @@ export default class WovenButtonController extends Controller {
   }));
 
   code = {
+    split: `<Woven::SplitButton @label="Import" @icon="upload-simple" @menuLabel="Import and export" @onClick={{this.import}}>
+  <:menu as |close|>
+    <div role="group" aria-label="Import and export">
+      <button type="button" class="wu-dropdown-item" role="menuitem" tabindex="-1" {{on "click" (fn this.export "csv" close)}}>Export CSV</button>
+      <button type="button" class="wu-dropdown-item" role="menuitem" tabindex="-1" {{on "click" (fn this.export "xlsx" close)}}>Export XLSX</button>
+    </div>
+  </:menu>
+</Woven::SplitButton>`,
     subtle: `<Woven::Button @variant="brand" @subtle={{true}} @text="Approve" />
 <Woven::Button @variant="danger" @subtle={{true}} @icon="trash" @text="Delete" />`,
     secondary: `<Woven::Button @variant="secondary" @text="Secondary" />`,
