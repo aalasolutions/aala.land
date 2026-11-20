@@ -12,7 +12,7 @@ import {
 } from '../../utils/delete-modal';
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
-import { localMidnightIso } from '../../utils/local-date';
+import { contactsListFilters } from '../../utils/contacts-query';
 import { saveResponseAsFile } from '../../utils/download';
 
 const EXPORT_WAIT_NOTICE_MS = 1000;
@@ -218,29 +218,10 @@ export default class ContactsIndexController extends PaginatedController {
 
   // The same query the route sends for the list, minus paging, so the file matches the page.
   get exportParams() {
-    const params = {};
-    if (resolveAllRegions(this.allRegions, this.auth.currentUser?.role)) {
-      params.allRegions = 'true';
-    } else {
-      const regionCode = this.region || this.regionService?.regionCode;
-      if (regionCode) params.regionCode = regionCode;
-    }
-    if (this.search) params.search = this.search;
-    if (this.tag) params.tag = this.tag;
-    if (this.agentId) params.agentId = this.agentId;
-    if (this.isWhatsapp) params.isWhatsapp = 'true';
-    if (this.company) params.company = this.company;
-    if (this.company && this.companyExact === 'true')
-      params.companyExact = 'true';
-    if (this.nationality) params.nationality = this.nationality;
-    const zone =
-      this.regionService?.regions?.find((r) => r.code === this.region)
-        ?.timezone ?? this.regionService?.activeRegion?.timezone;
-    const fromIso = localMidnightIso(this.dateFrom, 0, zone);
-    const toIso = localMidnightIso(this.dateTo, 1, zone);
-    if (fromIso) params.dateFrom = fromIso;
-    if (toIso) params.dateTo = toIso;
-    return params;
+    return contactsListFilters(this, {
+      role: this.auth.currentUser?.role,
+      regionService: this.regionService,
+    });
   }
 
   @action async exportContacts(format) {

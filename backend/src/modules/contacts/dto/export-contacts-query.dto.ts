@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { CONTACT_TAGS } from '../contacts.service';
 import type { SpreadsheetFormat } from '@shared/spreadsheet/column-def';
 
@@ -54,16 +61,14 @@ export class ExportContactsQueryDto {
 
   @ApiPropertyOptional({ description: 'ISO date or instant, inclusive' })
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
+  @IsISO8601()
   dateFrom?: string;
 
   @ApiPropertyOptional({
     description: 'ISO date or instant, exclusive upper bound',
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(40)
+  @IsISO8601()
   dateTo?: string;
 
   @ApiPropertyOptional()

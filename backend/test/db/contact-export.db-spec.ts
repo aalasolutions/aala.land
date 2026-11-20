@@ -18,7 +18,8 @@ import {
 } from '../../src/modules/contacts/transfer/contacts-export.service';
 import { ExportContactsQueryDto } from '../../src/modules/contacts/dto/export-contacts-query.dto';
 
-const TIED_AT = new Date('2026-11-01T08:00:00Z');
+// Microseconds on purpose: a millisecond cursor would skip every row after the first batch.
+const TIED_AT = '2026-11-01 08:00:00.123456+00';
 const TOTAL = 2500;
 
 // Keyset order with tied sort keys and the region scope only prove themselves against a real database.
@@ -53,7 +54,8 @@ describe('contacts export against a real database', () => {
         TIED_AT,
       );
       const base = i * 6;
-      const slots = [1, 2, 3, 4, 5, 6].map((n) => `$${base + n}`);
+      const slots = [1, 2, 3, 4, 5].map((n) => `$${base + n}`);
+      slots.push(`$${base + 6}::timestamptz`);
       values.push(`(${slots.join(', ')})`);
     }
     await dataSource.manager.query(
@@ -127,7 +129,7 @@ describe('contacts export against a real database', () => {
       .map((line) => line.split(',')[3]);
   }
 
-  it('walks 2,500 rows that share one created_at across batches without a gap or a repeat', async () => {
+  it('walks 2,500 rows that share one microsecond created_at across batches without a gap or a repeat', async () => {
     const result = await service().export(
       companyId,
       viewer(),

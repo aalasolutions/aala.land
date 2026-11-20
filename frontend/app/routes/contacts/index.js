@@ -1,7 +1,6 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
-import { localMidnightIso } from 'land/utils/local-date';
-import { resolveAllRegions } from 'land/utils/roles';
+import { contactsListFilters } from 'land/utils/contacts-query';
 
 export default class ContactsIndexRoute extends AuthenticatedRoute {
   @service auth;
@@ -23,45 +22,20 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     allRegions: { refreshModel: true },
   };
 
-  async model({
-    page = 1,
-    limit = 50,
-    search = '',
-    tag = '',
-    agentId = '',
-    isWhatsapp = '',
-    company = '',
-    companyExact = '',
-    region = '',
-    nationality = '',
-    dateFrom = '',
-    dateTo = '',
-    allRegions = '',
-  }) {
-    const params = new URLSearchParams({ page, limit, tagCounts: 'true' });
-    if (resolveAllRegions(allRegions, this.auth.currentUser?.role)) {
-      params.set('allRegions', 'true');
-    }
-    if (search) params.set('search', search);
-    if (tag) params.set('tag', tag);
-    if (agentId) params.set('agentId', agentId);
-    if (isWhatsapp) params.set('isWhatsapp', 'true');
-    if (company) params.set('company', company);
-    if (company && companyExact === 'true') params.set('companyExact', 'true');
-    // A company link names its region; fetchJson then leaves the active region off.
-    if (region) params.set('regionCode', region);
-    if (nationality) params.set('nationality', nationality);
-    // Created-at days are the listed region's days; all-regions lists use the active region's day.
-    const zone =
-      this.region.regions?.find((r) => r.code === region)?.timezone ??
-      this.region.activeRegion?.timezone;
-    const fromIso = localMidnightIso(dateFrom, 0, zone);
-    const toIso = localMidnightIso(dateTo, 1, zone);
-    if (fromIso) params.set('dateFrom', fromIso);
-    if (toIso) params.set('dateTo', toIso);
+  async model(params) {
+    const { page = 1, limit = 50 } = params;
+    const query = new URLSearchParams({
+      page,
+      limit,
+      tagCounts: 'true',
+      ...contactsListFilters(params, {
+        role: this.auth.currentUser?.role,
+        regionService: this.region,
+      }),
+    });
 
     const [contactsResult, agentsResult] = await Promise.all([
-      this.auth.fetchJson(`/contacts?${params.toString()}`).catch(() => null),
+      this.auth.fetchJson(`/contacts?${query.toString()}`).catch(() => null),
       this.auth.fetchJson('/users/agents').catch(() => null),
     ]);
 

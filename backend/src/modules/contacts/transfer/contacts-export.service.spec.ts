@@ -5,19 +5,26 @@ import {
   CONTACT_EXPORT_COLUMNS,
   ContactsExportService,
   EXPORT_LIMITS,
-  toFilters,
 } from './contacts-export.service';
 import { ExportContactsQueryDto } from '../dto/export-contacts-query.dto';
+import { toContactFilters } from '../contact-filters.util';
 import { TIER_FEATURE_MESSAGE } from '@shared/utils/tier.util';
 
-// A query builder whose getMany hands out the seeded batches in order, whatever the where clause says.
+// A query builder that hands out the seeded batches in order, whatever the where clause says.
 function fakeQuery(batches: unknown[][]) {
   const queue = [...batches];
   const qb: Record<string, jest.Mock> = {};
-  for (const name of ['clone', 'orderBy', 'addOrderBy', 'take', 'andWhere']) {
+  const chain = ['clone', 'addSelect', 'orderBy', 'addOrderBy', 'take', 'andWhere'];
+  for (const name of chain) {
     qb[name] = jest.fn(() => qb);
   }
-  qb.getMany = jest.fn(async () => queue.shift() ?? []);
+  qb.getRawAndEntities = jest.fn(async () => {
+    const entities = queue.shift() ?? [];
+    return {
+      entities,
+      raw: entities.map(() => ({ cursor_at: '2026-11-01 08:00:00.123456+00' })),
+    };
+  });
   return qb;
 }
 
@@ -176,7 +183,7 @@ describe('ContactsExportService', () => {
       'company-1',
       'Name',
       'tenant',
-      toFilters(q),
+      toContactFilters(q),
       viewer,
     );
     expect(log).toHaveBeenCalledTimes(1);
@@ -207,9 +214,9 @@ describe('ContactsExportService', () => {
     expect(lines).toHaveLength(1);
   });
 
-  it('toFilters mirrors the list handler parsing', () => {
+  it('toContactFilters is the list handler parsing', () => {
     expect(
-      toFilters(
+      toContactFilters(
         query({
           agentId: 'a',
           isWhatsapp: 'false',

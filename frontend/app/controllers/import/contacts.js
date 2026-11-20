@@ -2,7 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { canImport } from 'land/utils/feature-gate';
+import { canImport, tierSentence } from 'land/utils/feature-gate';
 import { saveResponseAsFile } from 'land/utils/download';
 
 const ENTITY = 'contacts';
@@ -32,6 +32,9 @@ export default class ImportContactsController extends Controller {
 
   accept = IMPORT_ACCEPT;
   maxBytes = IMPORT_MAX_BYTES;
+  lockedTitle = tierSentence('import');
+  // Bumped by reset so a response from a cleared page is dropped.
+  requestSeq = 0;
 
   columns = [
     { name: 'Row', valuePath: 'row', width: 70 },
@@ -81,7 +84,7 @@ export default class ImportContactsController extends Controller {
       }));
   }
 
-  get canImport() {
+  get canConfirm() {
     return (this.plan?.willAdd ?? 0) > 0 && !this.busy;
   }
 
@@ -101,35 +104,38 @@ export default class ImportContactsController extends Controller {
 
   @action async check() {
     if (!this.canCheck) return;
-    this.busy = true;
-    try {
-      this.plan = await this.dataTransfer.preview(
-        ENTITY,
-        this.file,
-        this.regionCode || undefined,
-      );
+    const plan = await this.sendUpload((file, regionCode) =>
+      this.dataTransfer.preview(ENTITY, file, regionCode),
+    );
+    if (plan) {
+      this.plan = plan;
       this.step = 'confirm';
-    } catch (error) {
-      this.notifications.error(error.message);
-    } finally {
-      this.busy = false;
     }
   }
 
   @action async confirm() {
-    if (!this.canImport) return;
+    if (!this.canConfirm) return;
+    const result = await this.sendUpload((file, regionCode) =>
+      this.dataTransfer.commit(ENTITY, file, regionCode),
+    );
+    if (result) {
+      this.result = result;
+      this.step = 'result';
+    }
+  }
+
+  // Runs one upload call; returns null when it failed or the page was reset meanwhile.
+  async sendUpload(send) {
+    const seq = ++this.requestSeq;
     this.busy = true;
     try {
-      this.result = await this.dataTransfer.commit(
-        ENTITY,
-        this.file,
-        this.regionCode || undefined,
-      );
-      this.step = 'result';
+      const response = await send(this.file, this.regionCode || undefined);
+      return seq === this.requestSeq ? response : null;
     } catch (error) {
-      this.notifications.error(error.message);
+      if (seq === this.requestSeq) this.notifications.error(error.message);
+      return null;
     } finally {
-      this.busy = false;
+      if (seq === this.requestSeq) this.busy = false;
     }
   }
 
@@ -156,6 +162,7 @@ export default class ImportContactsController extends Controller {
   }
 
   @action reset() {
+    this.requestSeq += 1;
     this.step = 'upload';
     this.file = null;
     this.plan = null;

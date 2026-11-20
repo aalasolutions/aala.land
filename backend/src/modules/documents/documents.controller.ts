@@ -32,7 +32,7 @@ import {
 import { DocumentsService } from './documents.service';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { storageSafeName } from '@shared/utils/file-name.util';
+import { headerSafeName, storageSafeName } from '@shared/utils/file-name.util';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
@@ -325,11 +325,7 @@ export class DocumentsController {
       req.user.regionCodes,
       req.user.userId,
     );
-    // Strips quotes/control chars so a name can't inject headers or break Content-Disposition.
-    const safeFileName = (doc.name || 'document').replace(
-      /[\x00-\x1f\x7f"]/g,
-      '_',
-    );
+    const safeFileName = headerSafeName(doc.name || 'document');
     res.setHeader('Content-Type', doc.fileType || 'application/octet-stream');
     res.setHeader(
       'Content-Disposition',

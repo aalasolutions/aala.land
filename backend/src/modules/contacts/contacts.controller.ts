@@ -40,6 +40,8 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 import { requireCompanyId } from '@shared/utils/auth.util';
 import { ContactsExportService } from './transfer/contacts-export.service';
 import { ExportContactsQueryDto } from './dto/export-contacts-query.dto';
+import { toContactFilters } from './contact-filters.util';
+import { headerSafeName } from '@shared/utils/file-name.util';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
@@ -182,15 +184,17 @@ export class ContactsController {
       search,
       tagFilter,
       {
-        agentId: agentId || undefined,
-        isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
-        company: company || undefined,
-        companyExact: companyExact === 'true',
-        nationality: nationality || undefined,
-        regionCode: regionCode || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        allRegions: allRegions === 'true',
+        ...toContactFilters({
+          agentId,
+          isWhatsapp,
+          company,
+          companyExact,
+          nationality,
+          regionCode,
+          dateFrom,
+          dateTo,
+          allRegions,
+        }),
         sort: sort === 'name' ? 'name' : undefined,
         tagCounts: tagCounts === 'true' ? true : undefined,
       },
@@ -222,7 +226,7 @@ export class ContactsController {
     res.setHeader('Content-Type', file.contentType);
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${file.fileName}"`,
+      `attachment; filename="${headerSafeName(file.fileName)}"`,
     );
     res.setHeader('X-Content-Type-Options', 'nosniff');
     if (file.truncated) res.setHeader('X-Export-Truncated', 'true');

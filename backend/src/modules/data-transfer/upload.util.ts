@@ -1,4 +1,13 @@
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  type CallHandler,
+  type ExecutionContext,
+  Injectable,
+  Logger,
+  type NestInterceptor,
+} from '@nestjs/common';
+import type { Request } from 'express';
+import { finalize, type Observable } from 'rxjs';
 import { randomUUID } from 'crypto';
 import { tmpdir } from 'os';
 import { unlink } from 'node:fs/promises';
@@ -53,9 +62,26 @@ export async function sniffImportFile(
   return 'text/csv';
 }
 
+const logger = new Logger('ImportUpload');
+
 export async function discardUpload(
   file: Express.Multer.File | undefined,
 ): Promise<void> {
   if (!file?.path) return;
-  await unlink(file.path).catch(() => undefined);
+  try {
+    await unlink(file.path);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn(`Could not discard import upload ${file.path}: ${message}`);
+  }
+}
+
+// Runs after FileInterceptor, so the spooled file goes whether the pipe, the tier check or the parse ends the request.
+@Injectable()
+export class UploadCleanupInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const request = context.switchToHttp().getRequest<Request>();
+    return next.handle().pipe(finalize(() => void discardUpload(request.file)));
+  }
 }

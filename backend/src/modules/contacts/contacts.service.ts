@@ -33,6 +33,7 @@ import { RecordHistoryAction } from '../record-history/entities/record-history.e
 import {
   contactDisplayName,
   emailEqualsWhere,
+  chatIdDigitsSql,
   normalizePhone,
   phoneDigitsSql,
   phoneDigitsWhere,
@@ -351,13 +352,7 @@ export class ContactsService {
               "contact_resolution_attempted" = false
         WHERE "company_id" = $2
           AND COALESCE("is_group", false) = false
-          AND RIGHT(
-                regexp_replace(
-                  split_part(split_part("chat_id", '@', 1), ':', 1),
-                  '\\D', '', 'g'
-                ),
-                9
-              ) = $3`,
+          AND ${chatIdDigitsSql('"chat_id"')} = $3`,
       [contact.id, contact.companyId, digits],
     );
   }
@@ -379,12 +374,11 @@ export class ContactsService {
     scopeTotal?: number;
   }> {
     const take = contactListLimit(limit);
-    // The page's region scope; search also goes company-wide, the presenter guards the personal fields.
-    const scopeRegionCodes =
-      filters?.allRegions === true
-        ? null
-        : effectiveRegionCodes(filters?.regionCode, caller);
-    const regionCodes = search?.trim() ? null : scopeRegionCodes;
+    const { scopeRegionCodes, regionCodes } = this.listRegionScope(
+      search,
+      filters,
+      caller,
+    );
     if (regionCodes?.length === 0) {
       return {
         data: [],
@@ -845,16 +839,28 @@ export class ContactsService {
     filters: ContactFilters | undefined,
     caller: ContactViewer | undefined,
   ): SelectQueryBuilder<Contact> | null {
-    const scopeRegionCodes =
-      filters?.allRegions === true
-        ? null
-        : effectiveRegionCodes(filters?.regionCode, caller);
-    const regionCodes = search?.trim() ? null : scopeRegionCodes;
+    const { regionCodes } = this.listRegionScope(search, filters, caller);
     if (regionCodes?.length === 0) return null;
     const qb = this.scopedListQuery(companyId, regionCodes);
     this.applyListFilters(qb, search, filters, caller);
     if (tag) qb.andWhere(this.tagExistsSql('c.id', tag));
     return qb;
+  }
+
+  // The list's and the export's region scope; search widens to the company, the presenter guards personal fields.
+  private listRegionScope(
+    search: string | undefined,
+    filters: ContactFilters | undefined,
+    caller: ContactViewer | undefined,
+  ): { scopeRegionCodes: string[] | null; regionCodes: string[] | null } {
+    const scopeRegionCodes =
+      filters?.allRegions === true
+        ? null
+        : effectiveRegionCodes(filters?.regionCode, caller);
+    return {
+      scopeRegionCodes,
+      regionCodes: search?.trim() ? null : scopeRegionCodes,
+    };
   }
 
   private scopedListQuery(

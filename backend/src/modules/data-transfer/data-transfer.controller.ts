@@ -27,6 +27,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
+import { headerSafeName } from '@shared/utils/file-name.util';
 import {
   DataTransferService,
   type TemplateFile,
@@ -34,7 +35,7 @@ import {
 import { TemplateQueryDto } from './dto/template-query.dto';
 import { ImportBodyDto } from './dto/import-body.dto';
 import { FailedFileBodyDto } from './dto/failed-file.dto';
-import { importUploadOptions } from './upload.util';
+import { importUploadOptions, UploadCleanupInterceptor } from './upload.util';
 
 const UPLOAD_BODY = {
   schema: {
@@ -76,7 +77,10 @@ export class DataTransferController {
 
   @Post(':entity/preview')
   @Roles(Role.COMPANY_ADMIN)
-  @UseInterceptors(FileInterceptor('file', importUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('file', importUploadOptions),
+    UploadCleanupInterceptor,
+  )
   @ApiConsumes('multipart/form-data')
   @ApiBody(UPLOAD_BODY)
   @ApiOperation({
@@ -101,7 +105,10 @@ export class DataTransferController {
 
   @Post(':entity/commit')
   @Roles(Role.COMPANY_ADMIN)
-  @UseInterceptors(FileInterceptor('file', importUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('file', importUploadOptions),
+    UploadCleanupInterceptor,
+  )
   @ApiConsumes('multipart/form-data')
   @ApiBody(UPLOAD_BODY)
   @ApiOperation({ summary: 'Import the valid rows of a file (COMPANY_ADMIN)' })
@@ -148,7 +155,7 @@ function sendFile(res: Response, file: TemplateFile): void {
   res.setHeader('Content-Type', file.contentType);
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${file.fileName}"`,
+    `attachment; filename="${headerSafeName(file.fileName)}"`,
   );
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.send(file.buffer);

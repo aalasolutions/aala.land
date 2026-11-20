@@ -28,6 +28,8 @@ import {
   CONTACT_EXPORT_ONLY_COLUMNS,
 } from './contact.columns';
 import { ExportContactsQueryDto } from '../dto/export-contacts-query.dto';
+import { toContactFilters } from '../contact-filters.util';
+import { getRegionByCode } from '@shared/constants/regions';
 
 // Batch and cap are mutable so a spec can prove the keyset walk on a small set.
 export const EXPORT_LIMITS = { batch: 1000, cap: 20000 };
@@ -59,7 +61,7 @@ export class ContactsExportService {
     query: ExportContactsQueryDto,
   ): Promise<ContactExport> {
     await assertTier(this.companyRepository, companyId, TRANSFER_TIERS.export);
-    const filters = toFilters(query);
+    const filters = toContactFilters(query);
     const { contacts, truncated } = await this.collect(
       companyId,
       viewer,
@@ -79,8 +81,9 @@ export class ContactsExportService {
       ),
     }));
     const file = await writeRows(CONTACT_EXPORT_COLUMNS, rows, query.format);
-    const scope =
-      filters.allRegions || !filters.regionCode ? 'all' : filters.regionCode;
+    // Only a known region code names the file; the query string itself never reaches a header.
+    const known = filters.regionCode && getRegionByCode(filters.regionCode);
+    const scope = filters.allRegions || !known ? 'all' : known.code;
     const fileName = `contacts-${scope}-${dateInZone(regionTimezone(filters.regionCode))}.${query.format}`;
     await this.auditService.log({
       companyId,
@@ -110,20 +113,24 @@ export class ContactsExportService {
     if (!base) return { contacts: [], truncated: false };
 
     const contacts: Contact[] = [];
-    let cursor: { createdAt: Date; id: string } | null = null;
+    // created_at has microseconds and a JS Date has milliseconds, so the cursor stays database text.
+    let cursor: { createdAt: string; id: string } | null = null;
     for (;;) {
       const qb = base
         .clone()
+        .addSelect('c.created_at::text', 'cursor_at')
         .orderBy('c.created_at', 'DESC')
         .addOrderBy('c.id', 'DESC')
         .take(EXPORT_LIMITS.batch);
       if (cursor) {
-        qb.andWhere('(c.created_at, c.id) < (:cursorAt, :cursorId)', {
-          cursorAt: cursor.createdAt,
-          cursorId: cursor.id,
-        });
+        qb.andWhere(
+          '(c.created_at, c.id) < (:cursorAt::timestamptz, :cursorId)',
+          { cursorAt: cursor.createdAt, cursorId: cursor.id },
+        );
       }
-      const batch = await qb.getMany();
+      const { entities: batch, raw } = await qb.getRawAndEntities<{
+        cursor_at: string;
+      }>();
       if (batch.length === 0) break;
       for (const contact of batch) {
         if (contacts.length >= EXPORT_LIMITS.cap) {
@@ -133,25 +140,10 @@ export class ContactsExportService {
       }
       if (batch.length < EXPORT_LIMITS.batch) break;
       const last = batch[batch.length - 1];
-      cursor = { createdAt: last.createdAt, id: last.id };
+      cursor = { createdAt: raw[raw.length - 1].cursor_at, id: last.id };
     }
     return { contacts, truncated: false };
   }
-}
-
-// The list handler's parsing, applied to the export's query DTO.
-export function toFilters(query: ExportContactsQueryDto): ContactFilters {
-  return {
-    agentId: query.agentId || undefined,
-    isWhatsapp: query.isWhatsapp ? query.isWhatsapp === 'true' : undefined,
-    company: query.company || undefined,
-    companyExact: query.companyExact === 'true',
-    nationality: query.nationality || undefined,
-    regionCode: query.regionCode || undefined,
-    dateFrom: query.dateFrom || undefined,
-    dateTo: query.dateTo || undefined,
-    allRegions: query.allRegions === 'true',
-  };
 }
 
 function auditFilters(query: ExportContactsQueryDto): Record<string, string> {

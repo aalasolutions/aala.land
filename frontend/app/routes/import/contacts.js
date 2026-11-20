@@ -8,7 +8,8 @@ export default class ImportContactsRoute extends AuthenticatedRoute {
 
   beforeModel(transition) {
     super.beforeModel(transition);
-    if (this.session.isAuthenticated && !isTransferAdmin(this.session)) {
+    if (transition.isAborted) return;
+    if (!isTransferAdmin(this.session)) {
       this.router.transitionTo('contacts.index');
     }
   }

@@ -12,7 +12,11 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/dto/query-audit-logs.dto';
 import { JwtUserPayload } from '@shared/interfaces/authenticated-request.interface';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
-import { normalizePhone, phoneDigitsSql } from '@shared/utils/contact.util';
+import {
+  chatIdDigitsSql,
+  normalizePhone,
+  phoneDigitsSql,
+} from '@shared/utils/contact.util';
 import { getRegionByCode } from '@shared/constants/regions';
 import type { RawRow } from '@shared/spreadsheet/column-def';
 import { readRows } from '@shared/spreadsheet/spreadsheet-reader';
@@ -25,11 +29,7 @@ import {
   type PlannedRow,
   type TypedRow,
 } from './import-validation';
-import {
-  discardUpload,
-  IMPORT_NO_FILE_MESSAGE,
-  sniffImportFile,
-} from './upload.util';
+import { IMPORT_NO_FILE_MESSAGE, sniffImportFile } from './upload.util';
 
 export interface FailedRow {
   row: number;
@@ -166,28 +166,20 @@ export class ContactsImportService {
   ): Promise<ParsedUpload> {
     if (!file) throw new BadRequestException(IMPORT_NO_FILE_MESSAGE);
     const fileName = file.originalname;
-    try {
-      const mime = await sniffImportFile(file);
-      const read = await readRows(file.path, mime, CONTACT_COLUMNS, {
-        maxRows: IMPORT_MAX_ROWS,
-        ignoreHeaders: CONTACT_EXPORT_ONLY_HEADERS,
-      });
-      if (read.errors.length) {
-        return {
-          fileName,
-          typed: [],
-          plan: summarize(fileName, read.errors, []),
-        };
-      }
-      const typed = await typeRows(
-        read.rows,
-        CONTACT_COLUMNS,
-        CreateContactDto,
-      );
-      return { fileName, typed };
-    } finally {
-      await discardUpload(file);
+    const mime = await sniffImportFile(file);
+    const read = await readRows(file.path, mime, CONTACT_COLUMNS, {
+      maxRows: IMPORT_MAX_ROWS,
+      ignoreHeaders: CONTACT_EXPORT_ONLY_HEADERS,
+    });
+    if (read.errors.length) {
+      return {
+        fileName,
+        typed: [],
+        plan: summarize(fileName, read.errors, []),
+      };
     }
+    const typed = await typeRows(read.rows, CONTACT_COLUMNS, CreateContactDto);
+    return { fileName, typed };
   }
 
   // One decision per row, in file order: error, then in-file duplicate, then database duplicate, else add.
@@ -196,42 +188,19 @@ export class ContactsImportService {
     context: ImportContext,
     manager: EntityManager,
   ): Promise<Decided[]> {
-    const decided: Decided[] = [];
-    const candidates: { entry: Decided; key: DuplicateKey }[] = [];
-    const seen = new Map<string, number>();
+    const { decided, candidates } = classifyRows(typed, context);
+    await this.markExisting(candidates, context.companyId, manager);
+    return decided;
+  }
 
-    for (const row of typed) {
-      const rowNumber = row.index + FIRST_DATA_ROW;
-      const entry: Decided = {
-        typed: row,
-        planned: { row: rowNumber, status: 'add' },
-      };
-      decided.push(entry);
-      const problem = row.problem ?? identityProblem(row.dto);
-      if (problem) {
-        fail(entry, problem.column, problem.reason, row.raw);
-        continue;
-      }
-      const region = resolveRegion(row.raw.regionCode, context);
-      if (!region.code) {
-        fail(entry, REGION_HEADER, region.reason!, row.raw);
-        continue;
-      }
-      entry.region = region.code;
-      const key = duplicateKey(row.dto);
-      if (!key) continue;
-      const first = seen.get(key.text);
-      if (first !== undefined) {
-        skip(entry, `Duplicate of row ${first}`, row.raw);
-        continue;
-      }
-      seen.set(key.text, rowNumber);
-      candidates.push({ entry, key });
-    }
-
+  private async markExisting(
+    candidates: Candidate[],
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<void> {
     const existing = await this.existingKeys(
       candidates.map((c) => c.key),
-      context.companyId,
+      companyId,
       manager,
     );
     for (const { entry, key } of candidates) {
@@ -244,7 +213,6 @@ export class ContactsImportService {
         );
       }
     }
-    return decided;
   }
 
   // Two batched lookups mirror ContactsService.findDuplicate: last nine phone digits, else lowercased email.
@@ -340,13 +308,7 @@ export class ContactsImportService {
            FROM (VALUES ${values}) AS v(id, digits)
           WHERE c."company_id" = $1
             AND COALESCE(c."is_group", false) = false
-            AND RIGHT(
-                  regexp_replace(
-                    split_part(split_part(c."chat_id", '@', 1), ':', 1),
-                    '\\D', '', 'g'
-                  ),
-                  9
-                ) = v.digits`,
+            AND ${chatIdDigitsSql('c."chat_id"')} = v.digits`,
         params,
       );
     }
@@ -357,6 +319,50 @@ interface DuplicateKey {
   kind: 'phone' | 'email';
   value: string;
   text: string;
+}
+
+interface Candidate {
+  entry: Decided;
+  key: DuplicateKey;
+}
+
+// Row errors and in-file duplicates need no database; the survivors come back as candidates for the lookup.
+function classifyRows(
+  typed: TypedRow<CreateContactDto>[],
+  context: ImportContext,
+): { decided: Decided[]; candidates: Candidate[] } {
+  const decided: Decided[] = [];
+  const candidates: Candidate[] = [];
+  const seen = new Map<string, number>();
+  for (const row of typed) {
+    const rowNumber = row.index + FIRST_DATA_ROW;
+    const entry: Decided = {
+      typed: row,
+      planned: { row: rowNumber, status: 'add' },
+    };
+    decided.push(entry);
+    const problem = row.problem ?? identityProblem(row.dto);
+    if (problem) {
+      fail(entry, problem.column, problem.reason, row.raw);
+      continue;
+    }
+    const region = resolveRegion(row.raw.regionCode, context);
+    if (!region.code) {
+      fail(entry, REGION_HEADER, region.reason!, row.raw);
+      continue;
+    }
+    entry.region = region.code;
+    const key = duplicateKey(row.dto);
+    if (!key) continue;
+    const first = seen.get(key.text);
+    if (first !== undefined) {
+      skip(entry, `Duplicate of row ${first}`, row.raw);
+      continue;
+    }
+    seen.set(key.text, rowNumber);
+    candidates.push({ entry, key });
+  }
+  return { decided, candidates };
 }
 
 function duplicateKey(dto: CreateContactDto): DuplicateKey | null {
