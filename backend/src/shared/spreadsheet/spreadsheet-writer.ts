@@ -18,7 +18,7 @@ export interface ExtraSheet {
   rows: string[][];
 }
 
-// Writes rows keyed by column key as CSV (own RFC 4180 writer) or XLSX. Only this file touches the library.
+// Writes rows keyed by column key as CSV (own RFC 4180 writer) or XLSX. No source file outside shared/spreadsheet imports the library.
 export async function writeRows(
   columns: ColumnDef[],
   rows: ExportRow[],

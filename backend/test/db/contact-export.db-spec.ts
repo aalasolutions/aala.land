@@ -18,7 +18,7 @@ import {
 } from '../../src/modules/contacts/transfer/contacts-export.service';
 import { ExportContactsQueryDto } from '../../src/modules/contacts/dto/export-contacts-query.dto';
 
-// Microseconds on purpose: a millisecond cursor would skip every row after the first batch.
+// All rows share one microsecond timestamp across several batches, so the cursor must split ties by id.
 const TIED_AT = '2026-11-01 08:00:00.123456+00';
 const TOTAL = 2500;
 

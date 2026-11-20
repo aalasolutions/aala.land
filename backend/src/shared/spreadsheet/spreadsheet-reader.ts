@@ -18,7 +18,7 @@ const ZIP_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 
 type Cell = string | boolean | Date | null | undefined;
 
-// Reads a CSV or XLSX file into trimmed string rows keyed by column key. Only this file touches the libraries.
+// Reads a CSV or XLSX file into trimmed string rows keyed by column key. No source file outside shared/spreadsheet imports the libraries.
 export async function readRows(
   path: string,
   mimeHint: string | undefined,
