@@ -28,5 +28,9 @@ export function configureBodyParsers(
     `${prefix}/data-transfer/:entity/failed-file`,
     json({ limit: DATA_TRANSFER_BODY_LIMIT }),
   );
+  instance.post(
+    `${prefix}/data-transfer/:entity/notes-file`,
+    json({ limit: DATA_TRANSFER_BODY_LIMIT }),
+  );
   app.useBodyParser('json');
 }

@@ -35,7 +35,9 @@ import {
 import { TemplateQueryDto } from './dto/template-query.dto';
 import { ImportBodyDto } from './dto/import-body.dto';
 import { FailedFileBodyDto } from './dto/failed-file.dto';
+import { NotesFileBodyDto } from './dto/notes-file.dto';
 import { importUploadOptions, UploadCleanupInterceptor } from './upload.util';
+import { TRANSFER_ENTITY_NAMES } from './transfer-entities';
 
 const UPLOAD_BODY = {
   schema: {
@@ -60,7 +62,7 @@ export class DataTransferController {
   @ApiOperation({
     summary: 'Download the import template for an entity (COMPANY_ADMIN)',
   })
-  @ApiParam({ name: 'entity', enum: ['contacts'] })
+  @ApiParam({ name: 'entity', enum: TRANSFER_ENTITY_NAMES })
   async template(
     @Param('entity') entity: string,
     @Query() query: TemplateQueryDto,
@@ -87,7 +89,7 @@ export class DataTransferController {
     summary:
       'Validate an import file and report what would happen (COMPANY_ADMIN)',
   })
-  @ApiParam({ name: 'entity', enum: ['contacts'] })
+  @ApiParam({ name: 'entity', enum: TRANSFER_ENTITY_NAMES })
   preview(
     @Param('entity') entity: string,
     @UploadedFile() file: Express.Multer.File | undefined,
@@ -112,7 +114,7 @@ export class DataTransferController {
   @ApiConsumes('multipart/form-data')
   @ApiBody(UPLOAD_BODY)
   @ApiOperation({ summary: 'Import the valid rows of a file (COMPANY_ADMIN)' })
-  @ApiParam({ name: 'entity', enum: ['contacts'] })
+  @ApiParam({ name: 'entity', enum: TRANSFER_ENTITY_NAMES })
   commit(
     @Param('entity') entity: string,
     @UploadedFile() file: Express.Multer.File | undefined,
@@ -133,7 +135,7 @@ export class DataTransferController {
   @ApiOperation({
     summary: 'Download the rows that were not imported, with a Reason column',
   })
-  @ApiParam({ name: 'entity', enum: ['contacts'] })
+  @ApiParam({ name: 'entity', enum: TRANSFER_ENTITY_NAMES })
   async failedFile(
     @Param('entity') entity: string,
     @Query() query: TemplateQueryDto,
@@ -142,6 +144,29 @@ export class DataTransferController {
     @Res() res: Response,
   ): Promise<void> {
     const file = await this.dataTransferService.failedFile(
+      entity,
+      requireCompanyId(req.user),
+      body.rows,
+      query.format,
+    );
+    sendFile(res, file);
+  }
+
+  @Post(':entity/notes-file')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({
+    summary:
+      'Download the imported rows that carry a remark, such as units without an owner',
+  })
+  @ApiParam({ name: 'entity', enum: TRANSFER_ENTITY_NAMES })
+  async notesFile(
+    @Param('entity') entity: string,
+    @Query() query: TemplateQueryDto,
+    @Body() body: NotesFileBodyDto,
+    @Request() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const file = await this.dataTransferService.notesFile(
       entity,
       requireCompanyId(req.user),
       body.rows,

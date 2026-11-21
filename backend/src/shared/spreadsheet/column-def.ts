@@ -11,6 +11,7 @@ export interface ColumnDef {
   key: string;
   type: ColumnType;
   required?: boolean;
+  requiredReason?: string;
   maxLength?: number;
   enumValues?: readonly string[];
   parse?: (raw: string) => ParseOutcome;

@@ -75,7 +75,7 @@ describe('ContactsImportService', () => {
     const plan = await service.preview(
       await upload('ok.csv', [
         row('Sara', '+966501234567'),
-        row('Omar', '', 'omar@example.com'),
+        row('Omar', '+966501234568', 'omar@example.com'),
       ]),
       USER,
       'company-uuid-1',
@@ -93,21 +93,53 @@ describe('ContactsImportService', () => {
     ]);
   });
 
-  it('fails a row with no first name, phone or email and names the column', async () => {
+  it('fails a row without a first name or without a phone, naming the column like the contact form', async () => {
     const plan = await service.preview(
-      await upload('identity.csv', [',Al Mansoori,,,Yes,,,,,,,']),
+      await upload('required.csv', [
+        ',Al Mansoori,+966501234567,,Yes,,,,,,,',
+        row('Omar', '', 'omar@example.com'),
+      ]),
       USER,
       'company-uuid-1',
       undefined,
     );
-    expect(plan.failed).toBe(1);
+    expect(plan.failed).toBe(2);
     expect(plan.rows[0]).toMatchObject({
       row: 2,
       status: 'error',
       column: 'First Name',
-      reason: 'Enter a first name, phone or email.',
+      reason: 'Enter a first name.',
     });
     expect(plan.rows[0].values).toMatchObject({ lastName: 'Al Mansoori' });
+    expect(plan.rows[1]).toMatchObject({
+      row: 3,
+      status: 'error',
+      column: 'Phone',
+      reason: 'Enter a phone number.',
+    });
+  });
+
+  it('reports a missing First Name or Phone header as a file error', async () => {
+    const path = join(dir, 'no-phone-header.csv');
+    await writeFile(
+      path,
+      'First Name,Email\r\nSara,sara@example.com\r\n',
+      'utf8',
+    );
+    const plan = await service.preview(
+      {
+        path,
+        originalname: 'no-phone-header.csv',
+        mimetype: 'text/csv',
+      } as Express.Multer.File,
+      USER,
+      'company-uuid-1',
+      undefined,
+    );
+    expect(plan.rows).toEqual([]);
+    expect(plan.fileErrors).toEqual([
+      expect.objectContaining({ code: 'MISSING_HEADER', header: 'Phone' }),
+    ]);
   });
 
   it('reports an unknown header as a file error and no rows', async () => {
@@ -186,6 +218,7 @@ describe('ContactsImportService', () => {
     });
   });
 
+  // A phone with no digits has no phone key, so the email key is the fallback, as in findDuplicate.
   it('skips database duplicates by phone and by email with the region name only', async () => {
     query.mockImplementation((sql: string) =>
       Promise.resolve(
@@ -197,8 +230,8 @@ describe('ContactsImportService', () => {
     const plan = await service.preview(
       await upload('db-dup.csv', [
         row('Sara', '+966501234567'),
-        row('Omar', '', 'Omar@Example.com'),
-        row('Lina', '', 'lina@example.com'),
+        row('Omar', '-', 'Omar@Example.com'),
+        row('Lina', '-', 'lina@example.com'),
       ]),
       USER,
       'company-uuid-1',
@@ -221,7 +254,7 @@ describe('ContactsImportService', () => {
     await service.preview(
       await upload('batch.csv', [
         row('A', '+966501111111'),
-        row('B', '', 'b@example.com'),
+        row('B', '-', 'b@example.com'),
       ]),
       USER,
       'company-uuid-1',
@@ -306,7 +339,7 @@ describe('ContactsImportService', () => {
     const plan = await service.preview(
       await upload('cells.csv', [
         'Sara,,+966501234567,,maybe,,,,,,,',
-        'Omar,,,not-an-email,,,,,,,,',
+        'Omar,,+966501234568,not-an-email,,,,,,,,',
       ]),
       USER,
       'company-uuid-1',

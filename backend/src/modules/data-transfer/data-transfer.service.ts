@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
@@ -16,11 +16,14 @@ import {
 } from '@shared/spreadsheet/spreadsheet-writer';
 import { transferEntity, type TransferEntity } from './transfer-entities';
 import {
-  ContactsImportService,
+  ENTITY_IMPORTERS,
   type CommitResult,
-} from './contacts-import.service';
+  type EntityImporter,
+  type EntityImporters,
+} from './entity-importer';
 import type { ImportPlan } from './import-validation';
 import type { FailedRowDto } from './dto/failed-file.dto';
+import type { NoteRowDto } from './dto/notes-file.dto';
 
 export { TRANSFER_TIERS };
 
@@ -39,7 +42,8 @@ export class DataTransferService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-    private readonly contactsImport: ContactsImportService,
+    @Inject(ENTITY_IMPORTERS)
+    private readonly importers: EntityImporters,
   ) {}
 
   async templateFile(
@@ -70,9 +74,9 @@ export class DataTransferService {
     companyId: string,
     regionCode: string | undefined,
   ): Promise<ImportPlan> {
-    this.importable(entityName);
+    const importer = this.importer(entityName);
     await assertTier(this.companyRepository, companyId, TRANSFER_TIERS.import);
-    return this.contactsImport.preview(file, user, companyId, regionCode);
+    return importer.preview(file, user, companyId, regionCode);
   }
 
   async commit(
@@ -82,9 +86,9 @@ export class DataTransferService {
     companyId: string,
     regionCode: string | undefined,
   ): Promise<CommitResult> {
-    this.importable(entityName);
+    const importer = this.importer(entityName);
     await assertTier(this.companyRepository, companyId, TRANSFER_TIERS.import);
-    return this.contactsImport.commit(file, user, companyId, regionCode);
+    return importer.commit(file, user, companyId, regionCode);
   }
 
   // Stateless: the failed rows come back from the browser and leave as a file with a Reason column.
@@ -99,10 +103,30 @@ export class DataTransferService {
     const columns = [...entity.columns, REASON_COLUMN];
     const file = await writeRows(
       columns,
-      rows.map((row) => ({ ...row.values, reason: row.reason })),
+      rows.map((row) => ({ ...row.values, reason: fileReason(row) })),
       format,
     );
     return { ...file, fileName: `${entity.fileStem}-not-imported.${format}` };
+  }
+
+  // Stateless like failedFile: the browser sends the note cells it showed, link included, and gets them back as a file.
+  async notesFile(
+    entityName: string,
+    companyId: string,
+    rows: NoteRowDto[],
+    format: SpreadsheetFormat,
+  ): Promise<TemplateFile> {
+    const notes = this.importable(entityName).notes;
+    if (!notes) {
+      throw new NotFoundException('This kind of data has no notes file.');
+    }
+    await assertTier(this.companyRepository, companyId, TRANSFER_TIERS.import);
+    const file = await writeRows(
+      [...notes.columns, REASON_COLUMN],
+      rows.map((row) => ({ ...row.values, reason: row.reason })),
+      format,
+    );
+    return { ...file, fileName: `${notes.fileStem}.${format}` };
   }
 
   private importable(entityName: string): TransferEntity {
@@ -113,6 +137,11 @@ export class DataTransferService {
     return entity;
   }
 
+  private importer(entityName: string): EntityImporter {
+    this.importable(entityName);
+    return this.importers[entityName];
+  }
+
   private async activeRegions(companyId: string): Promise<string[]> {
     const company = await this.companyRepository.findOne({
       where: { id: companyId },
@@ -120,6 +149,11 @@ export class DataTransferService {
     });
     return company?.activeRegions ?? [];
   }
+}
+
+// The file has no Column cell, so a column-scoped reason carries its header.
+function fileReason(row: FailedRowDto): string {
+  return row.column ? `${row.column}: ${row.reason}` : row.reason;
 }
 
 // XLSX carries the allowed values on a second sheet; CSV cannot, so its example row shows valid values.

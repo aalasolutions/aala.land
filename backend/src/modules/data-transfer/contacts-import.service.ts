@@ -21,9 +21,12 @@ import { getRegionByCode } from '@shared/constants/regions';
 import type { RawRow } from '@shared/spreadsheet/column-def';
 import { readRows } from '@shared/spreadsheet/spreadsheet-reader';
 import {
+  chunks,
   FIRST_DATA_ROW,
+  IMPORT_CHUNK,
   IMPORT_MAX_ROWS,
   summarize,
+  toCommitResult,
   typeRows,
   type ImportPlan,
   type PlannedRow,
@@ -31,19 +34,7 @@ import {
 } from './import-validation';
 import { IMPORT_NO_FILE_MESSAGE, sniffImportFile } from './upload.util';
 
-export interface FailedRow {
-  row: number;
-  values: RawRow;
-  reason: string;
-  column?: string;
-}
-
-export interface CommitResult {
-  added: number;
-  skipped: number;
-  failed: number;
-  failedRows: FailedRow[];
-}
+import type { CommitResult, EntityImporter } from './entity-importer';
 
 interface ImportContext {
   companyId: string;
@@ -65,11 +56,9 @@ interface Decided {
 }
 
 const REGION_HEADER = 'Region';
-const IDENTITY_REASON = 'Enter a first name, phone or email.';
-const CHUNK = 500;
 
 @Injectable()
-export class ContactsImportService {
+export class ContactsImportService implements EntityImporter {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
@@ -122,7 +111,7 @@ export class ContactsImportService {
         return rows;
       },
     );
-    const result = toCommitResult(decided);
+    const result = toCommitResult(decided.map((entry) => entry.planned));
     await this.auditService.log({
       companyId,
       userId: context.userId,
@@ -278,7 +267,7 @@ export class ContactsImportService {
         }),
       );
     if (!entities.length) return [];
-    return repository.save(entities, { chunk: CHUNK });
+    return repository.save(entities, { chunk: IMPORT_CHUNK });
   }
 
   // Same matching as ContactsService.linkMatchingChats, one UPDATE per chunk of inserted contacts.
@@ -341,9 +330,8 @@ function classifyRows(
       planned: { row: rowNumber, status: 'add' },
     };
     decided.push(entry);
-    const problem = row.problem ?? identityProblem(row.dto);
-    if (problem) {
-      fail(entry, problem.column, problem.reason, row.raw);
+    if (row.problem) {
+      fail(entry, row.problem.column, row.problem.reason, row.raw);
       continue;
     }
     const region = resolveRegion(row.raw.regionCode, context);
@@ -365,17 +353,13 @@ function classifyRows(
   return { decided, candidates };
 }
 
+// Last nine phone digits; a phone without digits falls back to the lowercased email, as findDuplicate does.
 function duplicateKey(dto: CreateContactDto): DuplicateKey | null {
   const digits = normalizePhone(dto.phone);
   if (digits) return { kind: 'phone', value: digits, text: `phone:${digits}` };
   const email = dto.email?.trim().toLowerCase();
   if (email) return { kind: 'email', value: email, text: `email:${email}` };
   return null;
-}
-
-function identityProblem(dto: CreateContactDto) {
-  if (dto.firstName || dto.phone || dto.email) return undefined;
-  return { column: 'First Name', reason: IDENTITY_REASON };
 }
 
 function resolveRegion(
@@ -410,34 +394,4 @@ function fail(entry: Decided, column: string, reason: string, values: RawRow) {
 
 function skip(entry: Decided, reason: string, values: RawRow) {
   entry.planned = { ...entry.planned, status: 'skip', reason, values };
-}
-
-function toCommitResult(decided: Decided[]): CommitResult {
-  const result: CommitResult = {
-    added: 0,
-    skipped: 0,
-    failed: 0,
-    failedRows: [],
-  };
-  for (const { planned } of decided) {
-    if (planned.status === 'add') {
-      result.added += 1;
-      continue;
-    }
-    if (planned.status === 'skip') result.skipped += 1;
-    else result.failed += 1;
-    result.failedRows.push({
-      row: planned.row,
-      values: planned.values ?? {},
-      reason: planned.reason ?? '',
-      column: planned.column,
-    });
-  }
-  return result;
-}
-
-function* chunks<T>(items: T[]): Generator<T[]> {
-  for (let start = 0; start < items.length; start += CHUNK) {
-    yield items.slice(start, start + CHUNK);
-  }
 }

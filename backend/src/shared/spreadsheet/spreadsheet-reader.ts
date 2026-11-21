@@ -53,11 +53,20 @@ function failed(
 
 type Grid = { cells: Cell[][] } | { error: FileError };
 
+// Decided once from the header line, so an unquoted ";" inside a cell of a comma file stays part of the cell.
+function detectDelimiter(data: Buffer): ',' | ';' {
+  const header = data.toString('utf8', 0, Math.min(data.length, 64 * 1024));
+  const line = header.split(/\r?\n/, 1)[0];
+  const commas = line.split(',').length - 1;
+  const semicolons = line.split(';').length - 1;
+  return semicolons > commas ? ';' : ',';
+}
+
 function readCsvGrid(data: Buffer): Grid {
   try {
     const cells = parse(data, {
       bom: true,
-      delimiter: [',', ';'],
+      delimiter: detectDelimiter(data),
       columns: false,
       skip_empty_lines: true,
       relax_column_count_less: true,

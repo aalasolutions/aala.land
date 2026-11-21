@@ -10,11 +10,16 @@ import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UnitsExportService } from './transfer/units-export.service';
+import { ExportUnitsQueryDto } from './dto/export-units-query.dto';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('PropertiesController', () => {
   let controller: PropertiesController;
   let service: jest.Mocked<PropertiesService>;
   let mediaService: jest.Mocked<MediaService>;
+  let exportService: jest.Mocked<UnitsExportService>;
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -64,7 +69,6 @@ describe('PropertiesController', () => {
             archiveUnit: jest.fn(),
             unarchiveUnit: jest.fn(),
             findAllUnits: jest.fn(),
-            bulkImportUnits: jest.fn(),
           },
         },
         {
@@ -77,6 +81,10 @@ describe('PropertiesController', () => {
             deleteMedia: jest.fn(),
           },
         },
+        {
+          provide: UnitsExportService,
+          useValue: { export: jest.fn() },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -86,10 +94,97 @@ describe('PropertiesController', () => {
     controller = module.get<PropertiesController>(PropertiesController);
     service = module.get(PropertiesService);
     mediaService = module.get(MediaService);
+    exportService = module.get(UnitsExportService);
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('exportUnits', () => {
+    const query = (overrides: Partial<ExportUnitsQueryDto> = {}) =>
+      Object.assign(new ExportUnitsQueryDto(), overrides);
+    const res = () => ({ setHeader: jest.fn(), send: jest.fn() });
+    const file = (truncated = false) => ({
+      buffer: Buffer.from('a,b'),
+      contentType: 'text/csv; charset=utf-8',
+      extension: 'csv' as const,
+      fileName: 'units-dubai-2026-11-20.csv',
+      rows: 1,
+      truncated,
+    });
+
+    it('is COMPANY_ADMIN only', () => {
+      expect(Reflect.getMetadata(ROLES_KEY, controller.exportUnits)).toEqual([
+        Role.COMPANY_ADMIN,
+      ]);
+    });
+
+    it('hands the query and the viewer to the export service and streams the file', async () => {
+      exportService.export.mockResolvedValue(file());
+      const response = res();
+      const q = query({ format: 'csv', status: 'available' as never });
+
+      await controller.exportUnits(q, mockReq, response as never);
+
+      expect(exportService.export).toHaveBeenCalledWith(
+        companyId,
+        { userId, role: 'company_admin', regionCodes: ['dubai'] },
+        q,
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/csv; charset=utf-8',
+      );
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="units-dubai-2026-11-20.csv"',
+      );
+      expect(response.setHeader).not.toHaveBeenCalledWith(
+        'X-Export-Truncated',
+        'true',
+      );
+      expect(response.send).toHaveBeenCalledWith(Buffer.from('a,b'));
+    });
+
+    it('marks a capped export with the truncation header', async () => {
+      exportService.export.mockResolvedValue(file(true));
+      const response = res();
+      await controller.exportUnits(query(), mockReq, response as never);
+      expect(response.setHeader).toHaveBeenCalledWith(
+        'X-Export-Truncated',
+        'true',
+      );
+    });
+
+    it('rejects a format, status, listing type and price outside the list values at the DTO', async () => {
+      const bad = plainToInstance(ExportUnitsQueryDto, {
+        format: 'pdf',
+        status: 'open',
+        propertyType: 'LEASE',
+        minPrice: 'cheap',
+        archived: 'all',
+      });
+      const errors = await validate(bad);
+      expect(errors.map((e) => e.property).sort()).toEqual([
+        'archived',
+        'format',
+        'minPrice',
+        'propertyType',
+        'status',
+      ]);
+
+      const good = plainToInstance(ExportUnitsQueryDto, {
+        format: 'xlsx',
+        status: 'rented',
+        propertyType: 'RENTAL',
+        minPrice: '1000',
+        maxBeds: '3',
+        amenities: 'gym,covered_parking',
+        archived: 'include',
+      });
+      expect(await validate(good)).toEqual([]);
+    });
   });
 
   describe('createAsset', () => {
@@ -427,23 +522,6 @@ describe('PropertiesController', () => {
       await expect(
         controller.uploadMedia(undefined as any, {} as any, mockReq),
       ).rejects.toThrow('No file provided');
-    });
-  });
-
-  describe('bulkImport', () => {
-    it('bulk imports units from CSV', async () => {
-      const importResult = { created: 2, failed: 0, errors: [] };
-      service.bulkImportUnits.mockResolvedValue(importResult);
-
-      const csv = 'unitNumber,assetId\n101,asset-uuid-1\n102,asset-uuid-1';
-      const result = await controller.bulkImport(csv, mockReq);
-
-      expect(service.bulkImportUnits).toHaveBeenCalledWith(
-        companyId,
-        csv,
-        mockReq.user,
-      );
-      expect(result).toEqual(importResult);
     });
   });
 });

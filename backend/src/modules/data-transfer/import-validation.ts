@@ -6,9 +6,11 @@ import type {
   FileError,
   RawRow,
 } from '@shared/spreadsheet/column-def';
+import type { CommitResult } from './entity-importer';
 
 export const IMPORT_MAX_ROWS = 5000;
 export const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+export const IMPORT_CHUNK = 500;
 
 export type RowStatus = 'add' | 'skip' | 'error';
 
@@ -55,6 +57,18 @@ const CONSTRAINT_WORDS: Record<string, (constraint?: string) => string> = {
   isBoolean: () => 'Use Yes or No.',
   isString: () => 'Enter text.',
   isNotEmpty: () => 'This cell is required.',
+  isNumber: () => 'Enter a number.',
+  isInt: () => 'Enter a whole number.',
+  isEnum: () => 'Use one of the allowed values.',
+  isHalfStep: () => 'Use a whole or half number, such as 2 or 2.5.',
+  min: (constraint) => {
+    const limit = constraint?.match(/(-?\d+(?:\.\d+)?)/)?.[1];
+    return limit ? `Enter ${limit} or more.` : 'This value is too small.';
+  },
+  max: (constraint) => {
+    const limit = constraint?.match(/(-?\d+(?:\.\d+)?)/)?.[1];
+    return limit ? `Enter ${limit} or less.` : 'This value is too large.';
+  },
   whitelistValidation: () => 'This column is not part of the template.',
 };
 
@@ -90,7 +104,10 @@ export async function typeRows<T extends object>(
       const cell = raw[column.key];
       if (cell === undefined) {
         if (column.required) {
-          problem = { column: column.header, reason: 'This cell is required.' };
+          problem = {
+            column: column.header,
+            reason: column.requiredReason ?? 'This cell is required.',
+          };
           break;
         }
         continue;
@@ -135,4 +152,38 @@ export function summarize(
     else failed += 1;
   }
   return { fileName, willAdd, willSkip, failed, fileErrors, rows };
+}
+
+// Added and skipped rows only count; error rows come back with their uploaded values and the reason.
+export function toCommitResult(rows: PlannedRow[]): CommitResult {
+  const result: CommitResult = {
+    added: 0,
+    skipped: 0,
+    failed: 0,
+    failedRows: [],
+  };
+  for (const planned of rows) {
+    if (planned.status === 'add') {
+      result.added += 1;
+      continue;
+    }
+    if (planned.status === 'skip') {
+      result.skipped += 1;
+      continue;
+    }
+    result.failed += 1;
+    result.failedRows.push({
+      row: planned.row,
+      values: planned.values ?? {},
+      reason: planned.reason ?? '',
+      column: planned.column,
+    });
+  }
+  return result;
+}
+
+export function* chunks<T>(items: T[], size = IMPORT_CHUNK): Generator<T[]> {
+  for (let start = 0; start < items.length; start += size) {
+    yield items.slice(start, start + size);
+  }
 }

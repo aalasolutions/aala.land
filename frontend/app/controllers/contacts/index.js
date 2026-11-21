@@ -13,10 +13,7 @@ import {
 import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 import { canViewContactCompanies, resolveAllRegions } from '../../utils/roles';
 import { contactsListFilters } from '../../utils/contacts-query';
-import { saveResponseAsFile } from '../../utils/download';
-
-const EXPORT_WAIT_NOTICE_MS = 1000;
-export const EXPORT_CAP = 20000;
+import { downloadExport } from '../../utils/export-list';
 
 export const CONTACTS_TAB = 'contacts';
 export const COMPANIES_TAB = 'companies';
@@ -224,28 +221,13 @@ export default class ContactsIndexController extends PaginatedController {
     });
   }
 
-  @action async exportContacts(format) {
-    const notice = setTimeout(
-      () => this.notifications.info('Preparing your file'),
-      EXPORT_WAIT_NOTICE_MS,
-    );
-    try {
-      const response = await this.dataTransfer.exportList(
-        'contacts',
-        this.exportParams,
-        format,
-      );
-      clearTimeout(notice);
-      await saveResponseAsFile(response, `contacts.${format}`);
-      if (response.headers.get('X-Export-Truncated') === 'true') {
-        this.notifications.info(
-          `Only the first ${EXPORT_CAP.toLocaleString()} contacts were exported. Narrow the filters to export the rest.`,
-        );
-      }
-    } catch (error) {
-      clearTimeout(notice);
-      this.notifications.error(error.message);
-    }
+  @action exportContacts(format) {
+    return downloadExport(this, {
+      entity: 'contacts',
+      params: this.exportParams,
+      format,
+      noun: 'contacts',
+    });
   }
 
   @tracked showModal = false;

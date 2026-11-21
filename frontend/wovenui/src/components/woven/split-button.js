@@ -30,6 +30,11 @@ export default class WovenSplitButtonComponent extends Component {
     return Boolean(this.args.disabled);
   }
 
+  // primaryDisabled blocks the primary alone; the caret and its menu stay usable.
+  get isPrimaryDisabled() {
+    return this.isDisabled || Boolean(this.args.primaryDisabled);
+  }
+
   @action
   keepPrimaryKeys(event) {
     if (MENU_KEYS.includes(event.key)) {

@@ -136,6 +136,23 @@ module('Integration | Component | woven/split-button', function (hooks) {
     assert.notOk(menu(), 'a disabled caret opens nothing');
   });
 
+  test('primaryDisabled blocks the primary alone and leaves the menu usable', async function (assert) {
+    await render(hbs`
+      <Woven::SplitButton @label="Import" @primaryDisabled={{true}} @onClick={{this.onClick}}>
+        <:menu>
+          <div role="group" aria-label="More actions">
+            <button type="button" class="wu-dropdown-item" role="menuitem" tabindex="-1" data-test-item>Item</button>
+          </div>
+        </:menu>
+      </Woven::SplitButton>
+    `);
+
+    assert.dom(PRIMARY).isDisabled();
+    assert.dom(TRIGGER).isEnabled();
+    await click(TRIGGER);
+    assert.ok(menu(), 'the caret still opens the menu');
+  });
+
   test('size, icon and attributes pass through', async function (assert) {
     await render(hbs`
       <Woven::SplitButton @label="Import" @size="sm" @icon="upload-simple" @onClick={{this.onClick}} class="extra" data-test-mine>

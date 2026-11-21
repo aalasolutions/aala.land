@@ -21,6 +21,11 @@ export default class DataTransferTransferMenuComponent extends Component {
     return isTransferAdmin(this.session);
   }
 
+  // Import and the sample file need an import page; a page without one exports only.
+  get hasImport() {
+    return Boolean(this.args.importRoute);
+  }
+
   get importLocked() {
     return !canImport(this.session);
   }
@@ -34,7 +39,7 @@ export default class DataTransferTransferMenuComponent extends Component {
       this.promptOpen = true;
       return;
     }
-    this.router.transitionTo(`import.${this.entity}`);
+    this.router.transitionTo(this.args.importRoute);
   }
 
   @action async sample(close) {
