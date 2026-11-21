@@ -1,7 +1,7 @@
 import Component from '@glimmer/component';
 
 export const CONTACT_INTRO =
-  'Use the sample file as your starting point. Each row needs at least a first name, a phone or an email. Rows that already exist are skipped. Up to 5,000 rows and 5 MB.';
+  'Use the sample file as your starting point. Each row needs a first name and a phone number. Rows that already exist are skipped. Up to 5,000 rows and 5 MB.';
 
 export const CONTACT_VALUE_COLUMNS = [
   { name: 'First Name', valuePath: 'firstName', width: 140 },

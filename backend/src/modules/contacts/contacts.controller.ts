@@ -41,7 +41,7 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 import { ContactsExportService } from './transfer/contacts-export.service';
 import { ExportContactsQueryDto } from './dto/export-contacts-query.dto';
 import { toContactFilters } from './contact-filters.util';
-import { headerSafeName } from '@shared/utils/file-name.util';
+import { sendExportFile } from '@shared/utils/export-response.util';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
@@ -223,14 +223,7 @@ export class ContactsController {
       },
       query,
     );
-    res.setHeader('Content-Type', file.contentType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${headerSafeName(file.fileName)}"`,
-    );
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (file.truncated) res.setHeader('X-Export-Truncated', 'true');
-    res.send(file.buffer);
+    sendExportFile(res, file);
   }
 
   // Limited to roles that see every contact in their regions in full, so no hidden company leaks.

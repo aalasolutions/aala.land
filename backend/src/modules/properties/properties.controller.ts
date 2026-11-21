@@ -52,7 +52,8 @@ import { UploadMediaDto } from './dto/upload-media.dto';
 import { Response } from 'express';
 import { UnitsExportService } from './transfer/units-export.service';
 import { ExportUnitsQueryDto } from './dto/export-units-query.dto';
-import { headerSafeName } from '@shared/utils/file-name.util';
+import { toUnitFilters } from './unit-filters.util';
+import { sendExportFile } from '@shared/utils/export-response.util';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -86,14 +87,7 @@ export class PropertiesController {
       },
       query,
     );
-    res.setHeader('Content-Type', file.contentType);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${headerSafeName(file.fileName)}"`,
-    );
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (file.truncated) res.setHeader('X-Export-Truncated', 'true');
-    res.send(file.buffer);
+    sendExportFile(res, file);
   }
 
   @Post('media/upload')
@@ -428,24 +422,19 @@ export class PropertiesController {
     )
     archived?: UnitArchivedFilter,
   ) {
-    const filters = {
-      amenities: amenitiesStr
-        ? amenitiesStr
-            .split(',')
-            .map((a) => a.trim())
-            .filter(Boolean)
-        : undefined,
-      propertyType: propertyType || undefined,
-      status: status || undefined,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      minBeds: minBeds ? Number(minBeds) : undefined,
-      maxBeds: maxBeds ? Number(maxBeds) : undefined,
-      localityId: localityId || undefined,
-      regionCode: regionCode || undefined,
-      ownerId: ownerId || undefined,
+    const filters = toUnitFilters({
+      amenities: amenitiesStr,
+      propertyType,
+      status,
+      minPrice,
+      maxPrice,
+      minBeds,
+      maxBeds,
+      localityId,
+      regionCode,
+      ownerId,
       archived,
-    };
+    });
     return this.propertiesService.findAllUnits(
       requireCompanyId(req.user),
       page,

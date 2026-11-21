@@ -10,10 +10,7 @@ import {
   ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
 import { unitsListFilters } from '../../utils/units-query';
-import { saveResponseAsFile } from '../../utils/download';
-
-const EXPORT_WAIT_NOTICE_MS = 1000;
-export const EXPORT_CAP = 20000;
+import { downloadExport } from '../../utils/export-list';
 
 export default class PropertiesIndexController extends Controller {
   queryParams = ['archived'];
@@ -249,28 +246,13 @@ export default class PropertiesIndexController extends Controller {
     return unitsListFilters(this, { regionCode: this.region.regionCode });
   }
 
-  @action async exportUnits(format) {
-    const notice = setTimeout(
-      () => this.notifications.info('Preparing your file'),
-      EXPORT_WAIT_NOTICE_MS,
-    );
-    try {
-      const response = await this.dataTransfer.exportList(
-        'units',
-        this.exportParams,
-        format,
-      );
-      clearTimeout(notice);
-      await saveResponseAsFile(response, `units.${format}`);
-      if (response.headers.get('X-Export-Truncated') === 'true') {
-        this.notifications.info(
-          `Only the first ${EXPORT_CAP.toLocaleString()} properties were exported. Narrow the filters to export the rest.`,
-        );
-      }
-    } catch (error) {
-      clearTimeout(notice);
-      this.notifications.error(error.message);
-    }
+  @action exportUnits(format) {
+    return downloadExport(this, {
+      entity: 'units',
+      params: this.exportParams,
+      format,
+      noun: 'properties',
+    });
   }
 
   @action async loadBrowseUnits() {
