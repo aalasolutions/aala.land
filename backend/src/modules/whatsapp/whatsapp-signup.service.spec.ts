@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Not, QueryFailedError } from 'typeorm';
 import { WhatsappSignupService } from './whatsapp-signup.service';
+import { WhatsappDiagnosticsService } from './whatsapp-diagnostics.service';
 import {
   WhatsappConnectionStatus,
   WhatsappHistorySyncStatus,
@@ -58,8 +59,14 @@ describe('WhatsappSignupService', () => {
     update: jest.Mock;
     count: jest.Mock;
   };
-  let wa: { getConnection: jest.Mock; disconnect: jest.Mock };
+  let wa: {
+    getConnection: jest.Mock;
+    disconnect: jest.Mock;
+  };
+  let store: { getLastMessageTimes: jest.Mock };
+  let diagnostics: WhatsappDiagnosticsService;
   let media: { resumePendingMedia: jest.Mock };
+  let users: { findOne: jest.Mock };
   let encryption: EncryptionService;
   let fetchMock: jest.Mock;
   const savedEnv: Record<string, string | undefined> = {};
@@ -97,7 +104,15 @@ describe('WhatsappSignupService', () => {
       getConnection: jest.fn().mockResolvedValue(connectedInfo),
       disconnect: jest.fn().mockResolvedValue({ success: true }),
     };
+    store = {
+      getLastMessageTimes: jest.fn().mockResolvedValue({
+        lastInboundAt: new Date('2026-10-05T07:05:28.000Z'),
+        lastOutboundAt: new Date('2026-10-04T10:00:00.000Z'),
+      }),
+    };
+    diagnostics = new WhatsappDiagnosticsService(store as any);
     media = { resumePendingMedia: jest.fn().mockResolvedValue(undefined) };
+    users = { findOne: jest.fn().mockResolvedValue(null) };
     fetchMock = jest.fn();
     jest.spyOn(global, 'fetch').mockImplementation(fetchMock as any);
 
@@ -106,6 +121,8 @@ describe('WhatsappSignupService', () => {
       encryption,
       wa as any,
       media as any,
+      users as any,
+      diagnostics,
     );
   });
 
@@ -407,12 +424,95 @@ describe('WhatsappSignupService', () => {
     });
 
     it('refuses a phone number already connected to another user', async () => {
-      connections.findOne.mockResolvedValueOnce({ id: 'someone-else' });
+      connections.findOne.mockResolvedValueOnce({
+        id: 'someone-else',
+        userId: 'user-2',
+        companyId: 'company-2',
+      });
 
       await expect(
         service.connect('user-1', 'company-1', dto),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('names the holder when the number is held inside the same company', async () => {
+      connections.findOne.mockResolvedValueOnce({
+        id: 'holder-row',
+        userId: 'user-2',
+        companyId: 'company-1',
+      });
+      users.findOne.mockResolvedValueOnce({ id: 'user-2', name: 'Test Agent' });
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toThrow(
+        'This number is already connected in AALA.LAND to Test Agent. Ask them to disconnect it first.',
+      );
+      expect(users.findOne).toHaveBeenCalledWith({
+        where: { id: 'user-2', companyId: 'company-1' },
+        select: { id: true, name: true },
+      });
+    });
+
+    it('reveals nothing about a holder in another company', async () => {
+      connections.findOne.mockResolvedValueOnce({
+        id: 'holder-row',
+        userId: 'user-2',
+        companyId: 'company-2',
+      });
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toThrow(
+        'This number is already connected in AALA.LAND to another account. Please contact support.',
+      );
+      expect(users.findOne).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the generic answer when the same-company holder has no readable name', async () => {
+      const warn = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => undefined);
+      connections.findOne.mockResolvedValueOnce({
+        id: 'holder-row',
+        userId: 'user-2',
+        companyId: 'company-1',
+      });
+      users.findOne.mockRejectedValueOnce(new Error('db timeout'));
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toThrow(
+        'This number is already connected in AALA.LAND to another account. Please contact support.',
+      );
+      expect(warn).toHaveBeenCalledWith(
+        'Holder name lookup failed for user user-2: db timeout',
+      );
+    });
+
+    it('logs the refusal with requester and holder ids only', async () => {
+      const warn = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => undefined);
+      connections.findOne.mockResolvedValueOnce({
+        id: 'holder-row',
+        userId: 'user-2',
+        companyId: 'company-2',
+      });
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      const line = warn.mock.calls[0][0] as string;
+      expect(line).toContain('(pre-check)');
+      expect(line).toContain(`phone_number_id ${dto.phoneNumberId}`);
+      expect(line).toContain('user user-1 in company company-1');
+      expect(line).toContain('held by user user-2 in company company-2');
+      expect(line).not.toContain(TOKEN);
+      expect(line).not.toContain(CODE);
     });
 
     // Only CONNECTED/FLAGGED rows hold a number, so seat removal frees it for a replacement agent.
@@ -444,6 +544,63 @@ describe('WhatsappSignupService', () => {
       await expect(
         service.connect('user-1', 'company-1', dto),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('gives the race path the same answer and log line as the pre-check', async () => {
+      const warn = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => undefined);
+      happyPathFetches();
+      connections.findOne
+        .mockResolvedValueOnce(null) // pre-check: free
+        .mockResolvedValueOnce(null) // own row: none
+        .mockResolvedValueOnce({
+          id: 'holder-row',
+          userId: 'user-2',
+          companyId: 'company-1',
+        }); // holder looked up after the 23505
+      users.findOne.mockResolvedValueOnce({ id: 'user-2', name: 'Test Agent' });
+      connections.insert.mockRejectedValueOnce(
+        makeUniqueViolation({
+          code: '23505',
+          constraint: 'UQ_wa_connections_phone_number_id',
+        }),
+      );
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toThrow(
+        'This number is already connected in AALA.LAND to Test Agent. Ask them to disconnect it first.',
+      );
+      const line = warn.mock.calls[0][0] as string;
+      expect(line).toContain('(race)');
+      expect(line).toContain('held by user user-2 in company company-1');
+    });
+
+    it('answers generically on the race path when the holder cannot be read', async () => {
+      const warn = jest
+        .spyOn(service['logger'], 'warn')
+        .mockImplementation(() => undefined);
+      happyPathFetches();
+      connections.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockRejectedValueOnce(new Error('db timeout'));
+      connections.insert.mockRejectedValueOnce(
+        makeUniqueViolation({
+          code: '23505',
+          constraint: 'UQ_wa_connections_phone_number_id',
+        }),
+      );
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toThrow(
+        'This number is already connected in AALA.LAND to another account. Please contact support.',
+      );
+      expect(warn).toHaveBeenCalledWith(
+        'Holder lookup failed after a number race: db timeout',
+      );
     });
 
     it('maps a unique violation on the user index to a 409', async () => {
@@ -709,19 +866,32 @@ describe('WhatsappSignupService', () => {
   });
 
   describe('disconnect', () => {
+    const subscribedApps = ok({
+      data: [
+        {
+          whatsapp_business_api_data: {
+            id: 'app-id-1',
+            link: 'https://example.com/app',
+            name: 'Test App',
+          },
+        },
+      ],
+    });
     it('unsubscribes from Meta, then tears down the row and destroys the token', async () => {
       connections.findOne.mockResolvedValue({
         id: 'conn-1',
         wabaId: dto.wabaId,
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
-      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+      fetchMock
+        .mockResolvedValueOnce(subscribedApps)
+        .mockResolvedValueOnce(ok({ success: true }));
 
       await expect(service.disconnect('user-1', 'company-1')).resolves.toEqual({
         success: true,
       });
 
-      expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+      expect(fetchMock.mock.calls[1][1].method).toBe('DELETE');
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
       const patch = connections.update.mock.calls[0][1];
       expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
@@ -733,11 +903,13 @@ describe('WhatsappSignupService', () => {
         wabaId: dto.wabaId,
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
-      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+      fetchMock
+        .mockResolvedValueOnce(subscribedApps)
+        .mockResolvedValueOnce(ok({ success: true }));
 
       await service.disconnect('user-1', 'company-1', 'SEAT_REMOVED');
 
-      expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
+      expect(fetchMock.mock.calls[1][1].method).toBe('DELETE');
       const patch = connections.update.mock.calls[0][1];
       expect(patch.disconnectReason).toBe('SEAT_REMOVED');
     });
@@ -764,7 +936,9 @@ describe('WhatsappSignupService', () => {
         wabaId: dto.wabaId,
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
-      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+      fetchMock
+        .mockResolvedValueOnce(subscribedApps)
+        .mockResolvedValueOnce(ok({ success: true }));
 
       await service.disconnect('user-1', 'company-1');
 
@@ -780,7 +954,9 @@ describe('WhatsappSignupService', () => {
         wabaId: dto.wabaId,
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
-      fetchMock.mockResolvedValueOnce(fail(403, 'nope'));
+      fetchMock
+        .mockResolvedValueOnce(subscribedApps)
+        .mockResolvedValueOnce(fail(403, 'nope'));
 
       await expect(service.disconnect('user-1', 'company-1')).resolves.toEqual({
         success: true,
@@ -806,12 +982,14 @@ describe('WhatsappSignupService', () => {
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
       connections.count.mockResolvedValue(1);
+      fetchMock.mockResolvedValueOnce(subscribedApps);
 
       await expect(service.disconnect('user-1', 'company-1')).resolves.toEqual({
         success: true,
       });
 
-      expect(fetchMock).not.toHaveBeenCalled();
+      const methods = fetchMock.mock.calls.map((call) => call[1].method);
+      expect(methods).toEqual(['GET']);
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
       const patch = connections.update.mock.calls[0][1];
       expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
@@ -823,7 +1001,9 @@ describe('WhatsappSignupService', () => {
         wabaId: dto.wabaId,
         accessTokenCiphertext: encryption.encrypt(TOKEN),
       });
-      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+      fetchMock
+        .mockResolvedValueOnce(subscribedApps)
+        .mockResolvedValueOnce(ok({ success: true }));
 
       await service.disconnect('user-1', 'company-1');
 
@@ -839,6 +1019,111 @@ describe('WhatsappSignupService', () => {
           id: Not('conn-1'),
           status: WhatsappConnectionStatus.FLAGGED,
         },
+      ]);
+    });
+  });
+
+  describe('disconnect snapshot', () => {
+    const liveRow = () => ({
+      id: 'conn-1',
+      companyId: 'company-1',
+      userId: 'user-1',
+      wabaId: dto.wabaId,
+      phoneNumberId: dto.phoneNumberId,
+      status: WhatsappConnectionStatus.CONNECTED,
+      connectedAt: new Date('2026-09-30T09:10:34.000Z'),
+      lifecycleEventAt: new Date('2026-09-30T09:10:34.000Z'),
+      tokenUpdatedAt: new Date('2026-09-30T09:10:34.000Z'),
+      disconnectReason: 'PARTNER_REMOVED',
+      accessTokenCiphertext: encryption.encrypt(TOKEN),
+    });
+
+    const savedSnapshot = () => connections.update.mock.calls[0][1].disconnectSnapshot;
+
+    it('stores the row state, message times and the subscription check, never the token', async () => {
+      connections.findOne.mockResolvedValue(liveRow());
+      fetchMock
+        .mockResolvedValueOnce(
+          ok({
+            data: [
+              { whatsapp_business_api_data: { id: 'other-app' } },
+              { whatsapp_business_api_data: { id: 'app-id-1' } },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(ok({ success: true }));
+
+      await service.disconnect('user-1', 'company-1');
+
+      const [getUrl, getInit] = fetchMock.mock.calls[0];
+      expect(getUrl).toBe(
+        `https://graph.facebook.com/${GRAPH_VERSION}/${dto.wabaId}/subscribed_apps`,
+      );
+      expect(getInit.method).toBe('GET');
+      expect(store.getLastMessageTimes).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+      );
+
+      const patch = connections.update.mock.calls[0][1];
+      expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
+      expect(patch.disconnectSnapshot).toEqual({
+        capturedAt: expect.any(String),
+        reason: 'SELF_DISCONNECTED',
+        status: WhatsappConnectionStatus.CONNECTED,
+        wabaId: dto.wabaId,
+        phoneNumberId: dto.phoneNumberId,
+        connectedAt: '2026-09-30T09:10:34.000Z',
+        lifecycleEventAt: '2026-09-30T09:10:34.000Z',
+        tokenUpdatedAt: '2026-09-30T09:10:34.000Z',
+        previousDisconnectReason: 'PARTNER_REMOVED',
+        lastInboundAt: '2026-10-05T07:05:28.000Z',
+        lastOutboundAt: '2026-10-04T10:00:00.000Z',
+        subscription: {
+          attempted: true,
+          appSubscribed: true,
+          subscribedAppIds: ['other-app', 'app-id-1'],
+          error: null,
+        },
+      });
+      expect(JSON.stringify(patch.disconnectSnapshot)).not.toContain(TOKEN);
+    });
+
+    it('keeps the Graph error in the snapshot and still disconnects', async () => {
+      jest
+        .spyOn(diagnostics['logger'], 'error')
+        .mockImplementation(() => undefined);
+      connections.findOne.mockResolvedValue(liveRow());
+      fetchMock
+        .mockResolvedValueOnce(fail(400, 'Unsupported get request'))
+        .mockResolvedValueOnce(ok({ success: true }));
+
+      await expect(service.disconnect('user-1', 'company-1')).resolves.toEqual({
+        success: true,
+      });
+
+      const { subscription } = savedSnapshot();
+      expect(subscription.attempted).toBe(true);
+      expect(subscription.appSubscribed).toBeNull();
+      expect(subscription.error).toContain('HTTP 400');
+      expect(subscription.error).toContain('Unsupported get request');
+      expect(fetchMock.mock.calls[1][1].method).toBe('DELETE');
+    });
+
+    it('checks the subscription after the row is flipped and before the unsubscribe', async () => {
+      connections.findOne.mockResolvedValue(liveRow());
+      fetchMock
+        .mockResolvedValueOnce(ok({ data: [] }))
+        .mockResolvedValueOnce(ok({ success: true }));
+
+      await service.disconnect('user-1', 'company-1');
+
+      expect(wa.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
+        fetchMock.mock.invocationCallOrder[0],
+      );
+      expect(fetchMock.mock.calls.map((call) => call[1].method)).toEqual([
+        'GET',
+        'DELETE',
       ]);
     });
   });

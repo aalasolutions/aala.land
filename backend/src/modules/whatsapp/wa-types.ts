@@ -137,6 +137,30 @@ export interface WaConnectionInfo {
   disconnectReason: string | null;
   historySyncStatus: WhatsappHistorySyncStatus | null;
   historySyncProgress: number | null;
+  // ISO time of the newest inbound message stored for this agent, or null.
+  lastInboundAt: string | null;
+}
+
+// Evidence kept on an in-app disconnect, captured before the token is wiped. Never holds the token.
+export interface WaDisconnectSnapshot {
+  capturedAt: string;
+  reason: string;
+  status: WhatsappConnectionStatus;
+  wabaId: string;
+  phoneNumberId: string;
+  connectedAt: string | null;
+  lifecycleEventAt: string | null;
+  tokenUpdatedAt: string | null;
+  previousDisconnectReason: string | null;
+  lastInboundAt: string | null;
+  lastOutboundAt: string | null;
+  // Read-only GET /{waba_id}/subscribed_apps made with the token before it was wiped.
+  subscription: {
+    attempted: boolean;
+    appSubscribed: boolean | null;
+    subscribedAppIds: string[];
+    error: string | null;
+  };
 }
 
 export interface WaHistorySyncState {

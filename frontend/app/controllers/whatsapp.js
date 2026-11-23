@@ -13,6 +13,10 @@ import { formatShortTime } from 'land/utils/local-date';
 import { isIgnoredChat } from 'land/services/whatsapp';
 import { mediaLabel } from 'land/utils/wa-media-label';
 import { isRetryableSend } from 'land/utils/wa-outbound-media';
+import {
+  INBOUND_SILENCE_TEXT,
+  isInboundSilent,
+} from 'land/utils/whatsapp-silence';
 
 const PAGE_SIZE = 50;
 const AROUND_LIMIT = 100;
@@ -262,6 +266,26 @@ export default class WhatsappController extends Controller {
     }
     return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
       .detail;
+  }
+
+  get showsInboundSilence() {
+    return isInboundSilent(this.connection, this.now);
+  }
+
+  get inboundSilenceText() {
+    return INBOUND_SILENCE_TEXT;
+  }
+
+  // Any live inbound proves delivery works, ignored chats included, so it runs before the filters.
+  _noteInbound(msg) {
+    if (!this.connection || !msg || msg.fromMe) return;
+    const at = msg.timestamp ? msg.timestamp * 1000 : Date.now();
+    const known = Date.parse(this.connection.lastInboundAt ?? '') || 0;
+    if (at <= known) return;
+    this.connection = {
+      ...this.connection,
+      lastInboundAt: new Date(at).toISOString(),
+    };
   }
 
   get historySyncText() {
@@ -831,6 +855,7 @@ export default class WhatsappController extends Controller {
 
   // Only the open chat's loaded window holds messages.
   ingestMessage(msg) {
+    this._noteInbound(msg);
     if (!this._isRenderable(msg)) return;
     if (isIgnoredChat(msg)) return;
     const normalized = this._normalizeMessage(msg);

@@ -110,6 +110,39 @@ describe('MessageStoreService', () => {
     service = new MessageStoreService(messagesRepo, chatsRepo);
   });
 
+  describe('getLastMessageTimes', () => {
+    it('reads the newest inbound and outbound rows for the agent', async () => {
+      messagesRepo.findOne.mockImplementation(
+        ({ where }: { where: { fromMe: boolean } }) =>
+          Promise.resolve(
+            where.fromMe
+              ? { id: 'out', timestamp: '1759734000' }
+              : { id: 'in', timestamp: '1759647928' },
+          ),
+      );
+
+      const result = await service.getLastMessageTimes('co-1', 'user-a');
+
+      expect(messagesRepo.findOne).toHaveBeenCalledWith({
+        where: { companyId: 'co-1', userId: 'user-a', fromMe: false },
+        order: { timestamp: 'DESC' },
+        select: { id: true, timestamp: true },
+      });
+      expect(result.lastInboundAt?.toISOString()).toBe(
+        '2025-10-05T07:05:28.000Z',
+      );
+      expect(result.lastOutboundAt?.toISOString()).toBe(
+        '2025-10-06T07:00:00.000Z',
+      );
+    });
+
+    it('returns nulls when the agent has no messages', async () => {
+      await expect(
+        service.getLastMessageTimes('co-1', 'user-a'),
+      ).resolves.toEqual({ lastInboundAt: null, lastOutboundAt: null });
+    });
+  });
+
   describe('addMessage', () => {
     it('persists the message scoped to company and agent', async () => {
       await service.addMessage('co-1', 'user-a', makeMsg({ id: 'm1' }));

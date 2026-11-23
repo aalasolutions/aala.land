@@ -58,6 +58,10 @@ export class WhatsappService {
   ): Promise<WaConnectionInfo | null> {
     const row = await this.connections.findOne({ where: { userId, companyId } });
     if (!row) return null;
+    const { lastInboundAt } = await this.store.getLastMessageTimes(
+      companyId,
+      userId,
+    );
     return {
       status: row.status,
       displayPhoneNumber: row.displayPhoneNumber,
@@ -68,6 +72,7 @@ export class WhatsappService {
       disconnectReason: row.disconnectReason ?? null,
       historySyncStatus: row.historySyncStatus ?? null,
       historySyncProgress: row.historySyncProgress ?? null,
+      lastInboundAt: lastInboundAt ? lastInboundAt.toISOString() : null,
     };
   }
 

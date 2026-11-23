@@ -21,7 +21,7 @@ describe('WhatsappService', () => {
   let service: WhatsappService;
   let connections: { findOne: jest.Mock; update: jest.Mock };
   let chats: { findOne: jest.Mock };
-  let store: { addMessage: jest.Mock };
+  let store: { addMessage: jest.Mock; getLastMessageTimes: jest.Mock };
   let ai: {
     recordHumanReply: jest.Mock;
     getCreditUsage: jest.Mock;
@@ -44,7 +44,12 @@ describe('WhatsappService', () => {
         lastInboundAt: new Date(Date.now() - 60 * 60 * 1000),
       }),
     };
-    store = { addMessage: jest.fn().mockResolvedValue(true) };
+    store = {
+      addMessage: jest.fn().mockResolvedValue(true),
+      getLastMessageTimes: jest
+        .fn()
+        .mockResolvedValue({ lastInboundAt: null, lastOutboundAt: null }),
+    };
     ai = {
       recordHumanReply: jest.fn().mockResolvedValue(undefined),
       getCreditUsage: jest.fn(),
@@ -110,7 +115,23 @@ describe('WhatsappService', () => {
         disconnectReason: 'PARTNER_REMOVED',
         historySyncStatus: null,
         historySyncProgress: null,
+        lastInboundAt: null,
       });
+    });
+
+    it('reports the newest inbound message time for the silence banner', async () => {
+      store.getLastMessageTimes.mockResolvedValue({
+        lastInboundAt: new Date('2026-10-05T07:05:28.000Z'),
+        lastOutboundAt: new Date('2026-10-06T08:00:00.000Z'),
+      });
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(store.getLastMessageTimes).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+      );
+      expect(result?.lastInboundAt).toBe('2026-10-05T07:05:28.000Z');
     });
 
     it('passes the history sync state through', async () => {
@@ -148,6 +169,7 @@ describe('WhatsappService', () => {
         disconnectReason: null,
         historySyncStatus: null,
         historySyncProgress: null,
+        lastInboundAt: null,
       });
     });
   });

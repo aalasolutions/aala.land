@@ -33,6 +33,7 @@ import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
 import { WhatsappAiDebounceProcessor } from './whatsapp-ai-debounce.processor';
 import { WhatsappCloudApiService } from './whatsapp-cloud-api.service';
 import { WhatsappSignupService } from './whatsapp-signup.service';
+import { WhatsappDiagnosticsService } from './whatsapp-diagnostics.service';
 import { WhatsappWebhookProcessor } from './whatsapp-webhook.processor';
 import { WhatsappMediaService } from './whatsapp-media.service';
 import { WhatsappMediaIngestService } from './whatsapp-media-ingest.service';
@@ -117,6 +118,7 @@ import {
     WhatsappGateway,
     WhatsappService,
     WhatsappSignupService,
+    WhatsappDiagnosticsService,
     WhatsappBillingListener,
     AiConversationRetentionCron,
     WhatsappAiDebounceProcessor,
