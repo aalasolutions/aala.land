@@ -18,22 +18,29 @@ import {
 import { EncryptionService } from '../encryption/encryption.service';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappMediaService } from './whatsapp-media.service';
+import { WhatsappDiagnosticsService } from './whatsapp-diagnostics.service';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
+import { User } from '../users/entities/user.entity';
 import { GRAPH_VERSION, WaConnectionInfo, WaSignupConfig } from './wa-types';
+import { graphFetch } from './wa-graph.util';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
 
-// The exchange code expires in 30s, so a request still running past 15s has already lost it.
-const SIGNUP_TIMEOUT_MS = 15000;
+// Nothing about a holder in another company is revealed.
+const NUMBER_TAKEN_ELSEWHERE_MESSAGE =
+  'This number is already connected in AALA.LAND to another account. Please contact support.';
 
-const NUMBER_TAKEN_MESSAGE =
-  'This number is connected to another account. Disconnect it from that account or from your WhatsApp Business app, then try again.';
+const numberTakenInCompanyMessage = (holderName: string): string =>
+  `This number is already connected in AALA.LAND to ${holderName}. Ask them to disconnect it first.`;
+
+const PHONE_NUMBER_CONSTRAINT = 'UQ_wa_connections_phone_number_id';
 
 // Unique indexes the insert/update below can race (see `connect`'s catch block).
 const CONFLICT_MESSAGE_BY_CONSTRAINT: Record<string, string> = {
-  UQ_wa_connections_phone_number_id: NUMBER_TAKEN_MESSAGE,
   UQ_wa_connections_user: 'A connection for this user is already being saved',
 };
+
+type NumberHolder = Pick<WhatsappConnection, 'userId' | 'companyId'>;
 
 @Injectable()
 export class WhatsappSignupService {
@@ -45,6 +52,9 @@ export class WhatsappSignupService {
     private readonly encryption: EncryptionService,
     private readonly wa: WhatsappService,
     private readonly media: WhatsappMediaService,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    private readonly diagnostics: WhatsappDiagnosticsService,
   ) {}
 
   // Both values are public; served here so a config change never needs a frontend rebuild.
@@ -85,24 +95,15 @@ export class WhatsappSignupService {
       );
     }
 
-    // Unscoped by companyId since phone_number_id is the webhook routing key; scoped by status instead.
-    const taken = await this.connections.findOne({
-      where: [
-        {
-          phoneNumberId: dto.phoneNumberId,
-          userId: Not(userId),
-          status: WhatsappConnectionStatus.CONNECTED,
-        },
-        {
-          phoneNumberId: dto.phoneNumberId,
-          userId: Not(userId),
-          status: WhatsappConnectionStatus.FLAGGED,
-        },
-      ],
-      select: { id: true },
-    });
-    if (taken) {
-      throw new ConflictException(NUMBER_TAKEN_MESSAGE);
+    const holder = await this.findNumberHolder(dto.phoneNumberId, userId);
+    if (holder) {
+      return this.refuseNumberTaken(
+        dto.phoneNumberId,
+        userId,
+        companyId,
+        holder,
+        'pre-check',
+      );
     }
 
     const token = await this.exchangeCode(dto.code, appId, appSecret);
@@ -173,6 +174,27 @@ export class WhatsappSignupService {
         const driverError = err.driverError as
           | { code?: string; constraint?: string }
           | undefined;
+        if (
+          driverError?.code === '23505' &&
+          driverError.constraint === PHONE_NUMBER_CONSTRAINT
+        ) {
+          const raceHolder = await this.findNumberHolder(
+            dto.phoneNumberId,
+            userId,
+          ).catch((lookupErr: unknown) => {
+            this.logger.warn(
+              `Holder lookup failed after a number race: ${errorMessage(lookupErr)}`,
+            );
+            return null;
+          });
+          return this.refuseNumberTaken(
+            dto.phoneNumberId,
+            userId,
+            companyId,
+            raceHolder,
+            'race',
+          );
+        }
         const message = driverError?.constraint
           ? CONFLICT_MESSAGE_BY_CONSTRAINT[driverError.constraint]
           : undefined;
@@ -248,6 +270,11 @@ export class WhatsappSignupService {
 
     const result = await this.wa.disconnect(userId, companyId);
 
+    // Before the unsubscribe below, so the check shows Meta's state as the agent left it.
+    const snapshot = row
+      ? await this.diagnostics.captureDisconnectSnapshot(row, token, reason)
+      : null;
+
     if (row && token) {
       await this.unsubscribeIfLastLive(row.id, row.wabaId, token);
     }
@@ -255,10 +282,63 @@ export class WhatsappSignupService {
     if (row) {
       await this.connections.update(
         { id: row.id },
-        { disconnectReason: reason },
+        { disconnectReason: reason, disconnectSnapshot: snapshot },
       );
     }
     return result;
+  }
+
+  // Unscoped by companyId since phone_number_id is the webhook routing key; scoped by status instead.
+  private findNumberHolder(
+    phoneNumberId: string,
+    userId: string,
+  ): Promise<NumberHolder | null> {
+    return this.connections.findOne({
+      where: [
+        {
+          phoneNumberId,
+          userId: Not(userId),
+          status: WhatsappConnectionStatus.CONNECTED,
+        },
+        {
+          phoneNumberId,
+          userId: Not(userId),
+          status: WhatsappConnectionStatus.FLAGGED,
+        },
+      ],
+      select: { id: true, userId: true, companyId: true },
+    });
+  }
+
+  // Names the holder only inside the caller's own company.
+  private async refuseNumberTaken(
+    phoneNumberId: string,
+    userId: string,
+    companyId: string,
+    holder: NumberHolder | null,
+    path: 'pre-check' | 'race',
+  ): Promise<never> {
+    this.logger.warn(
+      `WhatsApp number refused (${path}): phone_number_id ${phoneNumberId} requested by user ${userId} in company ${companyId}; held by user ${holder?.userId ?? 'unknown'} in company ${holder?.companyId ?? 'unknown'}; reason: number held by another live connection`,
+    );
+    if (holder && holder.companyId === companyId) {
+      const holderUser = await this.users
+        .findOne({
+          where: { id: holder.userId, companyId },
+          select: { id: true, name: true },
+        })
+        .catch((lookupErr: unknown) => {
+          this.logger.warn(
+            `Holder name lookup failed for user ${holder.userId}: ${errorMessage(lookupErr)}`,
+          );
+          return null;
+        });
+      const holderName = holderUser?.name?.trim();
+      if (holderName) {
+        throw new ConflictException(numberTakenInCompanyMessage(holderName));
+      }
+    }
+    throw new ConflictException(NUMBER_TAKEN_ELSEWHERE_MESSAGE);
   }
 
   // Never log code or the returned token: a live credential for someone else's business.
@@ -274,7 +354,8 @@ export class WhatsappSignupService {
     url.searchParams.set('client_secret', appSecret);
     url.searchParams.set('code', code);
 
-    const body = await this.graphFetch<{ access_token?: string }>(
+    const body = await graphFetch<{ access_token?: string }>(
+      this.logger,
       url.toString(),
       { method: 'GET' },
       'token exchange',
@@ -289,7 +370,8 @@ export class WhatsappSignupService {
 
   // Without this the webhook receives nothing for the WABA and looks healthy while never delivering.
   private async subscribeApp(wabaId: string, token: string): Promise<void> {
-    const body = await this.graphFetch<{ success?: boolean }>(
+    const body = await graphFetch<{ success?: boolean }>(
+      this.logger,
       `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/subscribed_apps`,
       { method: 'POST', headers: { Authorization: `Bearer ${token}` } },
       'app subscription',
@@ -346,7 +428,8 @@ export class WhatsappSignupService {
     token: string,
   ): Promise<boolean> {
     try {
-      await this.graphFetch<{ success?: boolean }>(
+      await graphFetch<{ success?: boolean }>(
+        this.logger,
         `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/smb_app_data`,
         {
           method: 'POST',
@@ -422,7 +505,8 @@ export class WhatsappSignupService {
 
   private async unsubscribeApp(wabaId: string, token: string): Promise<void> {
     try {
-      await this.graphFetch(
+      await graphFetch(
+        this.logger,
         `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/subscribed_apps`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } },
         'app unsubscription',
@@ -440,9 +524,10 @@ export class WhatsappSignupService {
     phoneNumberId: string,
     token: string,
   ): Promise<string> {
-    const body = await this.graphFetch<{
+    const body = await graphFetch<{
       data?: { id?: string; display_phone_number?: string }[];
     }>(
+      this.logger,
       `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/phone_numbers`,
       { method: 'GET', headers: { Authorization: `Bearer ${token}` } },
       'phone number listing',
@@ -458,33 +543,5 @@ export class WhatsappSignupService {
       );
     }
     return match.display_phone_number ?? '';
-  }
-
-  private async graphFetch<T>(
-    url: string,
-    init: RequestInit,
-    label: string,
-  ): Promise<T> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), SIGNUP_TIMEOUT_MS);
-    try {
-      const res = await fetch(url, { ...init, signal: controller.signal });
-      if (!res.ok) {
-        const raw = await res.text();
-        // The URL is never logged: for the exchange it carries the code and the app secret.
-        this.logger.error(
-          `Graph ${label} failed ${res.status}: ${raw.slice(0, 500)}`,
-        );
-        throw new BadGatewayException(`WhatsApp ${label} failed`);
-      }
-      return (await res.json()) as T;
-    } catch (err) {
-      if (err instanceof BadGatewayException) throw err;
-      const reason = errorMessage(err);
-      this.logger.error(`Graph ${label} error: ${reason}`);
-      throw new BadGatewayException(`WhatsApp ${label} error`);
-    } finally {
-      clearTimeout(timer);
-    }
   }
 }

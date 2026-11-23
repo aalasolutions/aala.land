@@ -58,6 +58,7 @@ export class WhatsappService {
   ): Promise<WaConnectionInfo | null> {
     const row = await this.connections.findOne({ where: { userId, companyId } });
     if (!row) return null;
+    const lastInboundAt = await this.lastInboundIso(companyId, userId);
     return {
       status: row.status,
       displayPhoneNumber: row.displayPhoneNumber,
@@ -68,7 +69,27 @@ export class WhatsappService {
       disconnectReason: row.disconnectReason ?? null,
       historySyncStatus: row.historySyncStatus ?? null,
       historySyncProgress: row.historySyncProgress ?? null,
+      ...(lastInboundAt !== undefined && { lastInboundAt }),
     };
+  }
+
+  // Undefined when the lookup fails, so the client treats silence as unknown rather than never.
+  private async lastInboundIso(
+    companyId: string,
+    userId: string,
+  ): Promise<string | null | undefined> {
+    try {
+      const { lastInboundAt } = await this.store.getLastMessageTimes(
+        companyId,
+        userId,
+      );
+      return lastInboundAt ? lastInboundAt.toISOString() : null;
+    } catch (err) {
+      this.logger.warn(
+        `Last inbound lookup failed for company ${companyId} user ${userId}: ${errorMessage(err)}`,
+      );
+      return undefined;
+    }
   }
 
   async disconnect(

@@ -371,6 +371,75 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.false(controller.replyWindow.everOpened, 'still never opened');
   });
 
+  test('a live number silent for seven days shows the banner; a live inbound clears it', function (assert) {
+    const controller = makeController(this);
+    withChat(controller, null);
+    controller.connection = {
+      status: 'connected',
+      connectedAt: new Date(NOW - 60 * 24 * HOUR).toISOString(),
+      lastInboundAt: new Date(NOW - 8 * 24 * HOUR).toISOString(),
+    };
+    assert.true(controller.showsInboundSilence, 'shown after 8 silent days');
+
+    controller.ingestMessage({
+      id: 'm-live',
+      chatId: 'chat-1',
+      body: 'test',
+      fromMe: false,
+      timestamp: Math.floor(NOW / 1000),
+    });
+
+    assert.false(controller.showsInboundSilence, 'cleared by the inbound');
+    assert.strictEqual(
+      controller.connection.lastInboundAt,
+      new Date(NOW).toISOString(),
+    );
+  });
+
+  test('an absent lastInboundAt shows no banner, and a live inbound still records it', function (assert) {
+    const controller = makeController(this);
+    withChat(controller, null);
+    controller.connection = {
+      status: 'connected',
+      connectedAt: new Date(NOW - 60 * 24 * HOUR).toISOString(),
+    };
+    assert.false(controller.showsInboundSilence, 'unknown is not silent');
+
+    controller.ingestMessage({
+      id: 'm-live-absent',
+      chatId: 'chat-1',
+      body: 'test',
+      fromMe: false,
+      timestamp: Math.floor(NOW / 1000),
+    });
+
+    assert.strictEqual(
+      controller.connection.lastInboundAt,
+      new Date(NOW).toISOString(),
+    );
+    assert.false(controller.showsInboundSilence);
+  });
+
+  test('an outbound message never clears the silence banner', function (assert) {
+    const controller = makeController(this);
+    withChat(controller, null);
+    controller.connection = {
+      status: 'connected',
+      connectedAt: new Date(NOW - 60 * 24 * HOUR).toISOString(),
+      lastInboundAt: null,
+    };
+
+    controller.ingestMessage({
+      id: 'm-out',
+      chatId: 'chat-1',
+      body: 'hello?',
+      fromMe: true,
+      timestamp: Math.floor(NOW / 1000),
+    });
+
+    assert.true(controller.showsInboundSilence);
+  });
+
   test('connection reads as none, with copy, when the caller has no row', function (assert) {
     const controller = makeController(this);
     controller.connection = null;

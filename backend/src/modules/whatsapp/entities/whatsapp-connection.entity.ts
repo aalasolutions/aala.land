@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+import type { WaDisconnectSnapshot } from '../wa-types';
 
 export enum WhatsappConnectionStatus {
   PENDING = 'pending',
@@ -103,6 +104,10 @@ export class WhatsappConnection {
     nullable: true,
   })
   historySyncRequestedAt: Date | null;
+
+  // Latest in-app disconnect evidence; kept across reconnects, replaced by the next disconnect.
+  @Column({ name: 'disconnect_snapshot', type: 'jsonb', nullable: true })
+  disconnectSnapshot: WaDisconnectSnapshot | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

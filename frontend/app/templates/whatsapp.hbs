@@ -7,6 +7,16 @@
     @title="WhatsApp"
   />
 
+  {{#if this.showsInboundSilence}}
+    <Woven::Alert
+      @variant="warning"
+      @description={{this.inboundSilenceText}}
+      role="status"
+      class="wa-shell__alert"
+      data-test-wa-inbound-silence
+    />
+  {{/if}}
+
   <div
     class="wa-connection is-{{this.connectionStatus}}"
     data-test-wa-connection-status={{this.connectionStatus}}

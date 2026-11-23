@@ -503,6 +503,26 @@ export class MessageStoreService {
     return this.messages.exists({ where: { companyId, userId, waMessageId } });
   }
 
+  // Newest stored inbound and outbound times; each lookup reads the top of IDX_wa_messages_agent_from_me.
+  async getLastMessageTimes(
+    companyId: string,
+    userId: string,
+  ): Promise<{ lastInboundAt: Date | null; lastOutboundAt: Date | null }> {
+    const newest = (fromMe: boolean) =>
+      this.messages.findOne({
+        where: { companyId, userId, fromMe },
+        order: { timestamp: 'DESC' },
+        select: { id: true, timestamp: true },
+      });
+    const [inbound, outbound] = await Promise.all([
+      newest(false),
+      newest(true),
+    ]);
+    const toDate = (row: WhatsappMessage | null) =>
+      row ? new Date(Number(row.timestamp) * 1000) : null;
+    return { lastInboundAt: toDate(inbound), lastOutboundAt: toDate(outbound) };
+  }
+
   async getMessage(
     companyId: string,
     userId: string,

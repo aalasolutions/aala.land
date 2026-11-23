@@ -24,6 +24,12 @@ export enum WhatsappMessageStatus {
 )
 @Index('IDX_wa_messages_chat', ['companyId', 'userId', 'chatId', 'timestamp'])
 @Index('IDX_wa_messages_agent', ['companyId', 'userId', 'timestamp'])
+@Index('IDX_wa_messages_agent_from_me', [
+  'companyId',
+  'userId',
+  'fromMe',
+  'timestamp',
+])
 export class WhatsappMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
