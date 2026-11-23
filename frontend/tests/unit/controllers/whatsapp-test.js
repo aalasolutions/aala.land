@@ -396,6 +396,30 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
+  test('an absent lastInboundAt shows no banner, and a live inbound still records it', function (assert) {
+    const controller = makeController(this);
+    withChat(controller, null);
+    controller.connection = {
+      status: 'connected',
+      connectedAt: new Date(NOW - 60 * 24 * HOUR).toISOString(),
+    };
+    assert.false(controller.showsInboundSilence, 'unknown is not silent');
+
+    controller.ingestMessage({
+      id: 'm-live-absent',
+      chatId: 'chat-1',
+      body: 'test',
+      fromMe: false,
+      timestamp: Math.floor(NOW / 1000),
+    });
+
+    assert.strictEqual(
+      controller.connection.lastInboundAt,
+      new Date(NOW).toISOString(),
+    );
+    assert.false(controller.showsInboundSilence);
+  });
+
   test('an outbound message never clears the silence banner', function (assert) {
     const controller = makeController(this);
     withChat(controller, null);

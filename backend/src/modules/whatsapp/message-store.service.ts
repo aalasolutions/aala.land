@@ -503,7 +503,7 @@ export class MessageStoreService {
     return this.messages.exists({ where: { companyId, userId, waMessageId } });
   }
 
-  // Newest stored inbound and outbound times; each lookup walks IDX_wa_messages_agent from the top.
+  // Newest stored inbound and outbound times; each lookup reads the top of IDX_wa_messages_agent_from_me.
   async getLastMessageTimes(
     companyId: string,
     userId: string,

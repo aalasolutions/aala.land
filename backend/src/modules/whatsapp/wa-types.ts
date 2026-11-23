@@ -137,8 +137,8 @@ export interface WaConnectionInfo {
   disconnectReason: string | null;
   historySyncStatus: WhatsappHistorySyncStatus | null;
   historySyncProgress: number | null;
-  // ISO time of the newest inbound message stored for this agent, or null.
-  lastInboundAt: string | null;
+  // ISO time of the newest stored inbound, null when none; absent when the lookup failed.
+  lastInboundAt?: string | null;
 }
 
 // Evidence kept on an in-app disconnect, captured before the token is wiped. Never holds the token.

@@ -14,8 +14,10 @@ function toMs(value) {
 }
 
 // Measured from the later of the last inbound and connectedAt, so a fresh connection is never flagged.
+// An absent lastInboundAt means the lookup failed, so silence is unknown; null means none ever arrived.
 export function isInboundSilent(connection, now) {
   if (!connection || !LIVE_STATUSES.has(connection.status)) return false;
+  if (connection.lastInboundAt === undefined) return false;
   const since = Math.max(
     toMs(connection.lastInboundAt),
     toMs(connection.connectedAt),

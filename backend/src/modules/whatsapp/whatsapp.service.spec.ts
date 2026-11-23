@@ -134,6 +134,24 @@ describe('WhatsappService', () => {
       expect(result?.lastInboundAt).toBe('2026-10-05T07:05:28.000Z');
     });
 
+    it('omits lastInboundAt and still returns the screen data when the lookup fails', async () => {
+      store.getLastMessageTimes.mockRejectedValue(new Error('db timeout'));
+      const warn = jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).toMatchObject({
+        status: connection.status,
+        displayPhoneNumber: '+971500000000',
+      });
+      expect(result).not.toHaveProperty('lastInboundAt');
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('company company-1 user user-1: db timeout'),
+      );
+    });
+
     it('passes the history sync state through', async () => {
       connections.findOne.mockResolvedValue({
         ...connection,

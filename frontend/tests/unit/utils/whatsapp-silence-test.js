@@ -82,6 +82,18 @@ module('Unit | Utility | whatsapp-silence', function () {
     assert.true(isInboundSilent(connection, NOW));
   });
 
+  test('an absent lastInboundAt is unknown, never silent, while null still measures from connectedAt', function (assert) {
+    const connection = {
+      status: 'connected',
+      connectedAt: iso(NOW - 60 * DAY),
+    };
+    assert.false(isInboundSilent(connection, NOW), 'absent is not silent');
+    assert.true(
+      isInboundSilent({ ...connection, lastInboundAt: null }, NOW),
+      'null is silent after seven days',
+    );
+  });
+
   test('disconnected, pending or missing connections are never silent', function (assert) {
     const old = { connectedAt: iso(NOW - 60 * DAY), lastInboundAt: null };
     assert.false(isInboundSilent({ ...old, status: 'disconnected' }, NOW));
