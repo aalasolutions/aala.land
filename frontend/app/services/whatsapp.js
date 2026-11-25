@@ -10,6 +10,15 @@ const READ_THROTTLE_MS = 1000;
 const LAST_CHAT_KEY_PREFIX = 'wa:lastChat:';
 const MEDIA_URL_MIN_REMAINING_MS = 60_000;
 
+// Wire stamps are epoch seconds; the list keeps milliseconds like lastTs.
+export function chatAiStateOf(data) {
+  return {
+    aiEscalatedAt: data?.aiEscalatedAt ? data.aiEscalatedAt * 1000 : null,
+    aiEscalationReason: data?.aiEscalationReason ?? null,
+    aiOptedOutAt: data?.aiOptedOutAt ? data.aiOptedOutAt * 1000 : null,
+  };
+}
+
 export function isIgnoredChat(item) {
   return Boolean(item.isGroup);
 }
@@ -113,6 +122,7 @@ export default class WhatsappService extends Service {
     socket.on('whatsapp:ready', (payload) => this._onReady(payload));
     socket.on('whatsapp:history', (data) => this._onHistory(data));
     socket.on('whatsapp:connection', (data) => this._emit('connection', data));
+    socket.on('whatsapp:chat-ai-state', (data) => this.applyChatAiState(data));
 
     return socket;
   }
@@ -187,7 +197,23 @@ export default class WhatsappService extends Service {
       ...chat,
       lastTs: chat.lastTs ? chat.lastTs * 1000 : chat.lastTs,
       lastInboundAt: chat.lastInboundAt ? chat.lastInboundAt * 1000 : null,
+      ...chatAiStateOf(chat),
     };
+  }
+
+  // A chat not in the list is ignored.
+  applyChatAiState(data) {
+    this._patchChat(data?.chatId, chatAiStateOf(data));
+  }
+
+  _patchChat(chatId, fields) {
+    const index = chatId
+      ? this.chats.findIndex((c) => c.chatId === chatId)
+      : -1;
+    if (index < 0) return;
+    const updated = [...this.chats];
+    updated[index] = { ...updated[index], ...fields };
+    this.chats = updated;
   }
 
   updateChat(msg) {
@@ -523,6 +549,13 @@ export default class WhatsappService extends Service {
   }
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
+  }
+  async clearEscalation(chatId) {
+    await this.auth.fetchJson(
+      `/whatsapp/chats/${encodeURIComponent(chatId)}/escalation`,
+      { method: 'DELETE' },
+    );
+    this._patchChat(chatId, { aiEscalatedAt: null, aiEscalationReason: null });
   }
   getMessages(chatId, { before, after, around, limit = 50 } = {}) {
     const params = new URLSearchParams({ limit: String(limit) });

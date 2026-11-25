@@ -209,6 +209,9 @@ module('Unit | Service | whatsapp', function (hooks) {
           chatName: 'Layla',
           lastTs: 10000,
           lastInboundAt: 5000,
+          aiEscalatedAt: null,
+          aiEscalationReason: null,
+          aiOptedOutAt: null,
         },
       ]);
     });
@@ -574,6 +577,7 @@ module('Unit | Service | whatsapp', function (hooks) {
       'connect_error',
       'disconnect',
       'whatsapp:ai',
+      'whatsapp:chat-ai-state',
       'whatsapp:connection',
       'whatsapp:history',
       'whatsapp:message',
@@ -596,6 +600,130 @@ module('Unit | Service | whatsapp', function (hooks) {
 
     assert.deepEqual(emitted, [{ status: 'disconnected' }]);
     service.disconnectSocket();
+  });
+
+  test('a whatsapp:chat-ai-state push patches the matching chat and ignores an unknown one', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    const socket = fakeSocket();
+    service._openSocket = () => socket;
+    service.seedChats(
+      [
+        { chatId: 'c-1', lastBody: 'hi', lastTs: 100 },
+        { chatId: 'c-2', lastBody: 'yo', lastTs: 90 },
+      ],
+      service.beginUnreadSeed(),
+    );
+    const before = service.chats;
+
+    service.connectSocket();
+    socket.fire('whatsapp:chat-ai-state', {
+      chatId: 'c-1',
+      aiEscalatedAt: 1700000000,
+      aiEscalationReason: 'request',
+      aiOptedOutAt: null,
+    });
+
+    assert.notStrictEqual(service.chats, before, 'the list is replaced');
+    const [first, second] = service.chats;
+    assert.strictEqual(first.aiEscalatedAt, 1700000000000, 'seconds to ms');
+    assert.strictEqual(first.aiEscalationReason, 'request');
+    assert.strictEqual(first.aiOptedOutAt, null);
+    assert.strictEqual(first.lastBody, 'hi', 'other fields are kept');
+    assert.strictEqual(second.aiEscalatedAt, null);
+
+    socket.fire('whatsapp:chat-ai-state', {
+      chatId: 'c-1',
+      aiEscalatedAt: null,
+      aiEscalationReason: null,
+      aiOptedOutAt: 1700000100,
+    });
+    assert.strictEqual(service.chats[0].aiEscalatedAt, null);
+    assert.strictEqual(service.chats[0].aiOptedOutAt, 1700000100000);
+
+    const settledList = service.chats;
+    socket.fire('whatsapp:chat-ai-state', {
+      chatId: 'harness-1',
+      aiEscalatedAt: 1700000000,
+    });
+    socket.fire('whatsapp:chat-ai-state', null);
+    assert.strictEqual(service.chats, settledList, 'unknown chat ignored');
+    service.disconnectSocket();
+  });
+
+  test('the chat list keeps the AI state fields and reads a missing one as null', function (assert) {
+    const service = this.owner.lookup('service:whatsapp');
+    service.seedChats(
+      [
+        {
+          chatId: 'c-1',
+          lastTs: 100,
+          aiEscalatedAt: 1700000000,
+          aiEscalationReason: 'safety',
+          aiOptedOutAt: 1700000050,
+        },
+        { chatId: 'c-2', lastTs: 90 },
+      ],
+      service.beginUnreadSeed(),
+    );
+
+    const [flagged, plain] = service.chats;
+    assert.strictEqual(flagged.aiEscalatedAt, 1700000000000);
+    assert.strictEqual(flagged.aiEscalationReason, 'safety');
+    assert.strictEqual(flagged.aiOptedOutAt, 1700000050000);
+    assert.strictEqual(plain.aiEscalatedAt, null);
+    assert.strictEqual(plain.aiEscalationReason, null);
+    assert.strictEqual(plain.aiOptedOutAt, null);
+  });
+
+  test('clearEscalation deletes the flag and clears it on the row only after success', async function (assert) {
+    const calls = [];
+    let fail = false;
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        token = 'test-token';
+        fetchJson(path, options) {
+          calls.push({ path, method: options?.method });
+          if (fail) {
+            const error = new Error('Not Found');
+            error.status = 404;
+            return Promise.reject(error);
+          }
+          return Promise.resolve(null);
+        }
+      },
+    );
+    const service = this.owner.lookup('service:whatsapp');
+    service.seedChats(
+      [
+        {
+          chatId: '971500000001',
+          lastTs: 100,
+          aiEscalatedAt: 1700000000,
+          aiEscalationReason: 'request',
+          aiOptedOutAt: 1700000050,
+        },
+      ],
+      service.beginUnreadSeed(),
+    );
+
+    fail = true;
+    await assert.rejects(service.clearEscalation('971500000001'));
+    assert.strictEqual(service.chats[0].aiEscalatedAt, 1700000000000);
+
+    fail = false;
+    await service.clearEscalation('971500000001');
+    assert.deepEqual(calls[1], {
+      path: '/whatsapp/chats/971500000001/escalation',
+      method: 'DELETE',
+    });
+    assert.strictEqual(service.chats[0].aiEscalatedAt, null);
+    assert.strictEqual(service.chats[0].aiEscalationReason, null);
+    assert.strictEqual(
+      service.chats[0].aiOptedOutAt,
+      1700000050000,
+      'the opt-out stays',
+    );
   });
 
   test('connectSocket replaces a socket the server closed', function (assert) {

@@ -8,7 +8,11 @@ import {
   DEFAULT_PROMPT,
   RULES_BLOCK,
 } from './whatsapp-ai-prompts';
-import { cleanAdminText } from './whatsapp-ai-filter';
+import {
+  cleanAdminText,
+  MARKER_TOKEN,
+  STAFF_LINE_PREFIX,
+} from './whatsapp-ai-filter';
 
 // Keys are the search_properties sort values; the result header must name the order actually used.
 const SORT_LABELS: Record<string, string> = {
@@ -17,6 +21,34 @@ const SORT_LABELS: Record<string, string> = {
   largest: 'largest',
   newest: 'newest',
 };
+
+const NOTES_MAX_CHARS = 5000;
+const COMPANY_NAME_MAX_CHARS = 120;
+
+const BRACKETED = /[[\u3010]([^\]\u3011\n]{0,80})[\]\u3011]/g;
+const SECTION_CAPS = /^[\sA-Z_-]+$/;
+const SECTION_WORDS =
+  /rule|team|staff|system|instruction|prompt|company|assistant/i;
+const OVERRIDE_PHRASES = [
+  /\b(?:ignore|disregard|forget|override|bypass)\b[^.\n]{0,30}?\b(?:rules?|instructions?|prompt)\b(?:\s*#?\s*\d+)?/gi,
+  /\b(?:new|updated|additional|extra)\s+(?:rules?|instructions?)\b/gi,
+  /\brules?\s*#?\s*\d+\b/gi,
+  /^[ \t]*rules?[ \t]*:/gim,
+  /^[ \t]*(?:system|assistant|user|developer|tool)[ \t]*:/gim,
+];
+
+function neutralizeAdminText(text: string): string {
+  let out = cleanAdminText(text).split(STAFF_LINE_PREFIX).join('');
+  out = out.replace(BRACKETED, (match, inner: string) =>
+    SECTION_CAPS.test(inner) || SECTION_WORDS.test(inner) ? '' : match,
+  );
+  for (const pattern of OVERRIDE_PHRASES) out = out.replace(pattern, '');
+  return out
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/^[ \t]+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 // The model receives no file, only what kind of file arrived.
 const MEDIA_TURN_NOUNS: Record<string, string> = {
@@ -27,11 +59,18 @@ const MEDIA_TURN_NOUNS: Record<string, string> = {
   sticker: 'a sticker',
 };
 
+const MEDIA_TAG = `[MEDIA ${MARKER_TOKEN}]`;
+
+// The line buildMediaTurnText writes for a media message; its per-process tag keeps typed text from passing as one.
+export const MEDIA_TURN_LINE = new RegExp(
+  `^\\[MEDIA ${MARKER_TOKEN}\\] The customer sent [^\\n]{1,40}\\. You cannot (?:view|listen to) it; say so and that staff can view it in this chat\\.$`,
+);
+
 @Injectable()
 export class WhatsappAiPromptBuilderService {
   buildMediaTurnText(mediaType: string, caption: string): string {
     const noun = MEDIA_TURN_NOUNS[mediaType] ?? 'a file';
-    const line = `The customer sent ${noun}. You cannot view it.`;
+    const line = `${MEDIA_TAG} The customer sent ${noun}. You cannot ${mediaType === 'audio' ? 'listen to' : 'view'} it; say so and that staff can view it in this chat.`;
     const text = caption.trim();
     return text ? `${line}\n${text}` : line;
   }
@@ -46,7 +85,20 @@ export class WhatsappAiPromptBuilderService {
         ?.currency ?? '';
 
     if (company) {
-      parts.push(`[COMPANY INFO]\nName: ${company.name}`);
+      const name = neutralizeAdminText(company.name ?? '')
+        .replace(/\s+/g, ' ')
+        .slice(0, COMPANY_NAME_MAX_CHARS);
+      const regions = REGIONS.filter((r) =>
+        (company.activeRegions ?? []).includes(r.code),
+      ).map((r) => r.name);
+      parts.push(
+        [
+          `[COMPANY INFO]\nName: ${name}`,
+          regions.length ? `Regions: ${regions.join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      );
     }
 
     parts.push(RULES_BLOCK);
@@ -54,7 +106,9 @@ export class WhatsappAiPromptBuilderService {
   }
 
   buildFullPrompt(companyNotes: string | null, contextBlock: string): string {
-    const notes = companyNotes ? cleanAdminText(companyNotes) : '';
+    const notes = companyNotes
+      ? neutralizeAdminText(companyNotes).slice(0, NOTES_MAX_CHARS)
+      : '';
     return [
       DEFAULT_PROMPT,
       notes ? `${COMPANY_NOTES_HEADER}\n${notes}` : '',

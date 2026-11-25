@@ -269,6 +269,7 @@ describe('PropertiesService', () => {
       getRawOne: jest.fn().mockResolvedValue({ regionCode: 'dubai' }),
     });
     unitRepo = module.get(getRepositoryToken(Unit));
+    unitRepo.find.mockResolvedValue([]);
     mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     contactRepo = module.get(getRepositoryToken(Contact));
     contactsService = module.get(ContactsService);
@@ -420,9 +421,35 @@ describe('PropertiesService', () => {
         .mockResolvedValueOnce(null);
       assetRepo.save.mockImplementation(async (v) => v as Asset);
 
+      unitRepo.find.mockResolvedValue([
+        { companyId: 'company-a' },
+        { companyId: 'company-b' },
+        { companyId: 'company-a' },
+      ] as Unit[]);
+
       await service.updateAsset('asset-uuid-1', { name: 'New Name' });
 
       expect(redis.forget).toHaveBeenCalledWith('ref:assets:locality-uuid-1');
+      expect(redis.forget.mock.calls.map(([key]) => key)).toEqual([
+        'ref:assets:locality-uuid-1',
+        'ref:company-places:company-a',
+        'ref:company-places:company-b',
+      ]);
+    });
+
+    it('keeps the company place lists when only the address changes', async () => {
+      assetRepo.findOne.mockResolvedValueOnce({
+        ...mockAsset,
+        localityId: 'locality-uuid-1',
+      } as Asset);
+      assetRepo.save.mockImplementation(async (v) => v as Asset);
+
+      await service.updateAsset('asset-uuid-1', { address: 'New address' });
+
+      expect(unitRepo.find).not.toHaveBeenCalled();
+      expect(redis.forget.mock.calls.map(([key]) => key)).toEqual([
+        'ref:assets:locality-uuid-1',
+      ]);
     });
   });
 
@@ -1868,6 +1895,9 @@ describe('PropertiesService', () => {
           }),
         );
         expect(result.deletedAt).toBeInstanceOf(Date);
+        expect(redis.forget).toHaveBeenCalledWith(
+          `ref:company-places:${companyId}`,
+        );
       });
     });
 

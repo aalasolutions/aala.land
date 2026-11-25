@@ -803,7 +803,39 @@ export class WhatsappWebhookService {
       await this.deleteRevokedMedia(connection, waMessageId, change.fromMe);
     }
     if (isApplied) await this.pushUpdatedMessage(connection, waMessageId);
+    if (isApplied && change.fromMe) {
+      await this.applyStaffChangeForAi(connection, waMessageId, change);
+    }
     return isApplied;
+  }
+
+  // The store already holds the change, so a failure here is logged rather than failing the webhook.
+  private async applyStaffChangeForAi(
+    connection: WhatsappConnection,
+    waMessageId: string,
+    change: MessageChange,
+  ): Promise<void> {
+    try {
+      const row = await this.store.getMessage(
+        connection.companyId,
+        connection.userId,
+        waMessageId,
+      );
+      if (!row) return;
+      await this.ai.recordStaffChange(
+        connection.userId,
+        row.chatId,
+        waMessageId,
+        change.kind === 'revoke'
+          ? { kind: 'revoke' }
+          : { kind: 'edit', text: change.body ?? '' },
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to pass the staff change of ${waMessageId} to the AI`,
+        errorMessage(err, true),
+      );
+    }
   }
 
   // A revoke must still land when the purge fails, so this is log-only.
@@ -957,9 +989,27 @@ export class WhatsappWebhookService {
         );
       }
     }
-    // After the push, so the parked change reaches the UI as an update; our retry redoes it.
+    await this.ai.recordStaffReply(userId, evt.chatId, timestamp * 1000);
+    // An echo of the AI's own send is not a staff reply.
+    const stored = inserted
+      ? null
+      : await this.store.getMessage(companyId, userId, evt.id);
+    if (!stored?.aiGenerated) {
+      await this.ai.clearEscalationOnStaffReply(
+        companyId,
+        userId,
+        evt.chatId,
+        new Date(timestamp * 1000),
+      );
+    }
+    // Keyed by the message id, so the copy our own retry adds is read once.
+    await this.ai.recordStaffMessage(userId, evt.chatId, body, {
+      at: timestamp * 1000,
+      id: evt.id,
+      ...(media && { mediaType: media.mediaType }),
+    });
+    // After the push and the AI line, so a parked change reaches both the UI and the AI; our retry redoes it.
     await this.applyPendingChange(connection, evt.id);
-    await this.ai.recordHumanReply(userId, evt.chatId, timestamp * 1000);
     if (mediaError) throw mediaError;
   }
 
@@ -1456,11 +1506,27 @@ export class WhatsappWebhookService {
         const aiEvt = toWireMessage(
           current ? { ...evt, body: current.body } : evt,
         );
-        // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
+        // A flagged token cannot send, so an AI turn would only burn a credit on a failure; a STOP is still recorded.
         if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
           this.logger.debug(
             `Skipping the AI turn for ${evt.id}: connection is ${connection.status}`,
           );
+          if (!media && aiEvt.body.trim()) {
+            try {
+              await this.ai.recordCustomerSignals(
+                connection.companyId,
+                connection.userId,
+                aiEvt.chatId,
+                aiEvt.body,
+              );
+            } catch (err) {
+              firstError = firstError ?? toError(err);
+              this.logger.error(
+                `Failed to record the opt signals of WhatsApp message ${evt.id}`,
+                errorMessage(err, true),
+              );
+            }
+          }
           continue;
         }
         try {

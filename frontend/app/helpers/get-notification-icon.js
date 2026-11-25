@@ -14,6 +14,7 @@ const NOTIFICATION_ICONS = {
   PAYMENT_RECEIVED: 'check-circle',
   CONTACT_ACCESS_REQUESTED: 'key',
   CONTACT_ACCESS_DECIDED: 'lock-key-open',
+  WHATSAPP_ESCALATION: 'whatsapp-logo',
   SYSTEM: 'info',
 };
 

@@ -221,6 +221,23 @@ describe('WhatsappGateway', () => {
     });
   });
 
+  it('emitChatAiState pushes the chat AI flags to the user room only', () => {
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    gateway.server = { to } as never;
+    const state = {
+      chatId: '971501234567',
+      aiEscalatedAt: 1900000000,
+      aiEscalationReason: 'request',
+      aiOptedOutAt: null,
+    };
+
+    gateway.emitChatAiState('user-1', state);
+
+    expect(to).toHaveBeenCalledWith('user:user-1');
+    expect(emit).toHaveBeenCalledWith('whatsapp:chat-ai-state', state);
+  });
+
   describe('whatsapp:read', () => {
     const state = {
       chatId: '971501234567',

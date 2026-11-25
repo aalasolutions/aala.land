@@ -20,6 +20,7 @@ import { envList } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
+  WaChatAiState,
   WaConnectionState,
   WaHistorySyncState,
   WaMessage,
@@ -74,7 +75,7 @@ export class WhatsappGateway
 
   private async authenticate(socket: Socket): Promise<Error | undefined> {
     try {
-      const token = socket.handshake.auth?.token;
+      const token: unknown = socket.handshake.auth?.token;
       if (typeof token !== 'string' || !token.trim()) {
         throw new Error('Missing socket auth token');
       }
@@ -169,5 +170,8 @@ export class WhatsappGateway
   }
   emitAi(userId: string, data: Record<string, unknown>) {
     this.server?.to('user:' + userId).emit('whatsapp:ai', data);
+  }
+  emitChatAiState(userId: string, data: WaChatAiState) {
+    this.server?.to('user:' + userId).emit('whatsapp:chat-ai-state', data);
   }
 }

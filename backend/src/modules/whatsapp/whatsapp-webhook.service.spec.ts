@@ -33,8 +33,7 @@ const VERIFY_TOKEN = 'test-verify-token';
 function signed(body: unknown): { rawBody: Buffer; signature: string } {
   const rawBody = Buffer.from(JSON.stringify(body), 'utf8');
   const signature =
-    'sha256=' +
-    createHmac('sha256', APP_SECRET).update(rawBody).digest('hex');
+    'sha256=' + createHmac('sha256', APP_SECRET).update(rawBody).digest('hex');
   return { rawBody, signature };
 }
 
@@ -144,7 +143,14 @@ const stored = (inserted: boolean) => ({ inserted, unread: UNREAD });
 
 describe('WhatsappWebhookService', () => {
   let service: WhatsappWebhookService;
-  let ai: { handleIncomingMessage: jest.Mock; recordHumanReply: jest.Mock };
+  let ai: {
+    handleIncomingMessage: jest.Mock;
+    recordStaffReply: jest.Mock;
+    recordStaffMessage: jest.Mock;
+    recordStaffChange: jest.Mock;
+    clearEscalationOnStaffReply: jest.Mock;
+    recordCustomerSignals: jest.Mock;
+  };
   let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
   let store: {
     addMessage: jest.Mock;
@@ -175,7 +181,11 @@ describe('WhatsappWebhookService', () => {
     process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN;
     ai = {
       handleIncomingMessage: jest.fn().mockResolvedValue(undefined),
-      recordHumanReply: jest.fn().mockResolvedValue(undefined),
+      recordStaffReply: jest.fn().mockResolvedValue(undefined),
+      recordStaffMessage: jest.fn().mockResolvedValue(undefined),
+      recordStaffChange: jest.fn().mockResolvedValue(undefined),
+      clearEscalationOnStaffReply: jest.fn().mockResolvedValue(undefined),
+      recordCustomerSignals: jest.fn().mockResolvedValue({}),
     };
     repo = {
       findOne: jest.fn().mockResolvedValue(connectionRow()),
@@ -308,9 +318,9 @@ describe('WhatsappWebhookService', () => {
       const envelope = inboundEnvelope();
       const { rawBody, signature } = signed(envelope);
 
-      await expect(
-        service.handleWebhook(rawBody, signature),
-      ).resolves.toEqual({ received: true });
+      await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+        received: true,
+      });
 
       expect(queue.add).toHaveBeenCalledTimes(1);
       const [name, data] = queue.add.mock.calls[0];
@@ -335,9 +345,9 @@ describe('WhatsappWebhookService', () => {
         'sha256=' +
         createHmac('sha256', 'other-secret').update(rawBody).digest('hex');
 
-      await expect(
-        service.handleWebhook(rawBody, signature),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
@@ -352,9 +362,9 @@ describe('WhatsappWebhookService', () => {
     it('fails closed when no app secret is configured', async () => {
       delete process.env.WHATSAPP_APP_SECRET;
       const { rawBody, signature } = signed(inboundEnvelope());
-      await expect(
-        service.handleWebhook(rawBody, signature),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
+        ForbiddenException,
+      );
       expect(queue.add).not.toHaveBeenCalled();
     });
 
@@ -372,9 +382,9 @@ describe('WhatsappWebhookService', () => {
       const envelope = inboundEnvelope();
       const { rawBody, signature } = signed(envelope);
 
-      await expect(
-        service.handleWebhook(rawBody, signature),
-      ).resolves.toEqual({ received: true });
+      await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+        received: true,
+      });
       expect(queue.add).toHaveBeenCalledTimes(1);
     });
 
@@ -401,7 +411,10 @@ describe('WhatsappWebhookService', () => {
       queue.add.mockRejectedValue(new Error('redis down'));
       const { rawBody, signature } = signed(inboundEnvelope());
       jest
-        .spyOn((service as unknown as { logger: { error: jest.Mock } }).logger, 'error')
+        .spyOn(
+          (service as unknown as { logger: { error: jest.Mock } }).logger,
+          'error',
+        )
         .mockImplementation(() => undefined);
 
       await expect(service.handleWebhook(rawBody, signature)).rejects.toThrow(
@@ -465,9 +478,9 @@ describe('WhatsappWebhookService', () => {
     it('rejects and does not emit or dispatch when persistence fails', async () => {
       store.addMessage.mockRejectedValue(new Error('db down'));
 
-      await expect(
-        service.processEnvelope(inboundEnvelope()),
-      ).rejects.toThrow('db down');
+      await expect(service.processEnvelope(inboundEnvelope())).rejects.toThrow(
+        'db down',
+      );
       expect(gateway.emitMessage).not.toHaveBeenCalled();
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
@@ -486,7 +499,12 @@ describe('WhatsappWebhookService', () => {
         entry: { changes: { value: { messages: unknown[] } }[] }[];
       };
       envelope.entry[0].changes[0].value.messages = [
-        { from: '971501234567', id: 'wamid.img', timestamp: '1', type: 'image' },
+        {
+          from: '971501234567',
+          id: 'wamid.img',
+          timestamp: '1',
+          type: 'image',
+        },
         {
           from: '971501234567',
           id: 'wamid.empty',
@@ -624,6 +642,31 @@ describe('WhatsappWebhookService', () => {
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
+    it('still records the opt signals of a text message, so a STOP is kept', async () => {
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(ai.recordCustomerSignals).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        '971501234567',
+        'hello, is the unit still available?',
+      );
+    });
+
+    it('rethrows a failed signal write for a retry', async () => {
+      jest
+        .spyOn(
+          (service as unknown as { logger: { error: jest.Mock } }).logger,
+          'error',
+        )
+        .mockImplementation(() => undefined);
+      ai.recordCustomerSignals.mockRejectedValueOnce(new Error('db down'));
+
+      await expect(service.processEnvelope(inboundEnvelope())).rejects.toThrow(
+        'db down',
+      );
+    });
+
     it('still persists the delivery statuses of that number', async () => {
       await service.processEnvelope(statusEnvelope());
 
@@ -724,9 +767,9 @@ describe('WhatsappWebhookService', () => {
     it('rejects when the AI dispatch throws, so BullMQ retries the envelope', async () => {
       ai.handleIncomingMessage.mockRejectedValue(new Error('llm down'));
 
-      await expect(
-        service.processEnvelope(inboundEnvelope()),
-      ).rejects.toThrow('llm down');
+      await expect(service.processEnvelope(inboundEnvelope())).rejects.toThrow(
+        'llm down',
+      );
     });
 
     it('does not throw when the live push throws, and still runs the unread push and the AI hand-off', async () => {
@@ -921,11 +964,13 @@ describe('WhatsappWebhookService', () => {
     it('passes every status Meta sends straight through', async () => {
       await service.processEnvelope(
         statusEnvelope(
-          ['sent', 'delivered', 'read', 'played', 'failed'].map((status, i) => ({
-            id: `wamid.out.${i}`,
-            status,
-            timestamp: '1761234567',
-          })),
+          ['sent', 'delivered', 'read', 'played', 'failed'].map(
+            (status, i) => ({
+              id: `wamid.out.${i}`,
+              status,
+              timestamp: '1761234567',
+            }),
+          ),
         ),
       );
 
@@ -1070,9 +1115,9 @@ describe('WhatsappWebhookService', () => {
     it('rejects when the status write throws, so BullMQ retries the envelope', async () => {
       store.applyMessageStatus.mockRejectedValue(new Error('db down'));
 
-      await expect(
-        service.processEnvelope(statusEnvelope()),
-      ).rejects.toThrow('db down');
+      await expect(service.processEnvelope(statusEnvelope())).rejects.toThrow(
+        'db down',
+      );
     });
 
     it('drops statuses for an unknown or disconnected number', async () => {
@@ -1132,12 +1177,18 @@ describe('WhatsappWebhookService', () => {
       await service.processEnvelope(
         accountUpdateEnvelope({
           event: 'PARTNER_REMOVED',
-          disconnection_info: { reason: 'PRIMARY_INACTIVITY', initiated_by: 'SYSTEM' },
+          disconnection_info: {
+            reason: 'PRIMARY_INACTIVITY',
+            initiated_by: 'SYSTEM',
+          },
         }),
       );
 
       const [where, patch] = statusWrites()[0];
-      expect(where).toEqual({ id: 'conn-1', lifecycleEventAt: expect.anything() });
+      expect(where).toEqual({
+        id: 'conn-1',
+        lifecycleEventAt: expect.anything(),
+      });
       expect(patch.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
       expect(patch.disconnectReason).toBe('PRIMARY_INACTIVITY');
     });
@@ -1491,9 +1542,9 @@ describe('WhatsappWebhookService', () => {
         ).resolves.toBeUndefined();
 
         expect(repo.update).toHaveBeenCalledTimes(1);
-        expect(
-          log.mock.calls.some((c) => String(c[0]).includes('stale')),
-        ).toBe(true);
+        expect(log.mock.calls.some((c) => String(c[0]).includes('stale'))).toBe(
+          true,
+        );
         expect(warn).not.toHaveBeenCalled();
       });
 
@@ -1527,7 +1578,9 @@ describe('WhatsappWebhookService', () => {
       it('keeps the row CONNECTED when RECONNECTED(T2) is processed before OFFBOARDED(T1)', async () => {
         const row = statefulRow({ lifecycleEventAt: null });
 
-        await service.processEnvelope(timedEnvelope('ACCOUNT_RECONNECTED', T1 + 5));
+        await service.processEnvelope(
+          timedEnvelope('ACCOUNT_RECONNECTED', T1 + 5),
+        );
         await service.processEnvelope(timedEnvelope('ACCOUNT_OFFBOARDED', T1));
 
         expect(row.status).toBe(WhatsappConnectionStatus.CONNECTED);
@@ -1549,7 +1602,10 @@ describe('WhatsappWebhookService', () => {
           lifecycleEventAt: new Date(T1 * 1000 + 500),
         });
 
-        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1), true);
+        await service.processEnvelope(
+          timedEnvelope('PARTNER_REMOVED', T1),
+          true,
+        );
 
         expect(row.status).toBe(WhatsappConnectionStatus.CONNECTED);
       });
@@ -1582,7 +1638,10 @@ describe('WhatsappWebhookService', () => {
         await expect(
           service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1)),
         ).rejects.toThrow('db blip');
-        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1), true);
+        await service.processEnvelope(
+          timedEnvelope('PARTNER_REMOVED', T1),
+          true,
+        );
 
         expect(row.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
       });
@@ -1760,7 +1819,7 @@ describe('WhatsappWebhookService', () => {
       );
 
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
-      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffReply).not.toHaveBeenCalled();
       expect(gateway.emitMessage).not.toHaveBeenCalled();
       expect(gateway.emitUnread).not.toHaveBeenCalled();
     });
@@ -1964,10 +2023,22 @@ describe('WhatsappWebhookService', () => {
         'phone-1',
       );
       expect(gateway.emitMessage).toHaveBeenCalledTimes(1);
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
         'user-1',
         '971501234567',
         1761000200 * 1000,
+      );
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'calling you now',
+        { at: 1761000200 * 1000, id: 'wamid.e1' },
+      );
+      expect(ai.clearEscalationOnStaffReply).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        '971501234567',
+        new Date(1761000200 * 1000),
       );
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
@@ -1984,8 +2055,37 @@ describe('WhatsappWebhookService', () => {
       );
 
       expect(gateway.emitMessage).not.toHaveBeenCalled();
-      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffMessage).not.toHaveBeenCalled();
+      expect(ai.clearEscalationOnStaffReply).not.toHaveBeenCalled();
     });
+
+    it.each([
+      [false, 1],
+      [true, 0],
+    ])(
+      'on our retry of a stored echo with aiGenerated %s, clears the escalation %i time(s)',
+      async (aiGenerated, times) => {
+        store.addMessage.mockResolvedValue(stored(false));
+        store.getMessage.mockResolvedValue({ id: 'wamid.e1', aiGenerated });
+
+        await service.processEnvelope(
+          echo({
+            id: 'wamid.e1',
+            type: 'text',
+            text: { body: 'calling you now' },
+          }),
+          true,
+        );
+
+        expect(store.getMessage).toHaveBeenCalledWith(
+          'company-1',
+          'user-1',
+          'wamid.e1',
+        );
+        expect(ai.clearEscalationOnStaffReply).toHaveBeenCalledTimes(times);
+      },
+    );
 
     it('redoes the AI pause on our own retry of a stored echo, without a second push', async () => {
       store.addMessage.mockResolvedValue(stored(false));
@@ -2000,10 +2100,16 @@ describe('WhatsappWebhookService', () => {
       );
 
       expect(gateway.emitMessage).not.toHaveBeenCalled();
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
         'user-1',
         '971501234567',
         1761000200 * 1000,
+      );
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'calling you now',
+        { at: 1761000200 * 1000, id: 'wamid.e1' },
       );
     });
 
@@ -2112,6 +2218,28 @@ describe('WhatsappWebhookService', () => {
       expect(redisStore.has(PENDING_KEY)).toBe(false);
     });
 
+    it('records the staff line for the AI before the parked edit reaches it', async () => {
+      redisStore.set(PENDING_KEY, {
+        kind: 'edit',
+        body: 'calling in 5',
+        at: 1761000300 * 1000,
+        fromMe: true,
+      });
+      store.getMessage.mockResolvedValue({ id: 'wamid.e1', chatId: 'c' });
+
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e1',
+          type: 'text',
+          text: { body: 'calling you now' },
+        }),
+      );
+
+      expect(ai.recordStaffMessage.mock.invocationCallOrder[0]).toBeLessThan(
+        ai.recordStaffChange.mock.invocationCallOrder[0],
+      );
+    });
+
     it('does not park an edit whose original is stored but newer', async () => {
       store.applyEdit.mockResolvedValue(false);
       store.hasMessage.mockResolvedValue(true);
@@ -2143,6 +2271,48 @@ describe('WhatsappWebhookService', () => {
         'wamid.e1',
       );
       expect(gateway.emitMessageUpdate).toHaveBeenCalledWith('user-1', updated);
+    });
+
+    it('passes an applied edit and delete of a staff message to the AI', async () => {
+      store.getMessage.mockResolvedValue({
+        id: 'wamid.e1',
+        chatId: '971501234567',
+        body: 'calling in 5',
+      });
+
+      await service.processEnvelope(editOf('wamid.e2', 'calling in 5'));
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e3',
+          type: 'revoke',
+          revoke: { original_message_id: 'wamid.e1' },
+        }),
+      );
+
+      expect(ai.recordStaffChange).toHaveBeenNthCalledWith(
+        1,
+        'user-1',
+        '971501234567',
+        'wamid.e1',
+        { kind: 'edit', text: 'calling in 5' },
+      );
+      expect(ai.recordStaffChange).toHaveBeenNthCalledWith(
+        2,
+        'user-1',
+        '971501234567',
+        'wamid.e1',
+        { kind: 'revoke' },
+      );
+    });
+
+    it('keeps the webhook green when the AI cannot take the change', async () => {
+      store.getMessage.mockResolvedValue({ id: 'wamid.e1', chatId: 'c' });
+      ai.recordStaffChange.mockRejectedValue(new Error('redis down'));
+
+      await expect(
+        service.processEnvelope(editOf('wamid.e2', 'calling in 5')),
+      ).resolves.toBeUndefined();
+      expect(store.applyEdit).toHaveBeenCalledTimes(1);
     });
 
     it('pushes nothing when the edit changed no row', async () => {
@@ -2206,6 +2376,27 @@ describe('WhatsappWebhookService', () => {
       expect(pushed).not.toHaveProperty('mediaSha256');
     });
 
+    it('tells the AI staff sent a photo, with its caption', async () => {
+      await service.processEnvelope(
+        echo({
+          id: 'wamid.e7',
+          type: 'image',
+          image: {
+            id: 'media-7',
+            mime_type: 'image/jpeg',
+            caption: 'Unit 2804 for AED 11,500',
+          },
+        }),
+      );
+
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'Unit 2804 for AED 11,500',
+        { at: 1761000200 * 1000, id: 'wamid.e7', mediaType: 'image' },
+      );
+    });
+
     it('still applies a parked change and pauses the AI when queueing echo media fails', async () => {
       mediaQueue.add.mockRejectedValue(new Error('valkey down'));
       redisStore.set('wa:msg:pending:company-1:user-1:wamid.e6', {
@@ -2225,7 +2416,7 @@ describe('WhatsappWebhookService', () => {
       ).rejects.toThrow('valkey down');
 
       expect(store.markDeleted).toHaveBeenCalled();
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
         'user-1',
         '971501234567',
         1761000200000,

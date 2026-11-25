@@ -1,7 +1,7 @@
 // backend/src/modules/whatsapp/message-store.service.spec.ts
 import { BadRequestException } from '@nestjs/common';
 import { FindOperator, In } from 'typeorm';
-import { MessageStoreService } from './message-store.service';
+import { MessageStoreService, withChatAiState } from './message-store.service';
 import { WaMediaStatus, WaMessageInsert } from './wa-types';
 import {
   WhatsappMessage,
@@ -1887,5 +1887,92 @@ describe('MessageStoreService', () => {
         take: 500,
       });
     });
+  });
+});
+
+describe('withChatAiState', () => {
+  const chat = (chatId: string) => ({
+    chatId,
+    chatName: chatId,
+    isGroup: false,
+    lastBody: 'hi',
+    lastTs: 200,
+    lastFromMe: false,
+    lastInboundAt: null,
+    unreadCount: 0,
+    lastReadMessageId: null,
+  });
+
+  it('carries the flags of a flagged chat as epoch seconds', () => {
+    const [row] = withChatAiState(
+      [chat('chat-a')],
+      [
+        {
+          chatId: 'chat-a',
+          escalatedAt: new Date('2026-11-23T10:00:00.000Z'),
+          escalationReason: 'complaint',
+          optedOutAt: new Date('2026-11-23T11:00:00.000Z'),
+        },
+      ],
+    );
+
+    expect(row).toEqual({
+      ...chat('chat-a'),
+      aiEscalatedAt: Date.parse('2026-11-23T10:00:00.000Z') / 1000,
+      aiEscalationReason: 'complaint',
+      aiOptedOutAt: Date.parse('2026-11-23T11:00:00.000Z') / 1000,
+    });
+  });
+
+  it('reports null on all three fields for a chat with no state row', () => {
+    const [row] = withChatAiState([chat('chat-a')], []);
+
+    expect(row.aiEscalatedAt).toBeNull();
+    expect(row.aiEscalationReason).toBeNull();
+    expect(row.aiOptedOutAt).toBeNull();
+  });
+
+  it('keeps an opt-out with no escalation as a null reason', () => {
+    const [row] = withChatAiState(
+      [chat('chat-a')],
+      [
+        {
+          chatId: 'chat-a',
+          escalatedAt: null,
+          escalationReason: null,
+          optedOutAt: new Date('2026-11-23T11:00:00.000Z'),
+        },
+      ],
+    );
+
+    expect(row.aiEscalatedAt).toBeNull();
+    expect(row.aiEscalationReason).toBeNull();
+    expect(row.aiOptedOutAt).toBe(
+      Date.parse('2026-11-23T11:00:00.000Z') / 1000,
+    );
+  });
+
+  it('only decorates listed chats and never adds a row for a state with no chat', () => {
+    const rows = withChatAiState(
+      [chat('chat-a'), chat('chat-b')],
+      [
+        {
+          chatId: 'chat-b',
+          escalatedAt: new Date('2026-11-23T10:00:00.000Z'),
+          escalationReason: 'request',
+          optedOutAt: null,
+        },
+        {
+          chatId: 'harness-1',
+          escalatedAt: new Date('2026-11-23T10:00:00.000Z'),
+          escalationReason: 'safety',
+          optedOutAt: null,
+        },
+      ],
+    );
+
+    expect(rows.map((r) => r.chatId)).toEqual(['chat-a', 'chat-b']);
+    expect(rows[0].aiEscalatedAt).toBeNull();
+    expect(rows[1].aiEscalationReason).toBe('request');
   });
 });

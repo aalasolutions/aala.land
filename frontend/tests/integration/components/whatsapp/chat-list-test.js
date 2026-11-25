@@ -104,6 +104,154 @@ module('Integration | Component | whatsapp/chat-list', function (hooks) {
       .doesNotExist();
   });
 
+  test('shows Needs reply and Opted out tags only when the fields are set', async function (assert) {
+    this.chats = [
+      { chatId: 'c-plain', chatName: 'Layla', lastTs: NOW },
+      {
+        chatId: 'c-escalated',
+        chatName: 'Omar',
+        lastTs: NOW,
+        aiEscalatedAt: NOW,
+        aiEscalationReason: 'payment',
+        aiOptedOutAt: null,
+      },
+      {
+        chatId: 'c-opted-out',
+        chatName: 'Sara',
+        lastTs: NOW,
+        aiEscalatedAt: null,
+        aiOptedOutAt: NOW,
+      },
+      {
+        chatId: 'c-both',
+        chatName: 'Huda',
+        lastTs: NOW,
+        aiEscalatedAt: NOW,
+        aiEscalationReason: 'unknown-reason',
+        aiOptedOutAt: NOW,
+      },
+    ];
+    await render(hbs`<Whatsapp::ChatList
+      @chats={{this.chats}}
+      @onSelect={{this.onSelect}}
+      @now={{this.now}}
+    />`);
+
+    assert
+      .dom('[data-test-wa-chat="c-plain"] [data-test-wa-chat-needs-human]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-wa-chat="c-plain"] [data-test-wa-chat-opted-out]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-wa-chat="c-escalated"] [data-test-wa-chat-needs-human]')
+      .hasText('Needs reply')
+      .hasClass('warning')
+      .hasAttribute('data-tooltip', 'Payment or deposit question');
+    assert
+      .dom('[data-test-wa-chat="c-escalated"] [data-test-wa-chat-opted-out]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-wa-chat="c-opted-out"] [data-test-wa-chat-opted-out]')
+      .hasText('Opted out')
+      .hasClass('gray');
+    assert
+      .dom('[data-test-wa-chat="c-opted-out"] [data-test-wa-chat-needs-human]')
+      .doesNotExist();
+    assert
+      .dom('[data-test-wa-chat="c-both"] [data-test-wa-chat-needs-human]')
+      .hasAttribute('data-tooltip', 'Needs the team');
+    assert
+      .dom('[data-test-wa-chat="c-both"] [data-test-wa-chat-opted-out]')
+      .exists();
+  });
+
+  test('puts the tags on the preview row and keeps the name whole in a narrow list', async function (assert) {
+    this.chats = [
+      {
+        chatId: 'c-open',
+        chatName: 'Patricia Nguyen',
+        lastTs: NOW,
+        lastInboundAt: NOW,
+        lastBody: 'Is the two bedroom apartment still available next month?',
+        aiEscalatedAt: NOW,
+        aiEscalationReason: 'payment',
+        aiOptedOutAt: NOW,
+      },
+    ];
+    await render(hbs`<div class="wa-shell" data-test-narrow-list>
+      <Whatsapp::ChatList
+        @chats={{this.chats}}
+        @onSelect={{this.onSelect}}
+        @now={{this.now}}
+      />
+    </div>`);
+    find('[data-test-narrow-list]').style.inlineSize = '300px';
+
+    const row = '[data-test-wa-chat="c-open"]';
+    const previewRow = find(`${row} .wa-chat-preview-row`);
+    assert.dom(`${row} [data-test-wa-chat-needs-human]`).hasText('Needs reply');
+    assert.strictEqual(
+      find(`${row} [data-test-wa-chat-needs-human]`).parentElement,
+      previewRow,
+      'Needs reply sits on the preview row',
+    );
+    assert.strictEqual(
+      find(`${row} [data-test-wa-chat-opted-out]`).parentElement,
+      previewRow,
+      'Opted out sits on the preview row',
+    );
+    assert
+      .dom(`${row} .wa-chat-name [data-test-wu-tag]`)
+      .doesNotExist('the name line carries no AI tag');
+
+    const name = find(`${row} .wa-chat-name`);
+    assert.true(name.clientWidth > 0, 'the name renders');
+    assert.true(
+      name.scrollWidth <= name.clientWidth,
+      `the name is not clipped (${name.scrollWidth} <= ${name.clientWidth})`,
+    );
+
+    const preview = find(`${row} [data-test-wa-chat-preview]`);
+    assert.true(
+      preview.scrollWidth > preview.clientWidth,
+      'the preview text truncates instead',
+    );
+    const unread = find(`${row} [data-test-wa-chat-unread]`);
+    const lastTag = find(`${row} [data-test-wa-chat-opted-out]`);
+    assert.true(
+      lastTag.getBoundingClientRect().right <=
+        preview.getBoundingClientRect().left,
+      'the tags end before the preview starts',
+    );
+    assert.true(
+      preview.getBoundingClientRect().right <=
+        unread.getBoundingClientRect().left,
+      'the preview ends before the unread count starts',
+    );
+  });
+
+  test('an empty filtered list says no chats match, an empty list says no chats yet', async function (assert) {
+    this.chats = [];
+    await render(hbs`<Whatsapp::ChatList
+      @chats={{this.chats}}
+      @filtered={{true}}
+      @onSelect={{this.onSelect}}
+      @now={{this.now}}
+    />`);
+    assert
+      .dom('[data-test-wa-chat-filter-empty]')
+      .hasText('No chats match this filter');
+
+    await render(hbs`<Whatsapp::ChatList
+      @chats={{this.chats}}
+      @onSelect={{this.onSelect}}
+      @now={{this.now}}
+    />`);
+    assert.dom('[data-test-wa-chat-filter-empty]').doesNotExist();
+    assert.dom('[data-test-wu-empty-state]').hasText('No chats yet');
+  });
+
   test('marks the active chat, shows unread counts and reports clicks', async function (assert) {
     this.chats = [
       { chatId: 'c-open', chatName: 'Layla', lastTs: NOW },

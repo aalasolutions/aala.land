@@ -121,6 +121,8 @@ function unitSource(unitId: string): ContactLinkSource {
 
 export const assetsCacheKey = (localityId: string) =>
   `ref:assets:${localityId}`;
+export const companyPlacesCacheKey = (companyId: string) =>
+  `ref:company-places:${companyId}`;
 
 interface LocalityAssetList {
   regionCode: string | null;
@@ -381,6 +383,7 @@ export class PropertiesService {
     const asset = await this.assetRepository.findOne({ where: { id } });
     if (!asset) throw new NotFoundException(`Asset not found`);
 
+    const previousName = asset.name;
     if (dto.name !== undefined) {
       if (typeof dto.name !== 'string') {
         throw new BadRequestException('Asset name must be a string');
@@ -411,6 +414,7 @@ export class PropertiesService {
     try {
       const saved = await this.assetRepository.save(asset);
       await this.redis.forget(assetsCacheKey(asset.localityId));
+      if (asset.name !== previousName) await this.forgetCompanyPlaces(id);
       return saved;
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -418,6 +422,17 @@ export class PropertiesService {
       }
 
       throw error;
+    }
+  }
+
+  // Asset rows are shared, so a rename reaches every company with a unit there.
+  private async forgetCompanyPlaces(assetId: string): Promise<void> {
+    const units = await this.unitRepository.find({
+      where: { assetId },
+      select: { companyId: true },
+    });
+    for (const companyId of new Set(units.map((u) => u.companyId))) {
+      await this.redis.forget(companyPlacesCacheKey(companyId));
     }
   }
 
@@ -681,6 +696,7 @@ export class PropertiesService {
       companyId,
     });
     const saved = await this.unitRepository.save(unit);
+    await this.redis.forget(companyPlacesCacheKey(companyId));
     if (resolved) {
       await this.contactAttach.settle({
         companyId,
@@ -879,6 +895,7 @@ export class PropertiesService {
       }
       await manager.save(Unit, locked);
     });
+    await this.redis.forget(companyPlacesCacheKey(companyId));
 
     const agentChanged =
       'assignedAgentId' in dto && dto.assignedAgentId !== unit.assignedAgentId;
@@ -998,6 +1015,7 @@ export class PropertiesService {
       await manager.delete(Unit, { id, companyId });
       return ids;
     });
+    await this.redis.forget(companyPlacesCacheKey(companyId));
     void this.storagePurge.dispatch(purgeIds);
   }
 
@@ -1026,6 +1044,7 @@ export class PropertiesService {
         actorId,
       });
     });
+    await this.redis.forget(companyPlacesCacheKey(companyId));
     return this.presentUnitById(id, companyId, viewerOf(user?.userId, user));
   }
 
@@ -1048,6 +1067,7 @@ export class PropertiesService {
         actorId,
       });
     });
+    await this.redis.forget(companyPlacesCacheKey(companyId));
     return this.presentUnitById(id, companyId, viewerOf(user?.userId, user));
   }
 

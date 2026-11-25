@@ -92,6 +92,14 @@ export type WaMessageInsert = Omit<WaMessage, WaMessageOutputOnly> & {
   mediaStoredAt?: string | null;
 };
 
+// Epoch SECONDS or null, matching WaChat.lastInboundAt.
+export interface WaChatAiState {
+  chatId: string;
+  aiEscalatedAt: number | null;
+  aiEscalationReason: string | null;
+  aiOptedOutAt: number | null;
+}
+
 export interface WaChat {
   chatId: string;
   chatName: string;
@@ -104,6 +112,8 @@ export interface WaChat {
   unreadCount: number;
   lastReadMessageId: string | null;
 }
+
+export type WaChatListEntry = WaChat & Omit<WaChatAiState, 'chatId'>;
 
 // Payload of the whatsapp:read ack and the whatsapp:unread event.
 export interface WaUnreadState {

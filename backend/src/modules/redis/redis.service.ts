@@ -11,6 +11,26 @@ const RELEASE_IF_MINE = `
   return 0
 `;
 
+// Returns the previous value; the key only ever moves forward.
+const SET_IF_GREATER = `
+  local prev = redis.call("get", KEYS[1])
+  if not prev or tonumber(prev) == nil or tonumber(prev) < tonumber(ARGV[1]) then
+    redis.call("set", KEYS[1], ARGV[1], "PX", ARGV[2])
+  end
+  return prev
+`;
+
+const APPEND_AND_DELETE = `
+  local items = redis.call("lrange", KEYS[1], 0, -1)
+  if #items == 0 then return 0 end
+  for i = 1, #items, 1000 do
+    redis.call("rpush", KEYS[2], unpack(items, i, math.min(i + 999, #items)))
+  end
+  redis.call("del", KEYS[1])
+  redis.call("pexpire", KEYS[2], ARGV[1])
+  return #items
+`;
+
 const RENEW_IF_MINE = `
   if redis.call("get", KEYS[1]) == ARGV[1] then
     return redis.call("pexpire", KEYS[1], ARGV[2])
@@ -128,11 +148,17 @@ export class RedisService implements OnModuleDestroy {
     return res.map(([, value]) => value);
   }
 
-  // MULTI, not two awaits: a crash between the write and PEXPIRE leaks a TTL-less key.
-  async pushList(key: string, value: string, ttlMs: number): Promise<void> {
-    this.unwrapExec(
-      await this.client.multi().rpush(key, value).pexpire(key, ttlMs).exec(),
-    );
+  // MULTI, not two awaits: a crash between the write and PEXPIRE leaks a TTL-less key. With maxLen, keeps the newest and returns how many were trimmed.
+  async pushList(
+    key: string,
+    value: string,
+    ttlMs: number,
+    maxLen?: number,
+  ): Promise<number> {
+    const multi = this.client.multi().rpush(key, value);
+    if (maxLen !== undefined) multi.ltrim(key, -maxLen, -1);
+    const [length] = this.unwrapExec(await multi.pexpire(key, ttlMs).exec());
+    return maxLen === undefined ? 0 : Math.max(0, (length as number) - maxLen);
   }
 
   // Keeps newest; returns trimmed count.
@@ -153,6 +179,31 @@ export class RedisService implements OnModuleDestroy {
     return Math.max(0, (length as number) - maxLen);
   }
 
+  async removeListValues(key: string, values: string[]): Promise<void> {
+    const unique = [...new Set(values)];
+    if (unique.length === 0) return;
+    const tx = this.client.multi();
+    for (const value of unique) tx.lrem(key, 0, value);
+    this.unwrapExec(await tx.exec());
+  }
+
+  async setNumberIfGreater(
+    key: string,
+    value: number,
+    ttlMs: number,
+  ): Promise<number | null> {
+    const prev = await this.client.eval(
+      SET_IF_GREATER,
+      1,
+      key,
+      String(value),
+      String(ttlMs),
+    );
+    if (prev === null || prev === undefined) return null;
+    const parsed = Number(prev);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   async getList(key: string): Promise<string[]> {
     return this.client.lrange(key, 0, -1);
   }
@@ -161,16 +212,15 @@ export class RedisService implements OnModuleDestroy {
     return this.client.llen(key);
   }
 
-  // Only a missing key is benign; anything else must surface, or an outage reads as nothing buffered.
-  async renameKey(from: string, to: string): Promise<boolean> {
-    try {
-      return (await this.client.rename(from, to)) === 'OK';
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('no such key'))
-        return false;
-      this.logger.error(`renameKey ${from} failed: ${errorMessage(err)}`);
-      throw err;
-    }
+  // Moves every entry to the end of the target list in one script; entries already there stay.
+  async appendListAndDelete(
+    from: string,
+    to: string,
+    ttlMs: number,
+  ): Promise<number> {
+    return Number(
+      await this.client.eval(APPEND_AND_DELETE, 2, from, to, String(ttlMs)),
+    );
   }
 
   async incrCounter(key: string, ttlMs: number): Promise<number> {
@@ -212,6 +262,36 @@ export class RedisService implements OnModuleDestroy {
 
   async releaseLock(key: string, token: string): Promise<void> {
     await this.client.eval(RELEASE_IF_MINE, 1, key, token);
+  }
+
+  async sortedSetAdd(
+    key: string,
+    member: string,
+    score: number,
+    ttlMs: number,
+  ): Promise<void> {
+    this.unwrapExec(
+      await this.client
+        .multi()
+        .zadd(key, score, member)
+        .pexpire(key, ttlMs)
+        .exec(),
+    );
+  }
+
+  async sortedSetRemove(key: string, member: string): Promise<void> {
+    await this.client.zrem(key, member);
+  }
+
+  async sortedSetMembers(
+    key: string,
+    maxScore = Number.POSITIVE_INFINITY,
+  ): Promise<string[]> {
+    return this.client.zrangebyscore(
+      key,
+      '-inf',
+      Number.isFinite(maxScore) ? String(maxScore) : '+inf',
+    );
   }
 
   // SCAN, never KEYS: KEYS blocks the server for the whole keyspace.

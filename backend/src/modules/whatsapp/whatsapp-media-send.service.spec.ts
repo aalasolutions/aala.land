@@ -115,7 +115,11 @@ describe('WhatsappMediaSendService', () => {
     markLocalRowFailed: jest.Mock;
     getMessageByUuid: jest.Mock;
   };
-  let ai: { recordHumanReply: jest.Mock };
+  let ai: {
+    recordStaffReply: jest.Mock;
+    recordStaffMessage: jest.Mock;
+    clearEscalationOnStaffReply: jest.Mock;
+  };
   let gateway: { emitMessage: jest.Mock; emitMessageUpdate: jest.Mock };
   let fetchMock: jest.Mock;
   let sendResponse: () => Response;
@@ -180,7 +184,11 @@ describe('WhatsappMediaSendService', () => {
       markLocalRowFailed: jest.fn().mockResolvedValue(undefined),
       getMessageByUuid: jest.fn(),
     };
-    ai = { recordHumanReply: jest.fn().mockResolvedValue(undefined) };
+    ai = {
+      recordStaffReply: jest.fn().mockResolvedValue(undefined),
+      recordStaffMessage: jest.fn().mockResolvedValue(undefined),
+      clearEscalationOnStaffReply: jest.fn().mockResolvedValue(undefined),
+    };
     gateway = { emitMessage: jest.fn(), emitMessageUpdate: jest.fn() };
     sendResponse = () =>
       new Response(JSON.stringify({ messages: [{ id: 'wamid.OUT1' }] }), {
@@ -302,12 +310,37 @@ describe('WhatsappMediaSendService', () => {
         'pnid-1',
         {},
       );
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+      );
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'Front door',
+        { mediaType: 'image', id: 'wamid.OUT1' },
+      );
+      expect(ai.clearEscalationOnStaffReply).toHaveBeenCalledWith(
+        'company-1',
         'user-1',
         '971501234567',
       );
       expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', msg);
       expect(existsSync(file.path)).toBe(false);
+    });
+
+    it('still returns the sent file when adding it to the AI history fails', async () => {
+      ai.recordStaffMessage.mockRejectedValue(new Error('redis down'));
+
+      const msg = await service.sendFile(
+        'company-1',
+        'user-1',
+        '971501234567',
+        await upload('p.jpg', 4000),
+      );
+
+      expect(msg.id).toBe('wamid.OUT1');
+      expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', msg);
     });
 
     it('keeps a document original file name, decoded as UTF-8, and sends it as filename', async () => {
@@ -417,6 +450,12 @@ describe('WhatsappMediaSendService', () => {
         audio: { id: 'meta-media-1', voice: true },
       });
       expect(msg).toMatchObject({ mediaType: 'audio', mediaMime: 'audio/ogg' });
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        '',
+        { mediaType: 'audio', id: 'wamid.OUT1' },
+      );
     });
 
     it('refuses a voice note that is not OGG, and a caption on audio', async () => {
@@ -590,7 +629,7 @@ describe('WhatsappMediaSendService', () => {
 
       expect(reserveStorage).not.toHaveBeenCalled();
       expect(mockUploads).toHaveLength(0);
-      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffReply).not.toHaveBeenCalled();
     });
 
     it('refuses with 507 before any bucket write when the quota is full', async () => {
@@ -688,6 +727,8 @@ describe('WhatsappMediaSendService', () => {
         }),
       );
       expect(releaseStorage).not.toHaveBeenCalled();
+      expect(ai.recordStaffMessage).not.toHaveBeenCalled();
+      expect(ai.clearEscalationOnStaffReply).not.toHaveBeenCalled();
       expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', msg);
     });
 
@@ -770,7 +811,18 @@ describe('WhatsappMediaSendService', () => {
         'wamid.OUT1',
       );
       expect(store.markLocalRowFailed).not.toHaveBeenCalled();
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+      );
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'Floor plan',
+        { mediaType: 'document', id: 'wamid.OUT1' },
+      );
+      expect(ai.clearEscalationOnStaffReply).toHaveBeenCalledWith(
+        'company-1',
         'user-1',
         '971501234567',
       );
@@ -818,6 +870,8 @@ describe('WhatsappMediaSendService', () => {
         '131000',
       );
       expect(store.promoteLocalRow).not.toHaveBeenCalled();
+      expect(ai.recordStaffMessage).not.toHaveBeenCalled();
+      expect(ai.clearEscalationOnStaffReply).not.toHaveBeenCalled();
       expect(gateway.emitMessageUpdate).toHaveBeenCalled();
       expect(result).toMatchObject({ status: 'failed' });
     });

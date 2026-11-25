@@ -140,6 +140,36 @@ export function memberAddedEmail(vars: {
   };
 }
 
+export function whatsappSafetyEscalationEmail(vars: {
+  name: string;
+  chatLabel: string;
+  chatsUrl: string;
+}): RenderedEmail {
+  const body =
+    p(`Hi ${esc(vars.name)},`) +
+    p(
+      `A WhatsApp chat with <strong>${esc(vars.chatLabel)}</strong> was flagged as a safety concern.`,
+    ) +
+    p(`Automatic replies in this chat are paused until someone replies.`);
+  return {
+    subject: `Safety concern in a WhatsApp chat`,
+    html: renderLayout({
+      title: 'WhatsApp chat needs a reply',
+      previewText: `A chat with ${vars.chatLabel} needs a person.`,
+      bodyHtml: body,
+      cta: { label: 'Open WhatsApp', url: vars.chatsUrl },
+    }),
+    text: [
+      `Hi ${vars.name},`,
+      ``,
+      `A WhatsApp chat with ${vars.chatLabel} was flagged as a safety concern.`,
+      `Automatic replies in this chat are paused until someone replies.`,
+      ``,
+      `Open WhatsApp: ${vars.chatsUrl}`,
+    ].join('\n'),
+  };
+}
+
 export function quotaExceededEmail(vars: {
   name: string;
   resourceLabel: string;

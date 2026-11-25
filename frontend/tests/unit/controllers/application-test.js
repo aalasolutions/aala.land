@@ -396,6 +396,20 @@ module('Unit | Controller | application', function (hooks) {
       assert.deepEqual(controller.router.transitions, [['access-requests']]);
     });
 
+    test('a WhatsApp escalation opens the WhatsApp page without asking', async function (assert) {
+      const controller = makeController(this);
+      await controller.markAsRead(
+        notification({
+          entityType: 'WhatsappChat',
+          type: 'WHATSAPP_ESCALATION',
+          regionCode: null,
+        }),
+      );
+
+      assert.deepEqual(this.asked, []);
+      assert.deepEqual(controller.router.transitions, [['whatsapp']]);
+    });
+
     test('an access decision notification opens My requests on the contacts page', async function (assert) {
       const controller = makeController(this);
       await controller.markAsRead(

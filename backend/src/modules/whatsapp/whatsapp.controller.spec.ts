@@ -4,6 +4,7 @@ import {
   BadGatewayException,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
   RequestMethod,
   ValidationPipe,
 } from '@nestjs/common';
@@ -25,6 +26,9 @@ import {
 } from '@nestjs/common/constants';
 import { SendWaMediaDto } from './dto/send-wa-media.dto';
 import { WhatsappMediaSendService } from './whatsapp-media-send.service';
+import { WhatsappChatAiStateService } from './whatsapp-chat-ai-state.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@shared/guards/roles.guard';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
@@ -32,6 +36,7 @@ describe('WhatsappController', () => {
   let signup: jest.Mocked<WhatsappSignupService>;
   let media: jest.Mocked<WhatsappMediaService>;
   let mediaSend: jest.Mocked<WhatsappMediaSendService>;
+  let aiState: jest.Mocked<WhatsappChatAiStateService>;
 
   const makeReq = (userId: string, companyId: string | null) =>
     ({
@@ -74,6 +79,10 @@ describe('WhatsappController', () => {
           provide: WhatsappMediaSendService,
           useValue: { sendFile: jest.fn(), retry: jest.fn() },
         },
+        {
+          provide: WhatsappChatAiStateService,
+          useValue: { listFlagged: jest.fn(), clearEscalation: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -82,6 +91,7 @@ describe('WhatsappController', () => {
     signup = module.get(WhatsappSignupService);
     media = module.get(WhatsappMediaService);
     mediaSend = module.get(WhatsappMediaSendService);
+    aiState = module.get(WhatsappChatAiStateService);
   });
 
   describe('Embedded Signup', () => {
@@ -594,6 +604,146 @@ describe('WhatsappController', () => {
       await expect(
         pipe.transform(body, { type: 'body', metatype: SendWaMediaDto }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('GET chats', () => {
+    const chat = (chatId: string) => ({
+      chatId,
+      chatName: chatId,
+      isGroup: false,
+      lastBody: 'hi',
+      lastTs: 200,
+      lastFromMe: false,
+      lastInboundAt: null,
+      unreadCount: 0,
+      lastReadMessageId: null,
+    });
+
+    it('merges the flagged AI state of the caller into each row', async () => {
+      wa.getChats.mockResolvedValue([
+        chat('971501111111'),
+        chat('971502222222'),
+      ]);
+      aiState.listFlagged.mockResolvedValue([
+        {
+          chatId: '971501111111',
+          escalatedAt: new Date('2026-11-23T10:00:00.000Z'),
+          escalationReason: 'payment',
+          optedOutAt: null,
+        },
+      ]);
+
+      const { chats } = await controller.getChats(makeReq('u1', 'c1'));
+
+      expect(wa.getChats).toHaveBeenCalledWith('c1', 'u1');
+      expect(aiState.listFlagged).toHaveBeenCalledWith('c1', 'u1');
+      expect(chats[0]).toMatchObject({
+        chatId: '971501111111',
+        aiEscalatedAt: Date.parse('2026-11-23T10:00:00.000Z') / 1000,
+        aiEscalationReason: 'payment',
+        aiOptedOutAt: null,
+      });
+      expect(chats[1]).toMatchObject({
+        chatId: '971502222222',
+        aiEscalatedAt: null,
+        aiEscalationReason: null,
+        aiOptedOutAt: null,
+      });
+    });
+
+    it('rejects a caller without a company before reading anything', async () => {
+      await expect(
+        controller.getChats(makeReq('u1', null)),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(wa.getChats).not.toHaveBeenCalled();
+      expect(aiState.listFlagged).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('DELETE chats/:chatId/escalation', () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+
+    it('routes DELETE chats/:chatId/escalation with 204', () => {
+      expect(
+        Reflect.getMetadata(PATH_METADATA, controller.clearEscalation),
+      ).toBe('chats/:chatId/escalation');
+      expect(
+        Reflect.getMetadata(METHOD_METADATA, controller.clearEscalation),
+      ).toBe(RequestMethod.DELETE);
+      expect(
+        Reflect.getMetadata(HTTP_CODE_METADATA, controller.clearEscalation),
+      ).toBe(204);
+    });
+
+    it('clears the flag of the caller own chat and answers with no body', async () => {
+      aiState.clearEscalation.mockResolvedValue(true);
+
+      await expect(
+        controller.clearEscalation(makeReq('u1', 'c1'), {
+          chatId: '971501234567',
+        }),
+      ).resolves.toBeUndefined();
+      expect(aiState.clearEscalation).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        '971501234567',
+      );
+    });
+
+    it('answers 404 when the chat was not flagged', async () => {
+      aiState.clearEscalation.mockResolvedValue(false);
+
+      await expect(
+        controller.clearEscalation(makeReq('u1', 'c1'), {
+          chatId: '971501234567',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects a caller without a company before calling the service', async () => {
+      await expect(
+        controller.clearEscalation(makeReq('u1', null), {
+          chatId: '971501234567',
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(aiState.clearEscalation).not.toHaveBeenCalled();
+    });
+
+    it('takes WaChatIdParamDto and rejects an invalid chatId with 400', async () => {
+      const types = Reflect.getMetadata(
+        'design:paramtypes',
+        WhatsappController.prototype,
+        'clearEscalation',
+      );
+      expect(types[1]).toBe(WaChatIdParamDto);
+      await expect(
+        pipe.transform(
+          { chatId: 'harness-1' },
+          { type: 'param', metatype: WaChatIdParamDto },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('sits behind JwtAuthGuard and RolesGuard with the same roles as send', () => {
+      const reflector = new Reflector();
+      expect(Reflect.getMetadata('__guards__', WhatsappController)).toEqual([
+        JwtAuthGuard,
+        RolesGuard,
+      ]);
+      expect(
+        reflector.get<Role[]>('roles', controller.clearEscalation),
+      ).toBeUndefined();
+      expect(reflector.get<Role[]>('roles', WhatsappController)).toEqual([
+        Role.COMPANY_ADMIN,
+        Role.ADMIN,
+        Role.MANAGER,
+        Role.AGENT,
+      ]);
     });
   });
 });
