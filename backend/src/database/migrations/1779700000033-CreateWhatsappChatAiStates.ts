@@ -27,9 +27,6 @@ export class CreateWhatsappChatAiStates1779700000033 implements MigrationInterfa
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_wa_chat_ai_states_company_user_chat" ON "whatsapp_chat_ai_states" ("company_id", "user_id", "chat_id")`,
     );
     // No FK on user_id, same reasoning as whatsapp_chats.
-    await queryRunner.query(
-      `ALTER TABLE "whatsapp_chat_ai_states" ADD COLUMN IF NOT EXISTS "escalation_holding_sent_at" TIMESTAMPTZ`,
-    );
 
     await queryRunner.query(
       `ALTER TYPE "notifications_type_enum" ADD VALUE IF NOT EXISTS 'WHATSAPP_ESCALATION'`,
