@@ -53,7 +53,7 @@ function formFrom(unit) {
   };
 }
 
-// @variant: list (create, picks city/location/asset), asset (create under @assetId or edit), unit (edit with floor and description).
+// @variant: list (create, picks city/location/asset), asset (create under @assetId or edit), unit (edit with description).
 export default class PropertiesPropertyDrawerComponent extends Component {
   @service auth;
   @service notifications;
@@ -283,7 +283,7 @@ export default class PropertiesPropertyDrawerComponent extends Component {
       ...(form.sqFt ? { sqFt: parseFloat(form.sqFt) } : {}),
       ...(form.bedrooms ? { bedrooms: parseInt(form.bedrooms, 10) } : {}),
       ...(form.bathrooms ? { bathrooms: Number(form.bathrooms) } : {}),
-      ...(this.isUnit && form.floor ? { floor: form.floor } : {}),
+      ...(form.floor ? { floor: form.floor } : {}),
       ...(this.isUnit && form.description
         ? { description: form.description }
         : {}),
@@ -293,7 +293,7 @@ export default class PropertiesPropertyDrawerComponent extends Component {
             ...owner.verifyPhoneField('ownerVerifyPhone'),
           }
         : { owner: owner.cleanIdentity }),
-      ...(this.isList ? {} : { amenities: form.amenities }),
+      amenities: form.amenities,
     };
   }
 

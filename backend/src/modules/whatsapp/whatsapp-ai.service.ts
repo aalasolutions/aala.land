@@ -537,7 +537,7 @@ Give the one or two labels that fit best, never more:
 - safety: someone wants to die or hurt themselves, or is in danger now: fire, smoke, gas, flood, electric shock, injury, crime, violence or a threat of it. Never a what-if, a past event, a stop request, or a question about how safe a building or area is.
 - payment: they say someone asked them to pay a person or an account, or to pay in advance, or they ask whether to, or they already paid someone. Asking whether we are a scam, or how rent is paid, is not payment.
 - complaint: complains about the company, its messages, a property, a repair, a viewing or a person.
-- request: explicitly asks for a person, a call or callback, a viewing, or a booking or hold; or an owner who wants to list, rent out or sell their property and has given its area, type and expected price. Not request: "no call please", "no thanks", office hours, a first search, "am I talking to a human?", what time a viewing is, questions about the app, the website or how something works.
+- request: explicitly asks for a person, a call or callback, a viewing, or a booking or hold; or an owner who wants to list, rent out or sell their property and has given its area, type and expected price. Not request: "no call please", "no thanks", office hours, a first search, "am I talking to a human?", an opening greeting asking if anyone is there ("anyone there?", "any one is available for chat?", "hello, is this chat active?", "koi hai?", "في أحد؟"), what time a viewing is, questions about the app, the website or how something works. Only an explicit ask for a person, agent, human, manager or a callback is request ("I want to talk to a person", "give me a human", "call me").
 - fraud: asks us to forge, fake, backdate, hide or evade something, or to bribe. Not fraud: asking whether we, a person or a message is a scam, fake or legit ("is this a scam?", "asli company ho?").
 - supplied_text: asks us to write, repeat, translate or send wording they supply. Not supplied_text: asking what a word means, or asking us to translate our own answer or listing.
 - persona_request: asks us to sign as a named person, write under a human name or claim to be human. Asking to talk to a human or a person is request, never persona_request.
@@ -685,6 +685,9 @@ const TRUST_QUESTION =
 const NO_REQUEST =
   /\b(?:no|don'?t|do not|mat|nahi)\s+(?:call|calls|callback|phone)\b|\bno,?\s+thanks?\b|\bno thank you\b|\bcall (?:mat|nahi|na) kar/iu;
 
+const OPENING_GREETING =
+  /^(?:(?:hi|hello|hey|salam|assalam[\p{L} ]{0,20})[\s,!.]*)?(?:(?:is\s+)?(?:any\s?one|anybody|someone|somebody)(?:\s+is)?\s+(?:there|here|available|online|around)(?:\s+for\s+(?:a\s+)?chat)?|is\s+this\s+chat\s+(?:active|open|working|live)|koi\s+(?:hai|he|h)|(?:هل\s+)?(?:في|فيه)\s+(?:أحد|احد)(?:\s+هنا)?)[\s?؟!.]*$/iu;
+
 const ASKS_FOR_PERSON =
   /\b(?:call me|callback|call back|viewing|visit|book|speak (?:to|with)|talk (?:to|with)|human|agent)\b/iu;
 
@@ -703,6 +706,7 @@ function settledLabels(
   ) {
     drop.add('request');
   }
+  if (OPENING_GREETING.test(text.trim())) drop.add('request');
   if (asksAboutSharingCode(text)) {
     for (const l of ['safety', 'payment', ...DECLINE_LABELS] as const)
       drop.add(l);

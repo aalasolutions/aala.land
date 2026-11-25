@@ -93,7 +93,7 @@ module(
       await fillIn('[data-test-contact-first-name]', 'Test');
     }
 
-    test('list: fields wait for an asset, then the create body carries it', async function (assert) {
+    test('list: fields wait for an asset, then the create body carries sq ft, floor and amenities', async function (assert) {
       await render(
         hbs`<Properties::PropertyDrawer @open={{true}} @variant="list" @onClose={{this.noop}} />`,
       );
@@ -106,8 +106,9 @@ module(
       await pickAutocomplete(2, 'Bay Tower');
 
       assert.dom('#unit-number').hasAttribute('required');
-      assert.dom('[data-test-unit-sqft]').doesNotExist();
-      assert.dom('[data-test-amenity]').doesNotExist();
+      assert.dom('[data-test-unit-sqft]').exists();
+      assert.dom('[data-test-unit-floor]').exists();
+      assert.dom('[data-test-amenities-picker]').exists();
 
       await fillIn('#unit-number', ' 101 ');
       await click('[data-test-unit-save]');
@@ -119,6 +120,9 @@ module(
 
       await pickOption('#unit-sub-type', 'Villa');
       await fillIn('#unit-price', '1200');
+      await fillIn('#unit-sqft', '900');
+      await fillIn('[data-test-unit-floor]', '4');
+      await click('[data-test-amenity="pool"]');
       await typeOwner();
       await click('[data-test-unit-save]');
 
@@ -130,7 +134,10 @@ module(
         status: 'available',
         subType: 'VILLA',
         price: 1200,
+        sqFt: 900,
+        floor: '4',
         owner: { firstName: 'Test' },
+        amenities: ['pool'],
       });
     });
 
@@ -186,7 +193,7 @@ module(
       assert.dom('#unit-number').hasValue('101');
       assert.dom('#unit-price').hasValue('5000');
       assert.dom('#unit-baths').hasValue('1.5');
-      assert.dom('[data-test-unit-floor]').doesNotExist();
+      assert.dom('[data-test-unit-floor]').hasValue('3');
       assert.dom('[data-test-unit-save]').hasText('Save Changes');
 
       await pickOption('#unit-property-type', 'Not Listed');
@@ -203,6 +210,7 @@ module(
         sqFt: 850,
         bedrooms: 2,
         bathrooms: 1.5,
+        floor: '3',
         ownerId: 'owner-1',
         amenities: ['pool'],
       });

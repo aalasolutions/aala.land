@@ -144,19 +144,17 @@
               data-test-unit-price
             />
           </Woven::Field>
-          {{#unless this.isList}}
-            <Woven::Field @label="Sq Ft" class="grow">
-              <Woven::Input
-                id="unit-sqft"
-                @type="number"
-                @placeholder="e.g. 850"
-                @value={{this.form.sqFt}}
-                @onInput={{fn this.setField "sqFt"}}
-                min="0"
-                data-test-unit-sqft
-              />
-            </Woven::Field>
-          {{/unless}}
+          <Woven::Field @label="Sq Ft" class="grow">
+            <Woven::Input
+              id="unit-sqft"
+              @type="number"
+              @placeholder="e.g. 850"
+              @value={{this.form.sqFt}}
+              @onInput={{fn this.setField "sqFt"}}
+              min="0"
+              data-test-unit-sqft
+            />
+          </Woven::Field>
         </div>
 
         <div class="flex gap-4">
@@ -185,18 +183,18 @@
           </Woven::Field>
         </div>
 
-        {{#if this.isUnit}}
-          <Woven::Field @label="Floor">
-            <Woven::Input
-              @type="number"
-              @placeholder="e.g. 5"
-              @value={{this.form.floor}}
-              @onInput={{fn this.setField "floor"}}
-              min="0"
-              data-test-unit-floor
-            />
-          </Woven::Field>
+        <Woven::Field @label="Floor">
+          <Woven::Input
+            @type="number"
+            @placeholder="e.g. 5"
+            @value={{this.form.floor}}
+            @onInput={{fn this.setField "floor"}}
+            min="0"
+            data-test-unit-floor
+          />
+        </Woven::Field>
 
+        {{#if this.isUnit}}
           <Woven::Field @label="Description">
             <Woven::Textarea
               rows="3"
@@ -224,37 +222,35 @@
           @onVerifyPhoneChange={{this.ownerSelection.setVerifyPhone}}
         />
 
-        {{#unless this.isList}}
-          <div class="flex col gap-2">
-            <span
-              id="property-amenities-label"
-              class="text-sm text-muted"
-            >Amenities</span>
-            <div
-              class="flex wrap gap-2"
-              role="group"
-              aria-labelledby="property-amenities-label"
-              data-test-amenities-picker
-            >
-              {{#each this.amenityOptions as |opt|}}
-                <button
-                  type="button"
-                  class="wu-tag"
-                  data-test-amenity={{opt.key}}
-                  aria-pressed={{if
-                    (includes this.form.amenities opt.key)
-                    "true"
-                    "false"
-                  }}
-                  {{on "click" (fn this.toggleAmenity opt.key)}}
-                >
-                  <Ui::Ph @icon={{opt.icon}} />
-                  {{opt.label}}
-                </button>
-              {{/each}}
-            </div>
+        <div class="flex col gap-2">
+          <span
+            id="property-amenities-label"
+            class="text-sm text-muted"
+          >Amenities</span>
+          <div
+            class="flex wrap gap-2"
+            role="group"
+            aria-labelledby="property-amenities-label"
+            data-test-amenities-picker
+          >
+            {{#each this.amenityOptions as |opt|}}
+              <button
+                type="button"
+                class="wu-tag"
+                data-test-amenity={{opt.key}}
+                aria-pressed={{if
+                  (includes this.form.amenities opt.key)
+                  "true"
+                  "false"
+                }}
+                {{on "click" (fn this.toggleAmenity opt.key)}}
+              >
+                <Ui::Ph @icon={{opt.icon}} />
+                {{opt.label}}
+              </button>
+            {{/each}}
           </div>
-        {{/unless}}
+        </div>
       {{/if}}
 
       {{#if this.errorMsg}}

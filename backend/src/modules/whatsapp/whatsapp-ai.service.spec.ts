@@ -4497,6 +4497,26 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
+    it('never escalates an opening "anyone available" greeting', async () => {
+      route(read(['request']), [
+        mockTextResponse('Hi, this is the AI assistant. How can I help?'),
+      ]);
+
+      const { trace } = await turn('Any one is available for chat?');
+
+      expect(trace.read?.labels).toEqual(['neither']);
+      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+    });
+
+    it('escalates an explicit ask for a human', async () => {
+      route(read(['request']), [mockTextResponse('Sure.')]);
+
+      const { trace } = await turn('I want a human');
+
+      expect(trace.read?.labels).toEqual(['request']);
+      expect(chatAiStateMock.escalate).toHaveBeenCalled();
+    });
+
     it('never declines a photo as supplied wording', async () => {
       route(read(['supplied_text']), [
         mockTextResponse('I cannot open photos; our staff can view it here.'),

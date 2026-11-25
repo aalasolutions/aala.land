@@ -413,7 +413,7 @@
           <Woven::Field
             class="narrow"
             @label="Currency"
-            @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
+            @tooltip="Three-letter ISO currency code. This is what the company is billed in from now on."
             @error={{this.dealErrors.dealCurrency}}
           >
             <Woven::Input
@@ -554,7 +554,7 @@
           <Woven::Field
             class="narrow"
             @label="Currency"
-            @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
+            @tooltip="Three-letter ISO currency code. It must match the currency the money actually arrived in."
             @error={{this.payErrors.payCurrency}}
           >
             <Woven::Input
