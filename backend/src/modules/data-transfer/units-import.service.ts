@@ -8,7 +8,10 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
 import { Asset } from '../properties/entities/asset.entity';
 import { Unit } from '../properties/entities/unit.entity';
-import { assetsCacheKey } from '../properties/properties.service';
+import {
+  assetsCacheKey,
+  companyPlacesCacheKey,
+} from '../properties/properties.service';
 import { Locality } from '../locations/entities/locality.entity';
 import { localitiesCacheKey } from '../locations/locations.service';
 import { RedisService } from '../redis/redis.service';
@@ -135,6 +138,9 @@ export class UnitsImportService implements EntityImporter {
     const { decided, created } = await this.commitLocked(upload.typed, context);
     await this.forgetPlaces(created);
     const result = toCommitResult(decided.map((entry) => entry.planned));
+    if (result.added > 0) {
+      await this.redis.forget(companyPlacesCacheKey(companyId));
+    }
     result.notes = decided.filter(isNoted).map(toNote);
     await this.auditService.log({
       companyId,

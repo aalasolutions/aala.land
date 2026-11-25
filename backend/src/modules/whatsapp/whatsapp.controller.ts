@@ -7,6 +7,7 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Query,
@@ -45,10 +46,13 @@ import {
 import { DeleteWaMediaDto } from './dto/delete-wa-media.dto';
 import { SendWaMediaDto } from './dto/send-wa-media.dto';
 import { WhatsappMediaSendService } from './whatsapp-media-send.service';
+import { WhatsappChatAiStateService } from './whatsapp-chat-ai-state.service';
+import { withChatAiState } from './message-store.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 import {
   AiHistoryMessage,
+  WaChatListEntry,
   WaConnectionInfo,
   WaMessage,
   WaMessageWindow,
@@ -66,6 +70,7 @@ export class WhatsappController {
     private readonly signup: WhatsappSignupService,
     private readonly media: WhatsappMediaService,
     private readonly mediaSend: WhatsappMediaSendService,
+    private readonly aiState: WhatsappChatAiStateService,
   ) {}
 
   @Get('connection')
@@ -110,14 +115,40 @@ export class WhatsappController {
   }
 
   @Get('chats')
-  @ApiOperation({ summary: 'Chat list with last-message preview' })
-  async getChats(@Request() req: AuthenticatedRequest) {
-    return {
-      chats: await this.wa.getChats(
-        requireCompanyId(req.user),
-        req.user.userId,
-      ),
-    };
+  @ApiOperation({
+    summary:
+      'Chat list with last-message preview and AI escalation and opt-out state',
+  })
+  async getChats(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<{ chats: WaChatListEntry[] }> {
+    const companyId = requireCompanyId(req.user);
+    const [chats, flagged] = await Promise.all([
+      this.wa.getChats(companyId, req.user.userId),
+      this.aiState.listFlagged(companyId, req.user.userId),
+    ]);
+    return { chats: withChatAiState(chats, flagged) };
+  }
+
+  @Delete('chats/:chatId/escalation')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Clear the needs-reply flag of a chat without sending a reply',
+  })
+  async clearEscalation(
+    @Request() req: AuthenticatedRequest,
+    @Param() { chatId }: WaChatIdParamDto,
+  ): Promise<void> {
+    const cleared = await this.aiState.clearEscalation(
+      requireCompanyId(req.user),
+      req.user.userId,
+      chatId,
+    );
+    if (!cleared) {
+      throw new NotFoundException(
+        'This chat is not flagged as needing a reply',
+      );
+    }
   }
 
   @Get('messages')
@@ -219,7 +250,7 @@ export class WhatsappController {
   }
 
   @Post('send')
-  @ApiOperation({ summary: 'Send a text message as the human operator' })
+  @ApiOperation({ summary: 'Send a text message as staff' })
   async send(
     @Request() req: AuthenticatedRequest,
     @Body() dto: SendMessageDto,
@@ -235,7 +266,7 @@ export class WhatsappController {
   @Post('chats/:chatId/media')
   @ApiOperation({
     summary:
-      'Send one file as the human operator; stored in our bucket first, then sent through WhatsApp',
+      'Send one file as staff; stored in our bucket first, then sent through WhatsApp',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({

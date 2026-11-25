@@ -88,6 +88,20 @@ describe('SystemEmailService', () => {
       expect(arg.html).toContain('https://app.aala.land/login');
     });
 
+    it('sends a WhatsApp safety escalation linking to the WhatsApp page', async () => {
+      await service.sendWhatsappSafetyEscalation(
+        { email: 'a@b.com', name: 'Jane' },
+        '<b>Customer</b>',
+      );
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.to).toBe('a@b.com');
+      expect(arg.subject).toBe('Safety concern in a WhatsApp chat');
+      expect(arg.text).toContain('<b>Customer</b> was flagged');
+      expect(arg.html).toContain('&lt;b&gt;Customer&lt;/b&gt;');
+      expect(arg.html).toContain('https://app.aala.land/whatsapp');
+      expect(prefs.accepts).not.toHaveBeenCalled();
+    });
+
     it('escapes HTML in interpolated values', async () => {
       await service.sendWelcome({
         email: 'a@b.com',

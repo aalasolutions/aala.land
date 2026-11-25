@@ -17,6 +17,7 @@ import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.entity';
 import { WhatsappMessage } from './entities/whatsapp-message.entity';
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
+import { WhatsappChatAiState } from './entities/whatsapp-chat-ai-state.entity';
 import { WhatsappConnection } from './entities/whatsapp-connection.entity';
 import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { User } from '../users/entities/user.entity';
@@ -24,6 +25,7 @@ import { Company } from '../companies/entities/company.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { BillingModule } from '../billing/billing.module';
 import { RedisModule } from '../redis/redis.module';
 import { EncryptionModule } from '../encryption/encryption.module';
@@ -40,6 +42,7 @@ import { WhatsappMediaIngestService } from './whatsapp-media-ingest.service';
 import { WhatsappMediaProcessor } from './whatsapp-media.processor';
 import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
 import { WhatsappMediaSendService } from './whatsapp-media-send.service';
+import { WhatsappChatAiStateService } from './whatsapp-chat-ai-state.service';
 import {
   WA_AI_DEBOUNCE_QUEUE,
   WA_MEDIA_QUEUE,
@@ -49,6 +52,7 @@ import {
 @Module({
   imports: [
     EmailModule,
+    NotificationsModule,
     BillingModule,
     RedisModule,
     EncryptionModule,
@@ -88,6 +92,7 @@ import {
       WhatsappAiConversation,
       WhatsappMessage,
       WhatsappChat,
+      WhatsappChatAiState,
       WhatsappConnection,
       AiCreditUsage,
       User,
@@ -127,13 +132,16 @@ import {
     WhatsappMediaIngestService,
     WhatsappMediaProcessor,
     WhatsappMediaSendService,
+    WhatsappChatAiStateService,
   ],
   exports: [
     WhatsappService,
+    WhatsappAiService,
     WhatsappSignupService,
     MessageStoreService,
     WhatsappGateway,
     WhatsappMediaService,
+    WhatsappChatAiStateService,
   ],
 })
 export class WhatsappModule {}

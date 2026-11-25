@@ -497,6 +497,7 @@ describe('UnitsImportService', () => {
         expect.stringContaining(CITY),
         expect.stringContaining('new-locality:Al Malqa'),
         expect.stringContaining(LOCALITY),
+        'ref:company-places:company-uuid-1',
       ]);
       const saved = save.mock.calls[0][0] as Record<string, unknown>[];
       expect(saved.map((u) => [u.unitNumber, u.assetId, u.ownerId])).toEqual([
@@ -563,7 +564,9 @@ describe('UnitsImportService', () => {
         },
       ]);
       expect(result.failedRows.map((failed) => failed.row)).toEqual([5]);
-      expect(forget).not.toHaveBeenCalled();
+      expect(forget.mock.calls).toEqual([
+        ['ref:company-places:company-uuid-1'],
+      ]);
     });
 
     it('turns a unique violation on a catalogue insert into a plain conflict', async () => {

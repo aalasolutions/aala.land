@@ -6,6 +6,7 @@ import {
   WaMessage,
   WaMessageInsert,
   WaChat,
+  WaChatListEntry,
   WaMessageWindow,
   WaMediaStatus,
   WaUnreadState,
@@ -17,6 +18,7 @@ import {
   WhatsappMessageStatus,
 } from './entities/whatsapp-message.entity';
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
+import type { FlaggedChatAiState } from './whatsapp-chat-ai-state.service';
 
 const MESSAGES_PAGE_DEFAULT = 50;
 // Matches the stub the chat thread renders for a deleted message.
@@ -51,6 +53,30 @@ function chatPreviewBody(msg: WaMessageInsert): string {
     WA_PLACEHOLDER_BODIES[msg.mediaType] ??
     WA_PLACEHOLDER_BODIES.media_placeholder
   );
+}
+
+// timestamptz reads back as a Date; the wire format on this module is epoch seconds.
+function epochSecondsOf(value: Date | null | undefined): number | null {
+  if (!value) return null;
+  const ms =
+    value instanceof Date ? value.getTime() : Date.parse(String(value));
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+}
+
+export function withChatAiState(
+  chats: WaChat[],
+  flagged: FlaggedChatAiState[],
+): WaChatListEntry[] {
+  const byChatId = new Map(flagged.map((state) => [state.chatId, state]));
+  return chats.map((chat) => {
+    const state = byChatId.get(chat.chatId);
+    return {
+      ...chat,
+      aiEscalatedAt: epochSecondsOf(state?.escalatedAt),
+      aiEscalationReason: state?.escalationReason ?? null,
+      aiOptedOutAt: epochSecondsOf(state?.optedOutAt),
+    };
+  });
 }
 
 export interface HistoryMessage {
@@ -122,11 +148,8 @@ export class MessageStoreService {
     private readonly chats: Repository<WhatsappChat>,
   ) {}
 
-  // timestamptz reads back as a Date; the wire format on this module is epoch seconds.
   private toEpochSeconds(value: Date | null | undefined): number | null {
-    if (!value) return null;
-    const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
-    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+    return epochSecondsOf(value);
   }
 
   private toIsoString(value: Date | null | undefined): string | null {

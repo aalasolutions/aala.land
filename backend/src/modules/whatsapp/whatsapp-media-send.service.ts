@@ -250,7 +250,7 @@ export class WhatsappMediaSendService {
       let failure: unknown = null;
       try {
         await this.downloadObject(row.mediaKey, path);
-        await this.ai.recordHumanReply(row.userId, row.chatId);
+        await this.ai.recordStaffReply(row.userId, row.chatId);
         sent = await this.deliver(connection, token, row.chatId, {
           path,
           type: row.mediaType as WaOutboundMediaType,
@@ -273,6 +273,10 @@ export class WhatsappMediaSendService {
       }
       if (sent) {
         await this.store.promoteLocalRow(companyId, uuid, sent.messageId);
+        await this.recordForAi(companyId, row.userId, row.chatId, row.body, {
+          mediaType: row.mediaType,
+          id: sent.messageId,
+        });
       } else {
         await this.store.markLocalRowFailed(
           companyId,
@@ -348,7 +352,7 @@ export class WhatsappMediaSendService {
     let failure: unknown = null;
     try {
       // Paused before Meta is called, as the text send does, so no queued AI turn lands mid-upload.
-      await this.ai.recordHumanReply(userId, chatId);
+      await this.ai.recordStaffReply(userId, chatId);
       sent = await this.deliver(connection, token, chatId, {
         path: file.path,
         type: media.type,
@@ -417,8 +421,33 @@ export class WhatsappMediaSendService {
         );
       }
     }
+    if (sent) {
+      await this.recordForAi(companyId, userId, chatId, caption, {
+        mediaType: media.type,
+        id: msg.id,
+      });
+    }
     this.gateway.emitMessage(userId, msg);
     return msg;
+  }
+
+  // Meta already has the file, so a failure here must not read as a failed send.
+  private async recordForAi(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    caption: string,
+    options: { mediaType: string; id: string },
+  ): Promise<void> {
+    try {
+      await this.ai.recordStaffMessage(userId, chatId, caption, options);
+    } catch (err) {
+      this.logger.error(
+        `Failed to add sent media ${options.id} to AI history`,
+        errorMessage(err),
+      );
+    }
+    await this.ai.clearEscalationOnStaffReply(companyId, userId, chatId);
   }
 
   // Detected from the bytes; the client's mime and extension are never trusted.

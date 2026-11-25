@@ -153,6 +153,12 @@ $wa-tray-max-height: 16rem;
   color: var(--wu-text-muted);
 }
 
+.wa-chat-filter {
+  padding: wu-space(2) wu-space(4);
+  background: var(--wu-bg-surface);
+  border-block-end: 1px solid var(--wu-border-regular);
+}
+
 .wa-chat-list {
   flex: 1;
   overflow-y: auto;
@@ -252,6 +258,8 @@ $wa-tray-max-height: 16rem;
   margin-block-start: wu-space(1);
 }
 
+// Tags and the unread count stay whole; only the preview truncates.
+.wa-chat-preview-row > .wu-tag,
 .wa-chat-unread {
   flex-shrink: 0;
 }

@@ -11,6 +11,10 @@ import { Repository } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { MessageStoreService, REPLY_WINDOW_S } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
+import {
+  isAiProviderConfigured,
+  resolveAiProvider,
+} from './whatsapp-ai-provider';
 import { WhatsappGateway } from './whatsapp.gateway';
 import {
   WhatsappCloudApiService,
@@ -31,9 +35,8 @@ import {
   WaMessageWindow,
 } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
-import { envString } from '@shared/utils/env.util';
 
-const REPLY_WINDOW_CLOSED_MESSAGE =
+export const REPLY_WINDOW_CLOSED_MESSAGE =
   'The 24-hour reply window is closed. The customer must message first.';
 
 @Injectable()
@@ -56,7 +59,9 @@ export class WhatsappService {
     userId: string,
     companyId: string,
   ): Promise<WaConnectionInfo | null> {
-    const row = await this.connections.findOne({ where: { userId, companyId } });
+    const row = await this.connections.findOne({
+      where: { userId, companyId },
+    });
     if (!row) return null;
     const lastInboundAt = await this.lastInboundIso(companyId, userId);
     return {
@@ -166,7 +171,7 @@ export class WhatsappService {
     );
   }
 
-  // The human operator's send path. No credit is ever consumed here; credits are AI-only.
+  // The staff send path. No credit is ever consumed here; credits are AI-only.
   async sendMessage(
     userId: string,
     companyId: string,
@@ -180,8 +185,8 @@ export class WhatsappService {
       chatId,
     );
 
-    // Cancels any queued AI turn first so it can't fire after the human spoke; a failed send below then leaves it off.
-    await this.ai.recordHumanReply(userId, chatId);
+    // Cancels any queued AI turn first so it can't fire after staff spoke; a failed send below then leaves it off.
+    await this.ai.recordStaffReply(userId, chatId);
 
     let sent: { messageId: string };
     try {
@@ -223,6 +228,19 @@ export class WhatsappService {
       timestamp: Math.floor(Date.now() / 1000),
       originUserId: userId,
     };
+
+    // The AI must see what staff told the customer; a failure here must not read as a failed send.
+    try {
+      await this.ai.recordStaffMessage(userId, chatId, body, {
+        id: msg.id,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to add operator message ${msg.id} to AI history`,
+        errorMessage(err),
+      );
+    }
+    await this.ai.clearEscalationOnStaffReply(companyId, userId, chatId);
 
     // Meta already has the message: a store outage must not read as a failed send and invite a duplicate
     try {
@@ -300,7 +318,7 @@ export class WhatsappService {
     await this.ai.persistEnabled(companyId, next);
     this.gateway.emitAi(userId, {
       enabled: next,
-      keyConfigured: !!envString('OLLAMA_API_KEY'),
+      keyConfigured: isAiProviderConfigured(await resolveAiProvider(companyId)),
     });
     return { enabled: next };
   }

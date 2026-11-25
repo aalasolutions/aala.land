@@ -23,7 +23,9 @@ describe('WhatsappService', () => {
   let chats: { findOne: jest.Mock };
   let store: { addMessage: jest.Mock; getLastMessageTimes: jest.Mock };
   let ai: {
-    recordHumanReply: jest.Mock;
+    recordStaffReply: jest.Mock;
+    recordStaffMessage: jest.Mock;
+    clearEscalationOnStaffReply: jest.Mock;
     getCreditUsage: jest.Mock;
     persistEnabled: jest.Mock;
     isEnabledFor: jest.Mock;
@@ -51,7 +53,9 @@ describe('WhatsappService', () => {
         .mockResolvedValue({ lastInboundAt: null, lastOutboundAt: null }),
     };
     ai = {
-      recordHumanReply: jest.fn().mockResolvedValue(undefined),
+      recordStaffReply: jest.fn().mockResolvedValue(undefined),
+      recordStaffMessage: jest.fn().mockResolvedValue(undefined),
+      clearEscalationOnStaffReply: jest.fn().mockResolvedValue(undefined),
       getCreditUsage: jest.fn(),
       persistEnabled: jest.fn().mockResolvedValue(undefined),
       isEnabledFor: jest.fn().mockResolvedValue(true),
@@ -266,16 +270,67 @@ describe('WhatsappService', () => {
     it('records the human takeover BEFORE the send goes out', async () => {
       await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
 
-      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+      expect(ai.recordStaffReply).toHaveBeenCalledWith(
         'user-1',
         '971501234567',
       );
-      expect(ai.recordHumanReply.mock.invocationCallOrder[0]).toBeLessThan(
+      expect(ai.recordStaffReply.mock.invocationCallOrder[0]).toBeLessThan(
         cloud.sendText.mock.invocationCallOrder[0],
       );
     });
 
-    it('never touches credits: the operator path is free by ruling', async () => {
+    it('adds the sent text to what the AI sees, only after Meta accepted it', async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
+
+      expect(ai.recordStaffMessage).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+        'hi',
+        { id: 'wamid.op1' },
+      );
+      expect(cloud.sendText.mock.invocationCallOrder[0]).toBeLessThan(
+        ai.recordStaffMessage.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('clears the chat escalation only after Meta accepted the message', async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
+
+      expect(ai.clearEscalationOnStaffReply).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        '971501234567',
+      );
+      expect(cloud.sendText.mock.invocationCallOrder[0]).toBeLessThan(
+        ai.clearEscalationOnStaffReply.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('keeps the escalation when the send fails', async () => {
+      cloud.sendText.mockRejectedValue(new WhatsappSendError('down', 500));
+
+      await expect(
+        service.sendMessage('user-1', 'company-1', '971501234567', 'hi'),
+      ).rejects.toBeInstanceOf(BadGatewayException);
+
+      expect(ai.clearEscalationOnStaffReply).not.toHaveBeenCalled();
+    });
+
+    it('still returns the sent message when adding it to the AI history fails', async () => {
+      ai.recordStaffMessage.mockRejectedValue(new Error('redis down'));
+
+      const msg = await service.sendMessage(
+        'user-1',
+        'company-1',
+        '971501234567',
+        'hi',
+      );
+
+      expect(msg.body).toBe('hi');
+      expect(store.addMessage).toHaveBeenCalled();
+    });
+
+    it('never touches credits on the operator path', async () => {
       await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
 
       expect(ai.getCreditUsage).not.toHaveBeenCalled();
@@ -289,7 +344,7 @@ describe('WhatsappService', () => {
         service.sendMessage('user-1', 'company-1', '971501234567', 'hi'),
       ).rejects.toBeInstanceOf(BadRequestException);
 
-      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffReply).not.toHaveBeenCalled();
       expect(cloud.sendText).not.toHaveBeenCalled();
       expect(store.addMessage).not.toHaveBeenCalled();
     });
@@ -313,6 +368,7 @@ describe('WhatsappService', () => {
       );
       expect(err.message).not.toContain('super-secret-token');
       expect(store.addMessage).not.toHaveBeenCalled();
+      expect(ai.recordStaffMessage).not.toHaveBeenCalled();
       expect(gateway.emitMessage).not.toHaveBeenCalled();
     });
 
@@ -399,7 +455,7 @@ describe('WhatsappService', () => {
       expect(err.message).toBe(
         'The 24-hour reply window is closed. The customer must message first.',
       );
-      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(ai.recordStaffReply).not.toHaveBeenCalled();
       expect(cloud.sendText).not.toHaveBeenCalled();
       expect(store.addMessage).not.toHaveBeenCalled();
     });
@@ -466,6 +522,28 @@ describe('WhatsappService', () => {
 
       expect(ai.isEnabledFor).toHaveBeenCalledWith('company-1');
       expect(ai.persistEnabled).toHaveBeenCalledWith('company-1', false);
+    });
+
+    it('reports the key as configured only when host, key and model resolve', async () => {
+      const saved = { ...process.env };
+      process.env.AI_BASE_URL = 'http://h';
+      process.env.AI_API_KEY = 'k';
+      delete process.env.AI_MODEL;
+      try {
+        await service.toggleAi('user-1', 'company-1', true);
+        expect(gateway.emitAi).toHaveBeenLastCalledWith('user-1', {
+          enabled: true,
+          keyConfigured: false,
+        });
+        process.env.AI_MODEL = 'm';
+        await service.toggleAi('user-1', 'company-1', true);
+        expect(gateway.emitAi).toHaveBeenLastCalledWith('user-1', {
+          enabled: true,
+          keyConfigured: true,
+        });
+      } finally {
+        process.env = saved;
+      }
     });
 
     it('propagates a failed persist and announces nothing', async () => {

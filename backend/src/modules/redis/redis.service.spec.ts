@@ -2,7 +2,11 @@ const mockMulti = {
   rpush: jest.fn().mockReturnThis(),
   lpush: jest.fn().mockReturnThis(),
   ltrim: jest.fn().mockReturnThis(),
+  lrem: jest.fn().mockReturnThis(),
+  lrange: jest.fn().mockReturnThis(),
+  del: jest.fn().mockReturnThis(),
   sadd: jest.fn().mockReturnThis(),
+  zadd: jest.fn().mockReturnThis(),
   incr: jest.fn().mockReturnThis(),
   pexpire: jest.fn().mockReturnThis(),
   exec: jest.fn(),
@@ -22,6 +26,8 @@ const mockClient = {
   sadd: jest.fn().mockResolvedValue(1),
   srem: jest.fn().mockResolvedValue(1),
   smembers: jest.fn(),
+  zrem: jest.fn().mockResolvedValue(1),
+  zrangebyscore: jest.fn(),
   pexpire: jest.fn().mockResolvedValue(1),
   scan: jest.fn(),
   quit: jest.fn().mockResolvedValue('OK'),
@@ -78,11 +84,18 @@ describe('RedisService', () => {
     });
   });
 
+
   describe('lock primitives', () => {
     it('tryLock takes the key only when it does not exist', async () => {
       mockClient.set.mockResolvedValueOnce('OK');
       expect(await service.tryLock('k', 'tok', 30000)).toBe(true);
-      expect(mockClient.set).toHaveBeenCalledWith('k', 'tok', 'PX', 30000, 'NX');
+      expect(mockClient.set).toHaveBeenCalledWith(
+        'k',
+        'tok',
+        'PX',
+        30000,
+        'NX',
+      );
 
       mockClient.set.mockResolvedValueOnce(null);
       expect(await service.tryLock('k', 'tok', 30000)).toBe(false);
@@ -108,6 +121,27 @@ describe('RedisService', () => {
     });
   });
 
+
+  describe('setNumberIfGreater', () => {
+    it('moves the value forward inside the script and returns the previous one', async () => {
+      mockClient.eval.mockResolvedValueOnce('1000');
+
+      expect(await service.setNumberIfGreater('k', 2000, 500)).toBe(1000);
+      expect(mockClient.eval).toHaveBeenCalledWith(
+        expect.stringContaining('tonumber(prev) < tonumber(ARGV[1])'),
+        1,
+        'k',
+        '2000',
+        '500',
+      );
+    });
+
+    it('returns null when there was no value', async () => {
+      mockClient.eval.mockResolvedValueOnce(null);
+      expect(await service.setNumberIfGreater('k', 2000, 500)).toBeNull();
+    });
+  });
+
   describe('setNumberIfAbsent', () => {
     it('writes with NX and a TTL, and reports whether it wrote', async () => {
       mockClient.set.mockResolvedValueOnce('OK');
@@ -119,22 +153,16 @@ describe('RedisService', () => {
     });
   });
 
-  describe('renameKey', () => {
-    it('returns true when the claim succeeds', async () => {
-      mockClient.rename.mockResolvedValueOnce('OK');
-      expect(await service.renameKey('a', 'b')).toBe(true);
-    });
 
-    it('returns false only for a missing source key', async () => {
-      mockClient.rename.mockRejectedValueOnce(new Error('ERR no such key'));
-      expect(await service.renameKey('a', 'b')).toBe(false);
-    });
-
-    it('rethrows any other Redis failure instead of reporting an empty buffer', async () => {
-      mockClient.rename.mockRejectedValueOnce(new Error('CONNECTION_BROKEN'));
-      await expect(service.renameKey('a', 'b')).rejects.toThrow(
-        'CONNECTION_BROKEN',
-      );
+  describe('appendListAndDelete', () => {
+    it('appends and deletes inside one script, never by rename', async () => {
+      mockClient.eval.mockResolvedValueOnce(2);
+      expect(await service.appendListAndDelete('src', 'dst', 5000)).toBe(2);
+      const [script, keyCount, from, to, ttl] = mockClient.eval.mock.calls[0];
+      expect(script).toContain('"rpush", KEYS[2]');
+      expect(script).toContain('"del", KEYS[1]');
+      expect([keyCount, from, to, ttl]).toEqual([2, 'src', 'dst', '5000']);
+      expect(mockClient.rename).not.toHaveBeenCalled();
     });
   });
 
@@ -222,6 +250,36 @@ describe('RedisService', () => {
       expect(mockMulti.pexpire).toHaveBeenCalledWith('l', 1000);
     });
 
+    it('pushList with a cap appends, keeps the newest maxLen, expires in one MULTI', async () => {
+      mockMulti.exec.mockResolvedValueOnce([
+        [null, 5],
+        [null, 'OK'],
+        [null, 1],
+      ]);
+
+      expect(await service.pushList('l', 'x', 1000, 3)).toBe(2);
+
+      expect(mockMulti.rpush).toHaveBeenCalledWith('l', 'x');
+      expect(mockMulti.ltrim).toHaveBeenCalledWith('l', -3, -1);
+      expect(mockMulti.pexpire).toHaveBeenCalledWith('l', 1000);
+    });
+
+    it('removeListValues removes each distinct value in one MULTI and skips an empty list', async () => {
+      mockMulti.exec.mockResolvedValueOnce([
+        [null, 1],
+        [null, 1],
+      ]);
+
+      await service.removeListValues('l', ['a', 'b', 'a']);
+      await service.removeListValues('l', []);
+
+      expect(mockMulti.lrem.mock.calls).toEqual([
+        ['l', 0, 'a'],
+        ['l', 0, 'b'],
+      ]);
+      expect(mockMulti.exec).toHaveBeenCalledTimes(1);
+    });
+
     it('incrCounter throws on a failed INCR rather than returning 0', async () => {
       mockMulti.exec.mockResolvedValueOnce([
         [new Error('OOM command not allowed'), null],
@@ -235,6 +293,39 @@ describe('RedisService', () => {
       await expect(service.incrCounter('c', 2000)).rejects.toThrow(
         'Redis MULTI aborted',
       );
+    });
+  });
+
+  describe('sorted sets', () => {
+    it('adds a member and sets the TTL in one MULTI', async () => {
+      mockMulti.exec.mockResolvedValueOnce([
+        [null, 1],
+        [null, 1],
+      ]);
+      await service.sortedSetAdd('idx', 'job-1', 1000, 5000);
+      expect(mockMulti.zadd).toHaveBeenCalledWith('idx', 1000, 'job-1');
+      expect(mockMulti.pexpire).toHaveBeenCalledWith('idx', 5000);
+    });
+
+    it('reads members up to a score, or all of them', async () => {
+      mockClient.zrangebyscore.mockResolvedValue(['a']);
+      expect(await service.sortedSetMembers('idx', 500)).toEqual(['a']);
+      expect(mockClient.zrangebyscore).toHaveBeenCalledWith(
+        'idx',
+        '-inf',
+        '500',
+      );
+      await service.sortedSetMembers('idx');
+      expect(mockClient.zrangebyscore).toHaveBeenLastCalledWith(
+        'idx',
+        '-inf',
+        '+inf',
+      );
+    });
+
+    it('removes a member', async () => {
+      await service.sortedSetRemove('idx', 'job-1');
+      expect(mockClient.zrem).toHaveBeenCalledWith('idx', 'job-1');
     });
   });
 

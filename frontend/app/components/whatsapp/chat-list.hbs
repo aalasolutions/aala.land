@@ -38,6 +38,21 @@
           </span>
         </div>
         <div class="wa-chat-preview-row">
+          {{#if chat.aiEscalatedAt}}
+            <Woven::Tag
+              @variant="warning"
+              @text="Needs reply"
+              data-tooltip={{this.escalationLabel chat.aiEscalationReason}}
+              data-test-wa-chat-needs-human
+            />
+          {{/if}}
+          {{#if chat.aiOptedOutAt}}
+            <Woven::Tag
+              @variant="secondary"
+              @text="Opted out"
+              data-test-wa-chat-opted-out
+            />
+          {{/if}}
           <p class="wa-chat-preview" dir="auto" data-test-wa-chat-preview>
             {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
           </p>
@@ -57,6 +72,13 @@
       </div>
     </button>
   {{else}}
-    <Woven::EmptyState @title="No chats yet" />
+    {{#if @filtered}}
+      <Woven::EmptyState
+        @title="No chats match this filter"
+        data-test-wa-chat-filter-empty
+      />
+    {{else}}
+      <Woven::EmptyState @title="No chats yet" />
+    {{/if}}
   {{/each}}
 </div>

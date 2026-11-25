@@ -3096,4 +3096,96 @@ module('Unit | Controller | whatsapp', function (hooks) {
     ]);
     assert.false(controller.isRetryingSend({ uuid: 'row-9' }));
   });
+
+  module('AI escalation and opt-out', function () {
+    const flagged = [
+      { chatId: 'c-plain', chatName: 'Layla', lastTs: 3 },
+      { chatId: 'c-esc', chatName: 'Omar', lastTs: 2, aiEscalatedAt: 1000 },
+      { chatId: 'c-out', chatName: 'Sara', lastTs: 1, aiOptedOutAt: 1000 },
+    ];
+
+    test('the chat filter narrows the list client side', function (assert) {
+      const controller = makeController(this);
+      controller.whatsapp.chats = flagged;
+      const visible = () => controller.visibleChats.map((c) => c.chatId);
+
+      assert.deepEqual(
+        controller.chatFilterOptions.map((o) => [o.id, o.label]),
+        [
+          ['all', 'All'],
+          ['needs-human', 'Needs reply'],
+          ['opted-out', 'Opted out'],
+        ],
+      );
+      assert.deepEqual(visible(), ['c-plain', 'c-esc', 'c-out']);
+      assert.false(controller.isChatFiltered);
+
+      controller.setChatFilter('needs-human');
+      assert.deepEqual(visible(), ['c-esc']);
+      assert.true(controller.isChatFiltered);
+
+      controller.setChatFilter('opted-out');
+      assert.deepEqual(visible(), ['c-out']);
+
+      controller.whatsapp.chats = [{ chatId: 'c-plain', lastTs: 3 }];
+      assert.deepEqual(visible(), [], 'missing fields match no flag filter');
+
+      controller.teardown();
+      assert.strictEqual(controller.chatFilter, 'all', 'reset on leave');
+    });
+
+    test('notices follow the open chat and the composer stays enabled', function (assert) {
+      const controller = makeController(this);
+      controller.connection = { status: 'connected' };
+      controller.now = Date.now();
+      const open = { lastInboundAt: controller.now - 1000 };
+      controller.whatsapp.chats = flagged.map((c) => ({ ...c, ...open }));
+
+      controller.currentChatId = 'c-plain';
+      assert.false(controller.currentChatNeedsHuman);
+      assert.false(controller.currentChatOptedOut);
+
+      controller.currentChatId = 'c-esc';
+      assert.true(controller.currentChatNeedsHuman);
+      assert.false(controller.currentChatOptedOut);
+      assert.false(controller.composerDisabled);
+
+      controller.currentChatId = 'c-out';
+      assert.false(controller.currentChatNeedsHuman);
+      assert.true(controller.currentChatOptedOut);
+      assert.false(controller.composerDisabled);
+    });
+
+    test('clearNeedsHuman calls the service and toasts a failure', async function (assert) {
+      const controller = makeController(this);
+      const errors = [];
+      controller.notifications = {
+        error: (m) => errors.push(m),
+        success() {},
+        info() {},
+      };
+      const cleared = [];
+      let reply = Promise.resolve();
+      controller.whatsapp.clearEscalation = (chatId) => {
+        cleared.push(chatId);
+        return reply;
+      };
+      controller.currentChatId = 'c-esc';
+
+      await controller.clearNeedsHuman();
+      assert.deepEqual(cleared, ['c-esc']);
+      assert.deepEqual(errors, []);
+
+      const notFound = new Error('Cannot DELETE');
+      notFound.status = 404;
+      reply = Promise.reject(notFound);
+      await controller.clearNeedsHuman();
+      assert.deepEqual(errors, ['Could not clear needs reply']);
+      assert.false(controller.isClearingNeedsHuman);
+
+      controller.currentChatId = null;
+      await controller.clearNeedsHuman();
+      assert.strictEqual(cleared.length, 2, 'no chat, no call');
+    });
+  });
 });

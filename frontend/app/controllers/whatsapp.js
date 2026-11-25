@@ -54,6 +54,17 @@ const HISTORY_SYNC_COPY = {
   failed: () => 'Chat history could not be synced',
 };
 
+const CHAT_FILTER_OPTIONS = [
+  { id: 'all', label: 'All' },
+  { id: 'needs-human', label: 'Needs reply' },
+  { id: 'opted-out', label: 'Opted out' },
+];
+
+const CHAT_FILTERS = {
+  'needs-human': (chat) => Boolean(chat.aiEscalatedAt),
+  'opted-out': (chat) => Boolean(chat.aiOptedOutAt),
+};
+
 const CONNECTION_COPY = {
   none: {
     label: 'No number connected',
@@ -132,6 +143,10 @@ export default class WhatsappController extends Controller {
 
   @tracked messageText = '';
   @tracked isSending = false;
+
+  @tracked chatFilter = 'all';
+  @tracked isClearingNeedsHuman = false;
+  chatFilterOptions = CHAT_FILTER_OPTIONS;
 
   @tracked mediaToDelete = null;
   @tracked mediaDeleteReason = '';
@@ -226,6 +241,24 @@ export default class WhatsappController extends Controller {
     return (
       this.whatsapp.chats.find((c) => c.chatId === this.currentChatId) ?? null
     );
+  }
+
+  get isChatFiltered() {
+    return Boolean(CHAT_FILTERS[this.chatFilter]);
+  }
+
+  get visibleChats() {
+    const matches = CHAT_FILTERS[this.chatFilter];
+    const chats = this.whatsapp.chats;
+    return matches ? chats.filter(matches) : chats;
+  }
+
+  get currentChatNeedsHuman() {
+    return Boolean(this.currentChat?.aiEscalatedAt);
+  }
+
+  get currentChatOptedOut() {
+    return Boolean(this.currentChat?.aiOptedOutAt);
   }
 
   get currentChatName() {
@@ -439,6 +472,7 @@ export default class WhatsappController extends Controller {
     this.waAttachments.reset();
     this.waAttachments.onSent = null;
     this.retryingUuids = new Set();
+    this.chatFilter = 'all';
     this.currentChatId = null;
     this.showsChatList = false;
     this._listAnchor = null;
@@ -1338,6 +1372,26 @@ export default class WhatsappController extends Controller {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.sendMessage(null);
+    }
+  }
+
+  @action
+  setChatFilter(value) {
+    this.chatFilter = value;
+  }
+
+  @action
+  async clearNeedsHuman() {
+    const chatId = this.currentChatId;
+    if (!chatId || this.isClearingNeedsHuman) return;
+    this.isClearingNeedsHuman = true;
+    try {
+      await this.whatsapp.clearEscalation(chatId);
+    } catch (err) {
+      console.error('WhatsApp clear needs reply failed', err);
+      this.notifications.error('Could not clear needs reply');
+    } finally {
+      this.isClearingNeedsHuman = false;
     }
   }
 

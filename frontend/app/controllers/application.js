@@ -21,6 +21,9 @@ function notificationTarget({ entityType, type }) {
           regional: false,
         };
   }
+  if (type === 'WHATSAPP_ESCALATION') {
+    return { route: 'whatsapp', regional: false };
+  }
   if (entityType === 'lead' || type.includes('LEAD')) {
     return { route: 'leads', regional: true };
   }

@@ -110,8 +110,20 @@
         </div>
       {{/if}}
 
+      <div class="wa-chat-filter">
+        <Woven::Segmented
+          @options={{this.chatFilterOptions}}
+          @value={{this.chatFilter}}
+          @onChange={{this.setChatFilter}}
+          @fill={{true}}
+          aria-label="Filter chats"
+          data-test-wa-chat-filter
+        />
+      </div>
+
       <Whatsapp::ChatList
-        @chats={{this.whatsapp.chats}}
+        @chats={{this.visibleChats}}
+        @filtered={{this.isChatFiltered}}
         @currentChatId={{this.currentChatId}}
         @onSelect={{this.selectChat}}
         @now={{this.now}}
@@ -336,6 +348,35 @@
           data-test-wa-drop-zone="composer"
           {{file-drop this.addAttachments disabled=this.composerDisabled}}
         >
+          {{#if this.currentChatNeedsHuman}}
+            <Woven::Alert
+              @variant="warning"
+              @description="Automatic replies are paused. This chat needs a person; your reply turns them back on after the usual quiet period."
+              role="status"
+              class="mb-2"
+              data-test-wa-needs-human-notice
+            >
+              <:actions>
+                <Woven::Button
+                  @variant="subtle"
+                  @size="xs"
+                  @text="Clear needs reply"
+                  @loading={{this.isClearingNeedsHuman}}
+                  @onClick={{this.clearNeedsHuman}}
+                  data-test-wa-clear-needs-human
+                />
+              </:actions>
+            </Woven::Alert>
+          {{/if}}
+          {{#if this.currentChatOptedOut}}
+            <Woven::Alert
+              @variant="info"
+              @description="This customer turned off automatic replies. The AI will not reply here; your messages still send."
+              role="status"
+              class="mb-2"
+              data-test-wa-opted-out-notice
+            />
+          {{/if}}
           {{#if this.replyWindow}}
             <div
               class="wa-window

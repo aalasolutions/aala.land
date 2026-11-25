@@ -1,7 +1,6 @@
 import { IsNull } from 'typeorm';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { UnitStatus } from '../properties/entities/unit.entity';
-import { PropertyType } from '../properties/entities/property-type.enum';
 
 const makeQb = () => ({
   setLock: jest.fn().mockReturnThis(),
@@ -83,6 +82,11 @@ const makeRepos = () => {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
     },
     billingHistoryRepo: { findOne: jest.fn().mockResolvedValue(null) },
+    redis: {
+      getOrSetJson: jest.fn(
+        (_key: string, _ttl: number, load: () => Promise<unknown>) => load(),
+      ),
+    },
     userRepo: {
       find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn().mockResolvedValue(null),
@@ -106,6 +110,7 @@ const makeService = (repos: ReturnType<typeof makeRepos>) =>
     repos.usageRepo as any,
     repos.billingHistoryRepo as any,
     repos.userRepo as any,
+    repos.redis as any,
   );
 
 describe('WhatsappAiRepositoryService', () => {
@@ -393,6 +398,45 @@ describe('WhatsappAiRepositoryService', () => {
     });
   });
 
+  describe('refundConversationCredit', () => {
+    const refund = () =>
+      service.refundConversationCredit('c1', 'conv-1', PERIOD.start);
+
+    it('deletes the unused window and lowers the count under the company lock', async () => {
+      repos.managerQuery
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([[{ id: 'conv-1' }], 1])
+        .mockResolvedValueOnce([[], 1]);
+
+      await expect(refund()).resolves.toBe(true);
+
+      expect(repos.settingsRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      const calls = repos.managerQuery.mock.calls;
+      expect(calls[0]).toEqual([
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        ['c1'],
+      ]);
+      expect(calls[1][0]).toMatch(
+        /DELETE FROM "whatsapp_ai_conversations"[\s\S]*"id" = \$1 AND "company_id" = \$2 AND "messages_count" = 0/,
+      );
+      expect(calls[1][1]).toEqual(['conv-1', 'c1']);
+      expect(calls[2][0]).toMatch(
+        /GREATEST\("credits_used" - 1, 0\)[\s\S]*"company_id" = \$1 AND "period_start" = \$2/,
+      );
+      expect(calls[2][1]).toEqual(['c1', PERIOD.start]);
+    });
+
+    it('keeps the credit when the window already carried a reply', async () => {
+      repos.managerQuery
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([[], 0]);
+
+      await expect(refund()).resolves.toBe(false);
+
+      expect(repos.managerQuery).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('recordTurnDelivered', () => {
     it('counts the reply against the conversation, scoped to the company', async () => {
       await service.recordTurnDelivered('c1', 'conv-1');
@@ -529,6 +573,9 @@ describe('WhatsappAiRepositoryService', () => {
 
   describe('searchProperties', () => {
     let unitQb: Record<string, jest.Mock>;
+    let placeRows: Record<string, unknown>[];
+    let tallyRows: Record<string, unknown>[];
+    let unitRows: Record<string, unknown>[];
 
     const agent = (regionCodes: string[]) =>
       repos.userRepo.findOne.mockResolvedValue({
@@ -543,18 +590,129 @@ describe('WhatsappAiRepositoryService', () => {
         params,
       }));
 
+    const placeRow = (
+      assetId: string,
+      assetName: string,
+      localityName: string,
+      cityName: string,
+      regionCode: string,
+      country: string,
+    ) => ({
+      assetId,
+      assetName,
+      localityId: `l-${localityName}`,
+      localityName,
+      cityId: `c-${cityName}`,
+      cityName,
+      regionCode,
+      country,
+      type: 'RENTAL',
+      count: '2',
+    });
+
+    const tallyRow = (
+      regionCode: string,
+      area: string,
+      matching: number,
+      inBudget = matching,
+      city = 'City',
+    ) => ({
+      regionCode,
+      localityId: `l-${area}`,
+      area,
+      city,
+      matching: String(matching),
+      inBudget: String(inBudget),
+      minMatching: '100',
+      maxMatching: '900',
+      minInBudget: '100',
+      maxInBudget: '500',
+    });
+
     beforeEach(() => {
+      placeRows = [
+        placeRow('a1', 'Liberty Crest', 'Gulberg', 'Lahore', 'punjab', 'PK'),
+        placeRow('a2', 'Block J Homes', 'Johar Town', 'Lahore', 'punjab', 'PK'),
+        placeRow('a3', 'Azure Quay', 'Dubai Marina', 'Dubai', 'dubai', 'AE'),
+        placeRow('a4', 'Bay Sail', 'Business Bay', 'Dubai', 'dubai', 'AE'),
+        placeRow('a5', 'Qasr', 'Downtown', 'Dubai', 'dubai', 'AE'),
+      ];
+      tallyRows = [tallyRow('dubai', 'Downtown', 3)];
+      unitRows = [];
       unitQb = {
         leftJoinAndSelect: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         addOrderBy: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+        setParameter: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([{ id: 'unit-1' }]),
+        getRawMany: jest.fn().mockImplementation(() => {
+          const last = unitQb.select.mock.calls.at(-1)?.[1];
+          return Promise.resolve(
+            last === 'assetId'
+              ? placeRows
+              : last === 'unitNumber'
+                ? unitRows
+                : tallyRows,
+          );
+        }),
       };
       repos.unitRepo.createQueryBuilder.mockReturnValue(unitQb);
       service = makeService(repos);
+    });
+
+    it('looks a unit up by its number alone when the searched city does not hold it', async () => {
+      agent(['dubai', 'punjab']);
+      const search = jest
+        .spyOn(service as any, 'search')
+        .mockResolvedValueOnce({ units: [], total: 0, locations: [] })
+        .mockResolvedValueOnce({ units: [{ id: 'u-2804' }], total: 1 });
+      const result = await service.searchProperties('c1', 'u1', {
+        unit: '2804',
+        city: ['Pakistan'],
+        type: 'RENT',
+      });
+      expect(search.mock.calls[1][2]).toEqual({ unit: '2804', type: 'RENT' });
+      expect(result).toMatchObject({ total: 1, unitElsewhere: true });
+    });
+
+    it('counts the listings a kind or amenity filter alone left out', async () => {
+      agent(['dubai']);
+      const search = jest
+        .spyOn(service as any, 'search')
+        .mockResolvedValueOnce({ units: [], total: 0, locations: [] })
+        .mockResolvedValueOnce({ units: [{ id: 'u-1' }], total: 4 });
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Dubai'],
+        kind: ['villa'],
+        amenities: [['pool']],
+        page: 2,
+      });
+      expect(search.mock.calls[1][2]).toEqual({ city: ['Dubai'] });
+      expect(result.unfiltered).toBe(4);
+      expect(result.units).toEqual([]);
+    });
+
+    it('does not count without filters when none was a kind or amenity', async () => {
+      agent(['dubai']);
+      const search = jest
+        .spyOn(service as any, 'search')
+        .mockResolvedValue({ units: [], total: 0, locations: [] });
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Dubai'],
+        minBedrooms: 9,
+      });
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(result.unfiltered).toBeUndefined();
     });
 
     it('returns nothing for a user outside the company, without querying units', async () => {
@@ -606,80 +764,519 @@ describe('WhatsappAiRepositoryService', () => {
       );
     });
 
-    it('maps listing type, bedroom, bathroom, price and size bounds', async () => {
-      agent(['dubai']);
-      await service.searchProperties('c1', 'u1', {
-        type: 'RENT',
-        minBedrooms: 2,
-        maxBedrooms: 3,
-        minBathrooms: 2,
-        maxPrice: 700000,
-        minSqft: 900,
+    it('reads place rows company-wide through the shared cache and scopes them in memory', async () => {
+      agent(['punjab']);
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['لاہور'],
       });
-      expect(whereCalls()).toEqual(
-        expect.arrayContaining([
-          {
-            clause: 'u.propertyType = :pt',
-            params: { pt: PropertyType.RENTAL },
-          },
-          { clause: 'u.bedrooms >= :minBedrooms', params: { minBedrooms: 2 } },
-          { clause: 'u.bedrooms <= :maxBedrooms', params: { maxBedrooms: 3 } },
-          {
-            clause: 'u.bathrooms >= :minBathrooms',
-            params: { minBathrooms: 2 },
-          },
-          { clause: 'u.price <= :maxPrice', params: { maxPrice: 700000 } },
-          { clause: 'u.sqFt >= :minSqft', params: { minSqft: 900 } },
-        ]),
+      expect(repos.redis.getOrSetJson).toHaveBeenCalledWith(
+        'ref:company-places:c1',
+        expect.any(Number),
+        expect.any(Function),
       );
-    });
-
-    it('matches a place fuzzily and escapes LIKE wildcards in customer text', async () => {
-      agent(['dubai']);
-      await service.searchProperties('c1', 'u1', { place: '50%_off' });
       expect(whereCalls()).toContainEqual({
-        clause: 'brackets',
-        params: {
-          place: '50%_off',
-          placeLike: '%50\\%\\_off%',
-          placeSimilarity: 0.3,
-        },
+        clause: 'a.id = ANY(CAST(:assetIds AS uuid[]))',
+        params: { assetIds: ['a1', 'a2'] },
+      });
+      expect(result.locations?.[0]).toMatchObject({
+        label: 'city 1',
+        status: 'matched',
+        matches: [expect.objectContaining({ name: 'Lahore', level: 'city' })],
       });
     });
 
-    it('requires every amenity asked for', async () => {
+    it('reads places, amenities and unit numbers once while the cache entry stays', async () => {
+      agent(['dubai']);
+      const stored = new Map<string, unknown>();
+      repos.redis.getOrSetJson.mockImplementation(
+        async (key: string, _ttl: number, load: () => Promise<unknown>) => {
+          if (!stored.has(key)) stored.set(key, await load());
+          return JSON.parse(JSON.stringify(stored.get(key)));
+        },
+      );
+      await service.searchProperties('c1', 'u1', { place: ['Downtown'] });
+      await service.searchProperties('c1', 'u1', { place: ['Marina'] });
+      const placeQueries = () =>
+        unitQb.select.mock.calls.filter(([, a]) => a === 'assetId').length;
+      expect(placeQueries()).toBe(1);
+      stored.clear();
+      await service.searchProperties('c1', 'u1', { place: ['Marina'] });
+      expect(placeQueries()).toBe(2);
+    });
+
+    it('resolves a place inside the city it was given with', async () => {
+      agent(['punjab', 'dubai']);
+      await service.searchProperties('c1', 'u1', {
+        city: ['Dubai'],
+        place: ['Downtown Dubai'],
+      });
+      expect(whereCalls()).toContainEqual({
+        clause: 'a.id = ANY(CAST(:assetIds AS uuid[]))',
+        params: { assetIds: ['a5'] },
+      });
+    });
+
+    it('returns no units and the cities with their counts when a place is unknown', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [
+        tallyRow('dubai', 'Downtown', 6, 6, 'Dubai'),
+        tallyRow('punjab', 'Gulberg', 4, 4, 'Lahore'),
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Atlantis'],
+      });
+      expect(unitQb.getMany).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        units: [],
+        total: 0,
+        citiesWithListings: [
+          { name: 'Dubai', count: 6 },
+          { name: 'Lahore', count: 4 },
+        ],
+      });
+      expect(result.locations?.[0].status).toBe('unknown');
+    });
+
+    it('names no city when no city holds what was asked', async () => {
+      agent(['dubai']);
+      tallyRows = [];
+      const result = await service.searchProperties('c1', 'u1', {
+        minBedrooms: 9,
+      });
+      expect(result.citiesWithListings).toEqual([]);
+    });
+
+    it('counts other cities with every filter but the city, place and unit, within the budget', async () => {
+      agent(['punjab', 'dubai', 'sharjah']);
+      placeRows.push(
+        placeRow('a7', 'Majaz', 'Al Majaz', 'Sharjah', 'sharjah', 'AE'),
+      );
+      tallyRows = [
+        tallyRow('sharjah', 'Al Majaz', 3, 1, 'Sharjah'),
+        tallyRow('dubai', 'Downtown', 2, 0, 'Dubai'),
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Atlantis'],
+        kind: ['villa'],
+        maxPrice: 5000,
+        budgetCurrency: 'AED',
+        budgetPeriod: 'month',
+      });
+      expect(result.citiesWithListings).toEqual([
+        { name: 'Sharjah', count: 1 },
+      ]);
+      expect(whereCalls()).toContainEqual({
+        clause: 'u.subType IN (:...subTypes)',
+        params: { subTypes: ['VILLA'] },
+      });
+    });
+
+    it('lists only cities in the searched country on an empty result', async () => {
+      agent(['punjab', 'dubai', 'texas', 'sharjah']);
+      placeRows.push(
+        placeRow('a6', 'Mueller', 'Mueller', 'Austin', 'texas', 'US'),
+        placeRow('a7', 'Majaz', 'Al Majaz', 'Sharjah', 'sharjah', 'AE'),
+      );
+      tallyRows = [];
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Dubai'],
+        minBedrooms: 9,
+      });
+      expect(result.citiesWithListings).toEqual([]);
+      tallyRows = [
+        tallyRow('sharjah', 'Al Majaz', 2, 2, 'Sharjah'),
+        tallyRow('texas', 'Mueller', 5, 5, 'Austin'),
+      ];
+      unitQb.getMany.mockResolvedValue([]);
+      const other = await service.searchProperties('c1', 'u1', {
+        city: ['Dubai'],
+        place: ['Binaya'],
+        minBedrooms: 9,
+      });
+      expect(other.citiesWithListings).toEqual([{ name: 'Sharjah', count: 2 }]);
+    });
+
+    it('takes the country from the budget currency and never names a city elsewhere', async () => {
+      agent(['punjab', 'dubai', 'texas']);
+      placeRows.push(
+        placeRow('a6', 'Mueller', 'Mueller', 'Austin', 'texas', 'US'),
+      );
+      tallyRows = [];
+      const result = await service.searchProperties('c1', 'u1', {
+        minBedrooms: 9,
+        maxPrice: 50000,
+        budgetCurrency: 'PKR',
+        budgetPeriod: 'month',
+      });
+      expect(result.citiesWithListings).toEqual([]);
+      tallyRows = [
+        tallyRow('punjab', 'Gulberg', 4, 4, 'Lahore'),
+        tallyRow('texas', 'Mueller', 5, 5, 'Austin'),
+      ];
+      const lahore = await service.searchProperties('c1', 'u1', {
+        city: ['Atlantis'],
+        maxPrice: 50000,
+        budgetCurrency: 'PKR',
+        budgetPeriod: 'month',
+      });
+      expect(lahore.citiesWithListings).toEqual([{ name: 'Lahore', count: 4 }]);
+    });
+
+    it("names the company's own cities when the place is not one of its places", async () => {
+      agent(['punjab', 'dubai']);
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Riyadh'],
+      });
+      expect(result.total).toBe(0);
+      expect(result.citiesWithListings?.length).toBeGreaterThan(0);
+    });
+
+    it('asks which city when a place lies in several cities and no city was given', async () => {
+      agent(['punjab', 'sindh']);
+      placeRows.push(
+        placeRow(
+          'a8',
+          'Block D Homes',
+          'DHA Phase 5',
+          'Lahore',
+          'punjab',
+          'PK',
+        ),
+        placeRow('a9', 'Khayaban', 'DHA Phase 6', 'Karachi', 'sindh', 'PK'),
+      );
+      const result = await service.searchProperties('c1', 'u1', {
+        place: ['DHA'],
+      });
+      expect(result.cityChoice).toEqual({
+        label: 'place 1',
+        options: expect.arrayContaining([
+          { place: 'DHA Phase 5', city: 'Lahore' },
+          { place: 'DHA Phase 6', city: 'Karachi' },
+        ]),
+      });
+      expect(result.citiesWithListings).toBeUndefined();
+      expect(unitQb.getMany).not.toHaveBeenCalled();
+      const given = await service.searchProperties('c1', 'u1', {
+        city: ['Lahore'],
+        place: ['DHA'],
+      });
+      expect(given.cityChoice).toBeUndefined();
+    });
+
+    it('names the other city holding a place that is missing from the searched city', async () => {
+      agent(['punjab', 'sindh']);
+      placeRows.push(
+        placeRow(
+          'a8',
+          'Block D Homes',
+          'DHA Phase 5',
+          'Lahore',
+          'punjab',
+          'PK',
+        ),
+        placeRow('a9', 'Khayaban', 'DHA Phase 6', 'Karachi', 'sindh', 'PK'),
+      );
+      const result = await service.searchProperties('c1', 'u1', {
+        city: ['Karachi'],
+        place: ['DHA Phase 5'],
+      });
+      const term = result.locations?.find((t) => t.label === 'place 1');
+      expect(term?.status).toBe('unknown');
+      expect(term?.elsewhere).toEqual([
+        expect.objectContaining({ name: 'DHA Phase 5', within: 'Lahore' }),
+      ]);
+    });
+
+    it('reads one grouped tally and one page: three queries with the user lookup', async () => {
+      agent(['dubai']);
+      const result = await service.searchProperties('c1', 'u1', { page: 1 });
+      expect(repos.unitRepo.createQueryBuilder).toHaveBeenCalledTimes(2);
+      expect(unitQb.offset).toHaveBeenCalledWith(0);
+      expect(unitQb.limit).toHaveBeenCalledWith(5);
+      expect(result).toMatchObject({ total: 3, units: [{ id: 'unit-1' }] });
+    });
+
+    it('skips the page query past the end', async () => {
+      agent(['dubai']);
+      const result = await service.searchProperties('c1', 'u1', { page: 2 });
+      expect(unitQb.getMany).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ total: 3, offset: 5, units: [] });
+    });
+
+    it('infers the budget currency when every matching listing shares one', async () => {
+      agent(['punjab']);
+      tallyRows = [tallyRow('punjab', 'Gulberg', 4, 2)];
+      const result = await service.searchProperties('c1', 'u1', {
+        maxPrice: 10000000,
+      });
+      expect(result).toMatchObject({ budgetInferred: 'PKR', total: 2 });
+      expect(whereCalls()).toContainEqual({
+        clause: 'ci.regionCode IN (:...budgetRegions)',
+        params: { budgetRegions: expect.arrayContaining(['punjab', 'sindh']) },
+      });
+    });
+
+    it('compares a budget without a currency with each listing in its own currency', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [
+        tallyRow('punjab', 'Gulberg', 4, 2),
+        tallyRow('dubai', 'Downtown', 3, 1),
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        maxPrice: 10000000,
+      });
+      expect(result.budgetInferred).toBeUndefined();
+      expect(result.total).toBe(3);
+      expect(whereCalls()).toContainEqual({
+        clause:
+          "(CASE WHEN u.propertyType = 'RENTAL' AND :budgetReference >= u.price * 3.4641 THEN u.price * 12 <= :maxPrice ELSE u.price <= :maxPrice END)",
+        params: { budgetReference: 10000000, maxPrice: 10000000 },
+      });
+      expect(whereCalls().map((c) => c.clause)).not.toContain(
+        'ci.regionCode IN (:...budgetRegions)',
+      );
+    });
+
+    it('compares a budget in a currency no listing uses in each listing currency', async () => {
+      agent(['dubai']);
+      const result = await service.searchProperties('c1', 'u1', {
+        maxPrice: 3000,
+        unknownCurrency: 'EUR',
+      });
+      expect(result.budgetInferred).toBeUndefined();
+      expect(unitQb.getMany).toHaveBeenCalled();
+    });
+
+    it('counts listings in another currency apart from the budget currency', async () => {
+      agent(['punjab', 'dubai', 'texas']);
+      tallyRows = [
+        tallyRow('dubai', 'Downtown', 3, 1),
+        tallyRow('texas', 'Mueller', 3, 3),
+        tallyRow('punjab', 'Gulberg', 2, 2),
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        maxPrice: 8000,
+        budgetCurrency: 'AED',
+      });
+      expect(result.total).toBe(1);
+      expect(result.otherCurrency).toEqual([
+        { currency: 'USD', count: 3 },
+        { currency: 'PKR', count: 2 },
+      ]);
+    });
+
+    it('takes turns between currencies in a price sort, largest group first', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [
+        tallyRow('dubai', 'Downtown', 3),
+        tallyRow('punjab', 'Gulberg', 5),
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        sort: 'price_low',
+      });
+      expect(result.currencies?.map((c) => c.currency)).toEqual(['PKR', 'AED']);
+      const rank =
+        '(CAST(:currencyRanks AS int[]))[array_position(CAST(:rankedRegions AS text[]), ci.regionCode)]';
+      expect(unitQb.orderBy).toHaveBeenCalledWith(
+        `ROW_NUMBER() OVER (PARTITION BY ${rank} ORDER BY u.price ASC NULLS LAST, u.id ASC)`,
+      );
+      expect(unitQb.addOrderBy).toHaveBeenCalledWith(rank);
+      expect(unitQb.setParameter).toHaveBeenCalledWith('rankedRegions', [
+        'dubai',
+        'punjab',
+      ]);
+      expect(unitQb.setParameter).toHaveBeenCalledWith('currencyRanks', [1, 0]);
+    });
+
+    it('asks for a city instead of searching every city for an amenity alone, naming only the cities that have it', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [
+        { ...tallyRow('dubai', 'Downtown', 2), city: 'Dubai' },
+        { ...tallyRow('dubai', 'Dubai Marina', 1), city: 'Dubai' },
+        { ...tallyRow('punjab', 'Gulberg', 1), city: 'Lahore' },
+        { ...tallyRow('punjab', 'Johar Town', 0), city: 'Johar' },
+      ];
+      const result = await service.searchProperties('c1', 'u1', {
+        amenities: [['sea_view']],
+      });
+      expect(result).toMatchObject({
+        cityNeeded: true,
+        total: 0,
+        citiesWithListings: [
+          { name: 'Dubai', count: 3 },
+          { name: 'Lahore', count: 1 },
+        ],
+      });
+      expect(unitQb.getMany).not.toHaveBeenCalled();
+    });
+
+    it('searches an amenity alone when only one city has it, from the same tally', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [{ ...tallyRow('dubai', 'Jumeirah', 3), city: 'Dubai' }];
+      const result = await service.searchProperties('c1', 'u1', {
+        amenities: [['private_pool']],
+      });
+      expect(result.cityNeeded).toBeUndefined();
+      expect(result.total).toBe(3);
+      expect(repos.unitRepo.createQueryBuilder).toHaveBeenCalledTimes(2);
+    });
+
+    it('asks for a city when an amenity sent as a place is the only requirement', async () => {
+      agent(['punjab', 'dubai']);
+      tallyRows = [
+        { ...tallyRow('dubai', 'Downtown', 2), city: 'Dubai' },
+        { ...tallyRow('punjab', 'Gulberg', 1), city: 'Lahore' },
+      ];
+      unitQb.getRawMany.mockImplementation(() => {
+        const last = unitQb.select.mock.calls.at(-1)?.[1];
+        return Promise.resolve(
+          last === 'assetId'
+            ? placeRows
+            : last === 'key'
+              ? [{ key: 'sea_view' }]
+              : tallyRows,
+        );
+      });
+      const result = await service.searchProperties('c1', 'u1', {
+        place: ['Sea View'],
+      });
+      expect(result.cityNeeded).toBe(true);
+      expect(result.routed?.[0]).toContain('the amenity Sea view');
+    });
+
+    it('searches an amenity alone when the listings are in one city', async () => {
+      agent(['dubai']);
+      const result = await service.searchProperties('c1', 'u1', {
+        amenities: [['sea_view']],
+      });
+      expect(result.cityNeeded).toBeUndefined();
+      expect(result.total).toBe(3);
+    });
+
+    it('compares a budget without a period with the period each rental is closer to', async () => {
+      agent(['dubai']);
+      tallyRows = [tallyRow('dubai', 'Downtown', 3, 1)];
+      const result = await service.searchProperties('c1', 'u1', {
+        maxPrice: 150000,
+        budgetCurrency: 'AED',
+      });
+      expect(result.total).toBe(1);
+      expect(unitQb.addSelect).toHaveBeenCalledWith(
+        "COUNT(*) FILTER (WHERE (CASE WHEN u.propertyType = 'RENTAL' AND :budgetReference >= u.price * 3.4641 THEN u.price * 12 <= :maxPrice ELSE u.price <= :maxPrice END))",
+        'inBudget',
+      );
+    });
+
+    it.each([
+      ['month', 'u.price <= :maxPrice'],
+      [
+        'year',
+        "(CASE WHEN u.propertyType = 'RENTAL' THEN u.price * 12 <= :maxPrice ELSE u.price <= :maxPrice END)",
+      ],
+    ] as const)(
+      'compares a %s budget with that reading only',
+      async (budgetPeriod, clause) => {
+        agent(['dubai']);
+        const result = await service.searchProperties('c1', 'u1', {
+          maxPrice: 150000,
+          budgetCurrency: 'AED',
+          budgetPeriod,
+        });
+        expect(result.total).toBeGreaterThan(0);
+        expect(whereCalls()).toContainEqual({
+          clause,
+          params: { maxPrice: 150000 },
+        });
+      },
+    );
+
+    const UNIT_CORE =
+      "regexp_replace(regexp_replace(lower(regexp_replace(u.unitNumber, '[^a-zA-Z0-9]', '', 'g')), '^[a-z]{2,}([0-9])', '\\1'), '^0+([0-9])', '\\1') IN (:...unitKeys)";
+
+    it('matches a unit by its number without the leading word, so either reading of a unit after its building is one key', async () => {
       agent(['dubai']);
       await service.searchProperties('c1', 'u1', {
-        amenities: ['pool', 'parking'],
+        unit: 'villa 22',
+        unitAlt: '22',
       });
-      const clauses = whereCalls().filter((c) => c.clause.startsWith('EXISTS'));
-      expect(clauses).toHaveLength(2);
-      expect(clauses[1].params).toEqual({ amenity1: '%parking%' });
+      expect(whereCalls()).toContainEqual({
+        clause: UNIT_CORE,
+        params: { unitKeys: ['22'] },
+      });
     });
 
-    it('sorts by the requested order, newest by default', async () => {
-      agent(['dubai']);
-      await service.searchProperties('c1', 'u1', { sort: 'price_low' });
-      expect(unitQb.orderBy).toHaveBeenLastCalledWith(
-        'u.price',
-        'ASC',
-        'NULLS LAST',
-      );
-      await service.searchProperties('c1', 'u1', {});
-      expect(unitQb.orderBy).toHaveBeenLastCalledWith(
-        'u.createdAt',
-        'DESC',
-        'NULLS LAST',
+    it('keeps a single letter before the number and drops leading zeros', async () => {
+      agent(['sindh']);
+      unitRows = [
+        { assetId: 'a1', unitNumber: 'A-403' },
+        { assetId: 'a1', unitNumber: 'TH 08' },
+      ];
+      await service.searchProperties('c1', 'u1', { unit: 'A-403' });
+      await service.searchProperties('c1', 'u1', { unit: 'TH 08' });
+      const keys = whereCalls()
+        .filter((c) => c.clause === UNIT_CORE)
+        .map((c) => c.params);
+      expect(keys).toEqual(
+        expect.arrayContaining([{ unitKeys: ['a403'] }, { unitKeys: ['8'] }]),
       );
     });
 
-    it('returns at most 20 units with the total match count', async () => {
+    it('requires one of the amenity keys asked for, never a substring', async () => {
       agent(['dubai']);
-      const fakeUnits = [{ id: 'u-1' }];
-      unitQb.getManyAndCount.mockResolvedValue([fakeUnits, 7]);
-      const result = await service.searchProperties('c1', 'u1', {});
-      expect(unitQb.take).toHaveBeenCalledWith(20);
-      expect(result).toEqual({ units: fakeUnits, total: 7 });
+      await service.searchProperties('c1', 'u1', {
+        amenities: [['ac'], ['covered_parking', 'free_parking']],
+      });
+      const clauses = whereCalls().filter((c) =>
+        c.clause.includes('u.amenities'),
+      );
+      expect(clauses).toEqual([
+        {
+          clause: 'u.amenities ?| CAST(:amenity0 AS text[])',
+          params: { amenity0: ['ac'] },
+        },
+        {
+          clause: 'u.amenities ?| CAST(:amenity1 AS text[])',
+          params: { amenity1: ['covered_parking', 'free_parking'] },
+        },
+        {
+          clause: 'u.amenities ?| CAST(:amenity0 AS text[])',
+          params: { amenity0: ['ac'] },
+        },
+        {
+          clause: 'u.amenities ?| CAST(:amenity1 AS text[])',
+          params: { amenity1: ['covered_parking', 'free_parking'] },
+        },
+      ]);
+    });
+  });
+
+  describe('listLocations', () => {
+    it('returns the scoped place rows, filtered by listing type', async () => {
+      repos.userRepo.findOne.mockResolvedValue({
+        id: 'u1',
+        role: 'agent',
+        regionCodes: ['dubai'],
+      });
+      const qb = {
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { assetId: 'a1', regionCode: 'dubai', type: 'RENTAL', count: '3' },
+          { assetId: 'a1', regionCode: 'dubai', type: 'FOR_SALE', count: '1' },
+          { assetId: 'a2', regionCode: 'punjab', type: 'FOR_SALE', count: '4' },
+        ]),
+      };
+      repos.unitRepo.createQueryBuilder.mockReturnValue(qb);
+      service = makeService(repos);
+      const rows = await service.listLocations('c1', 'u1', 'SALE');
+      expect(rows).toEqual([
+        { assetId: 'a1', regionCode: 'dubai', type: 'FOR_SALE', count: 1 },
+      ]);
     });
   });
 });

@@ -230,7 +230,9 @@ describe('units import against a real database', () => {
       'notes',
       'fileName',
     ]);
-    expect(redis.forget).not.toHaveBeenCalled();
+    expect(redis.forget.mock.calls).toEqual([
+      [`ref:company-places:${companyId}`],
+    ]);
   });
 
   it('returns each unit imported without an owner with its id and locality', async () => {
