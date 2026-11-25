@@ -55,11 +55,18 @@ describe('TOOL_DEFINITIONS', () => {
   const tool = (name: string) =>
     TOOL_DEFINITIONS.find((t: any) => t.function.name === name) as any;
 
-  it('contains only search_properties and list_locations', () => {
+  it('contains search_properties, list_locations and escalate_to_staff', () => {
     expect(TOOL_DEFINITIONS.map((t: any) => t.function.name)).toEqual([
       'search_properties',
       'list_locations',
+      'escalate_to_staff',
     ]);
+  });
+
+  it('escalate_to_staff takes only a request or complaint reason', () => {
+    const p = tool('escalate_to_staff').function.parameters;
+    expect(p.required).toEqual(['reason']);
+    expect(p.properties.reason.enum).toEqual(['request', 'complaint']);
   });
 
   it('search_properties takes arrays of places, exact bedrooms, currency and page', () => {
@@ -686,6 +693,29 @@ describe('executeTool', () => {
       'USD',
     );
     expect(repo.listLocations).toHaveBeenCalledWith('c1', 'u1', 'RENT');
+  });
+
+  it('returns the hand-off reason from escalate_to_staff without touching the repository', async () => {
+    const complaint = await executeTool(
+      'escalate_to_staff',
+      { reason: 'Complaint' },
+      'c1',
+      'u1',
+      repo as any,
+      'USD',
+    );
+    expect(complaint.escalation).toBe('complaint');
+    expect(complaint.text).toMatch(/team is notified/);
+    const request = await executeTool(
+      'escalate_to_staff',
+      {},
+      'c1',
+      'u1',
+      repo as any,
+      'USD',
+    );
+    expect(request.escalation).toBe('request');
+    expect(repo.searchProperties).not.toHaveBeenCalled();
   });
 
   it('returns unknown tool result for unrecognized tool name', async () => {

@@ -19,7 +19,6 @@ import { WhatsappSendError } from './whatsapp-cloud-api.service';
 import { staffPrices, withdrawnUnits } from './whatsapp-ai-guards';
 import {
   DIRECT_CONTACT_RESPONSE,
-  FALLBACK_REPLIES,
   MARKER_TOKEN,
   STAFF_LINE_PREFIX,
 } from './whatsapp-ai-filter';
@@ -2520,9 +2519,7 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockSend).toHaveBeenLastCalledWith('c1', FALLBACK_REPLIES.en, {
-        creditCharged: false,
-      });
+      expect(mockSend).toHaveBeenCalledTimes(1);
       expect(mockRepo.consumeConversationCredit).toHaveBeenCalledTimes(1);
       expect(mockRepo.recordTurnDelivered).toHaveBeenCalledTimes(1);
       expect(
@@ -3953,9 +3950,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       },
     );
 
-    expect(send).toHaveBeenCalledWith('harness-c', FALLBACK_REPLIES.en, {
-      creditCharged: false,
-    });
+    expect(send).not.toHaveBeenCalled();
     expect(trace.outcome).toBe('provider_unavailable');
     expect(trace.fallback).toBe('static');
     expect(trace.llmCalls[0]).toEqual(
@@ -4508,13 +4503,14 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
-    it('escalates an explicit ask for a human', async () => {
-      route(read(['request']), [mockTextResponse('Sure.')]);
+    it('never escalates on a classifier label when the model does not call escalate_to_staff', async () => {
+      route(read(['request']), [mockTextResponse('Sure, Urdu it is.')]);
 
-      const { trace } = await turn('I want a human');
+      const { sent, trace } = await turn('Urdu mein baat karo');
 
-      expect(trace.read?.labels).toEqual(['request']);
-      expect(chatAiStateMock.escalate).toHaveBeenCalled();
+      expect(trace.escalation).toBeUndefined();
+      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+      expect(sent).toEqual(['Sure, Urdu it is.']);
     });
 
     it('never declines a photo as supplied wording', async () => {
@@ -4543,22 +4539,350 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(sent).toEqual(['You are welcome.']);
     });
 
-    it('escalates a request for a human and appends the one hand-off line', async () => {
-      route(read(['request']), [
+    it('escalates when the model calls escalate_to_staff and appends the one hand-off line', async () => {
+      route(read(['neither']), [
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
         mockTextResponse(
           'Sure. A person from our team will contact you shortly.',
         ),
       ]);
 
-      const { sent } = await turn('I want a human');
+      const { sent, trace } = await turn('I want a human');
 
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
       expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
         'company-1',
         'user-1',
         'chat-l',
         'request',
       );
-      expect(sent[0]).toBe(`Sure.\n\n${ESCALATION_REPLIES.request.en}`);
+      expect(trace.escalation).toEqual({
+        reason: 'request',
+        applied: true,
+        notified: true,
+      });
+      expect(sent).toEqual([`Sure.\n\n${ESCALATION_REPLIES.request.en}`]);
+      const toolResult = generationBodies[1].messages.find(
+        (m: any) => m.role === 'tool',
+      );
+      expect(toolResult.content).toMatch(/Never promise contact/);
+    });
+
+    it('escalates a complaint from the tool with the complaint line, ranked over a request', async () => {
+      route(read(['neither']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 't1',
+              type: 'function',
+              function: {
+                name: 'escalate_to_staff',
+                arguments: '{"reason":"complaint"}',
+              },
+            },
+            {
+              id: 't2',
+              type: 'function',
+              function: {
+                name: 'escalate_to_staff',
+                arguments: '{"reason":"request"}',
+              },
+            },
+          ],
+        }),
+        mockTextResponse('I am sorry the repair failed again.'),
+      ]);
+
+      const { sent } = await turn('the AC repair failed again, call me');
+
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'chat-l',
+        'complaint',
+      );
+      expect(sent).toEqual([
+        `I am sorry the repair failed again.\n\n${ESCALATION_REPLIES.complaint.en}`,
+      ]);
+    });
+
+    it('ranks a payment label over the tool and sends no hand-off line', async () => {
+      route(read(['payment']), [
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
+        mockTextResponse('Thanks for telling us.'),
+      ]);
+
+      const { sent } = await turn('the agent wants an advance, call me');
+
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+      expect(chatAiStateMock.escalate.mock.calls[0][3]).toBe('payment');
+      expect(sent[0]).not.toContain(ESCALATION_REPLIES.request.en);
+    });
+
+    it('escalates from the tool after the search tool-call limit is spent', async () => {
+      process.env.AI_MAX_TOOL_CALLS = '1';
+      const call = (id: string, name: string, args: string) => ({
+        id,
+        type: 'function',
+        function: { name, arguments: args },
+      });
+      route(read(['neither']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            call('t1', 'search_properties', '{"minBedrooms":2}'),
+            call('t2', 'search_properties', '{"minBedrooms":3}'),
+            call('t3', 'escalate_to_staff', '{"reason":"request"}'),
+          ],
+        }),
+        mockTextResponse('Here is what I found.'),
+      ]);
+
+      const { sent, trace } = await turn('2 or 3 bed, and call me');
+      delete process.env.AI_MAX_TOOL_CALLS;
+
+      expect(trace.toolCalls.map((t) => t.name)).toEqual([
+        'search_properties',
+        'escalate_to_staff',
+      ]);
+      const results = generationBodies[1].messages.filter(
+        (m: any) => m.role === 'tool',
+      );
+      expect(results[1].content).toMatch(/search limit reached/);
+      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'chat-l',
+        'request',
+      );
+      expect(sent[0]).toContain(ESCALATION_REPLIES.request.en);
+    });
+
+    it('offers only escalate_to_staff on the last step and still escalates', async () => {
+      process.env.AI_MAX_STEPS = '1';
+      route(read(['neither']), [
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
+        mockTextResponse('Sure.'),
+      ]);
+
+      const { sent } = await turn('I want a human');
+      delete process.env.AI_MAX_STEPS;
+
+      expect(
+        generationBodies[0].tools.map((t: any) => t.function.name),
+      ).toEqual(['escalate_to_staff']);
+      expect(generationBodies[0].tool_choice).toBeUndefined();
+      expect(generationBodies[1].tool_choice).toBe('none');
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+      expect(sent).toEqual([`Sure.\n\n${ESCALATION_REPLIES.request.en}`]);
+    });
+
+    it('never runs a search on the last step', async () => {
+      process.env.AI_MAX_STEPS = '1';
+      route(read(['neither']), [
+        mockToolCallResponse('t1', 'search_properties', '{"minBedrooms":2}'),
+        mockTextResponse('Which area do you prefer?'),
+      ]);
+
+      const { trace } = await turn('2 bed?');
+      delete process.env.AI_MAX_STEPS;
+
+      expect(trace.toolCalls).toEqual([]);
+      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+    });
+
+    it('sends only the hand-off line, with no credit, when the reply only promised contact', async () => {
+      route(read(['neither']), [
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
+        mockTextResponse('A person from our team will contact you shortly.'),
+      ]);
+      const send = jest.fn().mockResolvedValue({});
+      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
+
+      await service.runTurn(
+        'company-1',
+        'user-1',
+        'chat-l',
+        ['m1'],
+        'I want a human',
+        send,
+        undefined,
+        { trace },
+      );
+
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledWith(
+        'chat-l',
+        ESCALATION_REPLIES.request.en,
+        { creditCharged: false },
+      );
+      expect(repo.consumeConversationCredit).not.toHaveBeenCalled();
+      expect(repo.recordTurnDelivered).not.toHaveBeenCalled();
+      expect(trace.outcome).toBe('replied');
+      expect(
+        (await service.getHistoryFor('user-1', 'chat-l')).map((m) => m.role),
+      ).toEqual(['user', 'assistant']);
+    });
+
+    it('charges a promise-only intro with cards and drops the promise after them', async () => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing('7')],
+        total: 1,
+        offset: 0,
+      });
+      route(read(['new_property_request']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 't1',
+              type: 'function',
+              function: { name: 'search_properties', arguments: '{}' },
+            },
+            {
+              id: 't2',
+              type: 'function',
+              function: {
+                name: 'escalate_to_staff',
+                arguments: '{"reason":"request"}',
+              },
+            },
+          ],
+        }),
+        mockTextResponse(
+          'A person from our team will contact you shortly.\n\n[LISTING_CARDS]\n\nOur team will contact you about the viewing.',
+        ),
+      ]);
+      const send = jest.fn().mockResolvedValue({});
+      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
+
+      await service.runTurn(
+        'company-1',
+        'user-1',
+        'chat-l',
+        ['m1'],
+        'show me the 2 bed in the marina tomorrow',
+        send,
+        undefined,
+        { trace },
+      );
+
+      expect(send).toHaveBeenCalledTimes(1);
+      const [, sent, opts] = send.mock.calls[0];
+      expect(sent).toMatch(/^1\) Marina Gate, unit 7/);
+      expect(sent).not.toContain('about the viewing');
+      expect(sent).toMatch(
+        new RegExp(`Size: 1,000 sqft\\n\\n${ESCALATION_REPLIES.request.en}$`),
+      );
+      expect(opts).toEqual({ creditCharged: true });
+      expect(repo.consumeConversationCredit).toHaveBeenCalledTimes(1);
+      expect(repo.recordTurnDelivered).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the whole reply and sends no cards when the model escalates a complaint beside a search', async () => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing('7')],
+        total: 1,
+        offset: 0,
+      });
+      const reply =
+        'I am sorry the viewing was missed.\n\nThat should not have happened.\n\nThank you for your patience.';
+      route(read(['new_property_request']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 't1',
+              type: 'function',
+              function: { name: 'search_properties', arguments: '{}' },
+            },
+            {
+              id: 't2',
+              type: 'function',
+              function: {
+                name: 'escalate_to_staff',
+                arguments: '{"reason":"complaint"}',
+              },
+            },
+          ],
+        }),
+        mockTextResponse(reply),
+      ]);
+
+      const { sent, trace } = await turn(
+        'nobody came to the viewing, show me other 2 beds',
+      );
+
+      expect(trace.cards).toBe(0);
+      expect(sent).toEqual([
+        `I am sorry the viewing was missed. That should not have happened. Thank you for your patience.\n\n${ESCALATION_REPLIES.complaint.en}`,
+      ]);
+    });
+
+    it('sends nothing and charges nothing when the provider fails', async () => {
+      route(read(['neither']), []);
+      const send = jest.fn().mockResolvedValue({});
+      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
+
+      await service.runTurn(
+        'company-1',
+        'user-1',
+        'chat-l',
+        ['m1'],
+        'مرحبا، هل الشقة متاحة؟',
+        send,
+        undefined,
+        { trace },
+      );
+
+      expect(trace.outcome).toBe('provider_unavailable');
+      expect(send).not.toHaveBeenCalled();
+      expect(repo.consumeConversationCredit).not.toHaveBeenCalled();
+      expect(
+        (await service.getHistoryFor('user-1', 'chat-l')).map((m) => m.role),
+      ).toEqual(['user']);
+    });
+
+    it('sends only the hand-off line, with no credit, when the provider fails after escalate_to_staff', async () => {
+      route(read(['neither']), [
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
+      ]);
+      const send = jest.fn().mockResolvedValue({});
+      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
+
+      await service.runTurn(
+        'company-1',
+        'user-1',
+        'chat-l',
+        ['m1'],
+        'I want a human',
+        send,
+        undefined,
+        { trace },
+      );
+
+      expect(trace.outcome).toBe('provider_unavailable');
+      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(send).toHaveBeenCalledWith(
+        'chat-l',
+        ESCALATION_REPLIES.request.en,
+        { creditCharged: false },
+      );
+      expect(repo.consumeConversationCredit).not.toHaveBeenCalled();
+      const history = await service.getHistoryFor('user-1', 'chat-l');
+      expect(history[history.length - 1]).toEqual(
+        expect.objectContaining({
+          role: 'assistant',
+          content: ESCALATION_REPLIES.request.en,
+        }),
+      );
     });
 
     it.each([
@@ -4728,20 +5052,15 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(trace.optOut?.source).toBe('classifier');
     });
 
-    it('gives the classifier our previous reply, quoted, before the customer message', async () => {
+    it('gives the classifier only the customer message and no request or complaint label', async () => {
       redis.store.set(
         'wa:ai:hist:user-1:chat-p',
         JSON.stringify([
           { role: 'user', content: 'cheap flats in Dubai', at: 1 },
           {
             role: 'assistant',
-            content: 'Shall I search cheap <b>Dubai</b> apartments?',
+            content: `Shall I search? ${ESCALATION_REPLIES.request.en}`,
             at: 2,
-          },
-          {
-            role: 'assistant',
-            content: `${STAFF_LINE_PREFIX}\nStaff line`,
-            at: 3,
           },
         ]),
       );
@@ -4749,45 +5068,11 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       await turn('Dhoondo ab', 'chat-p');
 
-      const content = JSON.parse(classifierBodies[0]).messages[1]
-        .content as string;
-      expect(content).toBe(
-        '<assistant_reply>\nShall I search cheap  b Dubai /b  apartments?\n</assistant_reply>\n<customer_message>\nDhoondo ab\n</customer_message>',
+      const messages = JSON.parse(classifierBodies[0]).messages;
+      expect(messages[1].content).toBe(
+        '<customer_message>\nDhoondo ab\n</customer_message>',
       );
-    });
-
-    it('keeps the tail of a long previous reply without splitting an emoji', async () => {
-      redis.store.set(
-        'wa:ai:hist:user-1:chat-t',
-        JSON.stringify([
-          { role: 'user', content: 'flats', at: 1 },
-          {
-            role: 'assistant',
-            content: `x\u{1F600}${'a'.repeat(599)}`,
-            at: 2,
-          },
-        ]),
-      );
-      route(read(['neither']), [mockTextResponse('Ok.')]);
-
-      await turn('ok', 'chat-t');
-
-      const content = JSON.parse(classifierBodies[0]).messages[1]
-        .content as string;
-      expect(
-        content.startsWith(`<assistant_reply>\n\u{1F600}${'a'.repeat(599)}\n`),
-      ).toBe(true);
-    });
-
-    it('sends the classifier only the customer message when there is no previous reply', async () => {
-      route(read(['neither']), [mockTextResponse('Hello.')]);
-
-      await turn('hello', 'chat-n');
-
-      const content = JSON.parse(classifierBodies[0]).messages[1]
-        .content as string;
-      expect(content).not.toContain('<assistant_reply>');
-      expect(content).toBe('<customer_message>\nhello\n</customer_message>');
+      expect(messages[0].content).not.toMatch(/^- (request|complaint):/m);
     });
 
     it('offers no pricing tool and passes a notes answer with no figure', async () => {
@@ -4801,7 +5086,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       expect(
         generationBodies[0].tools.map((t: any) => t.function.name),
-      ).toEqual(['search_properties', 'list_locations']);
+      ).toEqual(['search_properties', 'list_locations', 'escalate_to_staff']);
       expect(sent).toEqual([
         'Our prices are at example.com/pricing, and we can call you back if you like.',
       ]);
@@ -4937,6 +5222,42 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(trace.outcome).toBe('opted_out');
     });
 
+    it('reads request and complaint only for an opted-out chat and hands a request over with its line', async () => {
+      chatAiStateMock.get.mockResolvedValue({ optedOutAt: new Date() });
+      route(read(['request']), []);
+
+      const { sent, trace } = await turn('I want to talk to a person');
+
+      const prompt = JSON.parse(classifierBodies[0]).messages[0].content;
+      expect(prompt).toMatch(/^- request:/m);
+      expect(prompt).toMatch(/^- complaint:/m);
+      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'chat-l',
+        'request',
+      );
+      expect(sent).toEqual([ESCALATION_REPLIES.request.en]);
+      expect(trace.escalation?.reason).toBe('request');
+      expect(generationBodies).toHaveLength(0);
+    });
+
+    it('flags the first complaint on an opted-out chat without a reply', async () => {
+      chatAiStateMock.get.mockResolvedValue({ optedOutAt: new Date() });
+      route(read(['complaint']), []);
+
+      const { sent, trace } = await turn('your agent never showed up');
+
+      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'chat-l',
+        'complaint',
+      );
+      expect(sent).toEqual([]);
+      expect(trace.outcome).toBe('escalated_paused');
+    });
+
     it('holds an escalated chat and sends one holding line after the wait', async () => {
       chatAiStateMock.get.mockResolvedValue({
         escalatedAt: new Date(),
@@ -4986,7 +5307,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       );
     });
 
-    it('sends the static fallback when a reply with no cards is blocked twice', async () => {
+    it('sends nothing when a reply with no cards is blocked twice', async () => {
       route(read(['neither']), [
         mockTextResponse('We offer a 20% discount today.'),
         mockTextResponse('We offer a 20% discount today.'),
@@ -4995,7 +5316,43 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       const { sent, trace } = await turn('any offers?');
 
       expect(trace.fallback).toBe('static');
-      expect(sent).toEqual([FALLBACK_REPLIES.en]);
+      expect(trace.outcome).toBe('silent');
+      expect(sent).toEqual([]);
+    });
+
+    it('saves only the customer line when a turn after a tool round sends nothing', async () => {
+      route(read(['neither']), [
+        mockToolCallResponse('c1', 'search_properties', '{"minBedrooms":2}'),
+        mockTextResponse('We offer a 20% discount today.'),
+        mockTextResponse('We offer a 20% discount today.'),
+      ]);
+
+      const { sent, trace } = await turn('any offers on 2 bed?', 'chat-q');
+
+      expect(sent).toEqual([]);
+      expect(trace.outcome).toBe('silent');
+      expect(trace.historyPersisted).toBe(true);
+      expect(
+        (await service.getHistoryFor('user-1', 'chat-q')).map((m) => m.role),
+      ).toEqual(['user']);
+    });
+
+    it('keeps the customer text when history cannot be saved after a silent turn', async () => {
+      route(read(['neither']), [
+        mockTextResponse('We offer a 20% discount today.'),
+        mockTextResponse('We offer a 20% discount today.'),
+      ]);
+      const setJson = redis.setJson;
+      redis.setJson = (key: string, value: unknown) =>
+        key.startsWith('wa:ai:hist:')
+          ? Promise.reject(new Error('store down'))
+          : setJson(key, value);
+
+      const { sent, trace } = await turn('any offers?');
+
+      expect(sent).toEqual([]);
+      expect(trace.outcome).toBe('error');
+      expect(trace.customerTextKept).toBe(true);
     });
 
     it('keeps the prose before the cards and the last paragraph after, never a list or placeholder the model wrote', async () => {
@@ -5065,11 +5422,23 @@ describe('turn read helpers', () => {
       wantsStop: true,
       lang: null,
     });
-    expect(parseTurnRead('{"labels":"request"}')).toMatchObject({
+    expect(parseTurnRead('{"labels":"request"}', true)).toMatchObject({
       labels: ['request'],
     });
     expect(parseTurnRead('{"other":1}')).toBeNull();
     expect(parseTurnRead('not json')).toBeNull();
+  });
+
+  it('drops request and complaint unless the chat is held', () => {
+    expect(parseTurnRead('{"labels":"request"}')).toMatchObject({
+      labels: ['neither'],
+    });
+    expect(parseTurnRead('{"labels":["complaint","payment"]}')).toMatchObject({
+      labels: ['payment'],
+    });
+    expect(
+      parseTurnRead('{"labels":["complaint","payment"]}', true),
+    ).toMatchObject({ labels: ['payment', 'complaint'] });
   });
 
   it.each([
@@ -5110,10 +5479,11 @@ describe('turn read helpers', () => {
     ).toEqual(['payment']);
   });
 
-  it('ranks payment over a complaint over a request and finds the decline', () => {
+  it('ranks payment over the model hand-off, ignores request labels and finds the decline', () => {
     const r = (labels: any[]): TurnRead => ({ ...NEITHER, labels });
-    expect(escalationOf(r(['request', 'complaint']))).toBe('complaint');
-    expect(escalationOf(r(['request', 'payment']))).toBe('payment');
+    expect(escalationOf(r(['request', 'complaint']))).toBeNull();
+    expect(escalationOf(r(['neither']), 'complaint')).toBe('complaint');
+    expect(escalationOf(r(['payment']), 'request')).toBe('payment');
     expect(escalationOf(r(['new_property_request']))).toBeNull();
     expect(declineOf(r(['new_property_request', 'rules_request']))).toBe(
       'rules_request',

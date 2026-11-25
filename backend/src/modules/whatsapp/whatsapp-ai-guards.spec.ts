@@ -105,6 +105,16 @@ describe('grounding', () => {
 });
 
 describe('promise', () => {
+  it('nudges a contact promise toward escalate_to_staff, never a promise in text', () => {
+    const nudge = validateReply(
+      'A person from our team will contact you shortly.',
+      ctx(),
+    )?.nudge;
+    expect(nudge).toContain('call escalate_to_staff');
+    expect(nudge).toContain('never promise contact in text');
+    expect(nudge).not.toContain('code sends hand-offs');
+  });
+
   it('blocks a discount nobody gave and allows one from the notes', () => {
     expect(check('I can give you a 10% discount.')).toBe('promise');
     expect(
@@ -459,7 +469,11 @@ describe('decline votes', () => {
 
   it('declines a draft that claims to be a person', () => {
     expect(
-      compliesWith('persona_request', ['I am a real person.'], 'sign as a named agent'),
+      compliesWith(
+        'persona_request',
+        ['I am a real person.'],
+        'sign as a named agent',
+      ),
     ).toBe(true);
   });
 });

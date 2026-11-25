@@ -310,7 +310,31 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'escalate_to_staff',
+      description:
+        'Hand this chat to the company team: they are notified and code tells the customer. Call it only when the customer explicitly asks for a person, agent or callback, a viewing, a booking or a hold; when an owner has given the area, type and expected price of a property to list; or for a real complaint: bad service, a failed repair, a missed viewing, a rude person, being overcharged, or wrong information from you. Never for a price opinion or haggling, a language switch, a search, small talk, an off-topic ask, a greeting, or a question about why a person is involved.',
+      parameters: {
+        type: 'object',
+        properties: {
+          reason: {
+            type: 'string',
+            enum: ['request', 'complaint'],
+            description:
+              'request: a person, callback, viewing, booking or hold, or an owner listing a property; complaint: a real grievance.',
+          },
+        },
+        required: ['reason'],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
+
+const ESCALATED_RESULT =
+  'Done: the team is notified and code adds a line telling the customer. Never promise contact or say the team was told yourself; answer the rest of the message.';
 
 // A currency no listing can be priced in: its code when it looks like one, otherwise "other".
 const foreignCurrency = (value: unknown): string | undefined => {
@@ -1908,9 +1932,12 @@ export function toolArgumentProblems(
     .join(' ');
 }
 
+export type HandoffReason = 'request' | 'complaint';
+
 export interface ToolOutcome {
   text: string;
   listings?: Listing[];
+  escalation?: HandoffReason;
 }
 
 export async function executeTool(
@@ -1936,6 +1963,14 @@ export async function executeTool(
       listingType(args.type),
     );
     return { text: formatLocations(rows, fallbackCurrency) };
+  }
+  if (name === 'escalate_to_staff') {
+    const reason =
+      typeof args.reason === 'string' &&
+      args.reason.trim().toLowerCase() === 'complaint'
+        ? 'complaint'
+        : 'request';
+    return { text: ESCALATED_RESULT, escalation: reason };
   }
   return { text: 'Unknown tool.' };
 }

@@ -239,7 +239,11 @@ describe('WhatsappAiPromptBuilderService', () => {
       const named = new Set(RULES_BLOCK.match(/\b[a-z]+(?:_[a-z]+)+\b/g));
       const tools = TOOL_DEFINITIONS.map((t) => t.function.name);
       expect([...named].every((name) => tools.includes(name))).toBe(true);
-      expect(tools.sort()).toEqual(['list_locations', 'search_properties']);
+      expect(tools.sort()).toEqual([
+        'escalate_to_staff',
+        'list_locations',
+        'search_properties',
+      ]);
     });
 
     it('keeps the rules block under 600 words and the tool descriptions under 500', () => {

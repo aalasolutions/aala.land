@@ -382,16 +382,6 @@ export function scriptLanguage(text: string): OptLanguage {
   return URDU_LETTERS.test(text) ? 'ur' : 'ar';
 }
 
-export const FALLBACK_REPLIES: Readonly<Record<OptLanguage, string>> = {
-  en: "Sorry, I couldn't answer that just now. Please send your message again in a moment, or ask to speak with our team.",
-  ar: 'عذرًا، لم أتمكن من الرد على ذلك الآن. يرجى إرسال رسالتك مرة أخرى بعد قليل، أو اطلب التحدث مع فريقنا.',
-  ur: 'معذرت، میں ابھی اس کا جواب نہیں دے سکا۔ براہ کرم تھوڑی دیر بعد اپنا پیغام دوبارہ بھیجیں، یا ہماری ٹیم سے بات کرنے کو کہیں۔',
-  'ur-Latn':
-    'Maazrat, main abhi iska jawab nahi de saka. Thori dair baad apna message dobara bhejein, ya hamari team se baat karne ka kahein.',
-  'ar-Latn':
-    'Afwan, ma 2dirt arod 3ala hatha el7een. Arjo terselli resaltak marra thanya ba3d shwayya, aw otlob tetkallam ma3 fari2na.',
-};
-
 // Marks a line in AI history that staff sent to the customer.
 export const STAFF_LINE_PREFIX =
   '[Sent to the customer by a person from the team, not by you]';

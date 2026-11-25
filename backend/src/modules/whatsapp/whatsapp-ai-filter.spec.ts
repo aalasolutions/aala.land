@@ -12,7 +12,6 @@ import {
   asksForNameOrShortAnswer,
   stripStaffLinePrefix,
   compactToolResult,
-  FALLBACK_REPLIES,
   STAFF_LINE_PREFIX,
   CUSTOMER_CLAIM_LABEL,
   staffClaimLines,
@@ -361,12 +360,6 @@ describe('scriptLanguage', () => {
     ['Je cherche un appartement', 'en'],
   ])('reads %j as %s', (text, code) => {
     expect(scriptLanguage(text)).toBe(code);
-  });
-
-  it('has a fallback reply for every fixed-line language', () => {
-    expect(Object.keys(FALLBACK_REPLIES).sort()).toEqual(
-      ['ar', 'ar-Latn', 'en', 'ur', 'ur-Latn'].sort(),
-    );
   });
 });
 
