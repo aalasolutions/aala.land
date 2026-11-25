@@ -4728,6 +4728,68 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(trace.optOut?.source).toBe('classifier');
     });
 
+    it('gives the classifier our previous reply, quoted, before the customer message', async () => {
+      redis.store.set(
+        'wa:ai:hist:user-1:chat-p',
+        JSON.stringify([
+          { role: 'user', content: 'cheap flats in Dubai', at: 1 },
+          {
+            role: 'assistant',
+            content: 'Shall I search cheap <b>Dubai</b> apartments?',
+            at: 2,
+          },
+          {
+            role: 'assistant',
+            content: `${STAFF_LINE_PREFIX}\nStaff line`,
+            at: 3,
+          },
+        ]),
+      );
+      route(read(['new_property_request']), [mockTextResponse('Searching.')]);
+
+      await turn('Dhoondo ab', 'chat-p');
+
+      const content = JSON.parse(classifierBodies[0]).messages[1]
+        .content as string;
+      expect(content).toBe(
+        '<assistant_reply>\nShall I search cheap  b Dubai /b  apartments?\n</assistant_reply>\n<customer_message>\nDhoondo ab\n</customer_message>',
+      );
+    });
+
+    it('keeps the tail of a long previous reply without splitting an emoji', async () => {
+      redis.store.set(
+        'wa:ai:hist:user-1:chat-t',
+        JSON.stringify([
+          { role: 'user', content: 'flats', at: 1 },
+          {
+            role: 'assistant',
+            content: `x\u{1F600}${'a'.repeat(599)}`,
+            at: 2,
+          },
+        ]),
+      );
+      route(read(['neither']), [mockTextResponse('Ok.')]);
+
+      await turn('ok', 'chat-t');
+
+      const content = JSON.parse(classifierBodies[0]).messages[1]
+        .content as string;
+      expect(
+        content.startsWith(`<assistant_reply>\n\u{1F600}${'a'.repeat(599)}\n`),
+      ).toBe(true);
+    });
+
+    it('sends the classifier only the customer message when there is no previous reply', async () => {
+      route(read(['neither']), [mockTextResponse('Hello.')]);
+
+      await turn('hello', 'chat-n');
+
+      const content = JSON.parse(classifierBodies[0]).messages[1]
+        .content as string;
+      expect(content).not.toContain('<assistant_reply>');
+      expect(content).toBe('<customer_message>\nhello\n</customer_message>');
+    });
+
     it('offers no pricing tool and passes a notes answer with no figure', async () => {
       route(read(['neither']), [
         mockTextResponse(
