@@ -1,10 +1,16 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   In,
   IsNull,
   MoreThan,
   Not,
+  Raw,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
@@ -14,6 +20,10 @@ import {
   AI_CONVERSATION_WINDOW_MS,
 } from '../companies/entities/company.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
+import {
+  MediaType,
+  PropertyMedia,
+} from '../properties/entities/property-media.entity';
 import { PropertyType } from '../properties/entities/property-type.enum';
 import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { User } from '../users/entities/user.entity';
@@ -203,11 +213,14 @@ interface CompanyCache {
   cachedAt: number;
 }
 
+const webLinkSql = (column: string): string => `${column} ~* '^https?://'`;
+
 // Caches are process-local: on multi-instance deploys, prompt edits stay stale until TTL
 @Injectable()
 export class WhatsappAiRepositoryService
   implements OnModuleInit, OnModuleDestroy
 {
+  private readonly logger = new Logger(WhatsappAiRepositoryService.name);
   private contextCache = new Map<string, ContextCache>();
   private promptCache = new Map<string, PromptCache>();
   private anchorCache = new Map<string, AnchorCache>();
@@ -237,6 +250,8 @@ export class WhatsappAiRepositoryService
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly redis: RedisService,
+    @InjectRepository(PropertyMedia)
+    private readonly mediaRepo: Repository<PropertyMedia>,
   ) {}
 
   onModuleInit(): void {
@@ -425,7 +440,12 @@ export class WhatsappAiRepositoryService
           scope,
           without(applied, ['city', 'place', 'placePositions']),
         );
-        if (alone.total) return { ...alone, unitElsewhere: true };
+        if (alone.total) {
+          return this.withPhotoCounts(companyId, {
+            ...alone,
+            unitElsewhere: true,
+          });
+        }
       }
       if (applied.kind?.length || applied.amenities?.length) {
         const rest = await this.search(
@@ -461,6 +481,38 @@ export class WhatsappAiRepositoryService
         }
       }
     }
+    return this.withPhotoCounts(companyId, result);
+  }
+
+  // One grouped query for the image counts of the returned units, web links only, as photos can be sent only from those.
+  private async withPhotoCounts(
+    companyId: string,
+    result: PropertySearchResult,
+  ): Promise<PropertySearchResult> {
+    const unitIds = result.units.map((u) => u.id);
+    if (!unitIds.length) return result;
+    let rows: { unitId: string; count: string }[];
+    try {
+      rows = await this.mediaRepo
+        .createQueryBuilder('m')
+        .select('m.unitId', 'unitId')
+        .addSelect('COUNT(*)', 'count')
+        .where('m.companyId = :companyId', { companyId })
+        .andWhere('m.unitId IN (:...unitIds)', { unitIds })
+        .andWhere('m.type = :type', { type: MediaType.IMAGE })
+        .andWhere(webLinkSql('m.url'))
+        .groupBy('m.unitId')
+        .getRawMany<{ unitId: string; count: string }>();
+    } catch (err) {
+      this.logger.warn(
+        `Photo counts unavailable for company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return result;
+    }
+    const counts = new Map(rows.map((r) => [r.unitId, Number(r.count)]));
+    result.photos = Object.fromEntries(
+      unitIds.map((id) => [id, counts.get(id) ?? 0]),
+    );
     return result;
   }
 
@@ -879,6 +931,39 @@ export class WhatsappAiRepositoryService
     return {
       sql: `(CASE WHEN ${rental} AND :budgetReference >= u.price * ${Math.sqrt(12).toFixed(4)} THEN ${yearly} ELSE ${monthly} END)`,
       params,
+    };
+  }
+
+  // Null when the unit is no longer an available listing of the company; links are images only, primary first, then newest.
+  async unitPhotoLinks(
+    companyId: string,
+    unitId: string,
+    limit: number,
+  ): Promise<{ unit: Unit; links: string[] } | null> {
+    const unit = await this.unitRepo.findOne({
+      where: {
+        id: unitId,
+        companyId,
+        status: UnitStatus.AVAILABLE,
+        deletedAt: IsNull(),
+      },
+      relations: ['asset', 'asset.locality', 'asset.locality.city'],
+    });
+    if (!unit) return null;
+    const media = await this.mediaRepo.find({
+      where: {
+        companyId,
+        unitId,
+        type: MediaType.IMAGE,
+        url: Raw(webLinkSql),
+      },
+      order: { isPrimary: 'DESC', createdAt: 'DESC' },
+      select: ['id', 'url'],
+      take: limit,
+    });
+    return {
+      unit,
+      links: media.map((m) => m.url),
     };
   }
 

@@ -58,6 +58,12 @@ import {
   Listing,
   executeTool,
   type HandoffReason,
+  type PhotoContext,
+  type PhotoSend,
+  type ShownUnit,
+  type ToolOutcome,
+  PHOTOS_FAILED_RESULT,
+  PHOTOS_PARTIAL_RESULT,
   renderCards,
   CARD_TYPE_WORDS,
   toolArgumentProblems,
@@ -120,10 +126,11 @@ import { envInt, envBool } from '@shared/utils/env.util';
 import { SystemEmailService } from '@modules/email/system-email.service';
 import { Company } from '@modules/companies/entities/company.entity';
 
+// With image set, the message is sent as that image's caption and the stored row reads as a labeled photo.
 export type SendFn = (
   chatId: string,
   message: string,
-  meta?: { creditCharged: boolean },
+  meta?: { creditCharged?: boolean; image?: { link: string; title: string } },
 ) => Promise<{ messageId?: string }>;
 
 // Resolved by the processor so this service stays free of transport dependencies.
@@ -255,6 +262,7 @@ export interface TurnTrace {
   read?: TurnRead;
   language?: OptLanguage;
   cards?: number;
+  photos?: number;
   escalation?: {
     reason: EscalationReason;
     applied: boolean;
@@ -275,7 +283,7 @@ export type ChatHistoryReader = (
   excludeIds: string[],
 ) => Promise<
   (Pick<WaMessage, 'body' | 'fromMe' | 'aiGenerated'> &
-    Partial<Pick<WaMessage, 'id' | 'timestamp' | 'deletedAt'>>)[]
+    Partial<Pick<WaMessage, 'id' | 'timestamp' | 'deletedAt' | 'hasMedia'>>)[]
 >;
 
 // Production callers pass nothing; test callers skip credits and collect a trace.
@@ -320,6 +328,7 @@ export interface ChatStateKeys {
   takeIndex: string;
   heldComplaint: string;
   requirements: string;
+  shown: string;
 }
 
 // What happened in the chat outside an AI turn, merged into AI history at the next turn.
@@ -399,6 +408,11 @@ const BAD_ARGUMENTS_RESULT =
 
 const NOT_PROPERTY_NOTE =
   'This message was not read as a property question, so no cards will be sent. If it asks about the company, its services, plans or fees, answer from COMPANY NOTES instead, with any link they give.';
+
+const PHOTOS_ALREADY_RESULT =
+  'Not sent: photos of one listing already go with this reply, and only one listing per message. Tell the customer they can ask for the other photos next.';
+
+const MAX_SHOWN_UNITS = 50;
 
 const TOOL_FAILED_RESULT =
   'The tool failed. Tell the customer you could not check right now.';
@@ -974,6 +988,7 @@ interface LoopResult {
   after: string;
   turn: AiHistoryMessage[];
   listings: Listing[];
+  photos?: PhotoSend & { callId: string };
   fallback?: 'draft' | 'static' | 'cards';
   providerFailed?: boolean;
 }
@@ -1051,6 +1066,10 @@ export class WhatsappAiService implements OnModuleInit {
 
   private requirementsKey(userId: string, chatId: string): string {
     return `wa:ai:reqs:${userId}:${chatId}`;
+  }
+
+  private shownKey(userId: string, chatId: string): string {
+    return `wa:ai:shown:${userId}:${chatId}`;
   }
 
   private heldComplaintKey(userId: string, chatId: string): string {
@@ -1215,6 +1234,7 @@ export class WhatsappAiService implements OnModuleInit {
       takeIndex: this.takeIndexKey(userId, chatId),
       heldComplaint: this.heldComplaintKey(userId, chatId),
       requirements: this.requirementsKey(userId, chatId),
+      shown: this.shownKey(userId, chatId),
     };
   }
 
@@ -1242,6 +1262,7 @@ export class WhatsappAiService implements OnModuleInit {
     await this.redis.delByPattern(this.lastInboundKey(userId, '*'));
     await this.redis.delByPattern(this.heldComplaintKey(userId, '*'));
     await this.redis.delByPattern(this.requirementsKey(userId, '*'));
+    await this.redis.delByPattern(this.shownKey(userId, '*'));
   }
 
   // Same cap and TTL a delivered turn applies.
@@ -2705,6 +2726,7 @@ export class WhatsappAiService implements OnModuleInit {
       trace.systemPrompt = systemPrompt;
 
       const requirements = await this.readRequirements(userId, chatId);
+      const shownBefore = await this.readShown(userId, chatId);
       const searchedAt = Number(requirements?.[SEARCHED_AT] ?? 0);
       // A staff line newer than the last search may change the requirements, so nothing is carried past it.
       const staffNewer = history.some(
@@ -2773,6 +2795,7 @@ export class WhatsappAiService implements OnModuleInit {
         deadline,
         trace,
         staff,
+        shownBefore,
         // A complaint hand-off is card-free, so the loop keeps the model's whole text.
         propertyTurn: () =>
           asked.reason !== 'complaint' &&
@@ -2985,15 +3008,43 @@ export class WhatsappAiService implements OnModuleInit {
       if (reply) {
         await send(chatId, reply, { creditCharged });
         replied = true;
+        await this.rememberShown(userId, chatId, shownBefore, cards);
       }
       deliveredModelReply = modelReply;
       trace.fallback = answer.fallback;
-      // Text written beside a tool call never reached the customer, so history keeps only the calls.
-      const steps = answer.turn.map((m) =>
-        m.role === 'assistant' ? { ...m, content: null } : m,
-      );
       // A silent turn keeps no tool rounds, so history never ends on a tool result.
       const silentTurn = modelFailed || (promiseOnly && cards.length === 0);
+      // Photos only for a unit whose card was delivered, this turn or earlier.
+      const photoUnit = answer.photos?.unitId;
+      const photoUnitShown =
+        !!photoUnit &&
+        [...shownBefore, ...cards].some((s) => s.unitId === photoUnit);
+      // Photos follow the delivered model text, never a fixed line alone and never an escalated turn.
+      const photosSent =
+        reply &&
+        modelReply &&
+        !silentTurn &&
+        !reason &&
+        !trace.escalation &&
+        photoUnitShown &&
+        answer.photos
+          ? await this.sendPhotos(ctx, answer.photos, flushStartedAt)
+          : 0;
+      const photosResult = !answer.photos
+        ? null
+        : photosSent === 0
+          ? PHOTOS_FAILED_RESULT
+          : photosSent < answer.photos.links.length
+            ? PHOTOS_PARTIAL_RESULT(answer.photos.caption, photosSent)
+            : null;
+      // Text written beside a tool call never reached the customer, so history keeps only the calls.
+      const steps = answer.turn.map((m) =>
+        m.role === 'assistant'
+          ? { ...m, content: null }
+          : photosResult && m.tool_call_id === answer.photos?.callId
+            ? { ...m, content: photosResult }
+            : m,
+      );
       if (reply && !silentTurn) history.push(...steps);
       if (reply) history.push({ role: 'assistant', content: reply });
       if (answer.providerFailed) {
@@ -3511,6 +3562,7 @@ export class WhatsappAiService implements OnModuleInit {
     deadline: number;
     trace: TurnTrace;
     staff: StaffNotes;
+    shownBefore: ShownUnit[];
     propertyTurn: () => boolean;
     visible: (listings: Listing[]) => Listing[];
     carryRequirements: (args: Requirements) => Promise<Requirements>;
@@ -3525,6 +3577,7 @@ export class WhatsappAiService implements OnModuleInit {
     };
     const turn: AiHistoryMessage[] = [];
     const listings: Listing[] = [];
+    const queued: { photos?: LoopResult['photos'] } = {};
     let toolCallsRun = 0;
     let draft: string | null = null;
     let nudged = false;
@@ -3539,6 +3592,7 @@ export class WhatsappAiService implements OnModuleInit {
       after,
       turn,
       listings,
+      ...(queued.photos && { photos: queued.photos }),
       ...(fallback && { fallback }),
       ...(providerFailed && { providerFailed }),
     });
@@ -3635,7 +3689,7 @@ export class WhatsappAiService implements OnModuleInit {
             call.name !== ESCALATE_TOOL && toolCallsRun >= maxToolCalls;
           let result = limited
             ? TOOL_LIMIT_RESULT
-            : await this.runTool(call, ctx, listings);
+            : await this.runTool(call, ctx, listings, queued);
           if (call.name !== ESCALATE_TOOL) toolCallsRun++;
           if (call.name === 'search_properties') {
             await ctx.labelsReady;
@@ -3745,8 +3799,13 @@ export class WhatsappAiService implements OnModuleInit {
       staff: StaffNotes;
       escalate: (reason: HandoffReason) => void;
       carryRequirements: (args: Requirements) => Promise<Requirements>;
+      shownBefore: ShownUnit[];
+      labelsReady: Promise<void>;
+      language: () => FixedLanguage;
+      visible: (listings: Listing[]) => Listing[];
     },
     listings: Listing[],
+    queued: { photos?: LoopResult['photos'] } = {},
   ): Promise<string> {
     const startedAt = Date.now();
     let result: string;
@@ -3780,14 +3839,22 @@ export class WhatsappAiService implements OnModuleInit {
             note = CARRIED_NOTE;
           }
         }
-        const output = await executeTool(
-          call.name,
-          args ?? given,
-          ctx.companyId,
-          ctx.userId,
-          this.repo,
-          ctx.fallbackCurrency,
-        );
+        const photoCall = call.name === 'send_property_photos';
+        const output: ToolOutcome =
+          photoCall && queued.photos
+            ? { text: PHOTOS_ALREADY_RESULT }
+            : await executeTool(
+                call.name,
+                args ?? given,
+                ctx.companyId,
+                ctx.userId,
+                this.repo,
+                ctx.fallbackCurrency,
+                photoCall ? await this.photoContext(ctx, listings) : undefined,
+              );
+        if (output.photos) {
+          queued.photos = { ...output.photos, callId: call.id };
+        }
         listings.push(...(output.listings ?? []));
         if (output.escalation) ctx.escalate(output.escalation);
         const found = output.listings ?? [];
@@ -3834,6 +3901,32 @@ export class WhatsappAiService implements OnModuleInit {
       ...(rejected && { rejected: true }),
     });
     return result;
+  }
+
+  // Cards sent earlier and this turn's cards, which go out before the photos.
+  private async photoContext(
+    ctx: {
+      fallbackCurrency: string;
+      staff: StaffNotes;
+      shownBefore: ShownUnit[];
+      labelsReady: Promise<void>;
+      language: () => FixedLanguage;
+      visible: (listings: Listing[]) => Listing[];
+    },
+    listings: Listing[],
+  ): Promise<PhotoContext> {
+    await ctx.labelsReady;
+    return {
+      shown: [
+        ...ctx.shownBefore,
+        ...renderCards(ctx.visible(listings), ctx.fallbackCurrency).slice(
+          0,
+          envInt('AI_MAX_CARDS', 10, 1),
+        ),
+      ],
+      withdrawn: (unit) => staffWithdrew(ctx.staff, unit),
+      language: ctx.language().code,
+    };
   }
 
   // Staff lines outrank listing data: the latest few are restated beside the rules so a price they set holds.
@@ -3918,6 +4011,8 @@ export class WhatsappAiService implements OnModuleInit {
       for (let i = rows.length - 1; i >= 0; i--) {
         const row = rows[i];
         if (row.fromMe && row.deletedAt) continue;
+        // AI photo rows hold only a label; live history never carries them, so the model never imitates one.
+        if (row.fromMe && row.aiGenerated && row.hasMedia) continue;
         const raw = (row.body ?? '').trim();
         const content = row.fromMe ? raw : sanitizeInput(raw).cleaned;
         if (!content) continue;
@@ -4150,6 +4245,96 @@ export class WhatsappAiService implements OnModuleInit {
       );
       return null;
     }
+  }
+
+  private async readShown(
+    userId: string,
+    chatId: string,
+  ): Promise<ShownUnit[]> {
+    try {
+      return (
+        (await this.redis.getJson<ShownUnit[]>(
+          this.shownKey(userId, chatId),
+        )) ?? []
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Shown units unavailable for ${userId}:${chatId}: ${errorMessage(err)}`,
+      );
+      return [];
+    }
+  }
+
+  // Units sent as cards, newest last; only these can have their photos sent.
+  private async rememberShown(
+    userId: string,
+    chatId: string,
+    before: ShownUnit[],
+    cards: ShownUnit[],
+  ): Promise<void> {
+    if (cards.length === 0) return;
+    const ids = new Set(cards.map((c) => c.unitId));
+    const shown = [
+      ...before.filter((s) => !ids.has(s.unitId)),
+      ...cards.map(({ unitId, unitNumber, building }) => ({
+        unitId,
+        unitNumber,
+        building,
+      })),
+    ].slice(-MAX_SHOWN_UNITS);
+    try {
+      await this.redis.setJson(
+        this.shownKey(userId, chatId),
+        shown,
+        this.AI_STATE_TTL_MS,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to save shown units for ${userId}:${chatId}: ${errorMessage(err)}`,
+      );
+    }
+  }
+
+  // Never throws: a photo that cannot be sent leaves the delivered text as the answer.
+  private async sendPhotos(
+    ctx: TurnContext,
+    photos: PhotoSend,
+    flushStartedAt: number,
+  ): Promise<number> {
+    const { chatId, userId, companyId, send, isLockHeld, trace } = ctx;
+    let sent = 0;
+    try {
+      for (const [i, link] of photos.links.entries()) {
+        if (!(await lockStillHeld(isLockHeld))) break;
+        if (
+          i === 0 &&
+          (await this.preemption(isLockHeld, userId, chatId, flushStartedAt))
+        ) {
+          break;
+        }
+        if (i === 0) {
+          const state = await this.chatAiState.get(companyId, userId, chatId);
+          if (state?.optedOutAt || state?.escalatedAt) break;
+        }
+        try {
+          await send(chatId, sent === 0 ? photos.caption : '', {
+            image: { link, title: photos.caption },
+          });
+          sent++;
+        } catch (err) {
+          this.logger.error(
+            `Failed to send a listing photo of unit ${photos.unitId} for company ${companyId}: ${errorMessage(err)}`,
+          );
+        }
+      }
+    } catch (err) {
+      this.logger.error(
+        `Listing photos not sent for company ${companyId}: ${errorMessage(err)}`,
+      );
+    } finally {
+      trace.photos = sent;
+    }
+    return sent;
   }
 
   private async saveRequirements(

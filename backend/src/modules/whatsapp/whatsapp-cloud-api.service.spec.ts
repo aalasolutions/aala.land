@@ -144,7 +144,11 @@ describe('WhatsappCloudApiService', () => {
         json: async () => ({ messages: [{ id: 'wamid.1' }] }),
       });
 
-      const result = await service.sendText(connection, '+923001234567', 'hello');
+      const result = await service.sendText(
+        connection,
+        '+923001234567',
+        'hello',
+      );
 
       expect(result).toEqual({ messageId: 'wamid.1' });
       expect(fetchMock).toHaveBeenCalledWith(
@@ -431,7 +435,11 @@ describe('WhatsappCloudApiService', () => {
       await service.markReadFor('company-1', 'user-1')('wamid.in5', true);
 
       expect(connections.findOne).toHaveBeenCalledWith({
-        where: { companyId: 'company-1', userId: 'user-1', status: 'connected' },
+        where: {
+          companyId: 'company-1',
+          userId: 'user-1',
+          status: 'connected',
+        },
       });
       const [, init] = fetchMock.mock.calls[0];
       expect(JSON.parse(init.body).typing_indicator).toEqual({ type: 'text' });
@@ -487,12 +495,18 @@ describe('WhatsappCloudApiService', () => {
         json: async () => ({ messages: [{ id: 'wamid.2' }] }),
       });
 
-      const result = await service
-        .senderFor('company-1', 'user-1')('+923001234567', 'the rent is due friday');
+      const result = await service.senderFor('company-1', 'user-1')(
+        '+923001234567',
+        'the rent is due friday',
+      );
 
       expect(result).toEqual({ messageId: 'wamid.2' });
       expect(connections.findOne).toHaveBeenCalledWith({
-        where: { companyId: 'company-1', userId: 'user-1', status: 'connected' },
+        where: {
+          companyId: 'company-1',
+          userId: 'user-1',
+          status: 'connected',
+        },
       });
       // The AI row carries the same phone_number_id the operator path already stamps.
       expect(store.addMessage).toHaveBeenCalledWith(
@@ -509,6 +523,79 @@ describe('WhatsappCloudApiService', () => {
       expect(gateway.emitMessage).toHaveBeenCalledWith(
         'user-1',
         expect.objectContaining({ id: 'wamid.2' }),
+      );
+    });
+
+    it('sends a listing photo by link and stores it as an AI image row labeled with the unit', async () => {
+      connections.findOne.mockResolvedValue(connection);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ messages: [{ id: 'wamid.p1' }] }),
+      });
+
+      await service.senderFor('company-1', 'user-1')(
+        '+923001234567',
+        'Marina Gate, unit 402',
+        {
+          image: {
+            link: 'https://media.example.com/1.jpg',
+            title: 'Marina Gate, unit 402',
+          },
+        },
+      );
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: '+923001234567',
+        type: 'image',
+        image: {
+          link: 'https://media.example.com/1.jpg',
+          caption: 'Marina Gate, unit 402',
+        },
+      });
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({
+          id: 'wamid.p1',
+          body: '[Image] Marina Gate, unit 402',
+          hasMedia: true,
+          mediaType: 'image',
+          fromMe: true,
+          aiGenerated: true,
+        }),
+        'pnid-1',
+      );
+    });
+
+    it('labels an uncaptioned listing photo row too, so no inbox bubble is empty', async () => {
+      connections.findOne.mockResolvedValue(connection);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ messages: [{ id: 'wamid.p2' }] }),
+      });
+
+      await service.senderFor('company-1', 'user-1')('+923001234567', '', {
+        image: {
+          link: 'https://media.example.com/2.jpg',
+          title: 'Marina Gate, unit 402',
+        },
+      });
+
+      expect(
+        JSON.parse(fetchMock.mock.calls[0][1].body as string).image,
+      ).toEqual({ link: 'https://media.example.com/2.jpg' });
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({
+          id: 'wamid.p2',
+          body: '[Image] Marina Gate, unit 402',
+          hasMedia: true,
+          mediaType: 'image',
+        }),
+        'pnid-1',
       );
     });
 
@@ -529,12 +616,15 @@ describe('WhatsappCloudApiService', () => {
           ),
       );
 
-      await service.senderFor('company-1', 'user-1')('+923001234567', 'awaited reply');
+      await service.senderFor('company-1', 'user-1')(
+        '+923001234567',
+        'awaited reply',
+      );
 
       expect(committed).toBe(true);
-      expect(
-        store.addMessage.mock.invocationCallOrder[0],
-      ).toBeLessThan(gateway.emitMessage.mock.invocationCallOrder[0]);
+      expect(store.addMessage.mock.invocationCallOrder[0]).toBeLessThan(
+        gateway.emitMessage.mock.invocationCallOrder[0],
+      );
     });
 
     it('refreshes the credit counters only when a window was charged', async () => {
@@ -549,10 +639,13 @@ describe('WhatsappCloudApiService', () => {
         openWindows: 1,
       });
 
-      await service
-        .senderFor('company-1', 'user-1')('+923001234567', 'charged reply', {
+      await service.senderFor('company-1', 'user-1')(
+        '+923001234567',
+        'charged reply',
+        {
           creditCharged: true,
-        });
+        },
+      );
       await flushAsync();
 
       expect(gateway.emitAi).toHaveBeenCalledWith('user-1', {
@@ -561,10 +654,13 @@ describe('WhatsappCloudApiService', () => {
         openWindows: 1,
       });
 
-      await service
-        .senderFor('company-1', 'user-1')('+923001234567', 'reused reply', {
+      await service.senderFor('company-1', 'user-1')(
+        '+923001234567',
+        'reused reply',
+        {
           creditCharged: false,
-        });
+        },
+      );
       await flushAsync();
 
       expect(gateway.emitAi).toHaveBeenCalledTimes(1);
@@ -919,6 +1015,20 @@ describe('WhatsappCloudApiService', () => {
       expect(sent()).toMatchObject({
         type: 'sticker',
         sticker: { id: 'media-2' },
+      });
+    });
+
+    it('sends an image by link, leaving out an empty caption', async () => {
+      await service.sendImageLink(connection, '971501234567', {
+        link: 'https://media.example.com/2.jpg',
+        caption: '',
+      });
+      expect(sent()).toEqual({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: '971501234567',
+        type: 'image',
+        image: { link: 'https://media.example.com/2.jpg' },
       });
     });
 

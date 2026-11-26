@@ -23,6 +23,7 @@ import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { PropertyMedia } from '../properties/entities/property-media.entity';
 import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { EmailModule } from '../email/email.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -98,6 +99,7 @@ import {
       User,
       Company,
       Unit,
+      PropertyMedia,
       BillingHistory,
     ]),
     JwtModule.registerAsync({

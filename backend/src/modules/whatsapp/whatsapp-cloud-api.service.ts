@@ -13,6 +13,7 @@ import { openAsBlob } from 'node:fs';
 import {
   GRAPH_VERSION,
   WA_MESSAGE_NO_STORED_MEDIA,
+  WA_PLACEHOLDER_BODIES,
   WaMessage,
 } from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
@@ -144,6 +145,21 @@ export class WhatsappCloudApiService {
     return this.postMessage(connection, to, {
       type: media.type,
       [media.type]: object,
+    });
+  }
+
+  // Meta fetches the image from the link itself, so the link must be publicly readable.
+  async sendImageLink(
+    connection: WhatsappConnection,
+    to: string,
+    image: { link: string; caption?: string },
+  ): Promise<{ messageId: string }> {
+    return this.postMessage(connection, to, {
+      type: 'image',
+      image: {
+        link: image.link,
+        ...(image.caption && { caption: image.caption }),
+      },
     });
   }
 
@@ -477,7 +493,13 @@ export class WhatsappCloudApiService {
         );
       }
 
-      const result = await this.sendText(connection, chatId, message);
+      const image = meta?.image;
+      const result = image
+        ? await this.sendImageLink(connection, chatId, {
+            link: image.link,
+            caption: message,
+          })
+        : await this.sendText(connection, chatId, message);
 
       const aiMsg: WaMessage = {
         uuid: randomUUID(),
@@ -488,9 +510,10 @@ export class WhatsappCloudApiService {
         senderName: connection.displayPhoneNumber,
         chatName: chatId,
         isGroup: false,
-        body: message,
-        hasMedia: false,
-        mediaType: 'text',
+        // No stored copy exists, so the inbox and chat list show this label instead of an empty bubble.
+        body: image ? `${WA_PLACEHOLDER_BODIES.image} ${image.title}` : message,
+        hasMedia: !!image,
+        mediaType: image ? 'image' : 'text',
         mentionedIds: [],
         quotedParticipant: '',
         fromMe: true,

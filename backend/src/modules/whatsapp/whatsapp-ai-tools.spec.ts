@@ -18,7 +18,9 @@ import {
   toolArgumentProblems,
   correctedSearchCall,
   listingCard,
+  pickShownUnit,
   renderCards,
+  unitTitle,
 } from './whatsapp-ai-tools';
 
 const makeRepo = () => ({
@@ -55,12 +57,25 @@ describe('TOOL_DEFINITIONS', () => {
   const tool = (name: string) =>
     TOOL_DEFINITIONS.find((t: any) => t.function.name === name) as any;
 
-  it('contains search_properties, list_locations and escalate_to_staff', () => {
+  it('contains search_properties, list_locations, escalate_to_staff and send_property_photos', () => {
     expect(TOOL_DEFINITIONS.map((t: any) => t.function.name)).toEqual([
       'search_properties',
       'list_locations',
       'escalate_to_staff',
+      'send_property_photos',
     ]);
+  });
+
+  it('send_property_photos takes a unit number and an optional building, nothing else', () => {
+    const p = tool('send_property_photos').function.parameters;
+    expect(p.required).toEqual(['unit']);
+    expect(Object.keys(p.properties)).toEqual(['unit', 'building']);
+    expect(p.properties.unit.type).toBe('string');
+    expect(p.properties.building.type).toBe('string');
+    expect(p.additionalProperties).toBe(false);
+    expect(tool('send_property_photos').function.description).toMatch(
+      /ask which/,
+    );
   });
 
   it('escalate_to_staff takes only a request or complaint reason', () => {
@@ -293,6 +308,35 @@ const term = (over: Partial<TermResolution>): TermResolution => ({
 });
 
 describe('formatSearchResult', () => {
+  it('tells the model how many photos each listing has, capped at what can be sent, without touching the cards', () => {
+    const first = unit();
+    const second = unit({ id: 'u-2', unitNumber: '1205' });
+    const third = unit({ id: 'u-3', unitNumber: '1206' });
+    const text = formatSearchResult(
+      {
+        units: [first, second, third],
+        total: 3,
+        offset: 0,
+        photos: { 'u-1': 2, 'u-2': 0, 'u-3': 9 },
+      },
+      {},
+      'USD',
+    );
+    const blocks = text.split('\n\n');
+    expect(blocks[1]).toContain('   Photos: 2');
+    expect(blocks[2]).toContain('   Photos: none');
+    expect(blocks[3]).toContain('   Photos: 3');
+    expect(text).toContain(
+      'Offer photos only for a listing whose Photos line is not none.',
+    );
+    expect(
+      formatSearchResult({ units: [first], total: 1, offset: 0 }, {}, 'USD'),
+    ).not.toContain('Photos:');
+    for (const u of [first, second]) {
+      expect(listingCard(u, 1, 'USD').text).not.toMatch(/photo/i);
+    }
+  });
+
   it('humanizes each listing and states its currency and rent period', () => {
     const text = formatSearchResult(
       { units: [unit()], total: 1, offset: 0 },
@@ -1932,7 +1976,7 @@ describe('listing cards', () => {
     [
       'en',
       [
-        '1) Azure Quay Residences, unit 2804',
+        '*1) Azure Quay Residences, unit 2804*',
         'For rent',
         'Price: AED 13,000 per month',
         'Yearly: AED 156,000',
@@ -1944,7 +1988,7 @@ describe('listing cards', () => {
     [
       'ar',
       [
-        '1) Azure Quay Residences, وحدة 2804',
+        '*1) Azure Quay Residences, وحدة 2804*',
         'للإيجار',
         'السعر: AED 13,000 شهريًا',
         'السعر السنوي: AED 156,000',
@@ -1956,7 +2000,7 @@ describe('listing cards', () => {
     [
       'ur',
       [
-        '1) Azure Quay Residences, یونٹ 2804',
+        '*1) Azure Quay Residences, یونٹ 2804*',
         'کرائے کے لیے',
         'قیمت: AED 13,000 ماہانہ',
         'سالانہ: AED 156,000',
@@ -1968,7 +2012,7 @@ describe('listing cards', () => {
     [
       'ur-Latn',
       [
-        '1) Azure Quay Residences, unit 2804',
+        '*1) Azure Quay Residences, unit 2804*',
         'Kiraye ke liye',
         'Qeemat: AED 13,000 mahana',
         'Salana: AED 156,000',
@@ -1980,7 +2024,7 @@ describe('listing cards', () => {
     [
       'ar-Latn',
       [
-        '1) Azure Quay Residences, unit 2804',
+        '*1) Azure Quay Residences, unit 2804*',
         'Lel igar',
         'El se3r: AED 13,000 shahriyan',
         'Sanawiyan: AED 156,000',
@@ -2004,7 +2048,7 @@ describe('listing cards', () => {
     const en = listingCard(sale, 2, 'USD', 'en').text;
     expect(listingCard(sale, 2, 'USD').text).toBe(en);
     expect(en.split('\n')).toEqual([
-      '2) Azure Quay Residences, unit 4501',
+      '*2) Azure Quay Residences, unit 4501*',
       'For sale',
       'Price: AED 9,800,000',
       'Location: Dubai Marina, Dubai',
@@ -2039,10 +2083,10 @@ describe('listing cards', () => {
     );
     expect(cards).toHaveLength(2);
     expect(cards[0].text.split('\n')[0]).toBe(
-      '6) Azure Quay Residences, unit 2804',
+      '*6) Azure Quay Residences, unit 2804*',
     );
     expect(cards[1].text.split('\n')[0]).toBe(
-      '7) Azure Quay Residences, unit 4501',
+      '*7) Azure Quay Residences, unit 4501*',
     );
   });
 
@@ -2063,6 +2107,165 @@ describe('listing cards', () => {
     );
     expect(result.listings).toEqual([{ unit: rental, n: 1 }]);
     expect(result.text).not.toContain('[CARDS');
+  });
+
+  it('drops markup from names so the bold title holds, and trims a missing unit number', () => {
+    const marked = unit({
+      unitNumber: '',
+      asset: { ...rental.asset, name: '*Sky_Tower~*' },
+    });
+    expect(listingCard(marked, 4, 'USD').text.split('\n')[0]).toBe(
+      '*4) SkyTower, unit*',
+    );
+  });
+});
+
+describe('send_property_photos', () => {
+  const shown = [
+    { unitId: 'u-1', unitNumber: '402', building: 'Marina Gate' },
+    { unitId: 'u-2', unitNumber: '402', building: 'Bay Tower' },
+    { unitId: 'u-3', unitNumber: '7', building: 'Sky Court' },
+  ];
+  const photoRepo = (found: unknown) => ({
+    ...makeRepo(),
+    unitPhotoLinks: jest.fn().mockResolvedValue(found),
+  });
+  const run = (
+    args: Record<string, unknown>,
+    repo: ReturnType<typeof photoRepo>,
+    withdrawn = () => false,
+  ) =>
+    executeTool('send_property_photos', args, 'c1', 'u1', repo as any, 'USD', {
+      shown,
+      withdrawn,
+      language: 'en',
+    });
+
+  it('refuses a unit never shown in this chat and never reads its photos', async () => {
+    const repo = photoRepo({ unit: unit(), links: ['https://x/a.jpg'] });
+    const result = await run({ unit: '999' }, repo);
+    expect(result.text).toMatch(/^Not sent: no listing card/);
+    expect(result.photos).toBeUndefined();
+    expect(repo.unitPhotoLinks).not.toHaveBeenCalled();
+  });
+
+  it('refuses with no shown units at all, so no id can be fished', async () => {
+    const repo = photoRepo({ unit: unit(), links: ['https://x/a.jpg'] });
+    const result = await executeTool(
+      'send_property_photos',
+      { unit: '402' },
+      'c1',
+      'u1',
+      repo as any,
+      'USD',
+    );
+    expect(result.photos).toBeUndefined();
+    expect(repo.unitPhotoLinks).not.toHaveBeenCalled();
+  });
+
+  it('asks which one when two shown cards share the unit number', async () => {
+    const repo = photoRepo(null);
+    const result = await run({ unit: '402' }, repo);
+    expect(result.text).toContain('Ask the customer which one they mean');
+    expect(result.text).toContain('Marina Gate, unit 402; Bay Tower, unit 402');
+    expect(repo.unitPhotoLinks).not.toHaveBeenCalled();
+  });
+
+  it('picks the one the building names and queues up to three links with the unit as caption', async () => {
+    const links = ['https://x/1.jpg', 'https://x/2.jpg'];
+    const repo = photoRepo({ unit: unit(), links });
+    const result = await run({ unit: 'Unit 402', building: 'bay tower' }, repo);
+    expect(repo.unitPhotoLinks).toHaveBeenCalledWith('c1', 'u-2', 3);
+    expect(result.photos).toEqual({
+      unitId: 'u-2',
+      caption: 'Bay Tower, unit 402',
+      links,
+    });
+    expect(result.text).toContain('2 photos of Bay Tower, unit 402');
+  });
+
+  it('tells the model when the unit has no photos', async () => {
+    const result = await run(
+      { unit: '7' },
+      photoRepo({ unit: unit(), links: [] }),
+    );
+    expect(result.photos).toBeUndefined();
+    expect(result.text).toBe(
+      'Sky Court, unit 7 has no photos to send. Tell the customer there are no photos of it; never promise them.',
+    );
+  });
+
+  it('sends nothing for a unit no longer available or withdrawn by staff', async () => {
+    const gone = await run({ unit: '7' }, photoRepo(null));
+    expect(gone.photos).toBeUndefined();
+    expect(gone.text).toMatch(/no longer available/);
+    const withdrawn = await run(
+      { unit: '7' },
+      photoRepo({ unit: unit(), links: ['https://x/1.jpg'] }),
+      () => true,
+    );
+    expect(withdrawn.photos).toBeUndefined();
+    expect(withdrawn.text).toMatch(/no longer available/);
+  });
+
+  it('ignores a wrong building when the unit number is unique among shown cards', () => {
+    expect(
+      pickShownUnit({ unit: '7', building: 'Marina Gate' }, shown).unit?.unitId,
+    ).toBe('u-3');
+  });
+
+  it('matches a shared unit number by building loosely: case, markup and spacing ignored', () => {
+    expect(
+      pickShownUnit({ unit: '402', building: '  *BAY   tower*  ' }, shown).unit
+        ?.unitId,
+    ).toBe('u-2');
+    expect(
+      pickShownUnit({ unit: '402' }, [
+        { unitId: 'u-9', unitNumber: '402', building: '_Bay_ Tower' },
+      ]).unit?.unitId,
+    ).toBe('u-9');
+  });
+
+  it('accepts a unique containment match and asks when it is not unique', () => {
+    expect(
+      pickShownUnit({ unit: '402', building: 'Marina' }, shown).unit?.unitId,
+    ).toBe('u-1');
+    const both = pickShownUnit({ unit: '402', building: 'a' }, shown);
+    expect(both.unit).toBeUndefined();
+    expect(both.matches.map((m) => m.unitId)).toEqual(['u-1', 'u-2']);
+    const none = pickShownUnit({ unit: '402', building: 'Palm View' }, shown);
+    expect(none.unit).toBeUndefined();
+    expect(none.matches).toHaveLength(2);
+  });
+
+  it('matches a building whose stored name carries markup', () => {
+    const marked = [
+      { unitId: 'u-1', unitNumber: '402', building: '*Marina* Gate' },
+      { unitId: 'u-2', unitNumber: '402', building: 'Bay Tower' },
+    ];
+    expect(
+      pickShownUnit({ unit: '402', building: 'marina gate' }, marked).unit
+        ?.unitId,
+    ).toBe('u-1');
+  });
+
+  it('drops markup from the photo caption', async () => {
+    expect(unitTitle('*Sky_Court~', '7`', 'en')).toBe('SkyCourt, unit 7');
+    const repo = photoRepo({ unit: unit(), links: ['https://x/1.jpg'] });
+    const result = await executeTool(
+      'send_property_photos',
+      { unit: '9' },
+      'c1',
+      'u1',
+      repo as any,
+      'USD',
+      {
+        shown: [{ unitId: 'u-9', unitNumber: '9', building: '~Sea_ *View*' }],
+        withdrawn: () => false,
+        language: 'en',
+      },
+    );
+    expect(result.photos?.caption).toBe('Sea View, unit 9');
   });
 });
 

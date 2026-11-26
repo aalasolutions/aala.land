@@ -105,6 +105,7 @@ export interface PropertySearchResult {
   cityChoice?: { label: string; options: { place: string; city: string }[] };
   applied?: PropertySearchFilters;
   routed?: string[];
+  photos?: Record<string, number>;
 }
 
 // Kind names come from the unit kind column: OFFICE_SPACE is "office", LAND_PLOT is "land".
@@ -331,7 +332,125 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'send_property_photos',
+      description:
+        'Send photos of one listing already sent as a card in this chat; code sends them after your reply. Only when the customer asks for its photos or pictures. If several cards were sent and the customer did not say which, ask which instead.',
+      parameters: {
+        type: 'object',
+        properties: {
+          unit: {
+            type: 'string',
+            description: 'Unit number from the card title, for example "402".',
+          },
+          building: {
+            type: 'string',
+            description:
+              'Building name from the card title, when two cards share the unit number.',
+          },
+        },
+        required: ['unit'],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
+
+export const MAX_PHOTOS = 3;
+
+// A unit the customer has seen as a card in this chat; the only units whose photos can be sent.
+export type ShownUnit = Pick<ListingCard, 'unitId' | 'unitNumber' | 'building'>;
+
+export interface PhotoSend {
+  unitId: string;
+  caption: string;
+  links: string[];
+}
+
+export const PHOTOS_SENT_RESULT = (title: string, count: number) =>
+  `Done: ${plural(count, 'photo', 'photos')} of ${title} will be sent by code right after your reply. Introduce them in a few words; never describe what they show.`;
+
+export const PHOTOS_PARTIAL_RESULT = (title: string, sent: number) =>
+  `Only ${plural(sent, 'photo was', 'photos were')} of ${title} sent; the others could not be sent right now. If the customer asks for more, say so.`;
+
+export const PHOTOS_FAILED_RESULT =
+  'The photos could not be sent. If the customer asks again, say the photos could not be sent right now.';
+
+const PHOTOS_NOT_SHOWN_RESULT =
+  'Not sent: no listing card with that unit was sent in this chat. Photos can be sent only for a listing shown as a card; search for it first if the customer asks about it.';
+
+const PHOTOS_AMBIGUOUS_RESULT = (titles: string[]) =>
+  `Not sent: several cards in this chat have that unit number (${titles.join('; ')}). Ask the customer which one they mean.`;
+
+const PHOTOS_NONE_RESULT = (title: string) =>
+  `${title} has no photos to send. Tell the customer there are no photos of it; never promise them.`;
+
+const PHOTOS_GONE_RESULT = (title: string) =>
+  `Not sent: ${title} is no longer available. Tell the customer it is no longer available and never offer it.`;
+
+const plainName = (name: string) => name.replace(/[*_~`]/g, '');
+
+const nameKey = (name: string) =>
+  plainName(name).replace(/\s+/g, ' ').trim().toLowerCase();
+
+// The one shown unit the arguments name: by unit number, narrowed by building only when the number is shared.
+export function pickShownUnit(
+  args: Record<string, unknown>,
+  shown: ShownUnit[],
+): { unit?: ShownUnit; matches: ShownUnit[] } {
+  const core = unitCore(text(args.unit, 30) ?? '');
+  const building = nameKey(text(args.building, 120) ?? '');
+  const byId = new Map<string, ShownUnit>();
+  for (const s of shown) {
+    if (core && unitCore(s.unitNumber) === core) byId.set(s.unitId, s);
+  }
+  const matches = [...byId.values()];
+  if (matches.length === 1) return { unit: matches[0], matches };
+  if (!building || matches.length === 0) return { matches };
+  const exact = matches.filter((s) => nameKey(s.building) === building);
+  const named = exact.length
+    ? exact
+    : matches.filter((s) => {
+        const key = nameKey(s.building);
+        return !!key && (key.includes(building) || building.includes(key));
+      });
+  return named.length === 1
+    ? { unit: named[0], matches: named }
+    : { matches: named.length ? named : matches };
+}
+
+async function photoOutcome(
+  args: Record<string, unknown>,
+  companyId: string,
+  repo: WhatsappAiRepositoryService,
+  photos: PhotoContext,
+): Promise<ToolOutcome> {
+  const { unit, matches } = pickShownUnit(args, photos.shown);
+  if (!unit) {
+    return {
+      text:
+        matches.length > 1
+          ? PHOTOS_AMBIGUOUS_RESULT(
+              matches.map((m) =>
+                unitTitle(m.building, m.unitNumber, photos.language),
+              ),
+            )
+          : PHOTOS_NOT_SHOWN_RESULT,
+    };
+  }
+  const title = unitTitle(unit.building, unit.unitNumber, photos.language);
+  const found = await repo.unitPhotoLinks(companyId, unit.unitId, MAX_PHOTOS);
+  if (!found || photos.withdrawn(found.unit)) {
+    return { text: PHOTOS_GONE_RESULT(title) };
+  }
+  if (!found.links.length) return { text: PHOTOS_NONE_RESULT(title) };
+  return {
+    text: PHOTOS_SENT_RESULT(title, found.links.length),
+    photos: { unitId: unit.unitId, caption: title, links: found.links },
+  };
+}
 
 const ESCALATED_RESULT =
   'Done: the team is notified and code adds a line telling the customer. Never promise contact or say the team was told yourself; answer the rest of the message.';
@@ -1071,7 +1190,12 @@ const LISTING_LABELS: Record<string, string> = {
 };
 
 // Fixed order, one field per line; the price follows the title so each figure sits next to its own unit.
-function formatUnit(u: Unit, i: number, fallbackCurrency: string): string {
+function formatUnit(
+  u: Unit,
+  i: number,
+  fallbackCurrency: string,
+  photos?: number,
+): string {
   const asset = u.asset;
   const rent = u.propertyType === PropertyType.RENTAL;
   const typeLabel =
@@ -1117,6 +1241,9 @@ function formatUnit(u: Unit, i: number, fallbackCurrency: string): string {
     u.description
       ? `   Details: ${u.description.replace(/\s+/g, ' ').slice(0, 200)}`
       : '',
+    photos === undefined
+      ? ''
+      : `   Photos: ${photos > 0 ? Math.min(photos, MAX_PHOTOS) : 'none'}`,
   ];
   return rows.filter(Boolean).join('\n');
 }
@@ -1233,7 +1360,21 @@ export const CARD_TYPE_WORDS: string[] = Object.values(CARD_LABELS).flatMap(
 const cardLabels = (language?: OptLanguage): CardLabels =>
   (language && CARD_LABELS[language]) || CARD_LABELS.en;
 
-// A customer-ready card from fixed templates: the same unit and language always give the same text.
+// The unit's name as a card title shows it, markup dropped, also used as the caption of its photos.
+export function unitTitle(
+  building: string,
+  unitNumber: string,
+  language?: OptLanguage,
+): string {
+  const L = cardLabels(language);
+  return plainName(
+    building
+      ? `${building}, ${L.unit} ${unitNumber}`
+      : `${capitalize(L.unit)} ${unitNumber}`,
+  ).trim();
+}
+
+// A customer-ready card from fixed templates: the same unit and language always give the same text; markup in names is dropped so the bold title holds.
 export function listingCard(
   u: Unit,
   n: number,
@@ -1246,9 +1387,7 @@ export function listingCard(
   const currency = unitCurrency(u, fallbackCurrency);
   const building = asset?.name ?? '';
   const unitNumber = u.unitNumber ?? '';
-  const title = building
-    ? `${building}, ${L.unit} ${unitNumber}`
-    : `${capitalize(L.unit)} ${unitNumber}`;
+  const title = unitTitle(building, unitNumber, language);
   const type =
     u.propertyType === PropertyType.RENTAL
       ? L.rent
@@ -1261,7 +1400,7 @@ export function listingCard(
     : L.onRequest;
   const location = unitLocation(u);
   const rows = [
-    `${n}) ${title}`,
+    `*${n}) ${title}*`,
     type,
     `${L.price}: ${price}`,
     rent && priced
@@ -1639,12 +1778,12 @@ export function formatSearchResult(
   const header = lines.join('\n');
   if (!units.length) return header;
   const body = units.map((u, i) =>
-    formatUnit(u, offset + i + 1, fallbackCurrency),
+    formatUnit(u, offset + i + 1, fallbackCurrency, result.photos?.[u.id]),
   );
   return [
     header,
     ...body,
-    'These listings reach the customer as cards that code sends after your reply: write one short sentence before them and never list, number or repeat them yourself. Each is named "<building>, unit <number>"; pass them as place and unit to look one up again. A number the customer sends is the listing with that number here.',
+    'These listings reach the customer as cards that code sends after your reply: write one short sentence before them and never list, number or repeat them yourself. Each is named "<building>, unit <number>"; pass them as place and unit to look one up again. A number the customer sends is the listing with that number here. Offer photos only for a listing whose Photos line is not none.',
   ].join('\n\n');
 }
 
@@ -1938,6 +2077,13 @@ export interface ToolOutcome {
   text: string;
   listings?: Listing[];
   escalation?: HandoffReason;
+  photos?: PhotoSend;
+}
+
+export interface PhotoContext {
+  shown: ShownUnit[];
+  withdrawn: (unit: Unit) => boolean;
+  language?: OptLanguage;
 }
 
 export async function executeTool(
@@ -1947,7 +2093,11 @@ export async function executeTool(
   userId: string,
   repo: WhatsappAiRepositoryService,
   fallbackCurrency: string,
+  photos: PhotoContext = { shown: [], withdrawn: () => false },
 ): Promise<ToolOutcome> {
+  if (name === 'send_property_photos') {
+    return photoOutcome(args, companyId, repo, photos);
+  }
   if (name === 'search_properties') {
     const filters = parseSearchArgs(args);
     const result = await repo.searchProperties(companyId, userId, filters);

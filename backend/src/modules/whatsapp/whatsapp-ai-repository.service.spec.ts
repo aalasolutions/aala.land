@@ -65,7 +65,12 @@ const makeRepos = () => {
     },
     unitRepo: {
       find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
       createQueryBuilder: jest.fn(),
+    },
+    mediaRepo: {
+      find: jest.fn().mockResolvedValue([]),
+      createQueryBuilder: jest.fn().mockReturnValue(makeQb()),
     },
     settingsRepo: {
       findOne: jest.fn().mockResolvedValue(null),
@@ -111,6 +116,7 @@ const makeService = (repos: ReturnType<typeof makeRepos>) =>
     repos.billingHistoryRepo as any,
     repos.userRepo as any,
     repos.redis as any,
+    repos.mediaRepo as any,
   );
 
 describe('WhatsappAiRepositoryService', () => {
@@ -120,6 +126,39 @@ describe('WhatsappAiRepositoryService', () => {
   beforeEach(() => {
     repos = makeRepos();
     service = makeService(repos);
+  });
+
+  describe('unitPhotoLinks', () => {
+    it('returns null and reads no media for a unit that is not an available listing of the company', async () => {
+      await expect(service.unitPhotoLinks('c1', 'unit-1', 3)).resolves.toBe(
+        null,
+      );
+      expect(repos.unitRepo.findOne.mock.calls[0][0].where).toMatchObject({
+        id: 'unit-1',
+        companyId: 'c1',
+        status: 'available',
+      });
+      expect(repos.mediaRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('reads company-scoped web-link images in the query, primary first then newest, before the limit', async () => {
+      const unit = { id: 'unit-1' };
+      repos.unitRepo.findOne.mockResolvedValue(unit);
+      repos.mediaRepo.find.mockResolvedValue([
+        { url: 'https://media.example.com/a.jpg' },
+      ]);
+      await expect(service.unitPhotoLinks('c1', 'unit-1', 3)).resolves.toEqual({
+        unit,
+        links: ['https://media.example.com/a.jpg'],
+      });
+      const options = repos.mediaRepo.find.mock.calls[0][0];
+      expect(options).toMatchObject({
+        where: { companyId: 'c1', unitId: 'unit-1', type: 'image' },
+        order: { isPrimary: 'DESC', createdAt: 'DESC' },
+        take: 3,
+      });
+      expect(options.where.url.getSql('m.url')).toBe("m.url ~* '^https?://'");
+    });
   });
 
   describe('getCompanyAndUnits', () => {
@@ -713,6 +752,55 @@ describe('WhatsappAiRepositoryService', () => {
       });
       expect(search).toHaveBeenCalledTimes(1);
       expect(result.unfiltered).toBeUndefined();
+    });
+
+    it('counts web-link images of the returned units in one company-scoped query', async () => {
+      agent(['dubai']);
+      unitQb.getMany.mockResolvedValue([{ id: 'unit-1' }, { id: 'unit-2' }]);
+      const mediaQb = repos.mediaRepo.createQueryBuilder();
+      repos.mediaRepo.createQueryBuilder.mockClear();
+      mediaQb.getRawMany.mockResolvedValue([{ unitId: 'unit-1', count: '4' }]);
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(result.photos).toEqual({ 'unit-1': 4, 'unit-2': 0 });
+      expect(repos.mediaRepo.createQueryBuilder).toHaveBeenCalledTimes(1);
+      expect(mediaQb.getRawMany).toHaveBeenCalledTimes(1);
+      expect(mediaQb.where).toHaveBeenCalledWith('m.companyId = :companyId', {
+        companyId: 'c1',
+      });
+      expect(mediaQb.andWhere).toHaveBeenCalledWith(
+        'm.unitId IN (:...unitIds)',
+        { unitIds: ['unit-1', 'unit-2'] },
+      );
+      expect(mediaQb.andWhere).toHaveBeenCalledWith('m.type = :type', {
+        type: 'image',
+      });
+      expect(mediaQb.andWhere).toHaveBeenCalledWith("m.url ~* '^https?://'");
+      expect(mediaQb.groupBy).toHaveBeenCalledWith('m.unitId');
+      expect(repos.mediaRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('returns the listings without photo counts when the count query fails', async () => {
+      agent(['dubai']);
+      unitQb.getMany.mockResolvedValue([{ id: 'unit-1' }]);
+      const mediaQb = repos.mediaRepo.createQueryBuilder();
+      mediaQb.getRawMany.mockRejectedValue(new Error('db down'));
+      const warn = jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(result.units).toEqual([{ id: 'unit-1' }]);
+      expect(result.photos).toBeUndefined();
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('Photo counts unavailable for company c1'),
+      );
+    });
+
+    it('reads no media when the search returns no units', async () => {
+      agent(['dubai']);
+      unitQb.getMany.mockResolvedValue([]);
+      const result = await service.searchProperties('c1', 'u1', {});
+      expect(result.photos).toBeUndefined();
+      expect(repos.mediaRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     it('returns nothing for a user outside the company, without querying units', async () => {

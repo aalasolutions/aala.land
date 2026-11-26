@@ -38,6 +38,10 @@ import {
   RESUME_NOTICES,
 } from './whatsapp-ai-prompts';
 import { SubscriptionTier } from '../companies/entities/company.entity';
+import {
+  PHOTOS_FAILED_RESULT,
+  PHOTOS_PARTIAL_RESULT,
+} from './whatsapp-ai-tools';
 
 const NEITHER: TurnRead = {
   labels: ['neither'],
@@ -2390,7 +2394,7 @@ describe('WhatsappAiService', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
       expect(mockSend).toHaveBeenCalledWith(
         'c1',
-        expect.stringContaining('Here are properties in Karachi.\n\n1) Unit'),
+        expect.stringContaining('Here are properties in Karachi.\n\n*1) Unit*'),
         { creditCharged: true },
       );
     });
@@ -4059,6 +4063,53 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
     ]);
   });
 
+  it('leaves AI photo rows out of rebuilt history', async () => {
+    service = new WhatsappAiService(
+      repo as any,
+      makeMockStore() as any,
+      makeMockBuilder('p') as any,
+      makeMockEmail() as any,
+      redis as any,
+      noQueue as any,
+      chatAiStateMock as any,
+    );
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(mockTextResponse('Anything else?')) as any;
+    const reader = jest.fn().mockResolvedValue([
+      { body: 'photos of 402', fromMe: false, aiGenerated: false },
+      { body: 'Here are the photos.', fromMe: true, aiGenerated: true },
+      {
+        body: '[Image] Marina Gate, unit 402',
+        fromMe: true,
+        aiGenerated: true,
+        hasMedia: true,
+      },
+    ]);
+
+    await service.runTurn(
+      'company-1',
+      'user-1',
+      'harness-ph',
+      ['m9'],
+      'thanks',
+      jest.fn().mockResolvedValue({}),
+      undefined,
+      { unmetered: true, trace: newTrace(), historyReader: reader },
+    );
+
+    expect(
+      (await service.getHistoryFor('user-1', 'harness-ph')).map(
+        (m) => m.content,
+      ),
+    ).toEqual([
+      'photos of 402',
+      'Here are the photos.',
+      'thanks',
+      'Anything else?',
+    ]);
+  });
+
   it('names the state keys of one chat with the production formats', () => {
     expect(service.chatStateKeys('user-1', 'harness-a', ['m1'])).toEqual({
       cancelled: 'wa:ai:pend:user-1:harness-a:cancel',
@@ -4072,6 +4123,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       takeIndex: 'wa:ai:pend:user-1:harness-a:takes',
       heldComplaint: 'wa:ai:heldcomplaint:user-1:harness-a',
       requirements: 'wa:ai:reqs:user-1:harness-a',
+      shown: 'wa:ai:shown:user-1:harness-a',
       dispatched: ['wa:ai:dispatched:user-1:m1'],
     });
   });
@@ -4336,7 +4388,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       const { sent } = await turn('I am Indian, 2 bed JVC');
 
       expect(sent[0]).toBe(
-        'Here is a 2 bedroom option in JVC.\n\n1) Marina Gate, unit 801\nFor rent\nPrice: AED 9,000 per month\nYearly: AED 108,000\nLocation: Dubai Marina, Dubai\nBedrooms: 2\nSize: 1,000 sqft',
+        'Here is a 2 bedroom option in JVC.\n\n*1) Marina Gate, unit 801*\nFor rent\nPrice: AED 9,000 per month\nYearly: AED 108,000\nLocation: Dubai Marina, Dubai\nBedrooms: 2\nSize: 1,000 sqft',
       );
     });
 
@@ -4774,7 +4826,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       expect(send).toHaveBeenCalledTimes(1);
       const [, sent, opts] = send.mock.calls[0];
-      expect(sent).toMatch(/^1\) Marina Gate, unit 7/);
+      expect(sent).toMatch(/^\*1\) Marina Gate, unit 7\*/);
       expect(sent).not.toContain('about the viewing');
       expect(sent).toMatch(
         new RegExp(`Size: 1,000 sqft\\n\\n${ESCALATION_REPLIES.request.en}$`),
@@ -5086,7 +5138,12 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       expect(
         generationBodies[0].tools.map((t: any) => t.function.name),
-      ).toEqual(['search_properties', 'list_locations', 'escalate_to_staff']);
+      ).toEqual([
+        'search_properties',
+        'list_locations',
+        'escalate_to_staff',
+        'send_property_photos',
+      ]);
       expect(sent).toEqual([
         'Our prices are at example.com/pricing, and we can call you back if you like.',
       ]);
@@ -5109,7 +5166,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
         'Reply in French.',
       );
       expect(sent[0]).toContain(
-        'Voici un appartement de deux chambres.\n\n1) Marina Gate, unit 12\nFor rent',
+        'Voici un appartement de deux chambres.\n\n*1) Marina Gate, unit 12*\nFor rent',
       );
     });
 
@@ -5282,6 +5339,391 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     });
   });
 
+  describe('listing photos', () => {
+    const links = [
+      'https://media.example.com/1.jpg',
+      'https://media.example.com/2.jpg',
+      'https://media.example.com/3.jpg',
+    ];
+    type Sent = { text: string; meta?: any };
+    let photoLinks: jest.Mock;
+
+    const photoTurn = async (
+      text: string,
+      onSend: (call: Sent) => Promise<unknown> | unknown = () => ({}),
+    ): Promise<{ sent: Sent[]; trace: TurnTrace }> => {
+      const sent: Sent[] = [];
+      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
+      await service.runTurn(
+        'company-1',
+        'user-1',
+        'chat-p',
+        ['m1'],
+        text,
+        jest.fn(async (_chat: string, reply: string, meta?: any) => {
+          const call = { text: reply, meta };
+          sent.push(call);
+          await onSend(call);
+          return {};
+        }),
+        undefined,
+        { unmetered: true, trace },
+      );
+      return { sent, trace };
+    };
+
+    const showCard = async (unitNumber = '402') => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing(unitNumber)],
+        total: 1,
+        offset: 0,
+      });
+      route(read(['new_property_request']), [
+        mockToolCallResponse('s1', 'search_properties', '{}'),
+        mockTextResponse('Here is one in the marina.'),
+      ]);
+      await photoTurn('2 bed in the marina');
+    };
+
+    const photoResult = (trace: TurnTrace) =>
+      trace.toolCalls.find((t) => t.name === 'send_property_photos')?.result;
+
+    beforeEach(() => {
+      photoLinks = jest.fn().mockResolvedValue({ unit: listing('402'), links });
+      (repo as any).unitPhotoLinks = photoLinks;
+    });
+
+    it('sends up to three photos of a card shown earlier, after the text, the first captioned with the unit', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402 please');
+
+      expect(photoLinks).toHaveBeenCalledWith('company-1', 'u-402', 3);
+      expect(sent.map((c) => c.text)).toEqual([
+        'Here are the photos.',
+        'Marina Gate, unit 402',
+        '',
+        '',
+      ]);
+      expect(sent[0].meta).toEqual({ creditCharged: false });
+      expect(sent.slice(1).map((c) => c.meta)).toEqual(
+        links.map((link) => ({
+          image: { link, title: 'Marina Gate, unit 402' },
+        })),
+      );
+      expect(trace.photos).toBe(3);
+    });
+
+    it('allows a card sent in the same turn', async () => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing('402')],
+        total: 1,
+        offset: 0,
+      });
+      route(read(['new_property_request']), [
+        mockToolCallResponse('s1', 'search_properties', '{"unit":"402"}'),
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here it is with photos.'),
+      ]);
+
+      const { sent } = await photoTurn('show me 402 with pictures');
+
+      expect(sent[0].text).toMatch(
+        /^Here it is with photos\.\n\n\*1\) Marina Gate, unit 402\*/,
+      );
+      expect(sent.slice(1).map((c) => c.meta?.image?.link)).toEqual(links);
+    });
+
+    it('refuses a unit never shown in this chat and sends only the text', async () => {
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Which listing would you like photos of?'),
+      ]);
+
+      const { sent, trace } = await photoTurn('send photos of unit 402');
+
+      expect(photoResult(trace)).toMatch(/^Not sent: no listing card/);
+      expect(photoLinks).not.toHaveBeenCalled();
+      expect(sent).toHaveLength(1);
+      expect(sent[0].meta?.image).toBeUndefined();
+    });
+
+    it('tells the model when the unit has no photos and sends none', async () => {
+      await showCard();
+      photoLinks.mockResolvedValue({ unit: listing('402'), links: [] });
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('There are no photos of this one yet.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('pictures of 402?');
+
+      expect(photoResult(trace)).toContain('has no photos to send');
+      expect(sent.map((c) => c.text)).toEqual([
+        'There are no photos of this one yet.',
+      ]);
+    });
+
+    it('sends one set per turn and refuses a second call', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockToolCallResponse('p2', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402');
+
+      const results = trace.toolCalls
+        .filter((t) => t.name === 'send_property_photos')
+        .map((t) => t.result);
+      expect(results[1]).toMatch(/^Not sent: photos of one listing already go/);
+      expect(photoLinks).toHaveBeenCalledTimes(1);
+      expect(sent.filter((c) => c.meta?.image)).toHaveLength(3);
+    });
+
+    it('counts the photo call toward the tool-call limit', async () => {
+      process.env.AI_MAX_TOOL_CALLS = '1';
+      try {
+        repo.searchProperties.mockResolvedValue({
+          units: [listing('402')],
+          total: 1,
+          offset: 0,
+        });
+        route(read(['new_property_request']), [
+          mockToolCallResponse('s1', 'search_properties', '{"unit":"402"}'),
+          mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+          mockTextResponse('Here it is.'),
+        ]);
+
+        const { sent, trace } = await photoTurn('402 with photos');
+
+        expect(photoResult(trace)).toBeUndefined();
+        expect(photoLinks).not.toHaveBeenCalled();
+        expect(sent.filter((c) => c.meta?.image)).toHaveLength(0);
+      } finally {
+        delete process.env.AI_MAX_TOOL_CALLS;
+      }
+    });
+
+    it('keeps the turn when photo sends fail and tells the next turn they were not sent', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402', (call) => {
+        if (call.meta?.image)
+          throw new WhatsappSendError('Cloud API send failed 400', 400);
+      });
+
+      expect(sent[0].text).toBe('Here are the photos.');
+      expect(trace.outcome).toBe('replied');
+      expect(trace.photos).toBe(0);
+      const history = await service.getHistoryFor('user-1', 'chat-p');
+      expect(history.find((m) => m.tool_call_id === 'p1')?.content).toBe(
+        PHOTOS_FAILED_RESULT,
+      );
+      expect(history[history.length - 1]).toMatchObject({
+        role: 'assistant',
+        content: 'Here are the photos.',
+      });
+    });
+
+    it('sends no photos when a staff reply lands after the text', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402', async (call) => {
+        if (!call.meta?.image)
+          await service.recordStaffReply('user-1', 'chat-p');
+      });
+
+      expect(sent.map((c) => c.text)).toEqual(['Here are the photos.']);
+      expect(trace.photos).toBe(0);
+    });
+
+    it('sends no photos on a turn that ends silent', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402');
+
+      expect(trace.outcome).toBe('provider_unavailable');
+      expect(sent).toHaveLength(0);
+    });
+
+    it('sends no photos when the turn is preempted before the text', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+      photoLinks.mockImplementation(async () => {
+        await service.recordStaffReply('user-1', 'chat-p');
+        return { unit: listing('402'), links };
+      });
+
+      const { sent, trace } = await photoTurn('photos of 402');
+
+      expect(trace.outcome).toBe('human_took_over');
+      expect(sent).toHaveLength(0);
+    });
+
+    it('sends no photos on an escalated turn and tells the next turn they were not sent', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402, and call me');
+
+      expect(trace.escalation?.reason).toBe('request');
+      expect(sent).toHaveLength(1);
+      expect(sent[0].meta?.image).toBeUndefined();
+      expect(sent[0].text).toContain(ESCALATION_REPLIES.request.en);
+      expect(trace.photos).toBeUndefined();
+      const history = await service.getHistoryFor('user-1', 'chat-p');
+      expect(history.find((m) => m.tool_call_id === 'p1')?.content).toBe(
+        PHOTOS_FAILED_RESULT,
+      );
+    });
+
+    it('sends no photos on a payment turn', async () => {
+      await showCard();
+      route(read(['new_property_request', 'payment']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent } = await photoTurn('photos of 402, I paid the deposit');
+
+      expect(sent.filter((c) => c.meta?.image)).toHaveLength(0);
+    });
+
+    it('records how many photos were sent when only some go out', async () => {
+      await showCard();
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { trace } = await photoTurn('photos of 402', (call) => {
+        if (call.meta?.image?.link === links[1])
+          throw new WhatsappSendError('Cloud API send failed 400', 400);
+      });
+
+      expect(trace.photos).toBe(2);
+      const history = await service.getHistoryFor('user-1', 'chat-p');
+      expect(history.find((m) => m.tool_call_id === 'p1')?.content).toBe(
+        PHOTOS_PARTIAL_RESULT('Marina Gate, unit 402', 2),
+      );
+    });
+
+    it('stops sending photos once the chat lock is lost', async () => {
+      await showCard();
+      let held = true;
+      jest
+        .spyOn(service as any, 'runSerializedPerChat')
+        .mockImplementation((_key: unknown, task: any) => task(() => held));
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402', (call) => {
+        if (call.meta?.image) held = false;
+      });
+
+      expect(sent.filter((c) => c.meta?.image)).toHaveLength(1);
+      expect(trace.photos).toBe(1);
+    });
+
+    it('sends no photos when the lock is lost before them', async () => {
+      await showCard();
+      let held = true;
+      jest
+        .spyOn(service as any, 'runSerializedPerChat')
+        .mockImplementation((_key: unknown, task: any) => task(() => held));
+      route(read(['new_property_request']), [
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockTextResponse('Here are the photos.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('photos of 402', () => {
+        held = false;
+      });
+
+      expect(sent.map((c) => c.text)).toEqual(['Here are the photos.']);
+      expect(trace.photos).toBe(0);
+    });
+
+    it('sends no photos of a unit found this turn whose card was not delivered', async () => {
+      repo.searchProperties
+        .mockResolvedValueOnce({ units: [listing('402')], total: 1, offset: 0 })
+        .mockResolvedValueOnce({
+          units: [{ ...listing('403'), bedrooms: 3 }],
+          total: 1,
+          offset: 0,
+        });
+      route(read(['new_property_request']), [
+        mockToolCallResponse('s1', 'search_properties', '{"unit":"402"}'),
+        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+        mockToolCallResponse('s2', 'search_properties', '{"bedrooms":3}'),
+        mockTextResponse('Here is a 3 bed.'),
+      ]);
+
+      const { sent, trace } = await photoTurn('3 bed with photos please');
+
+      expect(photoLinks).toHaveBeenCalledTimes(1);
+      expect(sent).toHaveLength(1);
+      expect(sent[0].text).toContain('unit 403');
+      expect(sent[0].text).not.toContain('unit 402');
+      expect(trace.photos).toBeUndefined();
+      const history = await service.getHistoryFor('user-1', 'chat-p');
+      expect(history.find((m) => m.tool_call_id === 'p1')?.content).toBe(
+        PHOTOS_FAILED_RESULT,
+      );
+    });
+
+    it.each<[string, Record<string, Date>]>([
+      ['an opt-out', { optedOutAt: new Date() }],
+      ['an escalation', { escalatedAt: new Date() }],
+    ])(
+      'sends no photos when %s lands after the text',
+      async (_label, state) => {
+        await showCard();
+        route(read(['new_property_request']), [
+          mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
+          mockTextResponse('Here are the photos.'),
+        ]);
+
+        const { sent, trace } = await photoTurn('photos of 402', (call) => {
+          if (!call.meta?.image) chatAiStateMock.get.mockResolvedValue(state);
+        });
+
+        expect(sent.map((c) => c.text)).toEqual(['Here are the photos.']);
+        expect(trace.photos).toBe(0);
+        const history = await service.getHistoryFor('user-1', 'chat-p');
+        expect(history.find((m) => m.tool_call_id === 'p1')?.content).toBe(
+          PHOTOS_FAILED_RESULT,
+        );
+      },
+    );
+  });
+
   describe('checks and fallbacks', () => {
     it('sends the cards with the fixed intro when the sentence is blocked twice', async () => {
       repo.searchProperties.mockResolvedValue({
@@ -5303,7 +5745,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       ]);
       expect(trace.fallback).toBe('cards');
       expect(sent[0]).toMatch(
-        new RegExp(`^${CARDS_INTROS.en}\\n\\n1\\) Marina Gate, unit 5`),
+        new RegExp(`^${CARDS_INTROS.en}\\n\\n\\*1\\) Marina Gate, unit 5\\*`),
       );
     });
 
@@ -5371,7 +5813,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       const { sent } = await turn('2 bed in the marina');
 
       expect(sent[0]).toMatch(
-        /^I found one option\. It is lovely\.\n\n1\) Marina Gate, unit 7/,
+        /^I found one option\. It is lovely\.\n\n\*1\) Marina Gate, unit 7\*/,
       );
       expect(sent[0]).toMatch(/\n\nWould you like to see it\?$/);
       expect(sent[0]).not.toContain('LISTING_CARDS');

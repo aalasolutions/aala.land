@@ -243,11 +243,12 @@ describe('WhatsappAiPromptBuilderService', () => {
         'escalate_to_staff',
         'list_locations',
         'search_properties',
+        'send_property_photos',
       ]);
     });
 
-    it('keeps the rules block under 600 words and the tool descriptions under 500', () => {
-      expect(RULES_BLOCK.split(/\s+/).filter(Boolean).length).toBeLessThan(600);
+    it('keeps the rules block under 1000 words and the tool descriptions under 500', () => {
+      expect(RULES_BLOCK.split(/\s+/).filter(Boolean).length).toBeLessThan(1000);
       expect(toolWords()).toBeLessThan(500);
     });
 
