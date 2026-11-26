@@ -2260,7 +2260,12 @@ describe('WhatsappWebhookService', () => {
     });
 
     it('pushes the updated message live once an edit is applied', async () => {
-      const updated = { id: 'wamid.e1', body: 'calling in 5', editedAt: 1 };
+      const updated = {
+        id: 'wamid.e1',
+        body: 'calling in 5',
+        originalBody: 'calling in 10',
+        editedAt: 1,
+      };
       store.getMessage.mockResolvedValue(updated);
 
       await service.processEnvelope(editOf('wamid.e2', 'calling in 5'));

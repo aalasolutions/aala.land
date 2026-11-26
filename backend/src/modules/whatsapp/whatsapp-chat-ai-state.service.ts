@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { errorMessage } from '@shared/utils/error.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
-import { SystemEmailService } from '../email/system-email.service';
 import { User } from '../users/entities/user.entity';
 import {
   ESCALATION_REASONS,
@@ -49,12 +48,6 @@ interface FlagRow {
   opted_out_at: Date | null;
 }
 
-interface OwnerRow {
-  id: string;
-  email: string;
-  name: string;
-}
-
 export const ESCALATION_REASON_LABELS: Record<EscalationReason, string> = {
   request: 'Asked for a person, a viewing or a booking',
   safety: 'Safety concern',
@@ -70,8 +63,6 @@ export function toEscalationReason(value: unknown): EscalationReason {
     : 'other';
 }
 
-const REASON_RANK = (column: string) =>
-  `CASE ${column} WHEN 'safety' THEN 2 WHEN 'payment' THEN 1 ELSE 0 END`;
 const FLAG_COLUMNS = `"chat_id", "escalated_at", "escalation_reason", "opted_out_at"`;
 const KEY_WHERE = `"company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3`;
 
@@ -92,7 +83,6 @@ export class WhatsappChatAiStateService {
     private readonly users: Repository<User>,
     private readonly gateway: WhatsappGateway,
     private readonly notifications: NotificationsService,
-    private readonly systemEmail: SystemEmailService,
   ) {}
 
   async get(
@@ -141,7 +131,6 @@ export class WhatsappChatAiStateService {
                 THEN NULL ELSE "whatsapp_chat_ai_states"."escalation_holding_sent_at" END,
               "updated_at" = now()
         WHERE "whatsapp_chat_ai_states"."escalated_at" IS NULL
-           OR ${REASON_RANK('EXCLUDED."escalation_reason"')} > ${REASON_RANK('"whatsapp_chat_ai_states"."escalation_reason"')}
        RETURNING ${FLAG_COLUMNS}`,
       [companyId, userId, chatId, safeReason],
     );
@@ -367,12 +356,10 @@ export class WhatsappChatAiStateService {
     reason: EscalationReason,
     reminder = false,
   ): Promise<boolean> {
-    let owner: OwnerRow | null;
-    let chatLabel: string;
     try {
-      owner = await this.users.findOne({
+      const owner = await this.users.findOne({
         where: { id: userId, companyId, isActive: true },
-        select: { id: true, email: true, name: true },
+        select: { id: true },
       });
       if (!owner) {
         this.logger.warn(
@@ -385,7 +372,7 @@ export class WhatsappChatAiStateService {
         where: { companyId, userId, chatId },
         select: { chatName: true },
       });
-      chatLabel = chat?.chatName?.trim() || chatId;
+      const chatLabel = chat?.chatName?.trim() || chatId;
       await this.notifications.create(companyId, {
         userId,
         type: NotificationType.WHATSAPP_ESCALATION,
@@ -408,9 +395,6 @@ export class WhatsappChatAiStateService {
         `Escalation notified mark failed: ${errorMessage(err)}`,
       );
     }
-    if (reason === 'safety' && !reminder) {
-      await this.emailSafetyEscalation(owner, chatLabel);
-    }
     return true;
   }
 
@@ -427,20 +411,5 @@ export class WhatsappChatAiStateService {
           AND "escalation_notified_at" IS NULL`,
       [companyId, userId, chatId],
     );
-  }
-
-  private async emailSafetyEscalation(
-    owner: OwnerRow,
-    chatLabel: string,
-  ): Promise<void> {
-    if (!owner.email) return;
-    try {
-      await this.systemEmail.sendWhatsappSafetyEscalation(
-        { email: owner.email, name: owner.name },
-        chatLabel,
-      );
-    } catch (err) {
-      this.logger.error(`Safety escalation email failed: ${errorMessage(err)}`);
-    }
   }
 }

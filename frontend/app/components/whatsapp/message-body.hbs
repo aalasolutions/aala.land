@@ -1,0 +1,16 @@
+<div class="wa-bubble" dir="auto" ...attributes><Whatsapp::MessageText
+    @text={{@message.body}}
+    @isExternal={{not @message.fromMe}}
+  /></div>
+{{#if this.originalText}}
+  <div class="wa-original" dir="auto" data-test-wa-message-original>
+    <span class="wa-original__label">Original</span>
+    <div
+      class="wa-original__text"
+      data-test-wa-message-original-text
+    ><Whatsapp::MessageText
+        @text={{this.originalText}}
+        @isExternal={{not @message.fromMe}}
+      /></div>
+  </div>
+{{/if}}

@@ -716,6 +716,28 @@ $wa-tray-max-height: 16rem;
   font-style: italic;
 }
 
+// The text before the first edit, full width under the current text so the meta row stays last.
+.wa-original {
+  flex-basis: 100%;
+  min-inline-size: 0;
+  margin-block-start: wu-space(1);
+  padding-inline-start: wu-space(2);
+  border-inline-start: 2px solid var(--wu-border-regular);
+  font-size: wu-font-size(xs);
+  line-height: 1.4;
+  color: var(--wa-meta);
+}
+
+.wa-original__label {
+  display: block;
+  font-style: italic;
+}
+
+.wa-original__text {
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
 .wa-tick {
   display: inline-flex;
   align-items: center;

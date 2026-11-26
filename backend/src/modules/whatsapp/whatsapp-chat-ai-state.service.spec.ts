@@ -2,7 +2,6 @@ import { Logger, NotFoundException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
-import { SystemEmailService } from '../email/system-email.service';
 import { User } from '../users/entities/user.entity';
 import { WhatsappChatAiState } from './entities/whatsapp-chat-ai-state.entity';
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
@@ -28,7 +27,6 @@ describe('WhatsappChatAiStateService', () => {
   let users: { findOne: jest.Mock };
   let gateway: { emitChatAiState: jest.Mock };
   let notifications: { create: jest.Mock };
-  let systemEmail: { sendWhatsappSafetyEscalation: jest.Mock };
   let service: WhatsappChatAiStateService;
 
   beforeAll(() => {
@@ -55,16 +53,12 @@ describe('WhatsappChatAiStateService', () => {
     };
     gateway = { emitChatAiState: jest.fn() };
     notifications = { create: jest.fn().mockResolvedValue({ id: 'n-1' }) };
-    systemEmail = {
-      sendWhatsappSafetyEscalation: jest.fn().mockResolvedValue(undefined),
-    };
     service = new WhatsappChatAiStateService(
       states as unknown as Repository<WhatsappChatAiState>,
       chats as unknown as Repository<WhatsappChat>,
       users as unknown as Repository<User>,
       gateway as unknown as WhatsappGateway,
       notifications as unknown as NotificationsService,
-      systemEmail as unknown as SystemEmailService,
     );
   });
 
@@ -161,7 +155,6 @@ describe('WhatsappChatAiStateService', () => {
       });
       expectScopedByKey(1);
       expect(states.query.mock.calls[1][0]).toContain(NOTIFIED_SQL);
-      expect(systemEmail.sendWhatsappSafetyEscalation).not.toHaveBeenCalled();
     });
 
     it('does nothing more when the chat is already escalated and notified', async () => {
@@ -194,7 +187,6 @@ describe('WhatsappChatAiStateService', () => {
         'Sara: Safety concern. Automatic replies are paused until someone replies.',
       );
       expect(states.query.mock.calls[2][0]).toContain(NOTIFIED_SQL);
-      expect(systemEmail.sendWhatsappSafetyEscalation).toHaveBeenCalledTimes(1);
     });
 
     it('labels the notification with the number when the chat has no name', async () => {
@@ -253,23 +245,7 @@ describe('WhatsappChatAiStateService', () => {
         { escalated: true, notified: false },
       );
       expect(notifications.create).not.toHaveBeenCalled();
-      expect(systemEmail.sendWhatsappSafetyEscalation).not.toHaveBeenCalled();
       expect(states.query).toHaveBeenCalledTimes(1);
-    });
-
-    it('also emails the active owner on a safety escalation', async () => {
-      states.query.mockResolvedValueOnce([
-        flagRow({ escalated_at: AT, escalation_reason: 'safety' }),
-      ]);
-      states.query.mockResolvedValueOnce([[], 1]);
-
-      await service.escalate(CO, USER, CHAT, 'safety');
-
-      expect(systemEmail.sendWhatsappSafetyEscalation).toHaveBeenCalledWith(
-        { email: 'owner@example.com', name: 'Owner' },
-        'Sara',
-      );
-      expect(notifications.create).toHaveBeenCalledTimes(1);
     });
 
     it('notifies nobody when the owner is no longer active, once', async () => {
@@ -285,51 +261,24 @@ describe('WhatsappChatAiStateService', () => {
 
       expect(users.findOne).toHaveBeenCalledWith({
         where: { id: USER, companyId: CO, isActive: true },
-        select: { id: true, email: true, name: true },
+        select: { id: true },
       });
       expect(notifications.create).not.toHaveBeenCalled();
-      expect(systemEmail.sendWhatsappSafetyEscalation).not.toHaveBeenCalled();
       expect(states.query.mock.calls[1][0]).toContain(NOTIFIED_SQL);
       expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
     });
 
-    it('upgrades an open escalation to safety, keeping its time and notifying again', async () => {
-      states.query.mockResolvedValueOnce([
-        flagRow({ escalated_at: AT, escalation_reason: 'safety' }),
-      ]);
-      states.query.mockResolvedValueOnce([[], 1]);
+    it('never replaces the reason of an open escalation', async () => {
+      states.query.mockResolvedValueOnce([]);
+      states.query.mockResolvedValueOnce([]);
 
-      await expect(service.escalate(CO, USER, CHAT, 'safety')).resolves.toEqual(
-        { escalated: true, notified: true },
-      );
+      await service.escalate(CO, USER, CHAT, 'complaint');
 
       const sql = states.query.mock.calls[0][0] as string;
       expect(sql).toContain(
-        'COALESCE("whatsapp_chat_ai_states"."escalated_at", EXCLUDED."escalated_at")',
+        'WHERE "whatsapp_chat_ai_states"."escalated_at" IS NULL\n',
       );
-      expect(sql).toContain('"escalation_notified_at" = NULL');
-      expect(sql).toContain(
-        `CASE EXCLUDED."escalation_reason" WHEN 'safety' THEN 2 WHEN 'payment' THEN 1 ELSE 0 END > CASE "whatsapp_chat_ai_states"."escalation_reason"`,
-      );
-      expect(sql).toContain(
-        `"escalation_holding_sent_at" = CASE WHEN "whatsapp_chat_ai_states"."escalated_at" IS NULL`,
-      );
-      expect(notifications.create).toHaveBeenCalledTimes(1);
-      expect(systemEmail.sendWhatsappSafetyEscalation).toHaveBeenCalledTimes(1);
-    });
-
-    it('keeps the flag when the safety email fails', async () => {
-      systemEmail.sendWhatsappSafetyEscalation.mockRejectedValue(
-        new Error('smtp down'),
-      );
-      states.query.mockResolvedValueOnce([
-        flagRow({ escalated_at: AT, escalation_reason: 'safety' }),
-      ]);
-      states.query.mockResolvedValueOnce([[], 1]);
-
-      await expect(service.escalate(CO, USER, CHAT, 'safety')).resolves.toEqual(
-        { escalated: true, notified: true },
-      );
+      expect(sql).not.toContain('CASE EXCLUDED');
     });
   });
 
@@ -571,7 +520,6 @@ describe('WhatsappChatAiStateService', () => {
         message:
           'Sara: Safety concern. The customer wrote again and is still waiting for a reply.',
       });
-      expect(systemEmail.sendWhatsappSafetyEscalation).not.toHaveBeenCalled();
     });
 
     it('never notifies a third time', async () => {

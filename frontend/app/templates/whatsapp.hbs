@@ -229,10 +229,7 @@
                   @onDeleteMedia={{this.openDeleteMedia}}
                 />
               {{else}}
-                <div class="wa-bubble" dir="auto"><Whatsapp::MessageText
-                    @text={{msg.body}}
-                    @isExternal={{not msg.fromMe}}
-                  /></div>
+                <Whatsapp::MessageBody @message={{msg}} />
               {{/if}}
 
               <div class="wa-meta">

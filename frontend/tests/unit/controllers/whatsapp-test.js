@@ -2456,6 +2456,21 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
+  test('an edit update carries the original text into the shown row', function (assert) {
+    const controller = this.owner.lookup('controller:whatsapp');
+    const shown = { id: 'm-1', body: 'ONE', editedAt: null };
+
+    assert.deepEqual(
+      controller._mergeExisting(shown, {
+        id: 'm-1',
+        body: 'TWO',
+        editedAt: 200,
+        originalBody: 'ONE',
+      }),
+      { id: 'm-1', body: 'TWO', editedAt: 200, originalBody: 'ONE' },
+    );
+  });
+
   function mediaMsg(overrides = {}) {
     return {
       id: 'm-media',

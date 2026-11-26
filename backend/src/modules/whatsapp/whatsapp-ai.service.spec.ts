@@ -6,8 +6,6 @@ import {
   TurnTrace,
   WhatsappAiService,
   cardSentences,
-  declineOf,
-  escalationOf,
   fixedLanguage,
   keywordRead,
   parseTurnRead,
@@ -22,19 +20,15 @@ import {
   MARKER_TOKEN,
   STAFF_LINE_PREFIX,
 } from './whatsapp-ai-filter';
+import { OPT_CONFIRMATIONS, classifyOptSignals } from './whatsapp-ai-opt-out';
 import {
-  OPT_CONFIRMATIONS,
-  SAFETY_FALLBACK_REPLIES,
-  classifyOptSignals,
-} from './whatsapp-ai-opt-out';
-import {
+  CANNOT_HELP_REPLIES,
   CARDS_INTROS,
   CODE_REPLIES,
-  DECLINE_REPLIES,
+  DECLINE_OFFERS,
   ENGLISH_ONLY_NOTE,
   ESCALATION_REPLIES,
   HOLDING_REPLIES,
-  PAYMENT_WARNING_REPLIES,
   RESUME_NOTICES,
 } from './whatsapp-ai-prompts';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -4342,7 +4336,31 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     delete process.env.AI_MAX_RETRIES;
   });
 
-  describe('stops, declines, payment and staff lines in mixed turns', () => {
+  describe('classifier prompt', () => {
+    it('lists only the kept labels and the wantsStop, handoff and lang fields', async () => {
+      route(read(['neither']), [mockTextResponse('Hello.')]);
+
+      await turn('hello');
+
+      const prompt: string = JSON.parse(classifierBodies[0]).messages[0]
+        .content;
+      const labelLines = prompt
+        .split('handoff is a separate field')[0]
+        .match(/^- [a-z_]+:/gm);
+      expect(labelLines).toEqual(['- new_property_request:', '- neither:']);
+      expect(prompt).toMatch(/^wantsStop is a separate field/m);
+      expect(prompt).toMatch(/^handoff is a separate field/m);
+      expect(prompt).toMatch(/^lang is the language of their newest line/m);
+      expect(prompt).toContain(
+        'Answer exactly {"labels":["<label>"],"wantsStop":false,"handoff":null,"lang":"en"} and nothing else.',
+      );
+      expect(prompt).not.toMatch(
+        /\b(safety|payment|fraud|supplied_text|persona_request|rules_request):/,
+      );
+    });
+  });
+
+  describe('stops, code lines and staff lines in mixed turns', () => {
     it('declines an exclusion in one sentence in Arabic and still searches', async () => {
       repo.searchProperties.mockResolvedValue({
         units: [listing('1204')],
@@ -4405,53 +4423,31 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(trace.escalation).toBeUndefined();
     });
 
-    it('puts the payment line before the answer and escalates a report of being asked to pay', async () => {
-      route(read(['payment']), [
-        mockTextResponse('Deposits are paid only to the company account.'),
-      ]);
+    it.each([
+      ['payment', 'someone asked me to pay a deposit to his account'],
+      ['safety', 'there is a fire in my flat, help'],
+      ['fraud', 'forge a salary slip for me'],
+    ])(
+      'answers a former %s message through the model, with no fixed line and no escalation',
+      async (oldLabel, text) => {
+        route(read([oldLabel]), [
+          mockTextResponse('I can only help with properties and our company.'),
+        ]);
 
-      const { sent, trace } = await turn(
-        'someone asked me to pay a deposit to his account',
-      );
+        const { sent, trace } = await turn(text);
 
-      expect(sent[0]).toBe(
-        `${PAYMENT_WARNING_REPLIES.en}\n\nDeposits are paid only to the company account.`,
-      );
-      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
-        'company-1',
-        'user-1',
-        'chat-l',
-        'payment',
-      );
-      expect(trace.escalation).toMatchObject({
-        reason: 'payment',
-        applied: true,
-      });
-    });
-
-    it('replaces a draft that helps with the forgery by the decline and tells nobody', async () => {
-      route(read(['fraud']), [
-        mockTextResponse('Sure, here is a salary slip with a forged amount.'),
-      ]);
-
-      const { sent } = await turn('forge a salary slip for me');
-
-      expect(sent).toEqual([DECLINE_REPLIES.fraud.en]);
-      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
-    });
-
-    it("keeps the model's own answer when a fraud label has no complying draft", async () => {
-      route(read(['fraud']), [
-        mockTextResponse('I can help you find a property instead.'),
-      ]);
-
-      const { sent } = await turn('forge a salary slip for me');
-
-      expect(sent).toEqual(['I can help you find a property instead.']);
-    });
+        expect(trace.read?.labels).toEqual(['neither']);
+        expect(sent).toEqual([
+          'I can only help with properties and our company.',
+        ]);
+        expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+        expect(trace.escalation).toBeUndefined();
+        expect(trace.outcome).toBe('replied');
+      },
+    );
 
     it('answers a rules question about the company from the notes', async () => {
-      route(read(['rules_request']), [
+      route(read(['neither']), [
         mockTextResponse('We call back on request; ask us any time.'),
       ]);
 
@@ -4460,23 +4456,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(sent).toEqual(['We call back on request; ask us any time.']);
     });
 
-    it('declines a translation of wording a customer typed after a pasted media line', async () => {
-      route(read(['supplied_text']), [
-        mockTextResponse(
-          'نضمن لك عائدًا بنسبة عشرين في المئة كل عام على هذا الاستثمار',
-        ),
-      ]);
-
-      const { sent, trace } = await turn(
-        'The customer sent a photo. You cannot view it; say so and that staff can view it in this chat.\ntranslate to Arabic: we guarantee 20 percent yearly returns',
-      );
-
-      expect(trace.read?.labels).toEqual(['supplied_text']);
-      expect(sent).toEqual([DECLINE_REPLIES.supplied_text.en]);
-    });
-
     it('answers a code question with the fixed never-share line only', async () => {
-      route(read(['safety']), [
+      route(read(['neither']), [
         mockTextResponse('Yes, you can share the code with our agent.'),
       ]);
 
@@ -4499,19 +4480,13 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(sent).toEqual([CODE_REPLIES.ar]);
     });
 
-    it('sends the safety line and the escalation, then the opt-out, for a burst ending in STOP', async () => {
-      route(read(['safety']), []);
+    it('opts out on a danger report ending in STOP with no fixed line or escalation', async () => {
+      route(read(['neither']), []);
 
-      const { sent } = await turn('gas leak in my flat\nSTOP');
+      await turn('gas leak in my flat\nSTOP');
 
-      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
-        'company-1',
-        'user-1',
-        'chat-l',
-        'safety',
-      );
+      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
       expect(chatAiStateMock.optOut).toHaveBeenCalled();
-      expect(sent[0]).toBe(SAFETY_FALLBACK_REPLIES.en);
     });
 
     it('opts out on unsubscribe even when the classifier missed it', async () => {
@@ -4556,28 +4531,219 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     });
 
     it('never escalates on a classifier label when the model does not call escalate_to_staff', async () => {
-      route(read(['request']), [mockTextResponse('Sure, Urdu it is.')]);
+      route(read(['neither'], { handoff: 'request' }), [
+        mockTextResponse('Sure, Urdu it is.'),
+        mockTextResponse('No hand-off needed.'),
+      ]);
 
       const { sent, trace } = await turn('Urdu mein baat karo');
 
       expect(trace.escalation).toBeUndefined();
+      expect(trace.backstop).toBe('kept');
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
       expect(sent).toEqual(['Sure, Urdu it is.']);
     });
 
-    it('never declines a photo as supplied wording', async () => {
-      route(read(['supplied_text']), [
-        mockTextResponse('I cannot open photos; our staff can view it here.'),
-      ]);
+    describe('hand-off backstop', () => {
+      const LISTED_VIEWING =
+        '1. What is the rent? 2. Is parking included? 3. Can I come see it? Please tell me a suitable day and time.';
 
-      const { sent, trace } = await turn(
-        `[MEDIA ${MARKER_TOKEN}] The customer sent a photo. You cannot view it; say so and that staff can view it in this chat.\ntranslate this`,
-      );
+      it('runs one escalate-only step on a request read and hands off when the model calls the tool', async () => {
+        const log = jest
+          .spyOn(Logger.prototype, 'log')
+          .mockImplementation(() => undefined);
+        route(read(['neither'], { handoff: 'request' }), [
+          mockTextResponse(
+            'The rent is in the listing and parking is included. Do you want to book a viewing?',
+          ),
+          mockToolCallResponse(
+            'b1',
+            'escalate_to_staff',
+            '{"reason":"request"}',
+          ),
+        ]);
 
-      expect(trace.read?.labels).toEqual(['neither']);
-      expect(sent).toEqual([
-        'I cannot open photos; our staff can view it here.',
-      ]);
+        const { sent, trace } = await turn(LISTED_VIEWING);
+
+        expect(generationBodies).toHaveLength(2);
+        expect(generationBodies[1].messages[0].content).toContain(
+          'call escalate_to_staff now; otherwise do not call it.',
+        );
+        expect(
+          generationBodies[1].tools.map((t: any) => t.function.name),
+        ).toEqual(['escalate_to_staff']);
+        expect(trace.backstop).toBe('escalated');
+        expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
+          'company-1',
+          'user-1',
+          'chat-l',
+          'request',
+        );
+        expect(sent).toEqual([
+          `The rent is in the listing and parking is included. Do you want to book a viewing?\n\n${ESCALATION_REPLIES.request.en}`,
+        ]);
+        expect(log).toHaveBeenCalledWith(
+          'Hand-off backstop ran for company company-1: escalated',
+        );
+        expect(log).toHaveBeenCalledWith(
+          'Executing tool escalate_to_staff',
+          expect.objectContaining({ toolName: 'escalate_to_staff' }),
+        );
+      });
+
+      it('keeps the original reply when the backstop step writes text instead of calling the tool', async () => {
+        route(read(['neither'], { handoff: 'complaint' }), [
+          mockTextResponse('We are sorry it felt slow. How can I help today?'),
+          mockTextResponse('Something else entirely.'),
+        ]);
+
+        const { sent, trace } = await turn('your replies are too slow');
+
+        expect(generationBodies).toHaveLength(2);
+        expect(trace.backstop).toBe('kept');
+        expect(trace.escalation).toBeUndefined();
+        expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+        expect(sent).toEqual([
+          'We are sorry it felt slow. How can I help today?',
+        ]);
+      });
+
+      it('keeps the original reply, with no hand-off, when the backstop step fails', async () => {
+        route(read(['neither'], { handoff: 'request' }), [
+          mockTextResponse('Here you go.'),
+        ]);
+
+        const { sent, trace } = await turn(LISTED_VIEWING);
+
+        expect(trace.backstop).toBe('failed');
+        expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
+        expect(sent).toEqual(['Here you go.']);
+      });
+
+      it('never runs without a request or complaint read', async () => {
+        route(read(['new_property_request']), [
+          mockTextResponse('Do you want to book a viewing?'),
+        ]);
+
+        const { trace } = await turn(LISTED_VIEWING);
+
+        expect(generationBodies).toHaveLength(1);
+        expect(trace.backstop).toBeUndefined();
+      });
+
+      it('never runs when the model already called escalate_to_staff', async () => {
+        route(read(['neither'], { handoff: 'request' }), [
+          mockToolCallResponse(
+            't1',
+            'escalate_to_staff',
+            '{"reason":"request"}',
+          ),
+          mockTextResponse('Parking is included.'),
+        ]);
+
+        const { sent, trace } = await turn(LISTED_VIEWING);
+
+        expect(generationBodies).toHaveLength(2);
+        expect(trace.backstop).toBeUndefined();
+        expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
+        expect(sent).toEqual([
+          `Parking is included.\n\n${ESCALATION_REPLIES.request.en}`,
+        ]);
+      });
+
+      it('never runs on a silent turn', async () => {
+        route(read(['neither'], { handoff: 'request' }), [
+          mockTextResponse(''),
+          mockTextResponse(''),
+        ]);
+
+        const { sent, trace } = await turn(LISTED_VIEWING);
+
+        expect(generationBodies).toHaveLength(2);
+        expect(trace.backstop).toBeUndefined();
+        expect(sent).toEqual([]);
+      });
+
+      it('never runs on a stop turn', async () => {
+        route(read(['neither'], { handoff: 'request', wantsStop: true }), [
+          mockTextResponse('Okay.'),
+        ]);
+
+        const { trace } = await turn('please stop messaging me and call me');
+
+        expect(trace.backstop).toBeUndefined();
+        expect(generationBodies.length).toBeLessThanOrEqual(1);
+      });
+
+      it('never runs when "no call please" settles the request away', async () => {
+        route(read(['neither'], { handoff: 'request' }), [
+          mockTextResponse('Sure.'),
+        ]);
+
+        const { trace } = await turn('no call please');
+
+        expect(trace.read?.handoff).toBeUndefined();
+        expect(trace.backstop).toBeUndefined();
+        expect(generationBodies).toHaveLength(1);
+      });
+
+      it('keeps the cards and the new_property_request label on a viewing follow-up with a request hand-off', async () => {
+        repo.searchProperties.mockResolvedValue({
+          units: [listing('7')],
+          total: 1,
+          offset: 0,
+        });
+        route(read(['new_property_request'], { handoff: 'request' }), [
+          mockToolCallResponse('c1', 'search_properties', '{}'),
+          mockTextResponse(
+            'Here it is again.\n\n[LISTING_CARDS]\n\nWould you like to see it?',
+          ),
+          mockToolCallResponse(
+            'b1',
+            'escalate_to_staff',
+            '{"reason":"request"}',
+          ),
+        ]);
+
+        const { sent, trace } = await turn('can I see it tomorrow?');
+
+        expect(trace.read?.labels).toEqual(['new_property_request']);
+        expect(trace.backstop).toBe('escalated');
+        expect(trace.cards).toBe(1);
+        expect(sent[0]).toMatch(
+          /^Here it is again\.\n\n\*1\) Marina Gate, unit 7\*/,
+        );
+        expect(sent[0]).toContain(ESCALATION_REPLIES.request.en);
+      });
+
+      it('keeps the whole reply and sends no cards when the backstop escalates a complaint', async () => {
+        repo.searchProperties.mockResolvedValue({
+          units: [listing('7')],
+          total: 1,
+          offset: 0,
+        });
+        route(read(['new_property_request'], { handoff: 'complaint' }), [
+          mockToolCallResponse('c1', 'search_properties', '{}'),
+          mockTextResponse(
+            'I am sorry the viewing was missed.\n\nThat should not have happened.\n\nThank you for your patience.',
+          ),
+          mockToolCallResponse(
+            'b1',
+            'escalate_to_staff',
+            '{"reason":"complaint"}',
+          ),
+        ]);
+
+        const { sent, trace } = await turn(
+          'nobody came to the viewing, show me other 2 beds',
+        );
+
+        expect(trace.backstop).toBe('escalated');
+        expect(trace.cards).toBe(0);
+        expect(sent).toEqual([
+          `I am sorry the viewing was missed. That should not have happened. Thank you for your patience.\n\n${ESCALATION_REPLIES.complaint.en}`,
+        ]);
+      });
     });
 
     it('keeps replies on for a goodbye the classifier read as a stop', async () => {
@@ -4661,7 +4827,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       ]);
     });
 
-    it('ranks a payment label over the tool and sends no hand-off line', async () => {
+    it('escalates a former payment message only through the tool, with the hand-off line', async () => {
       route(read(['payment']), [
         mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
         mockTextResponse('Thanks for telling us.'),
@@ -4670,8 +4836,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       const { sent } = await turn('the agent wants an advance, call me');
 
       expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
-      expect(chatAiStateMock.escalate.mock.calls[0][3]).toBe('payment');
-      expect(sent[0]).not.toContain(ESCALATION_REPLIES.request.en);
+      expect(chatAiStateMock.escalate.mock.calls[0][3]).toBe('request');
+      expect(sent[0]).toContain(ESCALATION_REPLIES.request.en);
     });
 
     it('escalates from the tool after the search tool-call limit is spent', async () => {
@@ -4712,6 +4878,75 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
         'request',
       );
       expect(sent[0]).toContain(ESCALATION_REPLIES.request.en);
+    });
+
+    it('warns with the tool name and reason for every tool call it does not run', async () => {
+      process.env.AI_MAX_STEPS = '2';
+      process.env.AI_MAX_TOOL_CALLS = '1';
+      const search = (id: string, args: string) => ({
+        id,
+        type: 'function',
+        function: { name: 'search_properties', arguments: args },
+      });
+      route(read(['neither']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            search('t1', 'not json'),
+            search('t2', '{"bedrooms":2}'),
+          ],
+        }),
+        mockToolCallResponse('t3', 'search_properties', '{"bedrooms":3}'),
+        mockTextResponse('Here is what I could check.'),
+      ]);
+
+      await turn('2 bed or 3 bed?');
+      delete process.env.AI_MAX_STEPS;
+      delete process.env.AI_MAX_TOOL_CALLS;
+
+      const warned = (Logger.prototype.warn as jest.Mock).mock.calls.map((c) =>
+        String(c[0]),
+      );
+      expect(warned).toContain(
+        'Tool search_properties not run for company company-1: arguments are not valid JSON',
+      );
+      expect(warned).toContain(
+        'Tool search_properties not run for company company-1: tool call limit reached',
+      );
+      expect(warned).toContain(
+        'Tool search_properties not run for company company-1: called on the last step',
+      );
+    });
+
+    it('warns on rejected search arguments with a reason category and never the argument values', async () => {
+      route(read(['neither']), [
+        mockToolCallResponse(
+          't1',
+          'search_properties',
+          '{"plaze":"Secret Tower"}',
+        ),
+        mockToolCallResponse(
+          't2',
+          'search_properties',
+          '{"plaze":"Secret Tower"}',
+        ),
+        mockTextResponse('Here is what I could check.'),
+      ]);
+
+      await turn('flats in Secret Tower');
+
+      const warned = (Logger.prototype.warn as jest.Mock).mock.calls.map((c) =>
+        JSON.stringify(c),
+      );
+      const notRun = warned.filter((w) => w.includes('not run for company'));
+      expect(notRun).toHaveLength(2);
+      for (const w of notRun) {
+        expect(w).toContain(
+          'Tool search_properties not run for company company-1: arguments do not match the tool',
+        );
+        expect(w).not.toMatch(/Secret Tower|plaze/);
+      }
     });
 
     it('offers only escalate_to_staff on the last step and still escalates', async () => {
@@ -5004,7 +5239,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     ])(
       'opts out on the exact word %s before the classifier runs',
       async (text, lang) => {
-        route(read(['safety', 'payment'], { wantsStop: true, lang }), [
+        route(read(['neither'], { wantsStop: true, lang }), [
           mockTextResponse('should never be sent'),
         ]);
         chatAiStateMock.claimOptOutConfirmation.mockResolvedValue(lang);
@@ -5104,7 +5339,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(trace.optOut?.source).toBe('classifier');
     });
 
-    it('gives the classifier only the customer message and no request or complaint label', async () => {
+    it('gives the classifier only the customer message, with request and complaint as the handoff field', async () => {
       redis.store.set(
         'wa:ai:hist:user-1:chat-p',
         JSON.stringify([
@@ -5124,7 +5359,14 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(messages[1].content).toBe(
         '<customer_message>\nDhoondo ab\n</customer_message>',
       );
-      expect(messages[0].content).not.toMatch(/^- (request|complaint):/m);
+      expect(messages[0].content).toMatch(/^- request:/m);
+      expect(messages[0].content).toMatch(/^- complaint:/m);
+      expect(messages[0].content).toMatch(
+        /^handoff is a separate field, never a label:/m,
+      );
+      expect(messages[0].content).toContain(
+        '{"labels":["<label>"],"wantsStop":false,"handoff":null,"lang":"en"}',
+      );
     });
 
     it('offers no pricing tool and passes a notes answer with no figure', async () => {
@@ -5178,8 +5420,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       const { sent, trace } = await turn(
         "I'm a single woman, is 1204 a safe building?",
       );
+      expect(trace.outcome).toBe('replied');
 
-      expect(trace.safetyReply).toBeUndefined();
       expect(sent).toEqual([
         'Unit 1204 is in a building with 24 hour security.',
       ]);
@@ -5188,22 +5430,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
   });
 
   describe('gates', () => {
-    it('replaces the answer with the safety line and escalates', async () => {
-      route(read(['safety']), [mockTextResponse('never sent')]);
-
-      const { sent, trace } = await turn('there is a fire in my flat');
-
-      expect(sent).toEqual([SAFETY_FALLBACK_REPLIES.en]);
-      expect(trace.safetyReply).toBe(true);
-      expect(chatAiStateMock.escalate).toHaveBeenCalledWith(
-        'company-1',
-        'user-1',
-        'chat-l',
-        'safety',
-      );
-    });
-
-    it('answers normally on a malformed read, never with the safety line', async () => {
+    it('answers normally on a malformed read', async () => {
       route('no json here', [mockTextResponse('Please call the building.')]);
 
       const { sent, trace } = await turn('there is a fire in my flat, help');
@@ -5213,7 +5440,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
-    it('treats a read with more than two labels as invalid, so STOP still stops', async () => {
+    it('reads a stop from a read whose labels are all unknown', async () => {
       route(
         JSON.stringify({
           labels: ['safety', 'payment', 'complaint'],
@@ -5224,8 +5451,12 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       const { sent, trace } = await turn('please stop now');
 
-      expect(trace.read?.via).toBe('malformed');
-      expect(sent).not.toContain(SAFETY_FALLBACK_REPLIES.en);
+      expect(trace.read).toMatchObject({
+        via: 'classified',
+        labels: ['neither'],
+      });
+      expect(chatAiStateMock.optOut).toHaveBeenCalled();
+      expect(sent).not.toContain('never sent');
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
@@ -5281,7 +5512,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
     it('reads request and complaint only for an opted-out chat and hands a request over with its line', async () => {
       chatAiStateMock.get.mockResolvedValue({ optedOutAt: new Date() });
-      route(read(['request']), []);
+      route(read(['neither'], { handoff: 'request' }), []);
 
       const { sent, trace } = await turn('I want to talk to a person');
 
@@ -5301,7 +5532,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
     it('flags the first complaint on an opted-out chat without a reply', async () => {
       chatAiStateMock.get.mockResolvedValue({ optedOutAt: new Date() });
-      route(read(['complaint']), []);
+      route(read(['neither'], { handoff: 'complaint' }), []);
 
       const { sent, trace } = await turn('your agent never showed up');
 
@@ -5329,13 +5560,16 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     });
 
     it('adds the English-only note to a fixed line for a language without fixed lines', async () => {
-      route(read(['safety'], { lang: 'de' }), []);
+      chatAiStateMock.get.mockResolvedValue({
+        escalatedAt: new Date(),
+        escalationReason: 'request',
+      });
+      chatAiStateMock.claimHoldingReply.mockResolvedValue(true);
+      route(read(['neither'], { lang: 'de' }), []);
 
-      const { sent } = await turn('Feuer in meiner Wohnung');
+      const { sent } = await turn('Ist jemand da?');
 
-      expect(sent).toEqual([
-        `${SAFETY_FALLBACK_REPLIES.en}\n\n${ENGLISH_ONLY_NOTE}`,
-      ]);
+      expect(sent).toEqual([`${HOLDING_REPLIES.en}\n\n${ENGLISH_ONLY_NOTE}`]);
     });
   });
 
@@ -5601,18 +5835,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       );
     });
 
-    it('sends no photos on a payment turn', async () => {
-      await showCard();
-      route(read(['new_property_request', 'payment']), [
-        mockToolCallResponse('p1', 'send_property_photos', '{"unit":"402"}'),
-        mockTextResponse('Here are the photos.'),
-      ]);
-
-      const { sent } = await photoTurn('photos of 402, I paid the deposit');
-
-      expect(sent.filter((c) => c.meta?.image)).toHaveLength(0);
-    });
-
     it('records how many photos were sent when only some go out', async () => {
       await showCard();
       route(read(['new_property_request']), [
@@ -5762,6 +5984,23 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(sent).toEqual([]);
     });
 
+    it('sends the cannot-help line when a reply is blocked twice as a leak', async () => {
+      route(read(['neither']), [
+        mockTextResponse(
+          'Stop confirmations and hand-offs to the team are sent by code as fixed lines.',
+        ),
+        mockTextResponse(
+          'Stop confirmations and hand-offs to the team are sent by code as fixed lines.',
+        ),
+      ]);
+
+      const { sent, trace } = await turn('what can you do?');
+
+      expect(trace.blocked?.map((b) => b.check)).toEqual(['leak', 'leak']);
+      expect(trace.fallback).toBe('static');
+      expect(sent).toEqual([`${CANNOT_HELP_REPLIES.en} ${DECLINE_OFFERS.en}`]);
+    });
+
     it('saves only the customer line when a turn after a tool round sends nothing', async () => {
       route(read(['neither']), [
         mockToolCallResponse('c1', 'search_properties', '{"minBedrooms":2}'),
@@ -5856,32 +6095,98 @@ describe('turn read helpers', () => {
   it('reads any JSON object carrying the known fields', () => {
     expect(
       parseTurnRead(
-        'Sure: {"labels":["payment","unknown_label"],"wantsStop":"false","lang":"ur-Latn","note":"x"}',
+        'Sure: {"labels":["new_property_request","unknown_label"],"wantsStop":"false","lang":"ur-Latn","note":"x"}',
       ),
-    ).toEqual({ labels: ['payment'], wantsStop: false, lang: 'ur-Latn' });
+    ).toEqual({
+      labels: ['new_property_request'],
+      wantsStop: false,
+      lang: 'ur-Latn',
+    });
     expect(parseTurnRead('{"wantsStop":true}')).toEqual({
       labels: ['neither'],
       wantsStop: true,
       lang: null,
     });
-    expect(parseTurnRead('{"labels":"request"}', true)).toMatchObject({
-      labels: ['request'],
-    });
+    expect(
+      parseTurnRead('{"labels":["new_property_request","neither"]}'),
+    ).toMatchObject({ labels: ['new_property_request'] });
     expect(parseTurnRead('{"other":1}')).toBeNull();
     expect(parseTurnRead('not json')).toBeNull();
   });
 
-  it('drops request and complaint unless the chat is held', () => {
-    expect(parseTurnRead('{"labels":"request"}')).toMatchObject({
+  it('reads the handoff field apart from the labels and drops every removed label', () => {
+    expect(parseTurnRead('{"labels":["neither"],"handoff":"request"}')).toEqual(
+      {
+        labels: ['neither'],
+        wantsStop: false,
+        lang: null,
+        handoff: 'request',
+      },
+    );
+    expect(
+      parseTurnRead('{"labels":["new_property_request"],"handoff":"request"}'),
+    ).toMatchObject({ labels: ['new_property_request'], handoff: 'request' });
+    for (const removed of [
+      'safety',
+      'payment',
+      'fraud',
+      'supplied_text',
+      'persona_request',
+      'rules_request',
+    ]) {
+      expect(
+        parseTurnRead(
+          JSON.stringify({
+            labels: [removed],
+            wantsStop: false,
+            handoff: 'complaint',
+          }),
+        ),
+      ).toEqual({
+        labels: ['neither'],
+        wantsStop: false,
+        lang: null,
+        handoff: 'complaint',
+      });
+    }
+  });
+
+  it('maps a hand-off given in labels to the handoff field, complaint first', () => {
+    expect(parseTurnRead('{"labels":"request"}')).toEqual({
       labels: ['neither'],
-    });
-    expect(parseTurnRead('{"labels":["complaint","payment"]}')).toMatchObject({
-      labels: ['payment'],
+      wantsStop: false,
+      lang: null,
+      handoff: 'request',
     });
     expect(
-      parseTurnRead('{"labels":["complaint","payment"]}', true),
-    ).toMatchObject({ labels: ['payment', 'complaint'] });
+      parseTurnRead('{"labels":["new_property_request","request"]}'),
+    ).toEqual({
+      labels: ['new_property_request'],
+      wantsStop: false,
+      lang: null,
+      handoff: 'request',
+    });
+    expect(
+      parseTurnRead('{"labels":["request","complaint"],"handoff":null}'),
+    ).toMatchObject({ labels: ['neither'], handoff: 'complaint' });
+    expect(
+      parseTurnRead('{"labels":["complaint"],"handoff":"request"}'),
+    ).toMatchObject({ handoff: 'request' });
   });
+
+  it.each([null, 'call', 5, ['request'], true])(
+    'ignores an invalid handoff %p without making the read malformed',
+    (handoff) => {
+      const parsed = parseTurnRead(
+        JSON.stringify({ labels: ['neither'], wantsStop: false, handoff }),
+      );
+      expect(parsed).toEqual({
+        labels: ['neither'],
+        wantsStop: false,
+        lang: null,
+      });
+    },
+  );
 
   it.each([
     ['ur', 'ur', false],
@@ -5903,7 +6208,7 @@ describe('turn read helpers', () => {
     expect(fixedLanguage(null, 'توقف').code).toBe('ar');
   });
 
-  it('reads stop, safety and payment from keywords when the classifier is down', () => {
+  it('reads only a stop from keywords when the classifier is down', () => {
     expect(keywordRead('STOP', 'classifier_timeout')).toMatchObject({
       wantsStop: true,
       labels: ['neither'],
@@ -5918,18 +6223,11 @@ describe('turn read helpers', () => {
     expect(
       keywordRead('the agent asked me to pay to his account', 'provider_failed')
         .labels,
-    ).toEqual(['payment']);
-  });
-
-  it('ranks payment over the model hand-off, ignores request labels and finds the decline', () => {
-    const r = (labels: any[]): TurnRead => ({ ...NEITHER, labels });
-    expect(escalationOf(r(['request', 'complaint']))).toBeNull();
-    expect(escalationOf(r(['neither']), 'complaint')).toBe('complaint');
-    expect(escalationOf(r(['payment']), 'request')).toBe('payment');
-    expect(escalationOf(r(['new_property_request']))).toBeNull();
-    expect(declineOf(r(['new_property_request', 'rules_request']))).toBe(
-      'rules_request',
-    );
+    ).toEqual(['neither']);
+    expect(
+      keywordRead('there is a fire in my flat, help', 'classifier_timeout')
+        .labels,
+    ).toEqual(['neither']);
   });
 
   it('keeps up to three sentences before the cards and the last paragraph after', () => {

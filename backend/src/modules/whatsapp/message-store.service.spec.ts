@@ -628,7 +628,34 @@ describe('MessageStoreService', () => {
       });
       expect(where.deletedAt).toBeDefined();
       expect(where.editedAt).toBeDefined();
-      expect(patch).toEqual({ body: 'new text', editedAt: at });
+      expect(patch).toEqual({
+        body: 'new text',
+        editedAt: at,
+        originalBody: expect.any(Function),
+      });
+    });
+
+    it('applyEdit records the pre-edit text once and never overwrites it on a later edit', async () => {
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'first',
+        new Date(1761000200 * 1000),
+        false,
+      );
+      await service.applyEdit(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        'second',
+        new Date(1761000300 * 1000),
+        false,
+      );
+
+      for (const [, patch] of messagesRepo.update.mock.calls) {
+        expect(patch.originalBody()).toBe('COALESCE("original_body", "body")');
+      }
     });
 
     it('getMessage reads one message inside the caller company and agent', async () => {
@@ -1513,6 +1540,36 @@ describe('MessageStoreService', () => {
       expect(out[0].deletedAt).toBe(
         Math.floor(Date.parse('2026-08-21T12:00:00.000Z') / 1000),
       );
+    });
+
+    it('carries originalBody only when it differs from the edited body', async () => {
+      selectBuilder.getMany.mockResolvedValue([
+        makeRow({
+          waMessageId: 'edited',
+          body: 'calling in 5',
+          originalBody: 'calling in 10',
+          editedAt: new Date('2026-08-21T11:00:00.000Z'),
+        }),
+        makeRow({
+          waMessageId: 'same',
+          timestamp: '1700000001',
+          body: 'same text',
+          originalBody: 'same text',
+        }),
+        makeRow({ waMessageId: 'plain', timestamp: '1700000002' }),
+      ]);
+
+      const { messages: out } = await service.getMessagesForChat(
+        'co-1',
+        'user-a',
+        'chat-a',
+      );
+
+      const byId = Object.fromEntries(out.map((m) => [m.id, m]));
+      expect(byId.edited.originalBody).toBe('calling in 10');
+      expect(byId.edited.body).toBe('calling in 5');
+      expect(byId.same.originalBody).toBeNull();
+      expect(byId.plain.originalBody).toBeNull();
     });
 
     it('still returns a deleted message: the client renders a stub, it is not hidden here', async () => {

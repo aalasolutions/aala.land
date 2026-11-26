@@ -52,6 +52,8 @@ export interface WaMessage {
   statusAt?: number | null;
   errorCode?: string | null;
   editedAt?: number | null;
+  // Text before the first edit; null when unedited or unchanged.
+  originalBody?: string | null;
   // Set means Meta revoked the message; the row and its stub are still returned.
   deletedAt?: number | null;
 }
@@ -64,7 +66,8 @@ type WaMessageOutputOnly =
   | 'mediaStatus'
   | 'mediaStoredAt'
   | 'mediaDeletedAt'
-  | 'mediaDeletedBy';
+  | 'mediaDeletedBy'
+  | 'originalBody';
 
 // No stored media yet: the output media fields of a message built before its row exists.
 export const WA_MESSAGE_NO_STORED_MEDIA = {

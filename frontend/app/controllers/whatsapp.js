@@ -36,6 +36,7 @@ const MUTABLE_MESSAGE_FIELDS = [
   'statusAt',
   'errorCode',
   'editedAt',
+  'originalBody',
   'deletedAt',
   'mediaStatus',
   'mediaSizeBytes',

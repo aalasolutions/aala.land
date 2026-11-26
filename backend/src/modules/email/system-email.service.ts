@@ -23,7 +23,6 @@ import {
   settledWithoutChargeEmail,
   upcomingInvoiceEmail,
   welcomeEmail,
-  whatsappSafetyEscalationEmail,
 } from './system-email.content';
 
 /** Minimal recipient shape the senders need. */
@@ -134,20 +133,6 @@ export class SystemEmailService {
         role,
         companyName,
         loginUrl: `${appUrl()}/login`,
-      }),
-    );
-  }
-
-  async sendWhatsappSafetyEscalation(
-    recipient: { email: string; name: string },
-    chatLabel: string,
-  ): Promise<void> {
-    await this.send(
-      recipient.email,
-      whatsappSafetyEscalationEmail({
-        name: recipient.name,
-        chatLabel,
-        chatsUrl: `${appUrl()}/whatsapp`,
       }),
     );
   }

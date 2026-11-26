@@ -156,6 +156,10 @@ export class WhatsappMessage {
   @Column({ name: 'edited_at', type: 'timestamptz', nullable: true })
   editedAt: Date | null;
 
+  // Text before the first edit; set once, returned only when it differs from body.
+  @Column({ name: 'original_body', type: 'text', nullable: true })
+  originalBody: string | null;
+
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
 

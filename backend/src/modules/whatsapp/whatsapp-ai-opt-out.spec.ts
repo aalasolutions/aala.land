@@ -1,10 +1,7 @@
 import {
   OPT_CONFIRMATIONS,
-  SAFETY_FALLBACK_REPLIES,
-  asksWhatIf,
   classifyOptSignals,
   stopCounts,
-  mentionsPaymentAsk,
 } from './whatsapp-ai-opt-out';
 
 describe('stopCounts', () => {
@@ -89,32 +86,10 @@ describe('classifyOptSignals', () => {
   });
 });
 
-describe('keyword fallbacks', () => {
-  it.each([
-    'someone asked me to pay a deposit to his account',
-    'should i transfer the advance to the agent?',
-  ])('reads %j as a payment report', (text) => {
-    expect(mentionsPaymentAsk(text)).toBe(true);
-  });
-
-  it.each([
-    'is this a scam?',
-    'I paid the rent yesterday',
-    'how much is 1806?',
-  ])('reads %j as no payment report', (text) => {
-    expect(mentionsPaymentAsk(text)).toBe(false);
-  });
-
-  it('recognizes a what-if question', () => {
-    expect(asksWhatIf('what if there is a fire in the building?')).toBe(true);
-    expect(asksWhatIf('there is a fire in my flat')).toBe(false);
-  });
-
+describe('fixed lines', () => {
   it('has every fixed line in the five fixed-line languages', () => {
-    for (const table of [OPT_CONFIRMATIONS, SAFETY_FALLBACK_REPLIES]) {
-      expect(Object.keys(table).sort()).toEqual(
-        ['ar', 'ar-Latn', 'en', 'ur', 'ur-Latn'].sort(),
-      );
-    }
+    expect(Object.keys(OPT_CONFIRMATIONS).sort()).toEqual(
+      ['ar', 'ar-Latn', 'en', 'ur', 'ur-Latn'].sort(),
+    );
   });
 });

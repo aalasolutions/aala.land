@@ -187,6 +187,10 @@ export class MessageStoreService {
       statusAt: this.toEpochSeconds(row.statusAt),
       errorCode: row.errorCode ?? null,
       editedAt: this.toEpochSeconds(row.editedAt),
+      originalBody:
+        row.originalBody != null && row.originalBody !== row.body
+          ? row.originalBody
+          : null,
       // Deliberately not filtered out of the read: the UI renders a deleted stub.
       deletedAt: this.toEpochSeconds(row.deletedAt),
     };
@@ -696,7 +700,12 @@ export class MessageStoreService {
         deletedAt: IsNull(),
         editedAt: Or(IsNull(), LessThan(editedAt)),
       },
-      { body, editedAt },
+      {
+        body,
+        editedAt,
+        // SET reads the pre-update row, so only the first edit records the original.
+        originalBody: () => 'COALESCE("original_body", "body")',
+      },
     );
     const isApplied = (result.affected ?? 0) > 0;
     if (isApplied)

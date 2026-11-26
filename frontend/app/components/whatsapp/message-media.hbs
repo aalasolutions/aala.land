@@ -220,13 +220,6 @@
   </div>
 
   {{#if this.caption}}
-    <div
-      class="wa-bubble"
-      dir="auto"
-      data-test-wa-media-caption
-    ><Whatsapp::MessageText
-        @text={{this.caption}}
-        @isExternal={{not @message.fromMe}}
-      /></div>
+    <Whatsapp::MessageBody @message={{@message}} data-test-wa-media-caption />
   {{/if}}
 </div>
