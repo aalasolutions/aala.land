@@ -5,7 +5,7 @@ import { PropertyType } from '../properties/entities/property-type.enum';
 import { REGIONS } from '../../shared/constants/regions';
 import {
   COMPANY_NOTES_HEADER,
-  DEFAULT_PROMPT,
+  openingPrompt,
   RULES_BLOCK,
 } from './whatsapp-ai-prompts';
 import {
@@ -50,6 +50,16 @@ function neutralizeAdminText(text: string): string {
     .trim();
 }
 
+const capName = (name: string): string =>
+  name.replace(/\s+/g, ' ').trim().slice(0, COMPANY_NAME_MAX_CHARS).trim();
+
+function cleanCompanyName(name: string): string {
+  return (
+    capName(neutralizeAdminText(name).replace(/[[\]【】<>{}]/g, '')) ||
+    capName(name)
+  );
+}
+
 // The model receives no file, only what kind of file arrived.
 const MEDIA_TURN_NOUNS: Record<string, string> = {
   image: 'a photo',
@@ -84,33 +94,27 @@ export class WhatsappAiPromptBuilderService {
       REGIONS.find((r) => (company?.activeRegions ?? []).includes(r.code))
         ?.currency ?? '';
 
-    if (company) {
-      const name = neutralizeAdminText(company.name ?? '')
-        .replace(/\s+/g, ' ')
-        .slice(0, COMPANY_NAME_MAX_CHARS);
-      const regions = REGIONS.filter((r) =>
-        (company.activeRegions ?? []).includes(r.code),
-      ).map((r) => r.name);
-      parts.push(
-        [
-          `[COMPANY INFO]\nName: ${name}`,
-          regions.length ? `Regions: ${regions.join(', ')}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
-      );
+    const regions = REGIONS.filter((r) =>
+      (company?.activeRegions ?? []).includes(r.code),
+    ).map((r) => r.name);
+    if (regions.length) {
+      parts.push(`[COMPANY INFO]\nRegions: ${regions.join(', ')}`);
     }
 
     parts.push(RULES_BLOCK);
     return { block: parts.join('\n\n'), fallbackCurrency };
   }
 
-  buildFullPrompt(companyNotes: string | null, contextBlock: string): string {
+  buildFullPrompt(
+    companyNotes: string | null,
+    contextBlock: string,
+    companyName: string,
+  ): string {
     const notes = companyNotes
       ? neutralizeAdminText(companyNotes).slice(0, NOTES_MAX_CHARS)
       : '';
     return [
-      DEFAULT_PROMPT,
+      openingPrompt(cleanCompanyName(companyName)),
       notes ? `${COMPANY_NOTES_HEADER}\n${notes}` : '',
       contextBlock,
     ]

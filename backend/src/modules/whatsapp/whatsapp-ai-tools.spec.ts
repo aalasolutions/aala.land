@@ -1545,55 +1545,22 @@ describe('unit numbers routed out of places', () => {
   });
 });
 
-describe('search: unrecorded terms and city choice', () => {
-  it('reads cheque counts and metro distance as unrecorded terms, never as a filter that finds none', () => {
+describe('search: unknown terms and city choice', () => {
+  it('reads terms no listing records as unknown amenities, never as a filter', () => {
     const filters = parseSearchArgs({
       city: ['Dubai'],
       amenities: ['1 or 2 cheques', 'near metro', 'pool'],
     });
     expect(filters.amenities).toEqual([['pool', 'private_pool']]);
-    expect(filters.unknownAmenities).toBeUndefined();
-    expect(filters.unrecorded).toEqual([
-      'Cheque terms are',
-      'Metro distance is',
-    ]);
+    expect(filters.unknownAmenities).toEqual([1, 2]);
     const text = formatSearchResult(
       { units: [unit()], total: 1 },
       filters,
       'USD',
     );
     expect(text).toContain(
-      'Cheque terms are not recorded on listings, so the search was not narrowed by it; never say no listing offers it. Say staff can confirm',
+      'Amenities 1, 2 in the request are not ones listings record',
     );
-    expect(text).toContain('Metro distance is not recorded on listings');
-    expect(text).not.toContain('Listings record:');
-  });
-
-  it('routes a metro place value to the unrecorded note instead of a place search', () => {
-    const index = buildPlaceIndex([
-      {
-        assetId: 'a1',
-        assetName: 'Qasr Al Noor Tower',
-        localityId: 'l1',
-        localityName: 'Downtown',
-        cityId: 'c1',
-        cityName: 'Dubai',
-        regionCode: 'dubai',
-        country: 'AE',
-        type: 'RENTAL',
-        count: 1,
-      },
-    ]);
-    const { filters, notes } = routePlaces(
-      { city: ['Dubai'], place: ['metro'] },
-      new Set(['pool']),
-      index,
-    );
-    expect(filters.place).toBeUndefined();
-    expect(filters.unrecorded).toEqual(['Metro distance is']);
-    expect(notes).toEqual([
-      'Place 1 is not a place, so it was not searched as one.',
-    ]);
   });
 
   it('asks which city as a numbered list when a place lies in several cities', () => {

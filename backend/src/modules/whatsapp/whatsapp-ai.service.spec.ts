@@ -10,7 +10,6 @@ import {
   keywordRead,
   parseTurnRead,
   shownListings,
-  withoutCardClaims,
   withoutInventedTokens,
 } from './whatsapp-ai.service';
 import { WhatsappSendError } from './whatsapp-cloud-api.service';
@@ -24,7 +23,6 @@ import { OPT_CONFIRMATIONS, classifyOptSignals } from './whatsapp-ai-opt-out';
 import {
   CANNOT_HELP_REPLIES,
   CARDS_INTROS,
-  CODE_REPLIES,
   DECLINE_OFFERS,
   ENGLISH_ONLY_NOTE,
   ESCALATION_REPLIES,
@@ -1626,7 +1624,11 @@ describe('WhatsappAiService', () => {
       await jest.runAllTimersAsync();
 
       expect(mockRepo.getCompanyPrompt).toHaveBeenCalledWith('company-1');
-      expect(mockBuilder.buildFullPrompt).toHaveBeenCalledWith('DB prompt', '');
+      expect(mockBuilder.buildFullPrompt).toHaveBeenCalledWith(
+        'DB prompt',
+        '',
+        '',
+      );
     });
 
     it('passes null customPrompt to builder when no settings row', async () => {
@@ -1659,7 +1661,7 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockBuilder.buildFullPrompt).toHaveBeenCalledWith(null, '');
+      expect(mockBuilder.buildFullPrompt).toHaveBeenCalledWith(null, '', '');
 
       const body = JSON.parse(
         (global.fetch as jest.Mock).mock.calls[0][1].body,
@@ -4360,7 +4362,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     });
   });
 
-  describe('stops, code lines and staff lines in mixed turns', () => {
+  describe('stops and staff lines in mixed turns', () => {
     it('declines an exclusion in one sentence in Arabic and still searches', async () => {
       repo.searchProperties.mockResolvedValue({
         units: [listing('1204')],
@@ -4373,7 +4375,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
           'search_properties',
           '{"place":["المارينا"],"bedrooms":2}',
         ),
-        mockTextResponse('حسنًا، بدون عرب فقط في هذا المبنى.'),
         mockTextResponse(
           'عذرًا، لا نختار المستأجرين حسب الجنسية، وهذه شقة بغرفتين في المارينا.',
         ),
@@ -4381,7 +4382,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       const { sent, trace } = await turn('لا عرب من فضلك، غرفتين في المارينا');
 
-      expect(trace.blocked?.[0].check).toBe('content');
+      expect(trace.blocked).toBeUndefined();
       expect(sent).toHaveLength(1);
       expect(sent[0]).toMatch(/^عذرًا، لا نختار المستأجرين حسب الجنسية/);
       expect(sent[0]).toContain('1) Marina Gate, وحدة 1204');
@@ -4456,28 +4457,21 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(sent).toEqual(['We call back on request; ask us any time.']);
     });
 
-    it('answers a code question with the fixed never-share line only', async () => {
+    it('sends the model answer to a code question with no fixed line', async () => {
       route(read(['neither']), [
-        mockTextResponse('Yes, you can share the code with our agent.'),
+        mockTextResponse(
+          'Never share a code with anyone; we never ask for one.',
+        ),
       ]);
 
-      const { sent, trace } = await turn(
+      const { sent } = await turn(
         'should I give the WhatsApp code to your agent?',
       );
 
-      expect(trace.read?.labels).toEqual(['neither']);
-      expect(sent).toEqual([CODE_REPLIES.en]);
-      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
-    });
-
-    it('answers a code question in Arabic with the Arabic line', async () => {
-      route(read(['neither'], { lang: 'ar' }), [
-        mockTextResponse('نعم، يمكنك إعطاؤه الرمز'),
+      expect(sent).toEqual([
+        'Never share a code with anyone; we never ask for one.',
       ]);
-
-      const { sent } = await turn('هل أعطي الرمز لوكيلكم؟');
-
-      expect(sent).toEqual([CODE_REPLIES.ar]);
+      expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
     it('opts out on a danger report ending in STOP with no fixed line or escalation', async () => {
@@ -4487,25 +4481,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
       expect(chatAiStateMock.optOut).toHaveBeenCalled();
-    });
-
-    it('opts out on unsubscribe even when the classifier missed it', async () => {
-      route(read(['neither']), []);
-
-      await turn('unsubscribe me, never again');
-
-      expect(chatAiStateMock.optOut).toHaveBeenCalled();
-    });
-
-    it('never opts out on khuda hafiz', async () => {
-      route(read(['neither'], { wantsStop: true }), [
-        mockTextResponse('Allah hafiz!'),
-      ]);
-
-      const { sent } = await turn('khuda hafiz');
-
-      expect(chatAiStateMock.optOut).not.toHaveBeenCalled();
-      expect(sent).toEqual(['Allah hafiz!']);
     });
 
     it('never escalates "no call please" as a request', async () => {
@@ -4675,18 +4650,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
         expect(generationBodies.length).toBeLessThanOrEqual(1);
       });
 
-      it('never runs when "no call please" settles the request away', async () => {
-        route(read(['neither'], { handoff: 'request' }), [
-          mockTextResponse('Sure.'),
-        ]);
-
-        const { trace } = await turn('no call please');
-
-        expect(trace.read?.handoff).toBeUndefined();
-        expect(trace.backstop).toBeUndefined();
-        expect(generationBodies).toHaveLength(1);
-      });
-
       it('keeps the cards and the new_property_request label on a viewing follow-up with a request hand-off', async () => {
         repo.searchProperties.mockResolvedValue({
           units: [listing('7')],
@@ -4741,28 +4704,15 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
         expect(trace.backstop).toBe('escalated');
         expect(trace.cards).toBe(0);
         expect(sent).toEqual([
-          `I am sorry the viewing was missed. That should not have happened. Thank you for your patience.\n\n${ESCALATION_REPLIES.complaint.en}`,
+          `I am sorry the viewing was missed.\n\nThat should not have happened.\n\nThank you for your patience.\n\n${ESCALATION_REPLIES.complaint.en}`,
         ]);
       });
-    });
-
-    it('keeps replies on for a goodbye the classifier read as a stop', async () => {
-      route(read(['neither'], { wantsStop: true }), [
-        mockTextResponse('You are welcome.'),
-      ]);
-
-      const { sent } = await turn('ab zaroorat nahi, shukriya');
-
-      expect(chatAiStateMock.optOut).not.toHaveBeenCalled();
-      expect(sent).toEqual(['You are welcome.']);
     });
 
     it('escalates when the model calls escalate_to_staff and appends the one hand-off line', async () => {
       route(read(['neither']), [
         mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
-        mockTextResponse(
-          'Sure. A person from our team will contact you shortly.',
-        ),
+        mockTextResponse('Sure.'),
       ]);
 
       const { sent, trace } = await turn('I want a human');
@@ -4982,95 +4932,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       expect(chatAiStateMock.escalate).not.toHaveBeenCalled();
     });
 
-    it('sends only the hand-off line, with no credit, when the reply only promised contact', async () => {
-      route(read(['neither']), [
-        mockToolCallResponse('t1', 'escalate_to_staff', '{"reason":"request"}'),
-        mockTextResponse('A person from our team will contact you shortly.'),
-      ]);
-      const send = jest.fn().mockResolvedValue({});
-      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
-
-      await service.runTurn(
-        'company-1',
-        'user-1',
-        'chat-l',
-        ['m1'],
-        'I want a human',
-        send,
-        undefined,
-        { trace },
-      );
-
-      expect(chatAiStateMock.escalate).toHaveBeenCalledTimes(1);
-      expect(send).toHaveBeenCalledWith(
-        'chat-l',
-        ESCALATION_REPLIES.request.en,
-        { creditCharged: false },
-      );
-      expect(repo.consumeConversationCredit).not.toHaveBeenCalled();
-      expect(repo.recordTurnDelivered).not.toHaveBeenCalled();
-      expect(trace.outcome).toBe('replied');
-      expect(
-        (await service.getHistoryFor('user-1', 'chat-l')).map((m) => m.role),
-      ).toEqual(['user', 'assistant']);
-    });
-
-    it('charges a promise-only intro with cards and drops the promise after them', async () => {
-      repo.searchProperties.mockResolvedValue({
-        units: [listing('7')],
-        total: 1,
-        offset: 0,
-      });
-      route(read(['new_property_request']), [
-        completion({
-          role: 'assistant',
-          content: null,
-          tool_calls: [
-            {
-              id: 't1',
-              type: 'function',
-              function: { name: 'search_properties', arguments: '{}' },
-            },
-            {
-              id: 't2',
-              type: 'function',
-              function: {
-                name: 'escalate_to_staff',
-                arguments: '{"reason":"request"}',
-              },
-            },
-          ],
-        }),
-        mockTextResponse(
-          'A person from our team will contact you shortly.\n\n[LISTING_CARDS]\n\nOur team will contact you about the viewing.',
-        ),
-      ]);
-      const send = jest.fn().mockResolvedValue({});
-      const trace: TurnTrace = { llmCalls: [], toolCalls: [] };
-
-      await service.runTurn(
-        'company-1',
-        'user-1',
-        'chat-l',
-        ['m1'],
-        'show me the 2 bed in the marina tomorrow',
-        send,
-        undefined,
-        { trace },
-      );
-
-      expect(send).toHaveBeenCalledTimes(1);
-      const [, sent, opts] = send.mock.calls[0];
-      expect(sent).toMatch(/^\*1\) Marina Gate, unit 7\*/);
-      expect(sent).not.toContain('about the viewing');
-      expect(sent).toMatch(
-        new RegExp(`Size: 1,000 sqft\\n\\n${ESCALATION_REPLIES.request.en}$`),
-      );
-      expect(opts).toEqual({ creditCharged: true });
-      expect(repo.consumeConversationCredit).toHaveBeenCalledTimes(1);
-      expect(repo.recordTurnDelivered).toHaveBeenCalledTimes(1);
-    });
-
     it('keeps the whole reply and sends no cards when the model escalates a complaint beside a search', async () => {
       repo.searchProperties.mockResolvedValue({
         units: [listing('7')],
@@ -5107,9 +4968,72 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       );
 
       expect(trace.cards).toBe(0);
-      expect(sent).toEqual([
-        `I am sorry the viewing was missed. That should not have happened. Thank you for your patience.\n\n${ESCALATION_REPLIES.complaint.en}`,
+      expect(sent).toEqual([`${reply}\n\n${ESCALATION_REPLIES.complaint.en}`]);
+    });
+
+    it('sends cards numbered by search position for a neither-labeled turn whose search returned listings', async () => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing('6'), listing('7')],
+        total: 7,
+        offset: 5,
+      });
+      route(read(['neither']), [
+        mockToolCallResponse('c1', 'search_properties', '{}'),
+        mockTextResponse('Here is what is available.'),
       ]);
+
+      const { sent, trace } = await turn('yes kindly');
+
+      expect(trace.cards).toBe(2);
+      expect(sent[0]).toContain('*6) Marina Gate, unit 6*');
+      expect(sent[0]).toContain('*7) Marina Gate, unit 7*');
+    });
+
+    it('sends no cards when the model did not search', async () => {
+      route(read(['new_property_request']), [
+        mockTextResponse('Which area do you prefer?'),
+      ]);
+
+      const { sent, trace } = await turn('2 bed please');
+
+      expect(trace.cards).toBe(0);
+      expect(sent).toEqual(['Which area do you prefer?']);
+    });
+
+    it('keeps a neither-labeled complaint hand-off card-free beside a search', async () => {
+      repo.searchProperties.mockResolvedValue({
+        units: [listing('7')],
+        total: 1,
+        offset: 0,
+      });
+      const reply = 'I am sorry about that.\n\nThank you for your patience.';
+      route(read(['neither']), [
+        completion({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: 't1',
+              type: 'function',
+              function: { name: 'search_properties', arguments: '{}' },
+            },
+            {
+              id: 't2',
+              type: 'function',
+              function: {
+                name: 'escalate_to_staff',
+                arguments: '{"reason":"complaint"}',
+              },
+            },
+          ],
+        }),
+        mockTextResponse(reply),
+      ]);
+
+      const { sent, trace } = await turn('your agent was rude to me');
+
+      expect(trace.cards).toBe(0);
+      expect(sent).toEqual([`${reply}\n\n${ESCALATION_REPLIES.complaint.en}`]);
     });
 
     it('sends nothing and charges nothing when the provider fails', async () => {
@@ -5271,34 +5195,6 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
         'en',
       );
       expect(sent).toEqual([OPT_CONFIRMATIONS.en.optOut]);
-    });
-
-    it('never sends a staff line as the assistant', async () => {
-      redis.store.set(
-        'wa:ai:hist:user-1:chat-s',
-        JSON.stringify([
-          {
-            role: 'assistant',
-            content: `${STAFF_LINE_PREFIX}\nFatima here, viewing of 1806 confirmed for Tuesday 5pm`,
-            at: Date.now() - 60_000,
-          },
-        ]),
-      );
-      route(read(['neither']), [
-        mockTextResponse(
-          'Fatima here, viewing of 1806 confirmed for Tuesday 5pm.',
-        ),
-        mockTextResponse(
-          'Yes, our staff confirmed your viewing of 1806 on Tuesday at 5pm.',
-        ),
-      ]);
-
-      const { sent, trace } = await turn('is my viewing confirmed?', 'chat-s');
-
-      expect(trace.blocked?.map((b) => b.check)).toEqual(['content']);
-      expect(sent).toEqual([
-        'Yes, our staff confirmed your viewing of 1806 on Tuesday at 5pm.',
-      ]);
     });
 
     it('gives an Urdu-script staff line the staff note in the prompt', async () => {
@@ -5973,8 +5869,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
     it('sends nothing when a reply with no cards is blocked twice', async () => {
       route(read(['neither']), [
-        mockTextResponse('We offer a 20% discount today.'),
-        mockTextResponse('We offer a 20% discount today.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
       ]);
 
       const { sent, trace } = await turn('any offers?');
@@ -6004,8 +5900,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
     it('saves only the customer line when a turn after a tool round sends nothing', async () => {
       route(read(['neither']), [
         mockToolCallResponse('c1', 'search_properties', '{"minBedrooms":2}'),
-        mockTextResponse('We offer a 20% discount today.'),
-        mockTextResponse('We offer a 20% discount today.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
       ]);
 
       const { sent, trace } = await turn('any offers on 2 bed?', 'chat-q');
@@ -6020,8 +5916,8 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
 
     it('keeps the customer text when history cannot be saved after a silent turn', async () => {
       route(read(['neither']), [
-        mockTextResponse('We offer a 20% discount today.'),
-        mockTextResponse('We offer a 20% discount today.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
+        mockTextResponse('Rent here is AED 7,777 a month.'),
       ]);
       const setJson = redis.setJson;
       redis.setJson = (key: string, value: unknown) =>
@@ -6312,15 +6208,6 @@ describe('turn read helpers', () => {
       '2 bed',
     );
     expect(shown.map((l) => l.unit.price)).toEqual([30000, 20000000]);
-  });
-
-  it('drops card claims when no cards are sent', () => {
-    expect(
-      withoutCardClaims('I found 2 listings for you. Anything else?'),
-    ).toBe('Anything else?');
-    expect(withoutCardClaims('I found no listings in JVC.')).toBe(
-      'I found no listings in JVC.',
-    );
   });
 
   it('strips bracketed tokens the model invents', () => {

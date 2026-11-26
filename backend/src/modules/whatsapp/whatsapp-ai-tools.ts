@@ -65,7 +65,6 @@ export interface PropertySearchFilters {
   unitAlt?: string;
   amenities?: string[][];
   unknownAmenities?: number[];
-  unrecorded?: string[];
   ignoredAmenities?: number;
   ignoredPlaces?: number;
   type?: 'RENT' | 'SALE';
@@ -282,7 +281,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     function: {
       name: 'search_properties',
       description:
-        "Search the company's available listings. Use it for every question about properties, prices, availability or one unit. Pass only what the customer said, and keep their earlier requirements unless they changed them. A name you do not recognize may be a misspelled place: pass it as place.",
+        "Search the company's available listings. Pass only what the customer said, and keep their earlier requirements unless they changed them. A name you do not recognize may be a misspelled place: pass it as place.",
       parameters: {
         type: 'object',
         properties: SEARCH_PARAMETERS,
@@ -585,22 +584,6 @@ const AMENITY_FAMILIES: Record<string, string[]> = {
   'swimming pool': ['pool', 'private_pool'],
 };
 
-// Terms customers filter by that no listing column holds; searching them would wrongly find nothing.
-const UNRECORDED_FIELDS: [RegExp, string][] = [
-  [
-    /\b(?:cheques?|checks?|chqs?|instal+ments?|payment (?:terms?|plans?))\b|شيك|چیک/iu,
-    'Cheque terms are',
-  ],
-  [/\b(?:metro|subway|tube|tram)\b|مترو|میٹرو/iu, 'Metro distance is'],
-  [
-    /\b(?:near|nearby|close to|walking distance|minutes? (?:to|from))\b|قريب|قریب/iu,
-    'Distance to nearby places is',
-  ],
-];
-
-export const unrecordedField = (value: string): string | undefined =>
-  UNRECORDED_FIELDS.find(([re]) => re.test(value))?.[1];
-
 const amenityText = (value: string) =>
   value
     .toLowerCase()
@@ -687,15 +670,12 @@ export function parseSearchArgs(
       : [];
   const amenities: string[][] = [];
   const unknownAmenities: number[] = [];
-  const unrecorded = new Set<string>();
   const amenityValues = amenityList
     .map((a) => text(a, 50))
     .filter((a): a is string => Boolean(a));
   amenityValues.slice(0, MAX_AMENITIES).forEach((a, i) => {
     const keys = amenityKeys(a);
-    const field = keys ? undefined : unrecordedField(a);
     if (keys) amenities.push(keys);
-    else if (field) unrecorded.add(field);
     else unknownAmenities.push(i + 1);
   });
 
@@ -822,7 +802,6 @@ export function parseSearchArgs(
     unit,
     amenities,
     unknownAmenities,
-    unrecorded: [...unrecorded],
     ignoredAmenities:
       Math.max(0, amenityValues.length - MAX_AMENITIES) || undefined,
     ignoredPlaces:
@@ -944,7 +923,6 @@ export function routePlaces(
   const amenities = [...(filters.amenities ?? [])];
   let unit = filters.unit;
   let unitAlt = filters.unitAlt;
-  const unrecorded = new Set(filters.unrecorded ?? []);
   const notes: string[] = [];
   const take = (r: Routed) => {
     if ('kind' in r) r.kind.forEach((k) => kinds.add(k));
@@ -987,12 +965,6 @@ export function routePlaces(
       notes.push(
         `${label} is the unit number, so it was not searched as a place.`,
       );
-      return;
-    }
-    const field = unrecordedField(value);
-    if (field && !routeOf(value, stored)) {
-      unrecorded.add(field);
-      notes.push(`${label} is not a place, so it was not searched as one.`);
       return;
     }
     const whole = routeOf(value, stored);
@@ -1046,7 +1018,6 @@ export function routePlaces(
     unit,
     unitAlt,
     amenities,
-    unrecorded: [...unrecorded],
   };
   if (kinds.has(STUDIO) && routed.minBedrooms === undefined) {
     routed.minBedrooms = 0;
@@ -1061,7 +1032,6 @@ export function routePlaces(
     'amenities',
     'unit',
     'unitAlt',
-    'unrecorded',
   ] as const) {
     const v = routed[key];
     if (v === undefined || (Array.isArray(v) && v.length === 0)) {
@@ -1677,11 +1647,6 @@ export function formatSearchResult(
     );
   }
   lines.push(...budgetNotes(result, filters));
-  for (const field of filters.unrecorded ?? []) {
-    lines.push(
-      `${field} not recorded on listings, so the search was not narrowed by it; never say no listing offers it. Say staff can confirm; a listing's Details line may state it.`,
-    );
-  }
   if (filters.unknownAmenities?.length) {
     lines.push(
       `${filters.unknownAmenities.length === 1 ? 'Amenity' : 'Amenities'} ${filters.unknownAmenities.join(', ')} in the request ${filters.unknownAmenities.length === 1 ? 'is not one' : 'are not ones'} listings record, so ${filters.unknownAmenities.length === 1 ? 'it was' : 'they were'} not used as a filter. Listings record: ${Object.values(AMENITY_LABELS).join(', ')}.`,

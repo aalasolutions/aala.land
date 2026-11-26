@@ -180,29 +180,3 @@ export const OPT_CONFIRMATIONS: Record<
     optIn: 'El rodood el automatic rej3at. Kaif momken nsa3dak?',
   },
 };
-
-const SCOPED_STOP =
-  /\b(?:stop|no more|don'?t|do not|band karo|mat)\s+(?:showing|sending|send|show|bhejo|bhejna|dikhao|dikhana)\s+(?:me\s+)?(?!(?:me\s+)?(?:any\s?more\b|messages?\b|msgs?\b|texts?\b|anything\b|ads?\b|$))\S|\b(?:listings?|flats?|apartments?|villas?|studios?|plots?|ghar|makan|properties)\s+(?:mat|na|nahi)\s+(?:bhejo|bhejein|bhejna|dikhao|dikhayein)\b|\bno (?:phone )?calls?\b|\b(?:don'?t|do not|mat) call\b|\b(?:at night|after \d{1,2}\s?(?:pm|am)?|before \d{1,2}\s?(?:pm|am)?|mornings? only|only (?:in the )?mornings?|raat (?:ko|mein))\b|لا ترسل(?:وا)? لي (?:شقق|استوديو|عقارات|فلل)|في الليل|بالليل|رات کو/iu;
-
-// Thanks, goodbyes and asks for more continue the conversation in any script; a negated want ("I don't want messages") does not.
-const CONTINUES =
-  /\b(?:thanks?|thank you|thx|ty|shukriya|shukria|shukran|jazakallah|jazak ?allah|merci|gracias|danke|bye|goodbye|good ?night|khuda hafiz|allah hafiz|later|baad mein|ab zaroorat nahi|no need|not now|maybe later|show|find|looking for|need|want|cheaper|price|how much|chahiye|dikhao|batao|kitne|kitna|send me|tell me)\b|спасибо|пока|شكرا|شكرًا|مع السلامة|بعدين|أريد|اريد|ابغى|أبحث|ابحث|أرخص|ارخص|كم السعر|شکریہ|خدا حافظ|اللہ حافظ|چاہیے|دکھائیں|بتائیں|धन्यवाद|शुक्रिया|अलविदा|谢谢|再见/iu;
-
-const NEGATED_WANT =
-  /\b(?:don'?t|do not|never|no|mat)\s+(?:want|need|send me|show me|tell me)\b|\bnahi chahiye\b|\bkuch nahi chahiye\b|لا أريد|لا اريد|نہیں چاہیے/giu;
-
-// "Unsubscribe", "never message me again", "stop everything": a full stop whatever the classifier said.
-const FULL_STOP =
-  /\bunsubscribe\b|\bopt (?:me )?out\b|\bnever (?:message|text|contact|send|msg) (?:me|us)\b|\b(?:don'?t|do not) (?:message|text|contact|msg) (?:me|us) (?:again|any ?more|ever)\b|\bstop (?:everything|all (?:the )?messages|messaging me|texting me|sending me (?:messages|anything))\b|\b(?:band karo|bnd karo) (?:messages?|msgs?)\b|\b(?:mujhe )?(?:kuch bhi|koi message) mat bhej(?:o|ein|na)\b|توقف(?:وا)? عن مراسلتي|لا ترسل(?:وا)? لي (?:أي )?(?:رسائل|شيء)|مجھے (?:کوئی )?میسج (?:مت|نہ) بھیج/iu;
-
-const ASKS = /[?؟？]/;
-
-// The classifier's stop counts only for a message with no question, thanks, goodbye, ask or scoped stop; a full stop needs no classifier.
-export function stopCounts(text: string, classifierStop: boolean): boolean {
-  const plain = text.normalize('NFKC');
-  if (ASKS.test(plain)) return false;
-  const rest = plain.replace(NEGATED_WANT, ' ');
-  if (FULL_STOP.test(plain))
-    return !CONTINUES.test(rest.replace(FULL_STOP, ' '));
-  return classifierStop && !CONTINUES.test(rest) && !SCOPED_STOP.test(plain);
-}
