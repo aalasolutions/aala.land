@@ -59,6 +59,7 @@ describe('MessageStoreService', () => {
   let txManager: any;
   let messagesRepo: any;
   let chatsRepo: any;
+  let summaries: { startSession: jest.Mock };
 
   beforeEach(() => {
     // Postgres RETURNING gives back a row on a real insert and nothing on ON CONFLICT DO NOTHING.
@@ -86,6 +87,7 @@ describe('MessageStoreService', () => {
     };
     txManager = {
       createQueryBuilder: jest.fn(() => insertBuilder),
+      findOne: jest.fn().mockResolvedValue(null),
       // The chat upsert RETURNs the unread state.
       query: jest
         .fn()
@@ -107,7 +109,12 @@ describe('MessageStoreService', () => {
       find: jest.fn().mockResolvedValue([]),
       query: jest.fn().mockResolvedValue([]),
     };
-    service = new MessageStoreService(messagesRepo, chatsRepo);
+    summaries = { startSession: jest.fn().mockResolvedValue(undefined) };
+    service = new MessageStoreService(
+      messagesRepo,
+      chatsRepo,
+      summaries as any,
+    );
   });
 
   describe('getLastMessageTimes', () => {
@@ -333,6 +340,82 @@ describe('MessageStoreService', () => {
       expect(sql).toContain(
         `"phone_number_id" = COALESCE(EXCLUDED."phone_number_id", "whatsapp_chats"."phone_number_id")`,
       );
+    });
+  });
+
+  describe('addMessage session start', () => {
+    const DAY_S = 24 * 60 * 60;
+    const at = 1700000000;
+    const lastInbound = (s: number) =>
+      txManager.findOne.mockResolvedValue({
+        id: 'c1',
+        lastInboundAt: new Date(s * 1000),
+      });
+
+    it('starts a session in the same transaction when the previous customer message is 24 hours old', async () => {
+      lastInbound(at - DAY_S);
+
+      await service.addMessage(
+        'co-1',
+        'user-a',
+        makeMsg({ chatId: 'chat-a', fromMe: false, timestamp: at }),
+      );
+
+      expect(txManager.findOne).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          where: { companyId: 'co-1', userId: 'user-a', chatId: 'chat-a' },
+          lock: { mode: 'pessimistic_write' },
+        }),
+      );
+      expect(summaries.startSession).toHaveBeenCalledWith(
+        {
+          companyId: 'co-1',
+          userId: 'user-a',
+          channel: 'whatsapp',
+          chatId: 'chat-a',
+        },
+        new Date(at * 1000),
+        new Date((at - DAY_S) * 1000),
+        txManager,
+      );
+    });
+
+    it('reads the previous time before the chat upsert overwrites it', async () => {
+      lastInbound(at - DAY_S);
+
+      await service.addMessage('co-1', 'user-a', makeMsg({ timestamp: at }));
+
+      expect(txManager.findOne.mock.invocationCallOrder[0]).toBeLessThan(
+        txManager.query.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('keeps the session inside the reply window', async () => {
+      lastInbound(at - DAY_S + 1);
+
+      await service.addMessage('co-1', 'user-a', makeMsg({ timestamp: at }));
+
+      expect(summaries.startSession).not.toHaveBeenCalled();
+    });
+
+    it('starts no session on the first customer message of a chat', async () => {
+      await service.addMessage('co-1', 'user-a', makeMsg({ timestamp: at }));
+
+      expect(summaries.startSession).not.toHaveBeenCalled();
+    });
+
+    it('never reads the previous time for an outbound, passive or redelivered message', async () => {
+      lastInbound(at - 2 * DAY_S);
+      await service.addMessage('co-1', 'user-a', makeMsg({ fromMe: true }));
+      await service.addMessage('co-1', 'user-a', makeMsg(), null, {
+        isPassive: true,
+      });
+      insertBuilder.execute.mockResolvedValue({ raw: [] });
+      await service.addMessage('co-1', 'user-a', makeMsg());
+
+      expect(txManager.findOne).not.toHaveBeenCalled();
+      expect(summaries.startSession).not.toHaveBeenCalled();
     });
   });
 
@@ -1629,6 +1712,31 @@ describe('MessageStoreService', () => {
       const out = await service.getChatHistory('co-1', 'user-a', 'chat-a', 20);
 
       expect(out.map((m) => m.id)).toEqual(['older', 'newer']);
+    });
+
+    it('bounds the read by send time when a range is given', async () => {
+      await service.getChatHistory('co-1', 'user-a', 'chat-a', 20, [], {
+        since: 100,
+        until: 200,
+      });
+
+      expect(selectBuilder.andWhere).toHaveBeenCalledWith(
+        'm.timestamp > :since',
+        { since: 100 },
+      );
+      expect(selectBuilder.andWhere).toHaveBeenCalledWith(
+        'm.timestamp <= :until',
+        { until: 200 },
+      );
+    });
+
+    it('adds no time bound without a range', async () => {
+      await service.getChatHistory('co-1', 'user-a', 'chat-a', 20);
+
+      const clauses = selectBuilder.andWhere.mock.calls.map(
+        (c: any[]) => c[0] as string,
+      );
+      expect(clauses.some((c) => c.includes('m.timestamp'))).toBe(false);
     });
   });
 

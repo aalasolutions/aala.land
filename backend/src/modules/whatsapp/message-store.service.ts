@@ -18,7 +18,14 @@ import {
   WhatsappMessageStatus,
 } from './entities/whatsapp-message.entity';
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
+import { AiChatSummaryService } from '@modules/ai/ai-chat-summary.service';
 import type { FlaggedChatAiState } from './whatsapp-chat-ai-state.service';
+
+// Epoch seconds; since is exclusive, until is inclusive.
+export interface ChatHistoryRange {
+  since?: number;
+  until?: number;
+}
 
 const MESSAGES_PAGE_DEFAULT = 50;
 // Matches the stub the chat thread renders for a deleted message.
@@ -28,6 +35,8 @@ const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
 export const REPLY_WINDOW_S = 24 * 60 * 60;
+// AI summaries are stored per channel; this module is one channel.
+export const SUMMARY_CHANNEL = 'whatsapp';
 export const RETRY_CLAIM_STALE_MS = 10 * 60 * 1000;
 // About 26 bind parameters per row; 500 rows stays well under Postgres's 65535 limit.
 const HISTORY_INSERT_CHUNK = 500;
@@ -146,6 +155,7 @@ export class MessageStoreService {
     private readonly messages: Repository<WhatsappMessage>,
     @InjectRepository(WhatsappChat)
     private readonly chats: Repository<WhatsappChat>,
+    private readonly summaries: AiChatSummaryService,
   ) {}
 
   private toEpochSeconds(value: Date | null | undefined): number | null {
@@ -300,6 +310,25 @@ export class MessageStoreService {
 
       // orIgnore returns an empty raw array when the unique index already held the row.
       inserted = Array.isArray(insertResult.raw) && insertResult.raw.length > 0;
+
+      // A live customer message after a closed reply window starts a new AI session; the lock orders concurrent intakes.
+      if (inserted && !msg.fromMe && !isPassive) {
+        const previous = await manager.findOne(WhatsappChat, {
+          where: { companyId, userId, chatId: msg.chatId },
+          select: { id: true, lastInboundAt: true },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const previousAt = previous?.lastInboundAt?.getTime();
+        const at = Number(safeTs) * 1000;
+        if (previousAt && at - previousAt >= REPLY_WINDOW_S * 1000) {
+          await this.summaries.startSession(
+            { companyId, userId, channel: SUMMARY_CHANNEL, chatId: msg.chatId },
+            new Date(at),
+            new Date(previousAt),
+            manager,
+          );
+        }
+      }
 
       const chatRows: ChatUnreadRow[] | undefined = await manager.query(
         CHAT_UPSERT_SQL,
@@ -944,6 +973,7 @@ export class MessageStoreService {
     chatId: string,
     limit: number,
     excludeWaIds: string[] = [],
+    range: ChatHistoryRange = {},
   ): Promise<WaMessage[]> {
     const qb = this.messages
       .createQueryBuilder('m')
@@ -956,6 +986,12 @@ export class MessageStoreService {
       qb.andWhere('m.wa_message_id NOT IN (:...excludeWaIds)', {
         excludeWaIds,
       });
+    }
+    if (range.since !== undefined) {
+      qb.andWhere('m.timestamp > :since', { since: range.since });
+    }
+    if (range.until !== undefined) {
+      qb.andWhere('m.timestamp <= :until', { until: range.until });
     }
 
     const rows = await qb
