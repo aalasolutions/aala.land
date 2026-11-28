@@ -34,6 +34,7 @@ import {
   PHOTOS_FAILED_RESULT,
   PHOTOS_PARTIAL_RESULT,
 } from './whatsapp-ai-tools';
+import { SUMMARIZER_PROMPT } from '../ai/ai-session';
 
 const NEITHER: TurnRead = {
   labels: ['neither'],
@@ -144,6 +145,11 @@ const makeMockBuilder = (
 const makeMockStore = (history: any[] = []) => ({
   getChatHistory: jest.fn().mockResolvedValue(history),
   addMessage: jest.fn().mockResolvedValue(undefined),
+});
+
+const makeMockSummaries = () => ({
+  get: jest.fn().mockResolvedValue(null),
+  finishSession: jest.fn().mockResolvedValue(undefined),
 });
 
 const baseEvt = (
@@ -475,6 +481,7 @@ describe('WhatsappAiService', () => {
       makeMockRedis() as any,
       queue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
   });
 
@@ -534,6 +541,7 @@ describe('WhatsappAiService', () => {
       makeMockRedis() as any,
       queue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     const mockSend = jest.fn();
     await incoming(baseEvt({ fromMe: true }), 'company-1', 'user-1', mockSend);
@@ -554,6 +562,7 @@ describe('WhatsappAiService', () => {
       makeMockRedis() as any,
       queue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     const mockSend = jest.fn();
     await incoming(
@@ -580,6 +589,7 @@ describe('WhatsappAiService', () => {
       makeMockRedis() as any,
       queue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     const mockSend = jest.fn().mockResolvedValue({});
     await incoming(
@@ -613,6 +623,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -663,6 +674,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -707,6 +719,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -822,6 +835,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const claim = { userId: 'user-1', chatId: 'c1' };
       const index = 'wa:ai:pend:user-1:c1:takes';
@@ -936,6 +950,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
@@ -1026,6 +1041,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       jest
         .spyOn((service as any).logger, 'warn')
@@ -1070,6 +1086,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       jest
         .spyOn((service as any).logger, 'warn')
@@ -1115,6 +1132,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
@@ -1140,6 +1158,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const addSpy = jest
         .spyOn(queue, 'add')
@@ -1170,6 +1189,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const warn = jest
         .spyOn((service as any).logger, 'warn')
@@ -1207,6 +1227,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const pend = 'wa:ai:pend:user-1:c1';
       await redis.pushList(pend, JSON.stringify({ body: 'hello', id: 'm1' }));
@@ -1279,6 +1300,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -1301,6 +1323,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -1341,6 +1364,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -1365,6 +1389,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -1395,6 +1420,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -1429,6 +1455,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       // The human replies WHILE the LLM is streaming: the fetch mock records the human
@@ -1473,6 +1500,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       // First call returns a tool call; the human replies during the SECOND LLM call.
@@ -1515,6 +1543,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -1566,6 +1595,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
     });
 
@@ -1607,6 +1637,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -1645,6 +1676,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -1682,6 +1714,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       global.fetch = jest
@@ -1759,6 +1792,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       const usage = await service.getCreditUsage('co');
@@ -1785,6 +1819,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       await expect(service.getCreditUsage('co')).resolves.toBeNull();
       await expect(service.getCreditUsageWithAgents('co')).resolves.toBeNull();
@@ -1805,6 +1840,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       const result = await service.getCreditUsageWithAgents('co');
@@ -1844,6 +1880,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -1869,6 +1906,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -1913,6 +1951,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -1958,6 +1997,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2007,6 +2047,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -2036,6 +2077,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -2077,6 +2119,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -2102,6 +2145,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2148,6 +2192,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2188,6 +2233,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2225,6 +2271,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn().mockResolvedValue(mockTextResponse('Hi')) as any;
 
@@ -2253,6 +2300,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2289,6 +2337,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2314,6 +2363,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -2353,6 +2403,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       const property: TurnRead = {
@@ -2418,6 +2469,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       // Gate every LLM call behind a manually-released resolver so we can hold turn 1
@@ -2487,6 +2539,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       // Turn 1 succeeds, turn 2 throws inside the LLM call.
@@ -2549,6 +2602,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -2582,6 +2636,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -2610,6 +2665,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -2676,6 +2732,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
     };
 
@@ -2801,10 +2858,14 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(store.getChatHistory).toHaveBeenCalledWith('co', 'u1', 'c1', 20, [
-        'now-1',
-        'now-2',
-      ]);
+      expect(store.getChatHistory).toHaveBeenCalledWith(
+        'co',
+        'u1',
+        'c1',
+        20,
+        ['now-1', 'now-2'],
+        {},
+      );
     });
 
     it('does not re-query the database while the history is still cached', async () => {
@@ -2888,6 +2949,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       expect(await service.isEnabledFor('company-1')).toBe(false);
@@ -2905,6 +2967,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       jest
         .spyOn((service as any).logger, 'error')
@@ -2932,6 +2995,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       const mockSend = jest.fn();
@@ -2955,6 +3019,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       expect(await service.isEnabledFor('company-1')).toBe(true);
@@ -2974,6 +3039,7 @@ describe('WhatsappAiService', () => {
           redis as any,
           queue as any,
           chatAiStateMock as any,
+          makeMockSummaries() as any,
         );
       const replicaA = build();
       const replicaB = build();
@@ -3000,6 +3066,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       expect(await service.isEnabledFor('company-1')).toBe(true);
@@ -3030,6 +3097,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const logSpy = jest
         .spyOn((service as any).logger, 'log')
@@ -3062,6 +3130,7 @@ describe('WhatsappAiService', () => {
           redis as any,
           queue as any,
           chatAiStateMock as any,
+          makeMockSummaries() as any,
         );
       const replicaA = build();
       const replicaB = build();
@@ -3091,6 +3160,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       await expect(service.persistEnabled('company-1', false)).rejects.toThrow(
@@ -3125,6 +3195,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       await incoming(
@@ -3163,6 +3234,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       await incoming(
@@ -3195,6 +3267,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
 
       const task = jest.fn().mockResolvedValue(undefined);
@@ -3221,6 +3294,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       jest
         .spyOn((service as any).logger, 'warn')
@@ -3254,6 +3328,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const warn = jest
         .spyOn((service as any).logger, 'warn')
@@ -3303,6 +3378,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       global.fetch = jest
         .fn()
@@ -3338,6 +3414,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       jest
         .spyOn((service as any).logger, 'warn')
@@ -3439,6 +3516,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const errorSpy = jest
         .spyOn((service as any).logger, 'error')
@@ -3492,6 +3570,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const errorSpy = jest
         .spyOn((service as any).logger, 'error')
@@ -3563,6 +3642,7 @@ describe('WhatsappAiService', () => {
           redis as any,
           queue as any,
           chatAiStateMock as any,
+          makeMockSummaries() as any,
         );
         jest
           .spyOn((service as any).logger, 'error')
@@ -3596,6 +3676,7 @@ describe('WhatsappAiService', () => {
         makeMockRedis() as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       return repo;
     };
@@ -3751,6 +3832,7 @@ describe('WhatsappAiService', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
     });
 
@@ -3826,6 +3908,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       redis as any,
       noQueue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
   });
 
@@ -4029,6 +4112,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       redis as any,
       noQueue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     global.fetch = jest
       .fn()
@@ -4049,7 +4133,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       { unmetered: true, trace: newTrace(), historyReader: reader },
     );
 
-    expect(reader).toHaveBeenCalledWith(20, ['m9']);
+    expect(reader).toHaveBeenCalledWith(20, ['m9'], {});
     expect(store.getChatHistory).not.toHaveBeenCalled();
     expect(await service.getHistoryFor('user-1', 'harness-r')).toEqual([
       { role: 'user', content: 'earlier question' },
@@ -4068,6 +4152,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
       redis as any,
       noQueue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     global.fetch = jest
       .fn()
@@ -4159,6 +4244,7 @@ describe('WhatsappAiService unmetered turns with a trace', () => {
         redis as any,
         queue as any,
         chatAiStateMock as any,
+        makeMockSummaries() as any,
       );
       const outcomes: (string | undefined)[] = [];
       for (const [id, body] of [
@@ -4326,6 +4412,7 @@ describe('WhatsappAiService labels, fixed lines and cards', () => {
       redis as any,
       noQueue as any,
       chatAiStateMock as any,
+      makeMockSummaries() as any,
     );
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
@@ -6216,5 +6303,439 @@ describe('turn read helpers', () => {
         'Noted.\n\n[STOP_CODE] [STOP] [STOP_CONFIRMATION] [LISTING_CARDS] [LISTING_CARD: Bay Sail, unit 2804]',
       ),
     ).toBe('Noted.');
+  });
+});
+
+describe('WhatsappAiService sessions and summaries', () => {
+  let neither: jest.SpyInstance;
+  const originalFetch = global.fetch;
+  const noQueue = { getJob: jest.fn(), add: jest.fn() };
+  const HOUR = 60 * 60 * 1000;
+  const CHAT = 'chat-s';
+  const HIST_KEY = `wa:ai:hist:user-1:${CHAT}`;
+  const KEY = {
+    companyId: 'company-1',
+    userId: 'user-1',
+    channel: 'whatsapp',
+    chatId: CHAT,
+  };
+  let redis: ReturnType<typeof makeMockRedis>;
+  let store: ReturnType<typeof makeMockStore>;
+  let summaries: ReturnType<typeof makeMockSummaries>;
+  let repo: ReturnType<typeof makeMockRepo>;
+  let service: WhatsappAiService;
+  let trace: TurnTrace;
+  let send: jest.Mock;
+  let now: number;
+
+  const sec = (ms: number) => Math.floor(ms / 1000);
+  const bodies = () =>
+    (global.fetch as jest.Mock).mock.calls.map(
+      ([, init]: [string, { body: string }]) => JSON.parse(init.body),
+    );
+  const summarizerCalls = () =>
+    bodies().filter((b) => b.messages[0].content === SUMMARIZER_PROMPT);
+  const replyCalls = () =>
+    bodies().filter((b) => b.messages[0].content !== SUMMARIZER_PROMPT);
+  const respond = (summary: string | null, reply = 'Welcome back.') => {
+    global.fetch = jest.fn((_url: string, init: { body: string }) => {
+      const body = JSON.parse(init.body);
+      if (body.messages[0].content !== SUMMARIZER_PROMPT) {
+        return Promise.resolve(mockTextResponse(reply));
+      }
+      return Promise.resolve(
+        summary === null
+          ? {
+              ok: false,
+              status: 400,
+              statusText: 'Bad Request',
+              text: async () => 'bad',
+              headers: { get: () => null },
+            }
+          : mockTextResponse(summary),
+      );
+    }) as any;
+  };
+  const turn = (text = 'hi again') =>
+    service.runTurn(
+      'company-1',
+      'user-1',
+      CHAT,
+      ['m-new'],
+      text,
+      send,
+      undefined,
+      { unmetered: true, trace },
+    );
+  const oldSession = () => [
+    { role: 'user', content: 'old ask about villas', at: now - 30 * HOUR },
+    { role: 'assistant', content: 'I will hold one for you.' },
+    {
+      role: 'assistant',
+      content: `${STAFF_LINE_PREFIX}\nnew listing came in`,
+      at: now - 2 * HOUR,
+    },
+  ];
+  // A session opened at intake and not yet summarized.
+  const opened = (summary: string | null = null) => ({
+    summary,
+    summarizedThrough: summary ? new Date(now - 40 * 24 * HOUR) : null,
+    sessionStartedAt: new Date(now - 5000),
+    previousInboundAt: new Date(now - 30 * HOUR),
+  });
+  // A session already handled.
+  const handled = (summary: string | null) => ({
+    summary,
+    summarizedThrough: new Date(now - 30 * HOUR),
+    sessionStartedAt: new Date(now - 3 * HOUR),
+    previousInboundAt: new Date(now - 30 * HOUR),
+  });
+  const oldRows = () => [
+    {
+      id: 'o1',
+      body: 'I want a <b>villa</b> to rent',
+      fromMe: false,
+      aiGenerated: false,
+      hasMedia: false,
+      timestamp: sec(now - 30 * HOUR),
+    },
+    {
+      id: 'o2',
+      body: 'I will hold one for you.',
+      fromMe: true,
+      aiGenerated: true,
+      hasMedia: false,
+      timestamp: sec(now - 30 * HOUR),
+    },
+  ];
+
+  beforeEach(() => {
+    neither = readsNeither();
+    now = Date.now();
+    process.env.AI_API_KEY = 'test-key';
+    process.env.AI_BASE_URL = 'http://localhost:11434';
+    process.env.AI_MODEL = 'test-model';
+    chatAiStateMock = makeMockChatAiState();
+    redis = makeMockRedis();
+    repo = makeMockRepo();
+    store = makeMockStore();
+    summaries = makeMockSummaries();
+    service = new WhatsappAiService(
+      repo as any,
+      store as any,
+      makeMockBuilder('session system prompt') as any,
+      makeMockEmail() as any,
+      redis as any,
+      noQueue as any,
+      chatAiStateMock as any,
+      summaries as any,
+    );
+    trace = { llmCalls: [], toolCalls: [] };
+    send = jest.fn().mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    neither.mockRestore();
+    global.fetch = originalFetch;
+    delete process.env.AI_API_KEY;
+    delete process.env.AI_BASE_URL;
+    delete process.env.AI_MODEL;
+  });
+
+  it('keeps the behavior before sessions for a chat with no session row', async () => {
+    await redis.setJson(HIST_KEY, oldSession());
+    respond('never used');
+
+    await turn();
+
+    expect(summaries.get).toHaveBeenCalledWith(KEY);
+    expect(summarizerCalls()).toHaveLength(0);
+    expect(summaries.finishSession).not.toHaveBeenCalled();
+    expect(trace.session).toBeUndefined();
+    const system = replyCalls()[0].messages[0].content as string;
+    expect(system).not.toContain('[EARLIER CHATS');
+    const history = await service.getHistoryFor('user-1', CHAT);
+    expect(history.map((m: any) => m.content)).toEqual([
+      'old ask about villas',
+      'I will hold one for you.',
+      `${STAFF_LINE_PREFIX}\nnew listing came in`,
+      'hi again',
+      'Welcome back.',
+    ]);
+  });
+
+  it('summarizes the previous session once for a session opened at intake and cuts it from the history', async () => {
+    const row = opened();
+    summaries.get.mockResolvedValue(row);
+    await redis.setJson(HIST_KEY, oldSession());
+    store.getChatHistory.mockResolvedValue(oldRows());
+    respond('villa to rent');
+
+    await turn();
+
+    expect(store.getChatHistory).toHaveBeenCalledWith(
+      'company-1',
+      'user-1',
+      CHAT,
+      200,
+      [],
+      { until: sec(row.previousInboundAt.getTime()) },
+    );
+    expect(summarizerCalls()).toHaveLength(1);
+    const input = summarizerCalls()[0].messages[1].content as string;
+    expect(input).toBe(
+      [
+        '<current_summary>\n\n</current_summary>',
+        '<customer_message>\nI want a  b villa /b  to rent\n</customer_message>',
+        '<assistant_message>\nI will hold one for you.\n</assistant_message>',
+      ].join('\n'),
+    );
+    expect(summaries.finishSession).toHaveBeenCalledWith(
+      KEY,
+      row.previousInboundAt,
+      'villa to rent',
+    );
+    expect(trace.session).toEqual(
+      expect.objectContaining({
+        startedAt: sec(row.sessionStartedAt.getTime()),
+        summary: 'saved',
+      }),
+    );
+
+    const request = replyCalls()[0].messages;
+    expect(request[0].content).toContain(
+      `[EARLIER CHATS ${MARKER_TOKEN}]\nNotes on what this customer wanted in earlier chats.`,
+    );
+    expect(request[0].content).toContain('\nvilla to rent');
+    expect(request[0].content).not.toMatch(/written|outdated/);
+    const lines = request.slice(1).map((m: any) => m.content);
+    expect(lines).not.toContain('old ask about villas');
+    expect(lines).toContain(`${STAFF_LINE_PREFIX}\nnew listing came in`);
+    expect(lines.at(-1)).toBe('hi again');
+    expect(send).toHaveBeenCalledWith(CHAT, 'Welcome back.', {
+      creditCharged: false,
+    });
+
+    const history = await service.getHistoryFor('user-1', CHAT);
+    expect(JSON.stringify(history)).not.toContain('villa to rent');
+  });
+
+  it('keeps the old summary, marks the session handled and still replies when the summarizer fails', async () => {
+    const row = opened('office space to buy');
+    summaries.get.mockResolvedValue(row);
+    await redis.setJson(HIST_KEY, oldSession());
+    store.getChatHistory.mockResolvedValue(oldRows());
+    respond(null);
+
+    await turn();
+
+    expect(store.getChatHistory).toHaveBeenCalledWith(
+      'company-1',
+      'user-1',
+      CHAT,
+      200,
+      [],
+      {
+        since: sec(row.summarizedThrough!.getTime()),
+        until: sec(row.previousInboundAt.getTime()),
+      },
+    );
+    expect(summarizerCalls()).toHaveLength(1);
+    expect(summaries.finishSession).toHaveBeenCalledWith(
+      KEY,
+      row.previousInboundAt,
+      null,
+    );
+    expect(trace.session?.summary).toBe('failed');
+    const request = replyCalls()[0].messages;
+    expect(request[0].content).toContain('\noffice space to buy');
+    expect(request.slice(1).map((m: any) => m.content)).not.toContain(
+      'old ask about villas',
+    );
+    expect(send).toHaveBeenCalledWith(CHAT, 'Welcome back.', {
+      creditCharged: false,
+    });
+  });
+
+  it('does not retry a failed summary on the next turn of the session', async () => {
+    const row = opened('office space to buy');
+    summaries.get.mockResolvedValue(row);
+    summaries.finishSession.mockImplementation(
+      (_key: unknown, through: Date) => {
+        summaries.get.mockResolvedValue({
+          ...row,
+          summarizedThrough: through,
+        });
+        return Promise.resolve();
+      },
+    );
+    store.getChatHistory.mockResolvedValue(oldRows());
+    respond(null);
+
+    await turn();
+    await turn('any news?');
+
+    expect(summarizerCalls()).toHaveLength(1);
+    expect(summaries.finishSession).toHaveBeenCalledTimes(1);
+    expect(replyCalls()).toHaveLength(2);
+  });
+
+  it('treats an empty summary as a failure', async () => {
+    summaries.get.mockResolvedValue(opened('office space to buy'));
+    store.getChatHistory.mockResolvedValue(oldRows());
+    respond('   ');
+
+    await turn();
+
+    expect(summarizerCalls()).toHaveLength(1);
+    expect(summaries.finishSession).toHaveBeenCalledWith(
+      KEY,
+      expect.any(Date),
+      null,
+    );
+    expect(replyCalls()[0].messages[0].content).toContain(
+      '\noffice space to buy',
+    );
+  });
+
+  it('marks the session handled and still replies when reading the previous session throws', async () => {
+    summaries.get.mockResolvedValue(opened());
+    await redis.setJson(HIST_KEY, oldSession());
+    store.getChatHistory.mockRejectedValue(new Error('db down'));
+    respond('unused');
+
+    await turn();
+
+    expect(summarizerCalls()).toHaveLength(0);
+    expect(summaries.finishSession).toHaveBeenCalledWith(
+      KEY,
+      expect.any(Date),
+      null,
+    );
+    expect(send).toHaveBeenCalledWith(CHAT, 'Welcome back.', {
+      creditCharged: false,
+    });
+  });
+
+  it('makes no call and keeps the old summary when the previous session is empty', async () => {
+    summaries.get.mockResolvedValue(opened('office space to buy'));
+    await redis.setJson(HIST_KEY, oldSession());
+    store.getChatHistory.mockResolvedValue([]);
+    respond('unused');
+
+    await turn();
+
+    expect(summarizerCalls()).toHaveLength(0);
+    expect(trace.session).toBeUndefined();
+    expect(summaries.finishSession).toHaveBeenCalledWith(
+      KEY,
+      expect.any(Date),
+      null,
+    );
+    expect(replyCalls()[0].messages[0].content).toContain(
+      '\noffice space to buy',
+    );
+  });
+
+  it('leaves the late note out for a late line cut by the session boundary', async () => {
+    summaries.get.mockResolvedValue(opened());
+    await redis.setJson(HIST_KEY, oldSession());
+    await redis.pushList(
+      `wa:ai:events:user-1:${CHAT}:customer`,
+      JSON.stringify({
+        kind: 'customer',
+        id: 'late-old',
+        text: 'late line from the old session',
+        at: now - 29 * HOUR,
+        late: 'superseded',
+        receivedAt: now,
+      }),
+    );
+    store.getChatHistory.mockResolvedValue([]);
+    respond('villa to rent');
+
+    await turn();
+
+    const request = replyCalls()[0].messages;
+    expect(request[0].content).not.toContain('[LATE MESSAGES');
+    expect(request.slice(1).map((m: any) => m.content)).not.toContain(
+      'late line from the old session',
+    );
+    expect(request.at(-1).content).toBe('hi again');
+  });
+
+  it('reads the stored summary inside a handled session without calling the summarizer', async () => {
+    summaries.get.mockResolvedValue(handled('villa to rent'));
+    await redis.setJson(HIST_KEY, [
+      { role: 'user', content: 'old ask about villas', at: now - 30 * HOUR },
+      { role: 'user', content: 'back today', at: now - 3 * HOUR },
+      { role: 'assistant', content: 'Welcome back.' },
+    ]);
+    respond('unused');
+
+    await turn('any news?');
+
+    expect(summarizerCalls()).toHaveLength(0);
+    expect(summaries.finishSession).not.toHaveBeenCalled();
+    const request = replyCalls()[0].messages;
+    expect(request[0].content).toContain('\nvilla to rent');
+    expect(request.slice(1).map((m: any) => m.content)).toEqual([
+      'back today',
+      'Welcome back.',
+      'any news?',
+    ]);
+  });
+
+  it('seeds an expired history only from after the previous customer message', async () => {
+    const row = handled('villa to rent');
+    summaries.get.mockResolvedValue(row);
+    respond('unused');
+
+    await turn();
+
+    expect(store.getChatHistory).toHaveBeenCalledWith(
+      'company-1',
+      'user-1',
+      CHAT,
+      20,
+      ['m-new'],
+      { since: sec(row.previousInboundAt.getTime()) },
+    );
+  });
+
+  it('counts a budget kept only in the summary as a source for the reply', async () => {
+    summaries.get.mockResolvedValue(
+      handled('two bedroom rent, budget AED 95,000 a year'),
+    );
+    const reply = 'Are you still looking at AED 95,000 a year?';
+    respond('unused', reply);
+
+    await turn('any news?');
+
+    expect(trace.blocked).toBeUndefined();
+    expect(send).toHaveBeenCalledWith(CHAT, reply, { creditCharged: false });
+  });
+
+  it('blocks the same unsourced budget when there is no summary', async () => {
+    const reply = 'Are you still looking at AED 95,000 a year?';
+    respond('unused', reply);
+
+    await turn('any news?');
+
+    expect(trace.blocked?.[0]?.check).toBe('grounding');
+  });
+
+  it('states the age of the last search in hours', async () => {
+    await redis.setJson(`wa:ai:reqs:user-1:${CHAT}`, {
+      bedrooms: 2,
+      searchedAt: now - 3 * HOUR,
+    });
+    respond(null);
+
+    await turn();
+
+    expect(replyCalls()[0].messages[0].content).toContain(
+      'ran with these values, the latest 3 hours ago (',
+    );
   });
 });
